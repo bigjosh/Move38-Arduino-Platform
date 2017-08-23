@@ -33,7 +33,3 @@ tile.c.extra_flags=-Wextra -flto
 tile.c.elf.extra_flags=-w -flto
 tile.cpp.extra_flags=-Wextra -flto
 tile.ltoarcmd=avr-gcc-ar
-
-# build.f_cpu=1000000L
-build.mcu=atmega168pb
-# build.board=AVR_Blink
