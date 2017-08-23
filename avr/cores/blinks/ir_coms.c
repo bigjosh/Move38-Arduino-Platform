@@ -48,8 +48,6 @@
 // Currently chosen empirically to work with some tile cases Jon made 7/28/17
  #define IR_PULSE_TIME_US 10
 
-
-
 static inline void chargeLEDs( uint8_t bitmask ) {
     
      PCMSK1 &= ~bitmask;                                 // stop Triggering interrupts on these pins because they are going to change when we charge them

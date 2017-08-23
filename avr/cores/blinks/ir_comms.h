@@ -8,9 +8,6 @@
 #ifndef IR_COMMS_H_
 #define IR_COMMS_H_
 
-#include <avr/io.h>
-
-
 #define IRLED_COUNT FACE_COUNT
 
 // Setup pins, interrupts

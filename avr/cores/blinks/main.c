@@ -6,16 +6,10 @@
  */ 
 
 #include "blinks.h"
-#include "Arduino.h"
+#include <Arduino.h>
 
 #include <avr/sleep.h>
 #include <avr/interrupt.h>
-#include <avr/eeprom.h>
-#include <avr/pgmspace.h>           // PROGMEM to keep data in flash
-#include <math.h>
-
-
-#include <util/delay.h>         // Must come after F_CPU definition
 
 #include "utils.h"
 #include "ir_comms.h"

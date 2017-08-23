@@ -108,5 +108,35 @@ long map(long, long, long, long, long);
 // Grab the FACE_COUNT, F_CPU, 
 #include "blinks.h"
 
+// PIXEL FUNCTIONS
+
+// True today, but could imagine a blinks with 1 pixel or one with with 18 pixels...
+
+#define PIXEL_COUNT FACE_COUNT
+
+// Set a single pixel's RGB value
+// p is the pixel number. 0 < p < PIXEL_COUNT
+// r,g,b are brightness values. 0=off, 255=full brightness
+
+// Note that there will likely be fewer than 256 actual visible values, but the mapping will be linear and smooth
+
+// TODO: Balance, normalize, power optimize, and gamma correct these functions
+// Need some exponential compression at the top here
+// Maybe look up tables to make all calculations be one step at the cost of memory?
+
+void setPixelRGB( uint8_t p, uint8_t r, uint8_t g, uint8_t b );
+
+
+// Set a single pixel's HSB value
+// p is the pixel number. 0 < p < PIXEL_COUNT
+
+void setPixelHSB( uint8_t p, uint8_t inHue, uint8_t inSaturation, uint8_t inBrightness );
+
+// Set all pixels to one color
+
+void setRGB( uint8_t r, uint8_t g, uint8_t b );
+
+#warning arduino.h worked
+
 #endif
 
