@@ -23,14 +23,10 @@
 #ifndef Arduino_h
 #define Arduino_h
 
-#include <stdlib.h>
 #include <stdbool.h>
-#include <string.h>
 #include <math.h>
 
 #include <avr/pgmspace.h>
-
-#include "binary.h"
 
 #ifdef __cplusplus
 extern "C"{
@@ -86,6 +82,12 @@ void loop(void);
 } // extern "C"
 #endif
 
+
+/*
+#ifdef __cplusplus
+#include "WCharacter.h"
+#include "WString.h"
+
 uint16_t makeWord(uint16_t w);
 uint16_t makeWord(byte h, byte l);
 
@@ -96,6 +98,15 @@ long random(long);
 long random(long, long);
 void randomSeed(unsigned long);
 long map(long, long, long, long, long);
+
+#endif
+
+*/
+
+// *** Now the Blinks specific API functions
+
+// Grab the FACE_COUNT, F_CPU, 
+#include "blinks.h"
 
 #endif
 
