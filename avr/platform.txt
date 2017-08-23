@@ -88,6 +88,12 @@ recipe.preproc.includes="{compiler.path}{compiler.cpp.cmd}" {compiler.cpp.flags}
 preproc.macros.flags=-w -x c++ -E -CC
 recipe.preproc.macros="{compiler.path}{compiler.cpp.cmd}" {compiler.cpp.flags} {preproc.macros.flags} -mmcu={build.mcu} -DF_CPU={build.f_cpu} -DARDUINO={runtime.ide.version} -DARDUINO_{build.board} -DARDUINO_ARCH_{build.arch} {compiler.cpp.extra_flags} {build.extra_flags} {includes} "{source_file}" -o "{preprocessed_file_path}"
 
+# NOGOOD programmer
+
+tools.nogood.cmd="dir"
+tools.nogood.program.pattern="dir" 
+tools.nogood.upload.pattern="dir" 
+
 # AVR Uploader/Programmers tools
 # ------------------------------
 
@@ -95,10 +101,16 @@ tools.avrdude.path={runtime.tools.avrdude.path}
 tools.avrdude.cmd.path={path}/bin/avrdude
 tools.avrdude.config.path={runtime.platform.path}/avrdude.conf
 
+# arduinoasisp.program.extra_params=-P{serial.port} -b{program.speed}
+
+tools.avrdude.program_and_upload.pattern="{cmd.path}" "-C{config.path}" {program.verbose} {program.verify} -p{build.mcu} -c{protocol} {move38.extra_params} "-Uflash:w:{build.path}/{build.project_name}.hex:i"
+
 tools.avrdude.program.params.verbose=-v
 tools.avrdude.program.params.quiet=-q -q
 tools.avrdude.program.params.noverify=-V
-tools.avrdude.program.pattern="{cmd.path}" "-C{config.path}" {program.verbose} {program.verify} -p{build.mcu} -c{protocol} {program.extra_params} "-Uflash:w:{build.path}/{build.project_name}.hex:i"
+#tools.avrdude.program.pattern="{cmd.path}" "-C{config.path}" {program.verbose} {program.verify} -p{build.mcu} -c{protocol} {program.extra_params} "-Uflash:w:{build.path}/{build.project_name}.hex:i"
+#tools.avrdude.program.pattern="{tools.avrdude.program_and_upload.pattern}" 
+tools.move38_avrdude.program.pattern="JOSH IS NICE" 
 
 tools.avrdude.upload.params.verbose=-v
 tools.avrdude.upload.params.quiet=-q -q
@@ -110,7 +122,16 @@ tools.avrdude.upload.params.noverify=-V
 # make upload actually do a program since there is no bootloader
 # this means you can just hit the "play" button to program rather than traversing to "Sketch->Program"
 
-tools.avrdude.upload.pattern={tools.avrdude.program.pattern}
+# well this doesn't work. Deadth by a thousand Arduino bugs.
+# tools.avrdude.upload.pattern="{tools.avrdude.program.pattern}"
+
+# sadly, we have to repeat this line in full rather than by reference
+
+
+
+tools.avrdude.upload.pattern="{cmd.path}" "-C{config.path}" {program.verbose} {program.verify} -p{build.mcu} -c{protocol} {program.extra_params} "-Uflash:w:{build.path}/{build.project_name}.hex:i"
+
+tools.avrdude.upload.pattern="echo" "-C{config.path}" {program.verbose} {program.verify} -p{build.mcu} -c{protocol} {program.extra_params} "-Uflash:w:{build.path}/{build.project_name}.hex:i"
 
 tools.avrdude.erase.params.verbose=-v
 tools.avrdude.erase.params.quiet=-q -q

@@ -11,10 +11,11 @@
 ##########################################
 
 tile.name=Blinks Tile
-tile.upload.tool=avrdude
-tile.upload.protocol=avrisp
 tile.upload.maximum_size=15872
 tile.upload.maximum_data_size=1024
+
+tile.upload.tool=nogood
+tile.program.tool=nogood
 
 tile.build.core=blinks
 tile.build.board=AVR_Blink
