@@ -131,7 +131,7 @@
   <avrgcccpp.compiler.directories.IncludePaths>
     <ListValues>
       <Value>%24(PackRepoDir)\atmel\ATmega_DFP\1.1.130\include</Value>
-      <Value>../../../avr/cores/blinks</Value>
+      <Value>../../../cores/blinks</Value>
     </ListValues>
   </avrgcccpp.compiler.directories.IncludePaths>
   <avrgcccpp.compiler.optimization.level>Optimize (-O1)</avrgcccpp.compiler.optimization.level>
@@ -154,65 +154,69 @@
     </ToolchainSettings>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\..\avr\cores\blinks\adc.cpp">
+    <Compile Include="..\..\cores\blinks\adc.cpp">
       <SubType>compile</SubType>
       <Link>adc.cpp</Link>
     </Compile>
-    <Compile Include="..\..\avr\cores\blinks\adc.h">
+    <Compile Include="..\..\cores\blinks\adc.h">
       <SubType>compile</SubType>
       <Link>adc.h</Link>
     </Compile>
-    <Compile Include="..\..\avr\cores\blinks\Arduino.h">
+    <Compile Include="..\..\cores\blinks\Arduino.h">
       <SubType>compile</SubType>
       <Link>Arduino.h</Link>
     </Compile>
-    <Compile Include="..\..\avr\cores\blinks\blinks.h">
+    <Compile Include="..\..\cores\blinks\blinks.h">
       <SubType>compile</SubType>
       <Link>blinks.h</Link>
     </Compile>
-    <Compile Include="..\..\avr\cores\blinks\button.cpp">
+    <Compile Include="..\..\cores\blinks\button.cpp">
       <SubType>compile</SubType>
       <Link>button.cpp</Link>
     </Compile>
-    <Compile Include="..\..\avr\cores\blinks\button.h">
+    <Compile Include="..\..\cores\blinks\button.h">
       <SubType>compile</SubType>
       <Link>button.h</Link>
     </Compile>
-    <Compile Include="..\..\avr\cores\blinks\effects.cpp">
+    <Compile Include="..\..\cores\blinks\effects.cpp">
       <SubType>compile</SubType>
       <Link>effects.cpp</Link>
     </Compile>
-    <Compile Include="..\..\avr\cores\blinks\hardware.h">
+    <Compile Include="..\..\cores\blinks\hardware.h">
       <SubType>compile</SubType>
       <Link>hardware.h</Link>
     </Compile>
-    <Compile Include="..\..\avr\cores\blinks\ir_comms.h">
+    <Compile Include="..\..\cores\blinks\ir_comms.h">
       <SubType>compile</SubType>
       <Link>ir_comms.h</Link>
     </Compile>
-    <Compile Include="..\..\avr\cores\blinks\ir_coms.cpp">
+    <Compile Include="..\..\cores\blinks\ir_coms.cpp">
       <SubType>compile</SubType>
       <Link>ir_coms.cpp</Link>
     </Compile>
-    <Compile Include="..\..\avr\cores\blinks\main.cpp">
+    <Compile Include="..\..\cores\blinks\main.cpp">
       <SubType>compile</SubType>
       <Link>main.cpp</Link>
     </Compile>
-    <Compile Include="..\..\avr\cores\blinks\rgb_pixels.cpp">
+    <Compile Include="..\..\cores\blinks\rgb_pixels.cpp">
       <SubType>compile</SubType>
       <Link>rgb_pixels.cpp</Link>
     </Compile>
-    <Compile Include="..\..\avr\cores\blinks\rgb_pixels.h">
+    <Compile Include="..\..\cores\blinks\rgb_pixels.h">
       <SubType>compile</SubType>
       <Link>rgb_pixels.h</Link>
     </Compile>
-    <Compile Include="..\..\avr\cores\blinks\utils.cpp">
+    <Compile Include="..\..\cores\blinks\utils.cpp">
       <SubType>compile</SubType>
       <Link>utils.cpp</Link>
     </Compile>
-    <Compile Include="..\..\avr\cores\blinks\utils.h">
+    <Compile Include="..\..\cores\blinks\utils.h">
       <SubType>compile</SubType>
       <Link>utils.h</Link>
+    </Compile>
+    <Compile Include="..\..\cores\blinks\WMath.cpp">
+      <SubType>compile</SubType>
+      <Link>WMath.cpp</Link>
     </Compile>
     <Compile Include="sketch.cpp">
       <SubType>compile</SubType>
