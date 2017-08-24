@@ -31,7 +31,8 @@ tile.build.f_cpu=4000000L
 
 tile.build.mcu=atmega168pb
 
-tile.c.extra_flags=-Wextra -flto
-tile.c.elf.extra_flags=-w -flto
-tile.cpp.extra_flags=-Wextra -flto
+#tile.c.extra_flags=-Wextra -flto
+#tile.c.elf.extra_flags=-w -flto
+#tile.cpp.extra_flags=-Wextra -flto
+
 tile.ltoarcmd=avr-gcc-ar

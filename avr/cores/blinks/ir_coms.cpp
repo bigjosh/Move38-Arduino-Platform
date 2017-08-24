@@ -426,6 +426,13 @@ volatile uint8_t irled_rx_error;        // bitflags - There was an invalid pulse
 volatile uint8_t irled_rx_overflow;     // bitflags -The value[] buffer was not empty when a new byte was received
 
 
+uint8_t irled_rx_overflowBits(void) {
+	
+	return irled_rx_overflow;
+	
+}
+
+
 // This gets called anytime one of the IR LED cathodes has a level change drops. This typically happens because some light 
 // hit it and discharged the capacitance, so the pin goes from high to low. We initialize each pin at high, and we charge it
 // back to high everything it drops low, so we should in practice only ever see high to low transitions here.

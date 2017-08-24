@@ -31,9 +31,8 @@ uint8_t ir_read( uint8_t led);
 // If bit set, then a new byte was received before the previous byte in the buffer was read.
 // Currently the buffered byte is kept. 
 // The bit is cleared when the currently buffered byte is read. 
-// TODO: Does this belong in the public interface? Probably should it be hidden behind a function? 
 
-volatile uint8_t irled_rx_overflow;             
+uint8_t irled_rx_overflowBits(void);             
 
 // Transmit a value (0-3) on face
 // (only 2 bits of data for now)

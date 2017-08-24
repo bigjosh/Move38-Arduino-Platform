@@ -20,6 +20,7 @@
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
+
 #ifndef Arduino_h
 #define Arduino_h
 
@@ -136,7 +137,6 @@ void setPixelHSB( uint8_t p, uint8_t inHue, uint8_t inSaturation, uint8_t inBrig
 
 void setRGB( uint8_t r, uint8_t g, uint8_t b );
 
-#warning arduino.h worked
+void test(void);
 
 #endif
-
