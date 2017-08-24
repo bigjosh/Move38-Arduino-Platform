@@ -16,7 +16,7 @@ Since there is no bootloader in a tile, all code must be programmed rather than 
 
 You can use any AVR programmer supported by AVRDUDE and the Arduino IDE.
 
-Just select one of the stock programmers in the "Programmers" menu, and connect the 6-pin ISP to the tile. If you do not have a programmer, you can also use an Arduino and a couple of wires. More detailed instructions to come. 
+Just connect your programmer and select it in the "Programmers" menu, and connect the 6-pin ISP to the tile. If you do not have a programmer, you can also use an Arduino and a couple of wires. More detailed instructions to come. 
 
 You can then use the "Sketch-Upload to Programmer" menu choice or just press the Play button to compile your code and program it into the connected tile. (Both the menu option and the button do the same thing with a tile.)
 
@@ -40,9 +40,13 @@ This installation method requires Arduino IDE version 1.6.4 or greater.
 
 
 #### Manual Installation
-Click on the "Download ZIP" button in the upper right corner. Exctract the ZIP file, and move the extracted folder to the location "**~/Documents/Arduino/hardware**". Create the "hardware" folder if it doesn't exist.
+You should probably only  do manual install if you plan on hacking the blinks API and contributing changes back up to the master repo on Github. 
+
+Click on the "Download ZIP" button in the upper right corner. Exctract the ZIP file, and move the extracted files to the location "**~/Documents/Arduino/hardware/Move38/avr**". Create the folder if it doesn't exist. This readme file should be located at "**~/Documents/Arduino/hardware/Move38/avr/README.md**" when you are done.
+
 Open Arduino IDE, and a new category in the boards menu called "Move38" will show up.
 
+The "**~/Documents/Arduino/hardware/Move38/avr**" folder is a Git repo and is also set up for easy editing in Atmel Studio with a solution inside the `\AS7` sub-folder. 
 
 ## Getting started with Move38 Blinks on Arduino
 
