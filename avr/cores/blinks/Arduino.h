@@ -84,10 +84,8 @@ void loop(void);
 #endif
 
 
-/*
+
 #ifdef __cplusplus
-#include "WCharacter.h"
-#include "WString.h"
 
 uint16_t makeWord(uint16_t w);
 uint16_t makeWord(byte h, byte l);
@@ -102,7 +100,7 @@ long map(long, long, long, long, long);
 
 #endif
 
-*/
+
 
 // *** Now the Blinks specific API functions
 
