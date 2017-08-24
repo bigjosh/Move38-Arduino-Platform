@@ -15,6 +15,7 @@
 #include "hardware.h"
 
 #include <avr/interrupt.h>
+#include <util/delay.h>					// _delay_ms() for debounce
 
 #include "button.h"
 #include "utils.h"
@@ -47,11 +48,24 @@ void button_init(void) {
 
 uint8_t buttonPressed(void) {
 	
+	// TODO: Use a proper timer to debounce here? Does it really matter for this?
+
+	_delay_ms( BUTTON_DEBOUNCE_MS );
+	
 	if (button_flag) {
+		
 		button_flag=0;
 		return 1;
 	} 
 	
 	return 0;
+	
+}
+
+// Returns 1 if button is currently down
+
+uint8_t buttonDown(void) {
+	
+	return BUTTON_DOWN();
 	
 }

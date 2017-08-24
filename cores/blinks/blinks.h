@@ -14,6 +14,4 @@
 
 #define FACE_COUNT 6				// Total number of IRLEDs 
 
-#define BUTTON_DEBOUNCE_TICKS 10	// Number of ticks on the timer to debounce the button
-
 #endif /* BLINKS_H_ */

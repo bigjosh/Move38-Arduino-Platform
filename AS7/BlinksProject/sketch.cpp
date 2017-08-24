@@ -12,6 +12,6 @@ void setup(void) {
 }
 
 void loop(void) {
-	setRGB( 0 , 200  , 0 );
+	setAllRGB( 0 , 200  , 0 );
 }
 

@@ -8,13 +8,15 @@
 
 #include <avr/io.h>
 
+// Debounce button pressed this much
+#define BUTTON_DEBOUNCE_MS 40
 
 // Setup pins, interrupts. Call once at power up.
 
 void button_init(void);
 
 
-//TODO: This will be replaced with proper button functions. 
+// TODO: This will be replaced with proper button functions. 
 // Returns 1 if button pressed since the last time this was called
 
 uint8_t buttonPressed(void);

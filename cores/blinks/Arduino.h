@@ -24,10 +24,17 @@
 #ifndef Arduino_h
 #define Arduino_h
 
+#include "blinks.h"
+
 #include <stdbool.h>
 #include <math.h>
 
 #include <avr/pgmspace.h>
+
+// Grab _delay_ms()- used to implement delay() below
+// TODO: We should give the user a better way?
+
+#include <util/delay.h>			
 
 #ifdef __cplusplus
 extern "C"{
@@ -107,7 +114,7 @@ long map(long, long, long, long, long);
 // Grab the FACE_COUNT, F_CPU, 
 #include "blinks.h"
 
-// PIXEL FUNCTIONS
+// *** PIXEL FUNCTIONS ***
 
 // True today, but could imagine a blinks with 1 pixel or one with with 18 pixels...
 
@@ -133,8 +140,21 @@ void setPixelHSB( uint8_t p, uint8_t inHue, uint8_t inSaturation, uint8_t inBrig
 
 // Set all pixels to one color
 
-void setRGB( uint8_t r, uint8_t g, uint8_t b );
+void setAllRGB( uint8_t r, uint8_t g, uint8_t b );
 
-void test(void);
+// *** BUTTON FUNCTIONS ***
+
+// TODO: This will be replaced with proper button functions.
+// Returns 1 if button pressed since the last time this was called
+
+uint8_t buttonPressed(void);
+
+// Returns 1 if button is currently pressed down
+
+uint8_t buttonDown(void);
+
+// Delay for specified number of milliseconds
+
+#define delay(ms) _delay_ms(ms)
 
 #endif

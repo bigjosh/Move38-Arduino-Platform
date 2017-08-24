@@ -41,7 +41,7 @@ void setPixelHSB( uint8_t p, uint8_t inHue, uint8_t inSaturation, uint8_t inBrig
 
 // Set all pixels to one color
 
-void setRGB( uint8_t r, uint8_t g, uint8_t b );
+void setAllRGB( uint8_t r, uint8_t g, uint8_t b );
 
 
 
