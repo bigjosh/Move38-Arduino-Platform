@@ -297,7 +297,7 @@ void updateVccFlag(void) {                  // Set the flag based on ADC check o
 
 */
 
-volatile uint8_t verticalRetraceFlag=0;     // Turns to 1 when we are about to start a new refresh cycle at pixel zero
+//uint8_t verticalRetraceFlag=0;              // Turns to 1 when we are about to start a new refresh cycle at pixel zero
                                             // Once this turns to 1, you have about 2ms to load new values into the raw array   
                                             // to have them displayed in the next frame.
                                             // Only matters if you want to have consistent frames and avoid visual tearing
@@ -435,6 +435,7 @@ void pixel_isr(void) {
     
 	//tick(); // TODO: No Vcc compensation yet
     //DEBUGA_0();
+    
 
 } 
                          

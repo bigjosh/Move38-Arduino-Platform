@@ -155,6 +155,46 @@ uint8_t buttonDown(void);
 
 // Delay for specified number of milliseconds
 
+// TODO: Make some kind of delayed promise mechanism
+
 #define delay(ms) _delay_ms(ms)
+
+// *** IR COMMS FUNCTIONS ***
+
+// TODO: Give people bytes rather than measly dibits
+
+// Returns last received dibit (value 0-3) for requested face
+// Blocks if no data ready
+// `face` must be less than FACE_COUNT
+
+uint8_t irReadDibit( uint8_t face);
+
+// Returns true if data is available to be read on the requested face
+// Always returns immediately 
+// Cleared by subseqent irReadDibit()
+// `face` must be less than FACE_COUNT
+
+uint8_t irIsAvailable( uint8_t face );
+
+// Returns true if data was lost because new data arrived before old data was read
+// Next read will return the older data (new data does not over write old)
+// Always returns immediately
+// Cleared by subseqent irReadDibit()
+// `face` must be less than FACE_COUNT
+
+uint8_t irOverFlowFlag( uint8_t face );
+
+// Transmits the lower 2 bits (dibit) of data on requested face
+// Blocks if there is already a transmission in progress on this face
+// Returns immediately and continues transmission in background if no transmit already in progress
+// `face` must be less than FACE_COUNT
+
+void irSendDibit( uint8_t face , uint8_t data );
+
+// Blocks if there is already a transmission in progress on this face
+// Returns immediately if no transmit already in progress
+// `face` must be less than FACE_COUNT
+
+void irFlush( uint8_t face );
 
 #endif

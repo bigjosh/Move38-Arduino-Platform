@@ -360,7 +360,12 @@ tx_pattern_t to_tx_pattern( uint8_t value ) {
     
     return pgm_read_byte(&( pattern_map[value] ));       
     
-}    
+}   
+
+
+/*
+
+// Superseded by idiomatic Arduino functions  
 
 void ir_send( uint8_t face , uint8_t data ) {
     
@@ -369,6 +374,8 @@ void ir_send( uint8_t face , uint8_t data ) {
     ir_tx_data[face] = to_tx_pattern( data & 0x03 ); 
     
 }    
+
+*/
     
 
 // This is broken out into its own function because it is called from two places- the OVR ISR
@@ -426,11 +433,17 @@ volatile uint8_t irled_rx_error;        // bitflags - There was an invalid pulse
 volatile uint8_t irled_rx_overflow;     // bitflags -The value[] buffer was not empty when a new byte was received
 
 
+/*
+
+// Superseded by idiomatic Arduino functions
+
 uint8_t irled_rx_overflowBits(void) {
 	
 	return irled_rx_overflow;
 	
 }
+
+*/
 
 
 // This gets called anytime one of the IR LED cathodes has a level change drops. This typically happens because some light 
@@ -612,6 +625,9 @@ ISR(IR_ISR)
         
 }
 
+/*
+
+// Superseded by idiomatic Arduino functions
 
 // Returns last received data for requested face 
 // bit 2 is 1 if data found, 0 if not
@@ -638,6 +654,87 @@ uint8_t ir_read( uint8_t led) {
     }        
     
 }    
+
+*/
+
+// Returns true if data is available to be read on the requested face
+// Always returns immediately
+// Cleared by subseqent irReadDibit()
+// `led` must be less than FACE_COUNT
+
+uint8_t irIsAvailable( uint8_t face ) {
+    
+    uint8_t data = irled_RX_value[ face ];
+
+    // Look for the starting pattern of 01 at the beginning of the data
+
+    if ( ( data  & 0b00001100 ) == 0b00000100 ) {
+        
+        return( 1 );
+        
+    } else {
+        
+        return (0 );
+        
+    }                
+                  
+}    
+
+
+// Returns last received dibit (value 0-3) for requested face
+// Blocks if no data ready
+// `led` must be less than FACE_COUNT
+
+uint8_t irReadDibit( uint8_t face) {
+        
+    uint8_t data = irled_RX_value[ face ];
+
+    // Block until we see the starting pattern of 01 at the beginning of the data
+
+    while ( ( data  & 0b00001100 ) != 0b00000100 );
+
+    cli();                          // Must be atomic
+    irled_RX_value[ face ] = 0;      // Clear out for next byte
+    irled_rx_overflow &= ~_BV(face); // Clear out overflow flag
+    sei();
+        
+    return( data );
+           
+}    
+
+
+// Returns true if data was lost because new data arrived before old data was read
+// Next read will return the older data (new data does not over write old)
+// Always returns immediately
+// Cleared by subseqent irReadDibit()
+// `led` must be less than FACE_COUNT
+
+uint8_t irOverFlowFlag( uint8_t face ) {
+    
+    return ( _BV( face ) & irled_rx_overflow );    
+}    
+
+
+// Blocks if there is already a transmission in progress on this face
+// Returns immediately if no transmit already in progress
+// `led` must be less than FACE_COUNT
+
+void irFlush( uint8_t face ) {
+
+    while ( ir_tx_data[face]);          // Wait until any currently in progress transmission is complete
+    
+}    
+
+// Transmits the lower 2 bits (dibit) of data on requested face
+// Blocks if there is already a transmission in progress on this face
+// Returns immediately and continues transmission in background if no transmit already in progress
+// `led` must be less than FACE_COUNT
+
+void irSendDibit( uint8_t face , uint8_t data ) {
+    
+    ir_tx_data[face] = to_tx_pattern( data & 0x03 );       
+}    
+
 
 // IR comms uses the 16 bit timer1 
 // We only want 8 bits so will set the TOP at 256.

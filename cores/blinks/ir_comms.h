@@ -26,19 +26,66 @@ void ir_init(void);
 // 0x04=0b00000110=Received 2
 // 0x04=0b00000111=Received 3
 
-uint8_t ir_read( uint8_t led);
+// Superseded by idiomatic Arduino functions
+
+// uint8_t ir_read( uint8_t led);
+
+
 
 // If bit set, then a new byte was received before the previous byte in the buffer was read.
 // Currently the buffered byte is kept. 
 // The bit is cleared when the currently buffered byte is read. 
 
-uint8_t irled_rx_overflowBits(void);             
+// Superseded by idiomatic Arduino functions
+
+// uint8_t irled_rx_overflowBits(void);             
 
 // Transmit a value (0-3) on face
 // (only 2 bits of data for now)
 // If no transmit in progress, then returns immediately and starts the transmit within 500us
 // IF a transmit is in progress, then blocks until that is complete. 
 
-void ir_send( uint8_t face , uint8_t data );
+// Superseded by idiomatic Arduino functions
+
+//void ir_send( uint8_t face , uint8_t data );
+
+
+// The functions below are for Arduino consumption
+
+// TODO: Give people bytes rather than measly dibits
+
+// Returns last received dibit (value 0-3) for requested face
+// Blocks if no data ready
+// `face` must be less than FACE_COUNT
+
+uint8_t irReadDibit( uint8_t face);
+
+// Returns true if data is available to be read on the requested face
+// Always returns immediately
+// Cleared by subseqent irReadDibit()
+// `face` must be less than FACE_COUNT
+
+uint8_t irIsAvailable( uint8_t face );
+
+// Returns true if data was lost because new data arrived before old data was read
+// Next read will return the older data (new data does not over write old)
+// Always returns immediately
+// Cleared by subseqent irReadDibit()
+// `face` must be less than FACE_COUNT
+
+uint8_t irOverFlowFlag( uint8_t face );
+
+// Transmits the lower 2 bits (dibit) of data on requested face
+// Blocks if there is already a transmission in progress on this face
+// Returns immediately and continues transmission in background if no transmit already in progress
+// `face` must be less than FACE_COUNT
+
+void irSendDibit( uint8_t face , uint8_t data );
+
+// Blocks if there is already a transmission in progress on this face
+// Returns immediately if no transmit already in progress
+// `face` must be less than FACE_COUNT
+
+void irFlush( uint8_t face );
 
 #endif /* IR-COMMS_H_ */
