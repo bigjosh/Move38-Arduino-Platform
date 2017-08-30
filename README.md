@@ -42,11 +42,17 @@ This installation method requires Arduino IDE version 1.6.4 or greater.
 #### Manual Installation
 You should probably only  do manual install if you plan on hacking the blinks API and contributing changes back up to the master repo on Github. 
 
-Click on the "Download ZIP" button in the upper right corner. Exctract the ZIP file, and move the extracted files to the location "**~/Documents/Arduino/hardware/Move38/avr**". Create the folder if it doesn't exist. This readme file should be located at "**~/Documents/Arduino/hardware/Move38/avr/README.md**" when you are done.
+Click on the "Download ZIP" button in the upper right corner. Extract the ZIP file, and move the extracted files to the location "**~/Documents/Arduino/hardware/Move38-manual/avr**". Create the folder if it doesn't exist. This readme file should be located at "**~/Documents/Arduino/hardware/Move38-manual/avr/README.md**" when you are done.
 
-Open Arduino IDE, and a new category in the boards menu called "Move38" will show up.
+Open Arduino IDE, and a new category in the boards menu called "Move38-manual" will show up.
 
-The "**~/Documents/Arduino/hardware/Move38/avr**" folder is a Git repo and is also set up for easy editing in Atmel Studio with a solution inside the `\AS7` sub-folder. 
+##### Notes 
+
+* We called the "vendor/maintainer" folder `Move38-manual` so that you can also use the boards manager and you will be able to tell the two apart in the boards menu.
+
+* You must manually create the `avr` folder and you must also manually move the files out from this repo into this folder. We could not automatically have the folds inside the repo match the Arduino required folder layout because in in the boards manager, the architecture is in the JSON file rather than the folder structure. Arg. 
+
+* The "**~/Documents/Arduino/hardware/Move38-manual/avr**" folder is a Git repo and is also set up for easy editing in Atmel Studio with a solution inside the `\AS7` sub-folder. 
 
 ## Getting started with Move38 Blinks on Arduino
 
