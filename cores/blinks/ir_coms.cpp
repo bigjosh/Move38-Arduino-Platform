@@ -589,7 +589,7 @@ ISR(IR_ISR)
                             
                             irled_RX_value[ led ]  |= 0x01;     
                         
-                        } // else - a 0 bit recieved, but we already shifted a 0 in...
+                        } // else - a 0 bit received, but we already shifted a 0 in...
                     
                     }                    
                                                                         
