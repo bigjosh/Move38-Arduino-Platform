@@ -743,6 +743,21 @@ void irSendDibit( uint8_t face , uint8_t data ) {
 // TODO: Coordinate with PIXEL timers so they do not step on each other. 
 
 
+// Transmits the lower 2 bits (dibit) of data on all faces
+// Blocks if there is already a transmission in progress on any face
+// Returns immediately and continues transmission in background if no transmits are already in progress
+
+void irSendAllDibit(  uint8_t data ) {
+        
+    for( uint8_t face =0; face< FACE_COUNT; face++) {
+        
+        irSendDibit( face, data );
+        
+    }        
+    
+}    
+
+
 static void init_ir_timer(void) {
     
    // Fast PWM, 8-bit TOP=0x00FF Set TOV=TOP

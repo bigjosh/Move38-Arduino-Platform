@@ -204,6 +204,7 @@ void setupTimers(void) {
 void pixel_init(void) {
 	setupPixelPins();
 	setupTimers();
+    setAllRGB( 0 , 0 , 0 );             // Start with all pixels off
 }
 
 

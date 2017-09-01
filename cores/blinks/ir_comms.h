@@ -82,6 +82,12 @@ uint8_t irOverFlowFlag( uint8_t face );
 
 void irSendDibit( uint8_t face , uint8_t data );
 
+// Transmits the lower 2 bits (dibit) of data on all faces
+// Blocks if there is already a transmission in progress on any face
+// Returns immediately and continues transmission in background if no transmits are already in progress
+
+void irSendAllDibit(  uint8_t data );
+
 // Blocks if there is already a transmission in progress on this face
 // Returns immediately if no transmit already in progress
 // `face` must be less than FACE_COUNT
