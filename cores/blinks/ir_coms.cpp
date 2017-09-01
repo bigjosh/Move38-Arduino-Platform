@@ -698,7 +698,7 @@ uint8_t irReadDibit( uint8_t face) {
     irled_rx_overflow &= ~_BV(face); // Clear out overflow flag
     sei();
         
-    return( data );
+    return( data  & 0b00000011 );
            
 }    
 
