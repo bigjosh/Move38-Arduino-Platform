@@ -601,26 +601,4 @@ void setAllRGB( uint8_t r, uint8_t g, uint8_t b ) {
 	
 }
 
-typedef struct {
-	uint8_t r;
-	uint8_t g;
-	uint8_t b;
-} rgbtype;
-
-// Wow, this is an inefficient way to do this, but doesn't matter for now.
-// TODO: think of a better RGB representation. Maybe fit everything into 16 bits with reduced blue resolution?
-
-void setRGBtype( const uint8_t p , const rgbtype rgbt ) {
-	
-	setPixelRGB( p , rgbt.b , rgbt.g , rgbt.b  );
-	
-}
-
-void setPixelRGBtype( const uint8_t p , const rgbtype rgbt  ) {
-	
-	for( uint8_t p=0; p<PIXEL_COUNT; p++ ) {
-		setPixelRGBtype( p , rgbt );
-	}
-	
-}
 
