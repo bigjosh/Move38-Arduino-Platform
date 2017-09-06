@@ -21,4 +21,7 @@ void button_init(void);
 
 uint8_t buttonPressed(void);
 
+// TODO: Add enable/disable button functions so we can thoughtfully deal with a button that is
+// jammed down without killing the battery. 
+
 #endif /* BUTTON_H_ */

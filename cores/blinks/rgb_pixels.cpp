@@ -55,12 +55,9 @@ static uint8_t rawValueG[PIXEL_COUNT];
 static uint8_t rawValueB[PIXEL_COUNT];
 
 
-
-// Set all the pixel drive pins to output.
-
 static void setupPixelPins(void) {
 
-	// TODO: Compare power usage for driveing LOW with making input. Maybe slight savings becuase we don't have to drain capacitance each time? Probably not noticable...
+	// TODO: Compare power usage for driving LOW with making input. Maybe slight savings becuase we don't have to drain capacitance each time? Probably not noticable...
 	// TODO: This could be slightly smaller code by loading DDRD with a full byte rather than bits
 	
 	// Setup all the anode driver lines to output. They will be low by default on bootup
@@ -72,6 +69,7 @@ static void setupPixelPins(void) {
 	SBI( PIXEL6_DDR , PIXEL6_BIT );
 	
 	// Set the R,G,B cathode sinks to HIGH so no current flows (this will turn on pull-up until next step sets direction bit)..
+    
 	SBI( LED_R_PORT , LED_R_BIT );       // RED
 	SBI( LED_G_PORT , LED_G_BIT );       // GREEN
 	SBI( LED_B_PORT , LED_B_BIT );       // BLUE
@@ -120,6 +118,27 @@ static void setupPixelPins(void) {
     1ms period.       
 
 */
+
+
+
+// Enable the timer that drives the pixel PWM and radial refresh 
+// Broken out since we call it both from setupTimers() and enablePixels()
+
+static void pixelTimerOn(void) {
+        TCCR2B =                                // Turn on clk as soon as possible after setting COM bits to get the outputs into the right state
+        _BV(CS01);                        // clkI/O/8 (From prescaler)- This line also turns on the Timer0
+}
+
+
+// Stop the timer that drives pixel PWM and refresh 
+// Used before powering down to make sure all pixels are off
+
+static void pixelTimerOff(void) {
+    TCCR2B = 0;                     // Timer/counter stopped. No more ISRs. 
+                                    // PWM outputs will be stuck where ever they were, but
+                                    // we will set all anodes low elsewhere and this will prevent LEDs from lighting. 
+}
+
 
 void setupTimers(void) {
     
@@ -193,8 +212,7 @@ void setupTimers(void) {
         _BV( WGM01) | _BV( WGM00)           // Mode 3 - Fast PWM TOP=0xFF
     ;
     
-    TCCR2B =                                // Turn on clk as soon as possible after setting COM bits to get the outputs into the right state
-        _BV(CS01);                        // clkI/O/8 (From prescaler)- This line also turns on the Timer0    
+    pixelTimerOn();
     
     // TODO: Maybe use Timer2 to drive the ISR since it has Count To Top mode available. We could reset Timer0 from there.
             
@@ -208,9 +226,10 @@ void pixel_init(void) {
 }
 
 
+
 // Note that LINE is 0-5 whereas the pixels are labeled p1-p6 on the board. 
 
-void commonActivate( uint8_t line ) {         
+void activateAnode( uint8_t line ) {         
     
     // TODO: These could probably be compressed with some bit hacking
     
@@ -244,10 +263,10 @@ void commonActivate( uint8_t line ) {
     
 }
 
-static void commonDeactivate( uint8_t line ) {           // Also deactivates previous
-	
+static void deactivateAnode( uint8_t line ) {           
+    	
 		// TODO: Must be  a faster way than switch. 
-		// Maybe a #PROMEM table lookup?
+		// Maybe a #PROGMEM table lookup?
 		
         switch (line) {
             
@@ -325,17 +344,14 @@ void updateVccFlag(void) {                  // Set the flag based on ADC check o
 // values for the currently displayed pixel (the last loaded OCR values), because we have arranged things so that LEDs
 // are always *off* for the 1st half of the timer cycle. 
              
+static uint8_t previousPixel;     // Which pixel was lit on last pass?
+// Note that on startup this is not technically true, so we will unnecessarily but benignly deactivate pixel 0
                                     
 void pixel_isr(void) {   
 
     //DEBUGA_1();
-
-
-    static uint8_t previousPixel;     // Which pixel was lit on last pass?
-                                      // Note that on startup this is not technically true, so we will unnecessarily but benignly deactivate pixel 0
     
-    
-    commonDeactivate( previousPixel );
+    deactivateAnode( previousPixel );
     
     // TODO: Change BLUE in a different phase maybe?
 
@@ -361,7 +377,7 @@ void pixel_isr(void) {
                                                     // We CBI here because this pin is a SINK so negative is active.                                            
     }
     
-    commonActivate(currentPixel);
+    activateAnode(currentPixel);
 	
 	// This part switches between high voltage mode where we drive the LED directly from Vcc for very breif pulses and
 	// low voltage mode where we PWM the charge pump. 
@@ -487,6 +503,38 @@ ISR(TIMER0_OVF_vect)
 	
 }
 
+// Turn of all pixels and the timer that drives them.
+// You'd want to do this before going to sleep.
+
+void disablePixels(void) {
+    
+    // First we must disable the timer or else the ISR could wake up 
+    // and turn on the next pixel while we are trying to turn them off. 
+    
+    pixelTimerOff();
+    
+    // And now turn off all anodes so all colors of all LEDs will be off no matter
+    /// what the PWM output states happened to be.
+    deactivateAnode( previousPixel );
+    
+    // Ok, now all the anodes should be low so all LEDs off
+    // and no timer running to turn any anodes back on
+    
+}
+
+// Re-enable pixels after a call to disablePixels.
+// Pixels will return to the color they had before being disabled.
+
+void enablePixels(void) {
+    pixelTimerOn();
+    
+    // Technically the correct thing to do here would be to turn the previous pixel back on,
+    // but it will get hit on the next refresh which happens muchg faster than visible.
+    
+    // Next time timer expires, ISR will benignly deactivate the already inactive last pixel, 
+    // then turn on the next pixel and everything will pick up where it left off. 
+    
+}
        
 
 // Gamma table curtsy of adafruit...

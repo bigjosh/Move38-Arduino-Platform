@@ -41,15 +41,15 @@
     </custom>
     <AsfFrameworkConfig>
       <framework-data xmlns="">
-  <options />
-  <configurations />
-  <files />
-  <documentation help="" />
-  <offline-documentation help="" />
-  <dependencies>
-    <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.32.0" />
-  </dependencies>
-</framework-data>
+        <options />
+        <configurations />
+        <files />
+        <documentation help="" />
+        <offline-documentation help="" />
+        <dependencies>
+          <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.32.0" />
+        </dependencies>
+      </framework-data>
     </AsfFrameworkConfig>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
@@ -229,6 +229,12 @@
     <Compile Include="..\..\cores\blinks\WMath.cpp">
       <SubType>compile</SubType>
       <Link>WMath.cpp</Link>
+    </Compile>
+    <Compile Include="power.cpp">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="power.h">
+      <SubType>compile</SubType>
     </Compile>
     <Compile Include="sketch.cpp">
       <SubType>compile</SubType>

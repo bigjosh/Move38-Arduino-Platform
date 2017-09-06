@@ -142,6 +142,16 @@ void setPixelHSB( uint8_t p, uint8_t inHue, uint8_t inSaturation, uint8_t inBrig
 
 void setAllRGB( uint8_t r, uint8_t g, uint8_t b );
 
+// Turn of all pixels and the timer that drives them.
+// You'd want to do this before going to sleep.
+
+void disablePixels(void);
+
+// Re-enable pixels after a call to disablePixels.
+// Pixels will return to the color they had before being disabled.
+
+void enablePixels(void);
+
 // *** BUTTON FUNCTIONS ***
 
 // TODO: This will be replaced with proper button functions.
@@ -203,5 +213,41 @@ void irSendAllDibit(  uint8_t data );
 // `face` must be less than FACE_COUNT
 
 void irFlush( uint8_t face );
+
+// *** POWER FUNCTIONS ***
+
+// Goto low power sleep - get woken up by button or IR LED
+// Be sure to turn off all pixels before sleeping since
+// the PWM timers will not be running so pixels will not look right.
+
+// TODO: We should probably ALWAYS sleep with timers on between frames to save CPU power.
+
+void sleep(void);
+    
+// Sleep with a predefined timeout. Can still get woken by button or IR before timeout expires. 
+// On the timeout values in sleepTimeoutType are available. This is a hardware limitation.
+// You can simulate other timeouts by sleeping multiple times with different timeouts to build up the
+// the desired timeout. 
+// This is very power efficient since chip is stopped except for the watchdog timer. 
+// Note that if the timer was on entering here that it will stay on, so LED will still stay lit.
+
+// Possible sleep timeout values
+
+typedef enum timeout_enum {
+
+    timeout_16MS = (_BV(WDIE) ),
+    timeout_32MS = (_BV(WDIE) | _BV( WDP0) ),
+    timeout_64MS = (_BV(WDIE) | _BV( WDP1) ),
+    timeout_125MS= (_BV(WDIE) | _BV( WDP1) | _BV( WDP0) ),
+    timeout_250MS= (_BV(WDIE) | _BV( WDP2) ),
+    timeout_500MS= (_BV(WDIE) | _BV( WDP2) | _BV( WDP0) ),
+    timeout_1S   = (_BV(WDIE) | _BV( WDP2) | _BV( WDP1) ),
+    timeout_2S   = (_BV(WDIE) | _BV( WDP2) | _BV( WDP1) | _BV( WDP0) ),
+    timeout_4S   = (_BV(WDIE) | _BV( WDP3) ),
+    timeout_8S   = (_BV(WDIE) | _BV( WDP3) | _BV( WDP0) )
+    
+} sleepTimeoutType;
+
+void sleepWithTimeout( sleepTimeoutType timeout );
 
 #endif
