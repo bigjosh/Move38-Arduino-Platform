@@ -490,9 +490,7 @@ ISR(IR_ISR)
                             // Alternatively, TOV can be cleared by writing a logic one to its bit location."
         
     }        
-    
-                                            
-    
+                                                    
     // Recharge the ones that have fired
 
     chargeLEDs( ir_LED_triggered_bits ); 

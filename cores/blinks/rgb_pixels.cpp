@@ -443,13 +443,14 @@ void pixel_isr(void) {
             
 // Called when Timer0 overflows, which happens at the end of the PWM cycle for each pixel. We advance to the next pixel.
 
-// This fires every 500us (1Khz)
+// This fires every 500us (2Khz)
 // You must finish work in this ISR in 1ms or else might miss an overflow.
 
 
 ISR(TIMER0_OVF_vect)
 {
-        
+    
+    
     pixel_isr();
     return;
 
@@ -476,7 +477,7 @@ ISR(TIMER0_OVF_vect)
             
     
     
-    // Test for timeslot overflow. If any task takes too long, it messes everything up. 
+    // Test for time slot overflow. If any task takes too long, it messes everything up. 
     
     if ( TIFR0 & _BV(TOV0) ) {
         DEBUGB_PULSE(500);
