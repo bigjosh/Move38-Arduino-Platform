@@ -24,9 +24,6 @@
 #include "utils.h"
 #include "power.h"
 
-// Need to redo the enum here becuase multipule enums break Arduino IDE so we made extern in power.h
-
-
 // Don't do anything, just the interrupt itself will wake us up
 // TODO: If we ever need more code space, this could be replaced by an IRET in the VECTOR table.
 
@@ -41,29 +38,10 @@ EMPTY_INTERRUPT( WDT_vect );
 
 // TODO: We should probably ALWAYS sleep with timers on between frames to save CPU power. 
 
-void powerdown(bool wakeOnbutton,  uint8_t wakeOnIR_bitmask  ) {
+void powerdown(void) {
     
-    #ifdef DEBUG_CHECKS
-    
-        if (wakeOnIR_bitmask & ~IR_BITS) {
-            
-            DEBUG_ERROR( DEBUG_WAKEBITS ); 
-            
-        }            
-    
-    #endif
-    
-    if (!wakeOnbutton) {
-        CBI( BUTTON_MASK , BUTTON_PCINT );        // Clear button bit in pin change mask so it does not generate an interrupt. 
-    }
-        
-    IR_MASK &= wakeOnIR_bitmask;                 // Clear any pin change mask bits for IR face we don't care about        
-             
     sleep_cpu();        // Good night
-        
-    IR_MASK = IR_PCINT;                           // Restore IR interrupts
-    SBI( BUTTON_MASK , BUTTON_PCINT );            // Restore button interrupt
-    
+           
 }
 
 // Sleep with a predefined timeout. 
@@ -72,12 +50,13 @@ void powerdown(bool wakeOnbutton,  uint8_t wakeOnIR_bitmask  ) {
 // Each bit in wakeOnIR_bitmask represents the IR sensor on one face. If the bit is 1
 // then we will wake when there is a change on that face
 
-void powerdownWithTimeout( bool wakeOnbutton, uint8_t wakeOnIR_bitmask , sleepTimeoutType timeout ) {
+void powerdownWithTimeout( sleepTimeoutType timeout ) {
     
     wdt_reset();
+    
     WDTCSR =   timeout;              // Enable WDT Interrupt  (WDIE and timeout bits all included in the timeout values)
     
-    powerdown(wakeOnbutton,wakeOnIR_bitmask);
+    powerdown();
     
     WDTCSR = 0;                      // Turn off the WDT interrupt (no special sequence needed here)
                                      // (assigning all bits to zero is 1 instruction and we don't care about the other bits getting clobbered

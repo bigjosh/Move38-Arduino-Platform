@@ -26,18 +26,20 @@
     <OverrideVtorValue>exception_table</OverrideVtorValue>
     <BootSegment>2</BootSegment>
     <eraseonlaunchrule>0</eraseonlaunchrule>
-    <avrtool>custom</avrtool>
-    <avrtoolserialnumber />
+    <avrtool>com.atmel.avrdbg.tool.ispmk2</avrtool>
+    <avrtoolserialnumber>0000B0022024</avrtoolserialnumber>
     <avrdeviceexpectedsignature>0x1E9415</avrdeviceexpectedsignature>
     <custom>
-      <ToolOptions xmlns="">
+      <ToolOptions>
         <InterfaceProperties>
         </InterfaceProperties>
+        <InterfaceName>
+        </InterfaceName>
       </ToolOptions>
-      <ToolType xmlns="">custom</ToolType>
-      <ToolNumber xmlns="">
+      <ToolType>custom</ToolType>
+      <ToolNumber>
       </ToolNumber>
-      <ToolName xmlns="">Custom Programming Tool</ToolName>
+      <ToolName>Custom Programming Tool</ToolName>
     </custom>
     <AsfFrameworkConfig>
       <framework-data xmlns="">
@@ -51,6 +53,19 @@
         </dependencies>
       </framework-data>
     </AsfFrameworkConfig>
+    <avrtoolinterface>ISP</avrtoolinterface>
+    <avrtoolinterfaceclock>125000</avrtoolinterfaceclock>
+    <com_atmel_avrdbg_tool_ispmk2>
+      <ToolOptions>
+        <InterfaceProperties>
+          <IspClock>125000</IspClock>
+        </InterfaceProperties>
+        <InterfaceName>ISP</InterfaceName>
+      </ToolOptions>
+      <ToolType>com.atmel.avrdbg.tool.ispmk2</ToolType>
+      <ToolNumber>0000B0022024</ToolNumber>
+      <ToolName>AVRISP mkII</ToolName>
+    </com_atmel_avrdbg_tool_ispmk2>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
     <ToolchainSettings>
@@ -190,6 +205,14 @@
       <SubType>compile</SubType>
       <Link>button.h</Link>
     </Compile>
+    <Compile Include="..\..\cores\blinks\debug.h">
+      <SubType>compile</SubType>
+      <Link>debug.h</Link>
+    </Compile>
+    <Compile Include="..\..\cores\blinks\DummySketch.cpp">
+      <SubType>compile</SubType>
+      <Link>DummySketch.cpp</Link>
+    </Compile>
     <Compile Include="..\..\cores\blinks\effects.cpp">
       <SubType>compile</SubType>
       <Link>effects.cpp</Link>
@@ -210,6 +233,14 @@
       <SubType>compile</SubType>
       <Link>main.cpp</Link>
     </Compile>
+    <Compile Include="..\..\cores\blinks\power.cpp">
+      <SubType>compile</SubType>
+      <Link>power.cpp</Link>
+    </Compile>
+    <Compile Include="..\..\cores\blinks\power.h">
+      <SubType>compile</SubType>
+      <Link>power.h</Link>
+    </Compile>
     <Compile Include="..\..\cores\blinks\rgb_pixels.cpp">
       <SubType>compile</SubType>
       <Link>rgb_pixels.cpp</Link>
@@ -225,18 +256,6 @@
     <Compile Include="..\..\cores\blinks\WMath.cpp">
       <SubType>compile</SubType>
       <Link>WMath.cpp</Link>
-    </Compile>
-    <Compile Include="debug.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="DummySketch.cpp">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="power.cpp">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="power.h">
-      <SubType>compile</SubType>
     </Compile>
   </ItemGroup>
   <Import Project="$(AVRSTUDIO_EXE_PATH)\\Vs\\Compiler.targets" />
