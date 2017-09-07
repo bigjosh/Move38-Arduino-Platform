@@ -230,6 +230,9 @@
       <SubType>compile</SubType>
       <Link>WMath.cpp</Link>
     </Compile>
+    <Compile Include="debug.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="power.cpp">
       <SubType>compile</SubType>
     </Compile>

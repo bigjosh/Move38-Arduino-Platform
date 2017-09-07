@@ -11,11 +11,13 @@
 #include <avr/sleep.h>
 #include <avr/interrupt.h>
 
+#include "debug.h"
 #include "utils.h"
 #include "ir_comms.h"
 #include "rgb_pixels.h"
 #include "button.h"
 #include "adc.h"
+#include "power.h"
 
 // Change clock prescaller to run at 4Mhz. 
 // By default the CLKDIV fuse boots us at 8Mhz osc /8 so 1Mhz clock
@@ -45,6 +47,8 @@ static void init(void) {
     mhz_init();				// switch to 4Mhz. TODO: Some day it would be nice to go back to 1Mhz for FCC, but lets just get things working now.
     
     DEBUG_INIT();			// Handy debug outputs on unused pins
+    
+    sleep_init();
 	
     adc_init();			// Init ADC to start measuring battery voltage
     

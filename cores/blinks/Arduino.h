@@ -216,24 +216,14 @@ void irFlush( uint8_t face );
 
 // *** POWER FUNCTIONS ***
 
-// Goto low power sleep - get woken up by button or IR LED
-// Be sure to turn off all pixels before sleeping since
-// the PWM timers will not be running so pixels will not look right.
+// Sorry, I can't figure out a better way to get Arduino IDE to compile this type...
 
-// TODO: We should probably ALWAYS sleep with timers on between frames to save CPU power.
-
-void sleep(void);
-    
-// Sleep with a predefined timeout. Can still get woken by button or IR before timeout expires. 
-// On the timeout values in sleepTimeoutType are available. This is a hardware limitation.
-// You can simulate other timeouts by sleeping multiple times with different timeouts to build up the
-// the desired timeout. 
-// This is very power efficient since chip is stopped except for the watchdog timer. 
-// Note that if the timer was on entering here that it will stay on, so LED will still stay lit.
+#ifndef SLEEP_TIMEOUT_
+#define SLEEP_TIMEOUT_
 
 // Possible sleep timeout values
 
-typedef enum timeout_enum {
+typedef enum {
 
     timeout_16MS = (_BV(WDIE) ),
     timeout_32MS = (_BV(WDIE) | _BV( WDP0) ),
@@ -248,6 +238,28 @@ typedef enum timeout_enum {
     
 } sleepTimeoutType;
 
-void sleepWithTimeout( sleepTimeoutType timeout );
+
+#endif
+
+
+// Goto low power sleep - get woken up by button or IR LED
+// Be sure to turn off all pixels before sleeping since
+// the PWM timers will not be running so pixels will not look right.
+// If wakeOnButton is true, then we will wake if the button changes (up or down)
+// Each bit in wakeOnIR_bitmask represents the IR sensor on one face. If the bit is 1
+// then we will wake when there is a change on that face
+
+// TODO: We should probably ALWAYS sleep with timers on between frames to save CPU power.
+
+void powerdown(bool wakeOnbutton,  uint8_t wakeOnIR_bitmask  );
+
+// Sleep with a predefined timeout.
+// This is very power efficient since chip is stopped except for WDT
+// If wakeOnButton is true, then we will wake if the button changes (up or down)
+// Each bit in wakeOnIR_bitmask represents the IR sensor on one face. If the bit is 1
+// then we will wake when there is a change on that face
+
+void powerdownWithTimeout( bool wakeOnbutton, uint8_t wakeOnIR_bitmask , sleepTimeoutType timeout );
+
 
 #endif

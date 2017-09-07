@@ -39,7 +39,7 @@
 #include <avr/pgmspace.h>
 #include <util/delay.h>         // Must come after F_CPU definition
 
-
+#include "debug.h"
 #include "rgb_pixels.h"
 #include "utils.h"
 

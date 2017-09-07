@@ -7,7 +7,7 @@
 #include "blinks.h"
 #include "hardware.h"
 
-#include "utils.h"
+#include "debug.h"
 
 
 // Use ADC6 (pin 19) for an analog input- mostly for dev work
