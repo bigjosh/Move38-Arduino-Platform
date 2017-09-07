@@ -36,22 +36,13 @@ typedef enum {
 
 #endif
 
-// Goto low power sleep - get woken up by button or IR LED
-// Be sure to turn off all pixels before sleeping since
-// the PWM timers will not be running so pixels will not look right.
-// If wakeOnButton is true, then we will wake if the button changes (up or down)
-// Each bit in wakeOnIR_bitmask represents the IR sensor on one face. If the bit is 1
-// then we will wake when there is a change on that face
-
-// TODO: We should probably ALWAYS sleep with timers on between frames to save CPU power.
+// Goto low power sleep - get woken up by any active interrupt source
+// which could include button change or IR change
 
 void powerdown(void);
     
 // Sleep with a predefined timeout.
 // This is very power efficient since chip is stopped except for WDT
-// If wakeOnButton is true, then we will wake if the button changes (up or down)
-// Each bit in wakeOnIR_bitmask represents the IR sensor on one face. If the bit is 1
-// then we will wake when there is a change on that face
 
 void powerdownWithTimeout( sleepTimeoutType timeout );
 
