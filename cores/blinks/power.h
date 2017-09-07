@@ -44,7 +44,9 @@ void powerdown(void);
 // Sleep with a predefined timeout.
 // This is very power efficient since chip is stopped except for WDT
 
-void powerdownWithTimeout( sleepTimeoutType timeout );
+// Returns 1 if the timeout expired.
+
+bool powerdownWithTimeout( sleepTimeoutType timeout );
 
 
 // Get everything set up for proper sleeping

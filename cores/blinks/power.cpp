@@ -56,11 +56,13 @@ void powerdownWithTimeout( sleepTimeoutType timeout ) {
     
     WDTCSR =   timeout;              // Enable WDT Interrupt  (WDIE and timeout bits all included in the timeout values)
     
-    powerdown();
+    sleep_cpu();        // Good night - compiles to 1 instruction
     
+    uint8_t WDTCSR_save = WDTCSR;    // Save the status immediately on waking. We only really care about the watchdog expired flag
+            
     WDTCSR = 0;                      // Turn off the WDT interrupt (no special sequence needed here)
                                      // (assigning all bits to zero is 1 instruction and we don't care about the other bits getting clobbered
-    
+   
 }
 
 void sleep_init(void) {
