@@ -7,6 +7,8 @@
 #include "blinks.h"
 #include "hardware.h"
 
+#include "utils.h"
+
 #include "debug.h"
 
 

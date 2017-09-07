@@ -27,7 +27,13 @@
 // Don't do anything, just the interrupt itself will wake us up
 // TODO: If we ever need more code space, this could be replaced by an IRET in the VECTOR table.
 
-EMPTY_INTERRUPT( WDT_vect );
+volatile uint8_t wdt_flag=0;            // The the WDT get to fire?
+
+ISR( WDT_vect ) {
+    
+    wdt_flag=1;         // Remeber if we fired
+    
+}    
       
 // Goto low power sleep - get woken up by button or IR LED 
 // Be sure to turn off all pixels before sleeping since
@@ -50,18 +56,25 @@ void powerdown(void) {
 // Each bit in wakeOnIR_bitmask represents the IR sensor on one face. If the bit is 1
 // then we will wake when there is a change on that face
 
-void powerdownWithTimeout( sleepTimeoutType timeout ) {
+bool powerdownWithTimeout( sleepTimeoutType timeout ) {
+
+    wdt_flag=0;     // Reset timeout flag
+                    // Don't worry about a race since WDT is off now
     
-    wdt_reset();
-    
+    cli();
+    wdt_reset();    
+    WDTCSR |= _BV(WDCE) | _BV(WDE);  // Does not actually set WDE, just enables changes to the prescaler in next instruction.  NOT DOCUMENTED THAT YOU NEED THE WDE SET ON THIS WRITE
     WDTCSR =   timeout;              // Enable WDT Interrupt  (WDIE and timeout bits all included in the timeout values)
+    sei(); 
     
-    sleep_cpu();        // Good night - compiles to 1 instruction
-    
-    uint8_t WDTCSR_save = WDTCSR;    // Save the status immediately on waking. We only really care about the watchdog expired flag
-            
+    sleep_cpu();                     // Good night - compiles to 1 instruction
+
+    // Don't worry about edge where we get interrupted here and another WDT fires - it will benignly just set the already set flag.    
+                
     WDTCSR = 0;                      // Turn off the WDT interrupt (no special sequence needed here)
                                      // (assigning all bits to zero is 1 instruction and we don't care about the other bits getting clobbered
+                                     
+    return wdt_flag;
    
 }
 
