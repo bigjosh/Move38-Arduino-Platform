@@ -114,6 +114,10 @@ long map(long, long, long, long, long);
 // Grab the FACE_COUNT, F_CPU, 
 #include "blinks.h"
 
+// *** Ultils
+
+#define FOREACH_FACE(x) for(int x = 0; x < FACE_COUNT ; ++ x)       // Pretend this is a real language with iterators
+
 // *** PIXEL FUNCTIONS ***
 
 // True today, but could imagine a blinks with 1 pixel or one with with 18 pixels...

@@ -14,6 +14,14 @@
 
 void ir_init(void);
 
+// Enable IR normal operation (call after init or disable)
+
+void ir_enable(void);
+
+// Stop IR interrupts (call after enable)
+
+void ir_disable(void);
+
 // The RX API...
 
 // Returns last received data (value 0-3) for requested face

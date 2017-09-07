@@ -60,6 +60,8 @@ bool powerdownWithTimeout( sleepTimeoutType timeout ) {
 
     wdt_flag=0;     // Reset timeout flag
                     // Don't worry about a race since WDT is off now
+                    
+                        
     
     cli();
     wdt_reset();    

@@ -10,6 +10,9 @@
     
     Bytes are transmitted least significant bit first.
     
+    IR_MASK by default allows interrupts on all faces. 
+    TODO: When noise causes a face to wake us from sleep too much, we can turn off the mask bit for a while.
+    
     MORE TO COME HERE NEED PICTURES. 
 
 
@@ -779,6 +782,30 @@ static void init_ir_timer(void) {
              
 }          
 
+// We use the general interrupt control register to gate interrupts on and off rather than the mask
+
+
+void ir_enable(void) {
+    
+    // This must come before the charge or we could miss a change that happened between the charge and the enable and that would
+    // loose the LED out of the cycle forever
+
+    SBI( PCICR , IR_PCI );      // Enable the pin group to actual generate interrupts    
+    
+    // There is a race where an IR can get a pulse right here, but that is ok becuase it will just generate an int and be processed normally
+    // and get recharged naturally before the next line.
+    
+    // Initial charge up of cathodes to get things going
+    chargeLEDs( IR_BITS );      // Charge all the LEDS - this handles suppressing extra pin change INTs during charging
+    
+}
+
+void ir_disable(void) {
+
+    CBI( PCICR , IR_PCI );      // Disable the pin group to block interrupts
+        
+}        
+
 void ir_init(void) {
     
     DEBUG_INIT();     // TODO: Get rid of all debug stuff
@@ -790,14 +817,14 @@ void ir_init(void) {
                             
     // Leave cathodes DDR in input mode. When we write to PORT, then we will be enabling pull-up which is enough to charge the 
     // LEDs and saves having to switch DDR every charge. 
-  
-    // Pin change interrupt setup
-    IR_MASK = IR_PCINT;             // Enable pin in Pin Change Mask Register for all 6 cathode pins. Any change after this will set the pending interrupt flag.
-    SBI( PCICR , IR_PCI );          // Enable the pin group
 
-    // Initial charge up of cathodes    
-    //chargeLEDs( IR_BITS );    
+    // Ok to start timer before LEDs are ready since nothing can happen until they get charged.   
     
     init_ir_timer();
+    
+    // Pin change interrupt setup
+    IR_MASK |= IR_PCINT;             // Enable pin in Pin Change Mask Register for all 6 cathode pins. Any change after this will set the pending interrupt flag.
+                                     // TODO: Single LEDs can get masked here if they get noisy to avoid spurious wakes 
+                                        
       
 }

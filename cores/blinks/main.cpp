@@ -52,7 +52,8 @@ static void init(void) {
     
     adc_init();			// Init ADC to start measuring battery voltage
     
-   // ir_init();
+    ir_init();
+    ir_enable(); 
         
     pixel_init();
     
