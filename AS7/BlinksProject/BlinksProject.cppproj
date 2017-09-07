@@ -218,10 +218,6 @@
       <SubType>compile</SubType>
       <Link>rgb_pixels.h</Link>
     </Compile>
-    <Compile Include="..\..\cores\blinks\utils.cpp">
-      <SubType>compile</SubType>
-      <Link>utils.cpp</Link>
-    </Compile>
     <Compile Include="..\..\cores\blinks\utils.h">
       <SubType>compile</SubType>
       <Link>utils.h</Link>
@@ -233,13 +229,13 @@
     <Compile Include="debug.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="DummySketch.cpp">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="power.cpp">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="power.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="sketch.cpp">
       <SubType>compile</SubType>
     </Compile>
   </ItemGroup>

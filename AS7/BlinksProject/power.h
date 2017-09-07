@@ -21,15 +21,15 @@
 typedef enum {
 
     TIMEOUT_16MS = (_BV(WDIE) ),
-    TIMEOUT_32MS = (_BV(WDIE) | _BV( WDP0) ),
-    TIMEOUT_64MS = (_BV(WDIE) | _BV( WDP1) ),
-    TIMEOUT_125MS= (_BV(WDIE) | _BV( WDP1) | _BV( WDP0) ),
-    TIMEOUT_250MS= (_BV(WDIE) | _BV( WDP2) ),
-    TIMEOUT_500MS= (_BV(WDIE) | _BV( WDP2) | _BV( WDP0) ),
-    TIMEOUT_1S   = (_BV(WDIE) | _BV( WDP2) | _BV( WDP1) ),
-    TIMEOUT_2S   = (_BV(WDIE) | _BV( WDP2) | _BV( WDP1) | _BV( WDP0) ),
-    TIMEOUT_4S   = (_BV(WDIE) | _BV( WDP3) ),
-    TIMEOUT_8S   = (_BV(WDIE) | _BV( WDP3) | _BV( WDP0) )
+    timeout_32MS = (_BV(WDIE) | _BV( WDP0) ),
+    timeout_64MS = (_BV(WDIE) | _BV( WDP1) ),
+    timeout_125MS= (_BV(WDIE) | _BV( WDP1) | _BV( WDP0) ),
+    timeout_250MS= (_BV(WDIE) | _BV( WDP2) ),
+    timeout_500MS= (_BV(WDIE) | _BV( WDP2) | _BV( WDP0) ),
+    timeout_1S   = (_BV(WDIE) | _BV( WDP2) | _BV( WDP1) ),
+    timeout_2S   = (_BV(WDIE) | _BV( WDP2) | _BV( WDP1) | _BV( WDP0) ),
+    timeout_4S   = (_BV(WDIE) | _BV( WDP3) ),
+    timeout_8S   = (_BV(WDIE) | _BV( WDP3) | _BV( WDP0) )
         
 } sleepTimeoutType;    
 
@@ -45,7 +45,7 @@ typedef enum {
 
 // TODO: We should probably ALWAYS sleep with timers on between frames to save CPU power.
 
-void powerdown(void);
+void powerdown(bool wakeOnbutton,  uint8_t wakeOnIR_bitmask  );
     
 // Sleep with a predefined timeout.
 // This is very power efficient since chip is stopped except for WDT
@@ -53,7 +53,7 @@ void powerdown(void);
 // Each bit in wakeOnIR_bitmask represents the IR sensor on one face. If the bit is 1
 // then we will wake when there is a change on that face
 
-void powerdownWithTimeout( sleepTimeoutType timeout );
+void powerdownWithTimeout( bool wakeOnbutton, uint8_t wakeOnIR_bitmask , sleepTimeoutType timeout );
 
 
 // Get everything set up for proper sleeping
