@@ -17,7 +17,7 @@
 // Handy to connect a potentiometer here and use to tune params
 // like rightness or speed
 
-uint8_t analogReadPin19(void) {
+uint8_t analogReadDebugA(void) {
 	ADMUX =
 	_BV(REFS0)   |                  // Reference AVcc voltage
 	_BV( ADLAR ) |                  // Left adjust result so only one 8 bit read of the high register needed

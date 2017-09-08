@@ -22,7 +22,7 @@ void adc_init(void) {
 	ADMUX =
 	_BV(REFS0)  |                                  // Reference AVcc voltage
 	_BV( ADLAR ) |                                 // Left adjust result so only one 8 bit read of the high register needed
-	_BV( MUX3 ) | _BV( MUX2 )  | _BV( MUX1 )      // Measure internal 1.1V bandgap voltage
+	_BV( MUX3 ) | _BV( MUX2 )  | _BV( MUX1 )       // Measure internal 1.1V bandgap voltage
 	;
 	
 
@@ -55,38 +55,51 @@ void adc_init(void) {
 	CBI(ADCSRA, ADPS1);
 	SBI(ADCSRA, ADPS0);
 	#endif
+	
+}
+
+
+// Enable ADC and prime the pump (it takes 2 conversions to get accurate results)
+
+void adc_enable(void) {
+    
 	// enable a2d conversions
 	SBI(ADCSRA, ADEN);
-
-	
-	SBI( ADCSRA , ADSC);                // Kick off a primer conversion (the initial one is noisy)
-	
+	SBI( ADCSRA , ADSC);             // Kick off a primer conversion (the initial one is noisy)
 	while (TBI(ADCSRA,ADSC)) ;       // Wait for 1st conversion to complete
 
-	SBI( ADCSRA , ADSC);                // Kick off 1st real conversion (the initial one is noisy)
+	SBI( ADCSRA , ADSC);             // Kick off 1st real conversion (the initial one is noisy)
 
 	
-}
 
-// Start a new conversion
+}    
+
+// Disable and power down the ADC to save power
+
+void adc_disable(void) {
+
+	CBI(ADCSRA, ADEN);          // Disable ADC unit
+   
+}    
+
+
+// Start a new conversion. Read the result ~1ms later by calling adc_readLastVccX10(). 
+// 1ms is safe, but if you need faster then conversion will actually be ready in 
+// 13 CPU cycles * ADC prescaller (25 cycles for 1st conversion)
 
 void adc_startConversion(void) {
-	SBI( ADCSRA , ADSC);					// Start next conversion, will complete silently in 14 cycles
+	SBI( ADCSRA , ADSC);					// Start next conversion, will complete silently in 13 cycles (25 cycles for 1st)
 }
 
-// Returns the previous conversion result and starts a new conversion.
-// ADC clock running at /8 prescaller and conversion takes 14 cycles, so don't call more often than once per
-// 112 microseconds
+// Returns the previous conversion result (call adc_startConversion() to start a conversion).
+// Blocks if you call too soon and conversion not ready yet.
 
-
-uint8_t adc_lastVccX10(void) {              // Return Vcc x10
+uint8_t adc_readLastVccX10(void) {              // Return Vcc x10
 	
 	while (TBI(ADCSRA,ADSC)) ;       // Wait for any pending conversion to complete
 
 	uint8_t lastReading = (11 / ADCH);      // Remember the result from the last reading.
 	
-	adc_startConversion();				// Start next conversion, will complete silently in 14 cycles
-
 	return( lastReading  );
 	
 }

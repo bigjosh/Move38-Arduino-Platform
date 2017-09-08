@@ -17,6 +17,9 @@
 #define SLEEP_TIMEOUT_
 
 // Possible sleep timeout values
+// I know that it is idiomatic Arduino to use straight defines here
+// but that leaves open questions. This makes is clear that you pass
+// a single timeout value from the list of permitted values. 
 
 typedef enum {
 

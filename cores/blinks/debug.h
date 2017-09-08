@@ -11,16 +11,20 @@
 #ifndef DEBUG_H_
 #define DEBUG_H_
 
+#include "utils.h"          // Grab SBI and CBI
+
 // This enables debug features like output on the debug port
 // and some extra sanity parameter checks.
+
+// DebugA on pin #19 PE2
+// DebugB on pin  #6 PE1
 
 #define DEBUG_MODE
 
 #ifdef DEBUG_MODE
 
-// Use pin 19 (PE2)for debug port
-#define DEBUG_INIT()            SBI( DDRE  , 2); SBI(DDRE,1)         // DebugA on pin #19 PE2
-// DebugB on pin  #6 PE1
+#define DEBUG_INIT()            SBI( DDRE  , 2); SBI(DDRE,1)         
+
 #define DEBUGA_1()               SBI( PORTE , 2)
 #define DEBUGA_0()               CBI( PORTE , 2)
 #define DEBUGA_PULSE(width_us)   DEBUGA_1();_delay_us(width_us-2);DEBUGA_0()   // Generate a pulse. width must be >= 2us.
@@ -50,7 +54,6 @@
 // Handy to connect a potentiometer here and use to tune params
 // like rightness or speed
 
-uint8_t analogReadPin19(void);
-
+uint8_t analogReadDebugA(void);
 
 #endif /* DEBUG_H_ */

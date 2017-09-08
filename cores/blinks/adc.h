@@ -14,19 +14,25 @@
 
 void adc_init(void);
 
+// Enable ADC and prime the pump (it takes 2 conversions to get accurate results)
 
-// Returns the previous conversion result and starts a new conversion.
-// The value is the voltage of the battery * 10.
-// So 30 = 3.0 volts
+void adc_enable(void);
 
-uint8_t adc_lastVccX10(void);               // Return Vcc x10
-
-
-// Start a new conversion now.
-// If you want a fresh conversion rather than the most recently completed one 
-// which may be stale, call this before calling adc_lastVccX10() 
+// Start a new conversion. Read the result ~1ms later by calling adc_readLastVccX10().
+// 1ms is safe, but if you need faster then conversion will actually be ready in
+// 13 CPU cycles * ADC prescaller (25 cycles for 1st conversion)
 
 void adc_startConversion(void);
 
+// Returns the previous conversion result.
+// Blocks if conversion not ready yet. 
+// The value is the voltage of the battery * 10.
+// So 30 = 3.0 volts
+
+uint8_t adc_readLastVccX10(void);               // Return Vcc x10
+
+// Disable and power down the ADC to save power
+
+void adc_disable(void);
 
 #endif /* ADC_H_ */
