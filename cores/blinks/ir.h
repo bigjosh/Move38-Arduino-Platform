@@ -102,4 +102,7 @@ void irSendAllDibit(  uint8_t data );
 
 void irFlush( uint8_t face );
 
+#define WAKEON_IR_BITMASK_NONE     0             // Don't wake on any IR change
+#define WAKEON_IR_BITMASK_ALL      IR_BITS       // Don't wake on any IR change
+
 #endif /* IR-COMMS_H_ */

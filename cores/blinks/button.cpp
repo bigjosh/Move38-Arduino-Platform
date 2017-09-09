@@ -34,15 +34,38 @@ ISR(BUTTON_ISR)
 
 
 void button_init(void) {
-	
-	// GPIO setup
-	SBI( BUTTON_PORT , BUTTON_BIT);     // Leave in input mode, enable pull-up
-	
+		
 	// Pin change interrupt setup
-	SBI( BUTTON_MASK , BUTTON_PCINT);   // Enable pin in Pin Change Mask Register
 	SBI( PCICR , BUTTON_PCI );          // Enable the pin group
 	
 }
+
+// Enable pullup and interrupts on button
+
+void button_enable(void) {
+
+	// GPIO setup
+	SBI( BUTTON_PORT , BUTTON_BIT);     // Leave in input mode, enable pull-up
+
+	// Pin change interrupt setup
+	SBI( BUTTON_MASK , BUTTON_PCINT);   // Enable pin in Pin Change Mask Register
+    
+}    
+
+
+// Disable pull-up and interrupts
+// You'd want to do this to save power in the case where the
+// button is stuck down and therefore shorting out the pull-up
+
+void button_disable(void) {
+
+    // disable pin change interrupt 
+    CBI( BUTTON_MASK , BUTTON_PCINT);   // Enable pin in Pin Change Mask Register
+
+    CBI( BUTTON_PORT , BUTTON_BIT);     // Leave in input mode, disable pull-up
+        
+}
+
 
 // Returns 1 if button pressed since the last time this was called
 

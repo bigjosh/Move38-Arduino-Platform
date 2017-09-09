@@ -19,6 +19,16 @@
 void pixel_init(void);
 
 
+// Enable pixels after a call to pixel_init or pixel_disable
+// Pixels will return to the color they had before being disabled.
+
+void pixel_enable(void);
+
+// Turn of all pixels and the timer that drives them.
+// You'd want to do this before going to sleep.
+
+void pixel_disable(void);
+        
 /** Display interface ***/
 
 // Set a single pixel's RGB value
@@ -31,20 +41,8 @@ void pixel_init(void);
 // Need some exponential compression at the top here
 // Maybe look up tables to make all calculations be one step at the cost of memory?
 
-void setPixelRGB( uint8_t p, uint8_t r, uint8_t g, uint8_t b );
+void pixel_setRGB( uint8_t p, uint8_t r, uint8_t g, uint8_t b );
 
-
-// Set a single pixel's HSB value
-// p is the pixel number. 0 < p < PIXEL_COUNT
-
-void setPixelHSB( uint8_t p, uint8_t inHue, uint8_t inSaturation, uint8_t inBrightness );
-
-// Set all pixels to one color
-
-void setAllRGB( uint8_t r, uint8_t g, uint8_t b );
-
-
-
-
-
+void pixel_SetAllRGB( uint8_t r, uint8_t g, uint8_t b  );
+    
 #endif /* RGB_PIXELS_H_ */

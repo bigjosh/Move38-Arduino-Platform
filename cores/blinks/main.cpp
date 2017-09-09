@@ -13,8 +13,8 @@
 
 #include "debug.h"
 #include "utils.h"
-#include "ir_comms.h"
-#include "rgb_pixels.h"
+#include "ir.h"
+#include "pixel.h"
 #include "button.h"
 #include "adc.h"
 #include "power.h"
@@ -48,7 +48,7 @@ static void init(void) {
     
     DEBUG_INIT();			// Handy debug outputs on unused pins
     
-    sleep_init();
+    power_init();
     
     adc_init();			// Init ADC to start measuring battery voltage
     
@@ -56,6 +56,7 @@ static void init(void) {
     ir_enable(); 
         
     pixel_init();
+    pixel_enable();
     
     button_init();
     

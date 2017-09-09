@@ -221,17 +221,25 @@
       <SubType>compile</SubType>
       <Link>hardware.h</Link>
     </Compile>
-    <Compile Include="..\..\cores\blinks\ir_comms.h">
+    <Compile Include="..\..\cores\blinks\ir.cpp">
       <SubType>compile</SubType>
-      <Link>ir_comms.h</Link>
+      <Link>ir.cpp</Link>
     </Compile>
-    <Compile Include="..\..\cores\blinks\ir_coms.cpp">
+    <Compile Include="..\..\cores\blinks\ir.h">
       <SubType>compile</SubType>
-      <Link>ir_coms.cpp</Link>
+      <Link>ir.h</Link>
     </Compile>
     <Compile Include="..\..\cores\blinks\main.cpp">
       <SubType>compile</SubType>
       <Link>main.cpp</Link>
+    </Compile>
+    <Compile Include="..\..\cores\blinks\pixel.cpp">
+      <SubType>compile</SubType>
+      <Link>pixel.cpp</Link>
+    </Compile>
+    <Compile Include="..\..\cores\blinks\pixel.h">
+      <SubType>compile</SubType>
+      <Link>pixel.h</Link>
     </Compile>
     <Compile Include="..\..\cores\blinks\power.cpp">
       <SubType>compile</SubType>
@@ -240,14 +248,6 @@
     <Compile Include="..\..\cores\blinks\power.h">
       <SubType>compile</SubType>
       <Link>power.h</Link>
-    </Compile>
-    <Compile Include="..\..\cores\blinks\rgb_pixels.cpp">
-      <SubType>compile</SubType>
-      <Link>rgb_pixels.cpp</Link>
-    </Compile>
-    <Compile Include="..\..\cores\blinks\rgb_pixels.h">
-      <SubType>compile</SubType>
-      <Link>rgb_pixels.h</Link>
     </Compile>
     <Compile Include="..\..\cores\blinks\utils.h">
       <SubType>compile</SubType>

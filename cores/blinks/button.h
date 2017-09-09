@@ -15,13 +15,28 @@
 
 void button_init(void);
 
+// Enable pullup and interrupts on button
 
-// TODO: This will be replaced with proper button functions. 
+void button_enable(void);
+
 // Returns 1 if button pressed since the last time this was called
+// TODO: Proper debouncing, but at what level?
 
 uint8_t buttonPressed(void);
 
-// TODO: Add enable/disable button functions so we can thoughtfully deal with a button that is
-// jammed down without killing the battery. 
+
+// Returns 1 if button is currently down
+
+uint8_t buttonDown(void);
+
+
+// Disable pull-up and interrupts
+// You'd want to do this to save power in the case where the
+// button is stuck down and therefore shorting out the pull-up
+
+void button_disable(void);
+
+
+
 
 #endif /* BUTTON_H_ */

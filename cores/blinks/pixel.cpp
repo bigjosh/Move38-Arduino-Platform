@@ -40,7 +40,7 @@
 #include <util/delay.h>         // Must come after F_CPU definition
 
 #include "debug.h"
-#include "rgb_pixels.h"
+#include "pixel.h"
 #include "utils.h"
 
 
@@ -140,7 +140,7 @@ static void pixelTimerOff(void) {
 }
 
 
-void setupTimers(void) {
+static void setupTimers(void) {
     
     // First the main Timer0 to drive R & G. We also use the overflow to jump to the next multiplexed pixel.
     // Lets start with a prescaller of 8, which will fire at 1Mhz/8 = gives us a ~80hz refresh rate on the full 6 leds which should look smooth
@@ -211,9 +211,7 @@ void setupTimers(void) {
         
         _BV( WGM01) | _BV( WGM00)           // Mode 3 - Fast PWM TOP=0xFF
     ;
-    
-    pixelTimerOn();
-    
+        
     // TODO: Maybe use Timer2 to drive the ISR since it has Count To Top mode available. We could reset Timer0 from there.
             
 }
@@ -222,14 +220,14 @@ void setupTimers(void) {
 void pixel_init(void) {
 	setupPixelPins();
 	setupTimers();
-    setAllRGB( 0 , 0 , 0 );             // Start with all pixels off
+    pixel_SetAllRGB( 0 , 0 , 0 );             // Start with all pixels off
 }
 
 
 
 // Note that LINE is 0-5 whereas the pixels are labeled p1-p6 on the board. 
 
-void activateAnode( uint8_t line ) {         
+static void activateAnode( uint8_t line ) {         
     
     // TODO: These could probably be compressed with some bit hacking
     
@@ -347,7 +345,7 @@ void updateVccFlag(void) {                  // Set the flag based on ADC check o
 static uint8_t previousPixel;     // Which pixel was lit on last pass?
 // Note that on startup this is not technically true, so we will unnecessarily but benignly deactivate pixel 0
                                     
-void pixel_isr(void) {   
+static void pixel_isr(void) {   
 
     //DEBUGA_1();
     
@@ -506,7 +504,7 @@ ISR(TIMER0_OVF_vect)
 // Turn of all pixels and the timer that drives them.
 // You'd want to do this before going to sleep.
 
-void disablePixels(void) {
+void pixel_disable(void) {
     
     // First we must disable the timer or else the ISR could wake up 
     // and turn on the next pixel while we are trying to turn them off. 
@@ -525,7 +523,7 @@ void disablePixels(void) {
 // Re-enable pixels after a call to disablePixels.
 // Pixels will return to the color they had before being disabled.
 
-void enablePixels(void) {
+void pixel_enable(void) {
     pixelTimerOn();
     
     // Technically the correct thing to do here would be to turn the previous pixel back on,
@@ -541,7 +539,7 @@ void enablePixels(void) {
 // https://learn.adafruit.com/led-tricks-gamma-correction/the-quick-fix
 // TODO: Compress this down, we probably only need like 4 bits of resolution.
 
-const uint8_t PROGMEM gamma8[] = {
+static const uint8_t PROGMEM gamma8[] = {
 	0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
 	0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  1,  1,  1,  1,
 	1,  1,  1,  1,  1,  1,  1,  1,  1,  2,  2,  2,  2,  2,  2,  2,
@@ -568,7 +566,7 @@ const uint8_t PROGMEM gamma8[] = {
 // Need some exponential compression at the top here
 // Maybe look up tables to make all calculations be one step at the cost of memory?
 
-void setPixelRGB( uint8_t p, uint8_t r, uint8_t g, uint8_t b ) {
+void pixel_setRGB( uint8_t p, uint8_t r, uint8_t g, uint8_t b ) {
 	
 	// These are just guesstimates that seem to look ok.
 	
@@ -578,7 +576,15 @@ void setPixelRGB( uint8_t p, uint8_t r, uint8_t g, uint8_t b ) {
 	
 }
 
+void pixel_SetAllRGB( uint8_t r, uint8_t g, uint8_t b  ) {
+    
+    for( uint8_t i=0; i< FACE_COUNT; i++) {
+        pixel_setRGB( i , r , g, b );
+    }       
+    
+}    
 
+/*
 void setPixelHSB( uint8_t p, uint8_t inHue, uint8_t inSaturation, uint8_t inBrightness ) {
 
 	uint8_t r;
@@ -633,21 +639,7 @@ void setPixelHSB( uint8_t p, uint8_t inHue, uint8_t inSaturation, uint8_t inBrig
 		}
 	}
 
-	setPixelRGB( p , r , g , b );
+	pixel_setRGB( p , r , g , b );
 }
 
-
-// Set the color of all pixels to one value
-
-void setAllRGB( uint8_t r, uint8_t g, uint8_t b ) {
-
-	// TODO: Optimize to avoid recalculating transfer function for every pixel
-
-	for( uint8_t p=0; p<PIXEL_COUNT; p++ ) {
-		setPixelRGB( p , r , g , b );
-		
-	}
-	
-}
-
-
+*/

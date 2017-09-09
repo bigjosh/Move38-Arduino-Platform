@@ -27,11 +27,11 @@
 // Don't do anything, just the interrupt itself will wake us up
 // TODO: If we ever need more code space, this could be replaced by an IRET in the VECTOR table.
 
-volatile uint8_t wdt_flag=0;            // The the WDT get to fire?
+static volatile uint8_t wdt_flag=0;            // The the WDT get to fire?
 
 ISR( WDT_vect ) {
     
-    wdt_flag=1;         // Remeber if we fired
+    wdt_flag=1;         // Remember if we fired
     
 }    
       
@@ -44,7 +44,7 @@ ISR( WDT_vect ) {
 
 // TODO: We should probably ALWAYS sleep with timers on between frames to save CPU power. 
 
-void powerdown(void) {
+void power_sleep(void) {
     
     sleep_cpu();        // Good night
            
@@ -56,7 +56,7 @@ void powerdown(void) {
 // Each bit in wakeOnIR_bitmask represents the IR sensor on one face. If the bit is 1
 // then we will wake when there is a change on that face
 
-bool powerdownWithTimeout( sleepTimeoutType timeout ) {
+bool power_sleepWithTimeout( power_sleepTimeoutType timeout ) {
 
     wdt_flag=0;     // Reset timeout flag
                     // Don't worry about a race since WDT is off now
@@ -80,7 +80,7 @@ bool powerdownWithTimeout( sleepTimeoutType timeout ) {
    
 }
 
-void sleep_init(void) {
+void power_init(void) {
 
     // Could save a byte here by combining these two to a single assign
     

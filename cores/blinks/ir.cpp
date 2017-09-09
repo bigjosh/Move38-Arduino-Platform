@@ -28,7 +28,7 @@
 #include <util/delay.h>         // Must come after F_CPU definition
 
 #include "debug.h"
-#include "ir_comms.h"
+#include "ir.h"
 #include "utils.h"
 
 // A bit cycle is 1ms. That cycle is broken into 256 time slots.
