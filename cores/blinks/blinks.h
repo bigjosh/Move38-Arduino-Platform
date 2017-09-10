@@ -14,4 +14,8 @@
 
 #define FACE_COUNT 6				// Total number of IRLEDs 
 
+// *** Ultils
+
+#define FOREACH_FACE(x) for(int x = 0; x < FACE_COUNT ; ++ x)       // Pretend this is a real language with iterators
+
 #endif /* BLINKS_H_ */

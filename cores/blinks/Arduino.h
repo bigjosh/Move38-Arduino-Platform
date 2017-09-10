@@ -24,17 +24,10 @@
 #ifndef Arduino_h
 #define Arduino_h
 
-#include "blinks.h"
-
 #include <stdbool.h>
 #include <math.h>
 
 #include <avr/pgmspace.h>
-
-// Grab _delay_ms()- used to implement delay() below
-// TODO: We should give the user a better way?
-
-#include <util/delay.h>			
 
 #ifdef __cplusplus
 extern "C"{
@@ -107,20 +100,5 @@ long map(long, long, long, long, long);
 
 #endif
 
-
-
-// *** Now the Blinks specific API functions
-
-// Grab the FACE_COUNT, F_CPU, 
-#include "blinks.h"
-
-// *** Ultils
-
-#define FOREACH_FACE(x) for(int x = 0; x < FACE_COUNT ; ++ x)       // Pretend this is a real language with iterators
-
-
-
 #endif
 
-
-uint8_t libtest(void);

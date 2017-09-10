@@ -578,7 +578,7 @@ void pixel_setRGB( uint8_t p, uint8_t r, uint8_t g, uint8_t b ) {
 
 void pixel_SetAllRGB( uint8_t r, uint8_t g, uint8_t b  ) {
     
-    for( uint8_t i=0; i< FACE_COUNT; i++) {
+    FOREACH_FACE(i) {
         pixel_setRGB( i , r , g, b );
     }       
     
