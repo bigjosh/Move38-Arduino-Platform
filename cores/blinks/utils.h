@@ -14,4 +14,10 @@
 #define CBI(x,b) (x&=~(1<<b))           // Clear bit in IO reg
 #define TBI(x,b) (x&(1<<b))             // Test bit in IO reg
 
+// Delay
+
+#define delay_ms(x) _delay_ms(x)        // Spin delay milliseconds. TODO: Sleep during this to save a bit of power?
+
+#define delay(x) _delay_ms(x)           // Arduino calls this delay() so we match, but what a bad name
+
 #endif /* UTILS_H_ */

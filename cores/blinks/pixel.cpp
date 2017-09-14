@@ -382,8 +382,9 @@ static void pixel_isr(void) {
 	// TODO: This could be much finer to pick for each brightness level what the most efficient drive would be at the current Vcc
 	// TODO: THis is just a hack to get dimming working on BLUE. New rev will have better charge pump hardware to make this better. 
 	
-	
-	/*
+	#warning Blue LED charge pump currently disabled 
+    
+    /*    
 	
     if ( 0 && vccAboveBlueFlag) {           // TODO: Driving blue directly for now to avoid using up timeslice!
         /// TODO: TESTING BLUE HIGH VOLTAGE
