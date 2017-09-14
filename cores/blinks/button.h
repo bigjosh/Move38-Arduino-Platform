@@ -22,12 +22,12 @@ void button_enable(void);
 // Returns 1 if button pressed since the last time this was called
 // TODO: Proper debouncing, but at what level?
 
-uint8_t buttonPressed(void);
+uint8_t button_pressed(void);
 
 
 // Returns 1 if button is currently down
 
-uint8_t buttonDown(void);
+uint8_t button_down(void);
 
 
 // Disable pull-up and interrupts

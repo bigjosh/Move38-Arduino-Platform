@@ -69,7 +69,7 @@ void button_disable(void) {
 
 // Returns 1 if button pressed since the last time this was called
 
-uint8_t buttonPressed(void) {
+uint8_t button_pressed(void) {
 	
 	// TODO: Use a proper timer to debounce here? Does it really matter for this?
 
@@ -87,7 +87,7 @@ uint8_t buttonPressed(void) {
 
 // Returns 1 if button is currently down
 
-uint8_t buttonDown(void) {
+uint8_t button_down(void) {
 	
 	return BUTTON_DOWN();
 	
