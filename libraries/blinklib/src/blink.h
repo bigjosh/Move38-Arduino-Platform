@@ -65,7 +65,7 @@ byte getNeighborState( byte face );
 
 void setState( byte newState );
 
-// Color type holds 5 bits for each R,G,B. Top bit is currently unused.
+// Color type holds 4 bits for each R,G,B. Top bit is currently unused.
 
 // TODO: Do we need 5 bits of resolution for each color?
 // TODO: Use top bit(s) for something useful like automatic
@@ -73,11 +73,13 @@ void setState( byte newState );
 
 typedef uint16_t Color;
 
-#define MAKECOLOR(r,g,b) ((r&0b00011111)<<10|(g&0b00011111)<<5|(b&0b00011111))
+// R,G,B are all in the domain 0-15
 
-#define RED     MAKECOLOR(0xff,    0,    0)
-#define BLUE    MAKECOLOR(   0,    0, 0x00)
-#define GREEN   MAKECOLOR(   0, 0x00,    0)
+#define MAKECOLOR(r,g,b) ((r&0b00001111)<<8|(g&0b00001111)<<4|(b&0b00001111))
+
+#define RED     MAKECOLOR(0x0f,    0,    0)
+#define BLUE    MAKECOLOR(   0,    0, 0x0f)
+#define GREEN   MAKECOLOR(   0, 0x0f,    0)
 
 // Change the tile to the specified color 
 
@@ -92,7 +94,6 @@ void fadeTo( Color newColor, unsigned millis);
 // Set the pixel on the specified face (0-5) to the specified color
 
 void setFaceColor(  byte face, Color newColor );
-
 
 
 #endif /* BLINK_H_ */

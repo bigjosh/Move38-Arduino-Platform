@@ -13,7 +13,6 @@
 */
 
 
-#include "blinks.h"
 #include "hardware.h"
 
 #include <avr/interrupt.h>

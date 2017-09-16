@@ -5,7 +5,6 @@
  * Author : josh.com
  */ 
 
-#include "blinks.h"
 #include "Arduino.h"
 
 #include <avr/sleep.h>

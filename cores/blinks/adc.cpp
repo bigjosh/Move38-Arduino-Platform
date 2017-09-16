@@ -6,7 +6,6 @@
  */ 
 
 
-#include "blinks.h"
 #include "hardware.h"
 
 #include "adc.h"
