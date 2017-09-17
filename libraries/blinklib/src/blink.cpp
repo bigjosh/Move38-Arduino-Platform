@@ -16,4 +16,9 @@
 #include "blink.h"
 
 
+// This is the entry point where the platform will pass control to 
+// us after initial power-up is complete
 
+void run(void) {
+    
+}    

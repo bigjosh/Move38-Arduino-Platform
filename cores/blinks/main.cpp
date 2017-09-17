@@ -6,6 +6,7 @@
  */ 
 
 #include "Arduino.h"
+#include "hardware.h"
 
 #include <avr/sleep.h>
 #include <avr/interrupt.h>
@@ -17,7 +18,8 @@
 #include "button.h"
 #include "adc.h"
 #include "power.h"
-
+#include "callbacks.h"
+ 
 // Change clock prescaller to run at 4Mhz. 
 // By default the CLKDIV fuse boots us at 8Mhz osc /8 so 1Mhz clock
 // Change the prescaller to get some more speed but still run at low battery voltage
@@ -67,12 +69,9 @@ int main(void)
 {
 	init();
 	
-	setup();
-	
-	for (;;) {
-        
-		loop();
-	}
-	
+    while (1) {
+	    run();
+    }        
+		
 	return 0;
 }

@@ -193,10 +193,6 @@
       <SubType>compile</SubType>
       <Link>Arduino.h</Link>
     </Compile>
-    <Compile Include="..\..\cores\blinks\blinks.h">
-      <SubType>compile</SubType>
-      <Link>blinks.h</Link>
-    </Compile>
     <Compile Include="..\..\cores\blinks\button.cpp">
       <SubType>compile</SubType>
       <Link>button.cpp</Link>
@@ -204,6 +200,14 @@
     <Compile Include="..\..\cores\blinks\button.h">
       <SubType>compile</SubType>
       <Link>button.h</Link>
+    </Compile>
+    <Compile Include="..\..\cores\blinks\callbacks.h">
+      <SubType>compile</SubType>
+      <Link>callbacks.h</Link>
+    </Compile>
+    <Compile Include="..\..\cores\blinks\debug.cpp">
+      <SubType>compile</SubType>
+      <Link>debug.cpp</Link>
     </Compile>
     <Compile Include="..\..\cores\blinks\debug.h">
       <SubType>compile</SubType>

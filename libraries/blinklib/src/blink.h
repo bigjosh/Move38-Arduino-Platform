@@ -95,5 +95,21 @@ void fadeTo( Color newColor, unsigned millis);
 
 void setFaceColor(  byte face, Color newColor );
 
+/*
+
+    These hook functions are filled in by the sketch
+
+*/
+
+
+// Called when this sketch is first loaded and then 
+// every time the tile wakes from sleep
+
+void setup(void);
+
+// Called repeatedly just after the display pixels
+// on the tile face are updated
+
+void loop();
 
 #endif /* BLINK_H_ */
