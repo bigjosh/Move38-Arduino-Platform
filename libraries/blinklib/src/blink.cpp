@@ -26,6 +26,10 @@ void setColor( Color newColor ) {
     
 }    
     
+// Note that we do not expose _delay_ms() to the user since then they would need
+// access to F_CPU and it would also limit them to only static delay times. 
+// By abstracting to a function, we can dynamically adjust F_CPU and 
+// also potentially sleep during the delay to save power rather than just burning cycles.     
     
 void delay( unsigned long millis ) {
     delay_ms( millis );

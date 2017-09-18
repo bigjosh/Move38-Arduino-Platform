@@ -21,9 +21,9 @@
 // TODO: sleep to save power?
 // TODO: User timer?
 
-// Of course this will run slighhtly long, but betyter to go over than under
+// Of course this will run slightly long, but better to go over than under
 // and no reasonable expeaction that the delay will be *exact* since there are
-// function call overheads and interrutps to consider. 
+// function call overheads and interrupts to consider. 
 
 void delay_ms( unsigned long millis) { 
     
