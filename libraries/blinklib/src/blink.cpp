@@ -97,7 +97,9 @@ Color makeColorHSB( uint8_t hue, uint8_t saturation, uint8_t brightness ) {
 		}
 	}
     
-    return( makeColorRGB( r , g , b ) );
+    // Bring the 0-255 range values down to 0-31 range
+    
+    return( makeColorRGB( r >> 3 , g >> 3  , b >> 3 ) );
 }
 
 

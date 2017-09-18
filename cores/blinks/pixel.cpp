@@ -310,54 +310,49 @@ void updateVccFlag(void) {                  // Set the flag based on ADC check o
 
 */
 
-//uint8_t verticalRetraceFlag=0;              // Turns to 1 when we are about to start a new refresh cycle at pixel zero
+volatile uint8_t verticalRetraceFlag=0;     // Turns to 1 when we are about to start a new refresh cycle at pixel zero
                                             // Once this turns to 1, you have about 2ms to load new values into the raw array   
                                             // to have them displayed in the next frame.
                                             // Only matters if you want to have consistent frames and avoid visual tearing
                                             // which might not even matter for this application at 80hz
                                             // TODO: Is this empirically necessary?
 
-                        
-// Update the RGB pixels.
-// Call at ~500Khz    
+                                     
+static uint8_t currentPixel;      // Which pixel are we on now?
 
-// TODO: Move to new source file, make function inline?    
-
-// WARNING: Non-intuitive sequencing!
-// Because the timer only latches the values in the OCR registers at the moment this ISR fires, by the time we are running here
-// it is already lateched the *previous* values and they are currently being used. That means that right now we need to...
-//
-// 1. Activate the common line for the values that were previously latched.
-// 2. Load the values into OCRs to be latched when this cycle completes.
-//
-// You'd think we could just offset the raw values by one, but that doesn't work because the boost enable must match 
-// the values currently being displayed. 
-//
-// Note that we have plenty of time to do stuff once the boost enable is updated for the
-// values for the currently displayed pixel (the last loaded OCR values), because we have arranged things so that LEDs
-// are always *off* for the 1st half of the timer cycle. 
-             
-static uint8_t currentPixel;      // Which pixel are lighting now?
-
-// Each frame has 4 phases -
-// 0=Charing blue pump. All anodes are low. 
+// Each pixel has 5 phases -
+// 0=Charging blue pump. All anodes are low. 
 // 1=Resting after pump charge. Get ready to show blue.
 // 2=Displaying blue
 // 3=Displaying green
 // 4=Displaying red
 
-// We need a rest because the pump sink is not connected to an OCR pin. 
-// TODO: Use 2 transistors to tie the pump sink and source to the same OCR pin. 
+// We need a rest because the pump sink is not connected to an OCR pin
+// so we need a 3 phase commit to turn off led, turn on pump, turn off pump, turn on led
 
-// It is nice to have the pump come between green and blue because
-// blue has a low voltage than green so if the blue is active then there is
-// not enough voltage to light the green
+// TODO: Use 2 transistors to tie the pump sink and source to the same OCR pin. 
     
 static uint8_t phase=0;
 
-// Note that on startup this is not technically true, so we will unnecessarily but benignly deactivate pixel 0
 
-// TODO: Stagger Red, green, blue on times to reduce total current drain on battery 
+// Some interesting time calculations:
+// Clock 4mhz
+// Prescaller is 8 
+// ... so Timer clock is 4Mhz/8 = 500KHz
+// ... so one timer step is 2us
+// 256 steps per phase
+// ... so a phase is 2us * 256 = 512us
+// 4 phase per pixel
+// ... so one pixel takes 512us * 5 = ~2.5ms
+// 6 pixels per frame
+// ... so one frame takes 6 * 2.5ms = ~15ms
+// ... so refresh rate is 1/15ms = ~60Hz
+
+// Called every time pixel timer0 overflows
+// Since OCR PWM values only get loaded from buffers at overflow by the AVR, 
+// this gives us plenty of time to get the new values into the buffers for next
+// pass, so none of this is timing critcal as long as we finish in time for next
+// pass 
                                     
 static void pixel_isr(void) {   
             
@@ -368,7 +363,7 @@ static void pixel_isr(void) {
     switch (phase) {
         
         
-        case 0:   // In this phase, we step to the next pixel and start charging the pump
+        case 0:   // In this phase, we step to the next pixel and start charging the pump. All PWMs are currently off. 
 
             deactivateAnode( currentPixel );        
                                     
@@ -600,8 +595,8 @@ void pixel_setRGB( uint8_t p, uint8_t r, uint8_t g, uint8_t b ) {
 	
 	// These are just guesstimates that seem to look ok.
 	
-	rawValueR[p] = 255- (pgm_read_byte(&gamma8[r])/4);
-	rawValueG[p] = 255- (pgm_read_byte(&gamma8[g])/4);
+	rawValueR[p] = 255- (pgm_read_byte(&gamma8[r])/3);
+	rawValueG[p] = 255- (pgm_read_byte(&gamma8[g])/2);
 	rawValueB[p] = 255 -(pgm_read_byte(&gamma8[b])/2);
 	
 }
