@@ -71,7 +71,7 @@ void setState( byte newState );
 // TODO: Use top bit(s) for something useful like automatic
 //       blink or twinkle or something like that. 
 
-typedef uint16_t Color;
+typedef unsigned int Color;
 
 // R,G,B are all in the domain 0-15
 
@@ -80,6 +80,9 @@ typedef uint16_t Color;
 #define RED     MAKECOLOR(0x0f,    0,    0)
 #define BLUE    MAKECOLOR(   0,    0, 0x0f)
 #define GREEN   MAKECOLOR(   0, 0x0f,    0)
+
+#define OFF     MAKECOLOR(   0,    0,    0)
+
 
 // Change the tile to the specified color 
 
@@ -94,6 +97,17 @@ void fadeTo( Color newColor, unsigned millis);
 // Set the pixel on the specified face (0-5) to the specified color
 
 void setFaceColor(  byte face, Color newColor );
+
+
+/* 
+
+    Timing functions
+
+*/
+
+// Delay the specified number of milliseconds (1,000 millisecond = 1 second) 
+
+void delay( unsigned long millis );
 
 /*
 

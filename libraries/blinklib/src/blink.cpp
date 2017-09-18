@@ -16,9 +16,33 @@
 #include "blink.h"
 
 
+
+#include "pixel.h"
+#include "time.h"
+
+void setColor( Color newColor ) {
+    
+    pixel_SetAllRGB( (( newColor >> 8 ) & 0b00001111 ) << 4 , (( newColor >> 4 ) & 0b00001111 ) << 4 , (( newColor  ) & 0b00001111  ) << 4 );
+    
+}    
+    
+    
+void delay( unsigned long millis ) {
+    delay_ms( millis );
+}    
+
+
 // This is the entry point where the platform will pass control to 
 // us after initial power-up is complete
 
 void run(void) {
+    
+    setup();
+    
+    while (1) {
+     
+        loop();
+           
+    }        
     
 }    

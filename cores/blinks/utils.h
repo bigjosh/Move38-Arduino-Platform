@@ -16,8 +16,5 @@
 
 // Delay
 
-#define delay_ms(x) _delay_ms(x)        // Spin delay milliseconds. TODO: Sleep during this to save a bit of power?
-
-#define delay(x) _delay_ms(x)           // Arduino calls this delay() so we match, but what a bad name
 
 #endif /* UTILS_H_ */
