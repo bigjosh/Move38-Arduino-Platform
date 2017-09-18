@@ -31,8 +31,10 @@
 */
 
 
-#include "hardware.h"
+// TODO: Really nail down the gamma mapping and maybe switch everything to 5 bit per channel
+// TODO: Really nail down the blue booster 
 
+#include "hardware.h"
 
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
@@ -186,6 +188,14 @@ static void pixelTimersOn(void) {
     
     SBI( TCCR2B , FOC2B );                  // This should force compare between OCR2B and TCNT2, which should SET the output in our mode (LED off)
 
+    
+    // Ok, here we are moving red and green to be out of phase with blue.
+    // Otherwise since blue has a lower voltage that green, anytime blue is on then green is suppressed
+    // We pick 64 becuase 64 is the longest red or green can stay on in any cycle, so they should both 
+    // be off by the time blue turns on.
+    // TODO: Move all colors out of phase with each other. 
+    
+    TCNT0 = 255-64;                 
     
     // Ok, everything is ready so turn on the timers!
 
@@ -582,63 +592,3 @@ void pixel_SetAllRGB( uint8_t r, uint8_t g, uint8_t b  ) {
     }       
     
 }    
-
-/*
-void setPixelHSB( uint8_t p, uint8_t inHue, uint8_t inSaturation, uint8_t inBrightness ) {
-
-	uint8_t r;
-	uint8_t g;
-	uint8_t b;
-
-	if (inSaturation == 0)
-	{
-		// achromatic (grey)
-		r =g = b= inBrightness;
-	}
-	else
-	{
-		unsigned int scaledHue = (inHue * 6);
-		unsigned int sector = scaledHue >> 8; // sector 0 to 5 around the color wheel
-		unsigned int offsetInSector = scaledHue - (sector << 8);  // position within the sector
-		unsigned int p = (inBrightness * ( 255 - inSaturation )) >> 8;
-		unsigned int q = (inBrightness * ( 255 - ((inSaturation * offsetInSector) >> 8) )) >> 8;
-		unsigned int t = (inBrightness * ( 255 - ((inSaturation * ( 255 - offsetInSector )) >> 8) )) >> 8;
-
-		switch( sector ) {
-			case 0:
-			r = inBrightness;
-			g = t;
-			b = p;
-			break;
-			case 1:
-			r = q;
-			g = inBrightness;
-			b = p;
-			break;
-			case 2:
-			r = p;
-			g = inBrightness;
-			b = t;
-			break;
-			case 3:
-			r = p;
-			g = q;
-			b = inBrightness;
-			break;
-			case 4:
-			r = t;
-			g = p;
-			b = inBrightness;
-			break;
-			default:    // case 5:
-			r = inBrightness;
-			g = p;
-			b = q;
-			break;
-		}
-	}
-
-	pixel_setRGB( p , r , g , b );
-}
-
-*/

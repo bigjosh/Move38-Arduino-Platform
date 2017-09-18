@@ -23,9 +23,84 @@
 
 void setColor( Color newColor ) {
     
-    pixel_SetAllRGB( (( newColor >> 8 ) & 0b00001111 ) << 4 , (( newColor >> 4 ) & 0b00001111 ) << 4 , (( newColor  ) & 0b00001111  ) << 4 );
+    // Adjust the 0-31 scale from the blinks color model to the internal 0-255 scale
+    // TODO: Should internal model be only 5 bits also?  Would save space in the gamma lookup table. I bet if we get the gamma values right that you can't see more than 5 bits anyway. 
+    
+    pixel_SetAllRGB( (( newColor >> 10 ) & 31 ) << 3 , (( newColor >> 5 ) & 31 ) << 3 , (( newColor  ) & 31  ) << 3 );
     
 }    
+
+
+// makeColorRGB defined as a macro for now so we get compile time calcuation for static colors.
+
+/* 
+
+Color makeColorRGB( byte r, byte g, byte b ) {
+    return ((r&31)<<10|(g&31)<<5|(b&31));
+}  
+
+*/  
+
+
+
+Color makeColorHSB( uint8_t hue, uint8_t saturation, uint8_t brightness ) {
+
+	uint8_t r;
+	uint8_t g;
+	uint8_t b;
+
+	if (saturation == 0)
+	{
+		// achromatic (grey)
+		r =g = b= brightness;
+	}
+	else
+	{
+		unsigned int scaledHue = (hue * 6);
+		unsigned int sector = scaledHue >> 8; // sector 0 to 5 around the color wheel
+		unsigned int offsetInSector = scaledHue - (sector << 8);  // position within the sector
+		unsigned int p = (brightness * ( 255 - saturation )) >> 8;
+		unsigned int q = (brightness * ( 255 - ((saturation * offsetInSector) >> 8) )) >> 8;
+		unsigned int t = (brightness * ( 255 - ((saturation * ( 255 - offsetInSector )) >> 8) )) >> 8;
+
+		switch( sector ) {
+			case 0:
+			r = brightness;
+			g = t;
+			b = p;
+			break;
+			case 1:
+			r = q;
+			g = brightness;
+			b = p;
+			break;
+			case 2:
+			r = p;
+			g = brightness;
+			b = t;
+			break;
+			case 3:
+			r = p;
+			g = q;
+			b = brightness;
+			break;
+			case 4:
+			r = t;
+			g = p;
+			b = brightness;
+			break;
+			default:    // case 5:
+			r = brightness;
+			g = p;
+			b = q;
+			break;
+		}
+	}
+    
+    return( makeColorRGB( r , g , b ) );
+}
+
+
     
 // Note that we do not expose _delay_ms() to the user since then they would need
 // access to F_CPU and it would also limit them to only static delay times. 

@@ -71,19 +71,58 @@ void setState( byte newState );
 // TODO: Use top bit(s) for something useful like automatic
 //       blink or twinkle or something like that. 
 
-typedef unsigned int Color;
-
-// R,G,B are all in the domain 0-15
-
-#define MAKECOLOR(r,g,b) ((r&0b00001111)<<8|(g&0b00001111)<<4|(b&0b00001111))
-
-#define RED     MAKECOLOR(0x0f,    0,    0)
-#define BLUE    MAKECOLOR(   0,    0, 0x0f)
-#define GREEN   MAKECOLOR(   0, 0x0f,    0)
-
-#define OFF     MAKECOLOR(   0,    0,    0)
+typedef unsigned Color;
 
 
+// Number of brightness levels in each channel of a color
+#define BRIGHTNESS_LEVELS 32
+
+#define GET_R(color) ((color>>10)&31)
+#define GET_G(color) ((color>> 5)&31)
+#define GET_B(color) ((color    )&31)
+
+// R,G,B are all in the domain 0-31
+// Here we expose the interal color representation, but it is worth it
+// to get the performance and size benefits of static compilation 
+// Shame no way to do this right in C/C++
+
+#define MAKECOLOR_RGB(r,g,b) ((r&31)<<10|(g&31)<<5|(b&31))
+
+#define RED         MAKECOLOR_RGB(31, 0, 0)
+#define YELLOW      MAKECOLOR_RGB(31,31, 0)
+#define GREEN       MAKECOLOR_RGB( 0,31, 0)
+#define CYAN        MAKECOLOR_RGB( 0,31,31)
+#define BLUE        MAKECOLOR_RGB( 0, 0,31)
+#define MAGENTA     MAKECOLOR_RGB(31, 0,31)
+
+
+
+#define OFF     MAKECOLOR_RGB( 0, 0, 0)
+
+// We inline this so we can get compile time simplification for static colors
+
+// Make a new color from RGB values. Each value can be 0-31. 
+
+inline Color makeColorRGB( byte red, byte green, byte blue ) {
+    return MAKECOLOR_RGB( red , green , blue );
+}
+
+
+// Dim the specified color. Brightness is 0-31 (0=off, 31=don't dim at all-keep original color)
+// Inlined to allow static simplification at compile time
+
+inline Color dim( Color color, byte brightness) {
+    return makeColorRGB(
+        (GET_R(color)*brightness)/31,
+        (GET_G(color)*brightness)/31,
+        (GET_B(color)*brightness)/31
+    );
+}
+
+// Make a new color in the HSB colorspace. All values are 0-255.
+
+Color makeColorHSB( byte hue, byte saturation, byte brightness );
+    
 // Change the tile to the specified color 
 
 void setColor( Color newColor);
@@ -108,6 +147,19 @@ void setFaceColor(  byte face, Color newColor );
 // Delay the specified number of milliseconds (1,000 millisecond = 1 second) 
 
 void delay( unsigned long millis );
+
+/* 
+
+    Utility functions
+
+*/
+
+
+// Get the number of elements in an array.
+// https://stackoverflow.com/a/4415646/3152071
+
+#define COUNT_OF(x) ((sizeof(x)/sizeof(0[x])) / ((size_t)(!(sizeof(x) % sizeof(0[x])))))
+
 
 /*
 
