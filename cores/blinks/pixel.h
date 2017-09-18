@@ -18,7 +18,6 @@
 
 void pixel_init(void);
 
-
 // Enable pixels after a call to pixel_init or pixel_disable
 // Pixels will return to the color they had before being disabled.
 

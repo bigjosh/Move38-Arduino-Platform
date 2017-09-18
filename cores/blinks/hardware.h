@@ -64,7 +64,7 @@
 // blue LED + Schottky
 
 #define BLUE_SINK_PORT PORTE
-#define BLUE_SINK_DDE  DDRE
+#define BLUE_SINK_DDR  DDRE
 #define BLUE_SINK_BIT  3
 
 /*** IR ***/ 

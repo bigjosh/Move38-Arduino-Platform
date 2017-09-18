@@ -19,6 +19,7 @@
 
 #include "pixel.h"
 #include "time.h"
+#include "button.h"
 
 void setColor( Color newColor ) {
     
@@ -35,6 +36,12 @@ void delay( unsigned long millis ) {
     delay_ms( millis );
 }    
 
+
+bool buttonDown(void) {
+    
+    return button_down();
+    
+}    
 
 // This is the entry point where the platform will pass control to 
 // us after initial power-up is complete

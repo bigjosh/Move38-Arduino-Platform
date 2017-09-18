@@ -80,7 +80,7 @@ static void setupPixelPins(void) {
 	SBI( LED_B_DDR , LED_B_BIT );       // BLUE
 	
 	SBI( BLUE_SINK_PORT , BLUE_SINK_BIT);   // Set the sink output high so blue LED will not come on
-	SBI( BLUE_SINK_DDE  , BLUE_SINK_BIT);
+	SBI( BLUE_SINK_DDR  , BLUE_SINK_BIT);
 	
 }
 
@@ -123,24 +123,8 @@ static void setupPixelPins(void) {
 // Enable the timer that drives the pixel PWM and radial refresh 
 // Broken out since we call it both from setupTimers() and enablePixels()
 
-static void pixelTimerOn(void) {
-        TCCR2B =                                // Turn on clk as soon as possible after setting COM bits to get the outputs into the right state
-        _BV(CS01);                        // clkI/O/8 (From prescaler)- This line also turns on the Timer0
-}
+static void pixelTimersOn(void) {
 
-
-// Stop the timer that drives pixel PWM and refresh 
-// Used before powering down to make sure all pixels are off
-
-static void pixelTimerOff(void) {
-    TCCR2B = 0;                     // Timer/counter stopped. No more ISRs. 
-                                    // PWM outputs will be stuck where ever they were, but
-                                    // we will set all anodes low elsewhere and this will prevent LEDs from lighting. 
-}
-
-
-static void setupTimers(void) {
-    
     // First the main Timer0 to drive R & G. We also use the overflow to jump to the next multiplexed pixel.
     // Lets start with a prescaller of 8, which will fire at 1Mhz/8 = gives us a ~80hz refresh rate on the full 6 leds which should look smooth
     // TODO: How does frequency and duty relate to power efficiency? We can always lower to and trade resolution for faster cycles
@@ -153,11 +137,8 @@ static void setupTimers(void) {
 	
 	// The outputs are HIGH at the beginning and LOW at the end. HIGH turns OFF the LED and LEDs should be low duty cycle,
     // so this gives us time to advance to the next pixel while LED is off to avoid visual glitching. 
-    
-	
-	TIMSK0 = _BV( TOIE0 );                  // The corresponding interrupt is executed if an overflow in Timer/Counter0 occurs
-	    
-    // First turn everything off so no glitch during setup
+    	    
+    // First turn everything off so no glitch while we get ready
     
     // Writing OCR0A=MAX will result in a constantly high or low output (depending on the
     // polarity of the output set by the COM0A[1:0] bits.)
@@ -166,28 +147,21 @@ static void setupTimers(void) {
     // Timer0 (R,G)        
     OCR0A = 255;                            // Initial value for RED (off)
     OCR0B = 255;                            // Initial value for GREEN (off)
-    TCNT0 = 255;                            // This will overflow immediately and set the outputs to 1 so LEDs are off.
+    TCNT0 =   0;                            // This will match BOTTOM so SET the output pins (set is LED off)
+    
+    SBI( TCCR0B , FOC0A );                  // Force output compare 0A - should set the output
+    SBI( TCCR0B , FOC0B );                  // Force output compare 0B - should set the output
+    
 
+	// When we get here, timer 0 is not running, timer pins are driving red and green LEDs and they are off.  
+	       
+    
     TCCR0A =
         _BV( WGM00 ) | _BV( WGM01 ) |       // Set mode=3 (0b11)
         _BV( COM0A1) |                      // Clear OC0A on Compare Match, set OC0A at BOTTOM, (non-inverting mode) (clearing turns LED on)
         _BV( COM0B1)                        // Clear OC0B on Compare Match, set OC0B at BOTTOM, (non-inverting mode)
     ;
-      
-	// When we get here, timer 0 is not running, timer pins are driving red and green LEDs and they are off.  
-	       
-    /*           
-           
-    TCCR0B =                                // Turn on clk as soon as possible after setting COM bits to get the outputs into the right state
-        _BV( CS00 );                        // clkI/O/1 (From prescaler)- 128us period= ~8Khz. This line also turns on the Timer0
-                                                
     
-    
-    */
-
-
-    TCCR0B =                                // Turn on clk as soon as possible after setting COM bits to get the outputs into the right state
-        _BV( CS01 );                        // clkIO/8 (From prescaler)- ~ This line also turns on the Timer0
     
 	
 	// TODO: Get two timers exactly in sync. Maybe preload TCNTs to account for the difference between start times?
@@ -199,27 +173,49 @@ static void setupTimers(void) {
     // pin when there is actually blue in that pixel right now, and maybe bump down the raw compare values to compensate for the
     // the leakage brightness when the battery voltage is high enough to cause some? Should work!
 
+
+    TCCR2A =
+    _BV( COM2B1) |                        // Clear OC0B on Compare Match, set OC0B at BOTTOM, (non-inverting mode) (clearing turns off pump and on LED)
+    _BV( WGM01) | _BV( WGM00)             // Mode 3 - Fast PWM TOP=0xFF
+    ;
+
     
     // Timer2 (B)                           // Charge pump is attached to OC2B
     OCR2B = 255;                            // Initial value for BLUE (off)
-    TCNT2= 255;                             // This will overflow immediately and set the outputs to 1 so LEDs are off.
+    TCNT2=    0;                            // This is BOTTOM, so when we force a compare the output should be SET (set is LED off, charge pump charging) 
     
-    TCCR2A = 
-        _BV( COM2B1) |                        // Clear OC0B on Compare Match, set OC0B at BOTTOM, (non-inverting mode) (clearing turns off pump and on LED)
-//        _BV( COM2B1) | _BV( COM2B0)|            // Set OC0A on Compare Match, Set OC0B on Compare Match, clear OC0B at BOTTOM, (inverting mode)
-        
-        _BV( WGM01) | _BV( WGM00)           // Mode 3 - Fast PWM TOP=0xFF
-    ;
+    SBI( TCCR2B , FOC2B );                  // This should force compare between OCR2B and TCNT2, which should SET the output in our mode (LED off)
+
+    
+    // Ok, everything is ready so turn on the timers!
+
+
+    TCCR0B =                                // Turn on clk as soon as possible after setting COM bits to get the outputs into the right state
+        _BV( CS01 );                        // clkIO/8 (From prescaler)- ~ This line also turns on the Timer0
+
+    // The two timers might be slightly unsynchronized by a cycle, but that should not matter since all the action happens at the end of the cycle anyway.
+    
+    TCCR2B =                                // Turn on clk as soon as possible after setting COM bits to get the outputs into the right state
+        _BV( CS21 );                        // clkI/O/8 (From prescaler)- This line also turns on the Timer0
+                                            // NOTE: There is a datasheet error that calls this bit CA21 - it is actually defined as CS21
         
     // TODO: Maybe use Timer2 to drive the ISR since it has Count To Top mode available. We could reset Timer0 from there.
-            
+        
+}
+
+
+
+
+static void setupTimers(void) {
+    
+	TIMSK0 = _BV( TOIE0 );                  // The corresponding interrupt is executed if an overflow in Timer/Counter0 occurs
+
 }
 
 
 void pixel_init(void) {
 	setupPixelPins();
 	setupTimers();
-    pixel_SetAllRGB( 0 , 0 , 0 );             // Start with all pixels off
 }
 
 
@@ -343,6 +339,8 @@ void updateVccFlag(void) {                  // Set the flag based on ADC check o
              
 static uint8_t previousPixel;     // Which pixel was lit on last pass?
 // Note that on startup this is not technically true, so we will unnecessarily but benignly deactivate pixel 0
+
+// TODO: Stagger Red, green, blue on times to reduce total current drain on battery 
                                     
 static void pixel_isr(void) {   
 
@@ -453,6 +451,35 @@ static void pixel_isr(void) {
     
 
 } 
+
+// Stop the timer that drives pixel PWM and refresh
+// Used before powering down to make sure all pixels are off
+
+static void pixelTimerOff(void) {
+    
+    TCCR0B = 0;                     // Timer0 stopped, so no ISR can change anything out from under us
+    // Right now one LED has its anode activated so we need to turn that off
+    // before driving all cathodes low
+    
+    
+    deactivateAnode( previousPixel );
+    SBI( BLUE_SINK_PORT , BLUE_SINK_BIT);                       // Set the blue sink low to avoid any current leaks
+                                                                   
+    TCCR2B = 0;                     // Timer/counter2 stopped.
+    
+    
+    
+    // PWM outputs will be stuck where ever they were, at this point.
+    // Lets set them all low so no place for current to leak.
+    // If diode was reverse biases, we will have a tiny leakage current.
+    
+
+    TCCR0A = 0;         // Disable both timer0 outputs
+    TCCR2A = 0;         // Disable timer2 output
+
+    // Now all three timer pins should be inputs
+    
+}
                          
             
 // Called when Timer0 overflows, which happens at the end of the PWM cycle for each pixel. We advance to the next pixel.
@@ -462,44 +489,12 @@ static void pixel_isr(void) {
 
 
 ISR(TIMER0_OVF_vect)
-{
-    
-    
+{       
     pixel_isr();
-    return;
-
-    // TODO: Make phasing stuff work when we switch to slots. 
-    // Keep in mind that when we multiplex pixels that we are always loading the NEXT values in
-    // so the OCR will latch on next overflow. 
     
-    
-    static uint8_t phase = 0;
-    
-    phase++;
-    
-    if (phase & 0x01) {
-        pixel_isr();
-    }        
-    
-    // TODO: Probably do pixel stuff first?
-    
-    //ir_rx_isr();                        // Read IR LED input on every other (1,3,5,7) phase - every 512us            
-
-    //ir_tx_clk_isr();
-    //ir_tx_data_isr();
-    // pixel_isr();  // TODO: This sometimes takes 250us? Turn off until we get IR working then figure it out. 
-            
-    
-    
-    // Test for time slot overflow. If any task takes too long, it messes everything up. 
-    
-    if ( TIFR0 & _BV(TOV0) ) {
-        DEBUGB_PULSE(500);
-    } 
-    
-           
-	
+    return;	
 }
+
 
 // Turn of all pixels and the timer that drives them.
 // You'd want to do this before going to sleep.
@@ -511,9 +506,7 @@ void pixel_disable(void) {
     
     pixelTimerOff();
     
-    // And now turn off all anodes so all colors of all LEDs will be off no matter
-    /// what the PWM output states happened to be.
-    deactivateAnode( previousPixel );
+
     
     // Ok, now all the anodes should be low so all LEDs off
     // and no timer running to turn any anodes back on
@@ -524,7 +517,13 @@ void pixel_disable(void) {
 // Pixels will return to the color they had before being disabled.
 
 void pixel_enable(void) {
-    pixelTimerOn();
+    
+    
+    pixel_SetAllRGB( 0 , 0 , 0 );             // Start with all pixels off.         
+                                              // We need this because ISR refreshes OCRs from local copies of each pixel's color
+    
+    
+    pixelTimersOn();
     
     // Technically the correct thing to do here would be to turn the previous pixel back on,
     // but it will get hit on the next refresh which happens muchg faster than visible.

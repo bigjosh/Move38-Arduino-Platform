@@ -41,7 +41,7 @@ bool buttonTrippleClicked();
 // Returns true if the button currently pressed down 
 // Not debounced, this is the instantaneous state of the button
 
-bool getButtonDown();
+bool buttonDown();
 
 // Returns the last received state of the indicated face, or
 // 0 if no messages received recently on indicated face
