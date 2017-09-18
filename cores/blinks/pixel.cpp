@@ -187,18 +187,8 @@ static void pixelTimersOn(void) {
     TCNT2=    0;                            // This is BOTTOM, so when we force a compare the output should be SET (set is LED off, charge pump charging) 
     
     SBI( TCCR2B , FOC2B );                  // This should force compare between OCR2B and TCNT2, which should SET the output in our mode (LED off)
-
-    
-    // Ok, here we are moving red and green to be out of phase with blue.
-    // Otherwise since blue has a lower voltage that green, anytime blue is on then green is suppressed
-    // We pick 64 becuase 64 is the longest red or green can stay on in any cycle, so they should both 
-    // be off by the time blue turns on.
-    // TODO: Move all colors out of phase with each other. 
-    
-    TCNT0 = 255-64;                 
-    
+        
     // Ok, everything is ready so turn on the timers!
-
 
     TCCR0B =                                // Turn on clk as soon as possible after setting COM bits to get the outputs into the right state
         _BV( CS01 );                        // clkIO/8 (From prescaler)- ~ This line also turns on the Timer0
@@ -347,49 +337,121 @@ void updateVccFlag(void) {                  // Set the flag based on ADC check o
 // values for the currently displayed pixel (the last loaded OCR values), because we have arranged things so that LEDs
 // are always *off* for the 1st half of the timer cycle. 
              
-static uint8_t previousPixel;     // Which pixel was lit on last pass?
+static uint8_t currentPixel;      // Which pixel are lighting now?
+
+// Each frame has 4 phases -
+// 0=Charing blue pump. All anodes are low. 
+// 1=Resting after pump charge. Get ready to show blue.
+// 2=Displaying blue
+// 3=Displaying green
+// 4=Displaying red
+
+// We need a rest because the pump sink is not connected to an OCR pin. 
+// TODO: Use 2 transistors to tie the pump sink and source to the same OCR pin. 
+
+// It is nice to have the pump come between green and blue because
+// blue has a low voltage than green so if the blue is active then there is
+// not enough voltage to light the green
+    
+static uint8_t phase=0;
+
 // Note that on startup this is not technically true, so we will unnecessarily but benignly deactivate pixel 0
 
 // TODO: Stagger Red, green, blue on times to reduce total current drain on battery 
                                     
 static void pixel_isr(void) {   
-
-    //DEBUGA_1();
+            
+    // THIS IS COMPLICATED
+    // Because of the buffering of the OCR registers, we are always setting values that will be loaded
+    // the next time the timer overflows. 
     
-    deactivateAnode( previousPixel );
-    
-    // TODO: Change BLUE in a different phase maybe?
-
-
-    SBI( BLUE_SINK_PORT , BLUE_SINK_BIT);       // This compiles to a single 1 cycle SBI instruction 
-                                                // Faster to just blindly disable SINK without even checking if it is currently on
-                                                // Remember, this is a SINK so setting HIGH disables it.
-
-    uint8_t currentPixel = previousPixel+1;
+    switch (phase) {
         
-    if (currentPixel==PIXEL_COUNT) {
-        currentPixel=0;
-    }
-	
-    // TODO: Probably a bit-wise more efficient way to do all this incrementing without a compare/jmp?  Only a couple of cycles and only few thousand times a second, so why does it bother me so?
-	//       Maybe walk a bit though the two PORT registers? Might require reordering, but we can compensate for that with a lookup on color aignment rather than constantly in this ISR
-	
-	    
-    if (rawValueB[currentPixel] != 255 ) {
-        CBI( BLUE_SINK_PORT , BLUE_SINK_BIT );      // If the blue LED is on at all, then activate the boost. This will start charging the boost capacitor. 
-                                                    // This might cause the blue to come on slightly if the boost capacitor is full
-                                                    // if the battery voltage is high due to leakage, but that is ok because blue will be on anyway         
-                                                    // We CBI here because this pin is a SINK so negative is active.                                            
-    }
+        
+        case 0:   // In this phase, we step to the next pixel and start charging the pump
+
+            deactivateAnode( currentPixel );        
+                                    
+            currentPixel++;
+            
+            if (currentPixel==PIXEL_COUNT) {
+                currentPixel=0;
+                
+                // TODO: Should we locally buffer values to avoid tearing when something changes mid frame or mid pixel?
+                                
+            }
+                  
+            // It is safe to turn on the blue sink because all anodes are off (low)        
+            
+            // Only bother to turn on the sink if there is actually blue to display
+                        
+             if (rawValueB[currentPixel] != 255 ) {          // Is blue on?
+                 CBI( BLUE_SINK_PORT , BLUE_SINK_BIT );      // If the blue LED is on at all, then activate the boost. This will start charging the boost capacitor.
+                 
+                 // Ok, we are now charging the pump
+                 
+                 
+             }
+             
+            // TODO: Handle the case where battery is high enough to drive blue directly and skip the pump
+            
+            phase =1;
+                          
+            break;
+             
+        case 1:
+        
+            // Here we rest after charging the pump.
+            // This is necessary since there is no way to ensure timing between
+            // turning off the sink and turning on the PWM
+
+            SBI( BLUE_SINK_PORT , BLUE_SINK_BIT);   // Turn off blue sink (make it high)
+                                                    // Might already be off, but faster to blinkly turn off again rather than test
+        
+            // Now the sink is off, we are save to activate the anode.
+        
+            activateAnode( currentPixel );
+        
+            // Ok, now we are ready for all the PWMing to happen on this pixel in the follwing phases
+        
+            // We will do blue first since we just charged the pump...
+        
+            OCR2B=rawValueB[currentPixel];             // Load OCR to turn on blue at next overflow
+        
+            phase =2;
+        
+            break;
+                                    
+            
+        case 2: // Right now, the blue led is on. Lets get ready for the red one next.             
+                                   
+            
+            OCR2B = 255;                                // Load OCR to turn off blue at next overflow
+            OCR0A = rawValueR[currentPixel];            // Load OCR to turn on red at next overflow
+
+            phase =3;            
+            break;
+            
+        case 3: // Right now, the red LED is on. Get ready for green
+                
+            
+            OCR0A = 255;                                // Load OCR to turn off red at next overflow
+            OCR0B = rawValueG[currentPixel];            // Load OCR to turn on green at next overflow
+            
+            phase =4;
+            break;
+            
+        case 4: // Right now the green LED is on. 
+                
+            OCR0B = 255;                                // Load OCR to turn off green at next overflow
+            
+            phase=0;            // Step to next pixel and start over
+            
+            break;
+                        
+    }        
     
-    activateAnode(currentPixel);
-	
-	// This part switches between high voltage mode where we drive the LED directly from Vcc for very breif pulses and
-	// low voltage mode where we PWM the charge pump. 
-	// TODO: This could be much finer to pick for each brightness level what the most efficient drive would be at the current Vcc
-	// TODO: THis is just a hack to get dimming working on BLUE. New rev will have better charge pump hardware to make this better. 
-	
-	#warning Blue LED charge pump currently disabled 
+       
     
     /*    
 	
@@ -418,48 +480,7 @@ static void pixel_isr(void) {
 	
 	*/
     
-   // return;
-     
-    // Ok, current pixel is now ready to display when the OCRs match the timer during this pass.
     
-    // Next we have to set up the OCR values that will get latched when this pass overflows...
-    
-    uint8_t nextPixel = currentPixel+1;    
-  
-    if (nextPixel==PIXEL_COUNT) {
-        nextPixel=0;
-    }
-    
-    if (nextPixel==PIXEL_COUNT-1) {     // If we are now loading the the last pixel, then we start a new frame on the next pass.
-                                        // Note that this ISR can not be interrupted, so no risk of user updating RAW while we are reading them,
-                                        // that can only happen after we return.
-        
-        //verticalRetraceFlag = 1;
-    }
-  
-    /* 
-    CBI( BLUE_SINK_PORT , BLUE_SINK_BIT );      // If the blue LED is on at all, then activate the boost. This might cuase the blue to come on slightly
-              
-    OCR0A = 255; //rawValueR[currentPixel];
-    OCR0B = 255; //rawValueG[currentPixel];
-    OCR2B = 150; //rawValueB[currentPixel];
-    */
-    
-    // Get ready for next pass
-    
-    // Remember that these values will not actually get loaded into the timer until it overflows
-    // after it has finished displaying the current values
-    
-    OCR0A = rawValueR[nextPixel];
-    OCR0B = rawValueG[nextPixel];
-    OCR2B = rawValueB[nextPixel];
-    
-    previousPixel = currentPixel;
-    
-	//tick(); // TODO: No Vcc compensation yet
-    //DEBUGA_0();
-    
-
 } 
 
 // Stop the timer that drives pixel PWM and refresh
@@ -472,7 +493,7 @@ static void pixelTimerOff(void) {
     // before driving all cathodes low
     
     
-    deactivateAnode( previousPixel );
+    deactivateAnode( currentPixel );
     SBI( BLUE_SINK_PORT , BLUE_SINK_BIT);                       // Set the blue sink low to avoid any current leaks
                                                                    
     TCCR2B = 0;                     // Timer/counter2 stopped.
