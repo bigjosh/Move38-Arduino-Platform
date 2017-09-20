@@ -105,16 +105,25 @@ static void setupPixelPins(void) {
 // Will overflow after about 62 days...
 // https://www.google.com/search?q=(2%5E31)*2.5ms&rlz=1C1CYCW_enUS687US687&oq=(2%5E31)*2.5ms
 
-static volatile uint32_t pixelcounter=0;           // Counts up once for every pixel (about 2.5ms)
+static volatile uint32_t millisCounter=0;           // How many millisecends since most recent pixel_enable()?
+                                                    // Overflows after about 60 days
+                                                    // Note that resolution is limited by pixel refresh rate
+                                                    
+static uint16_t cyclesCounter=0;                    // Accumulate cycles to keep millisCounter accurate
+                                                    // The pixel rate will likely not be an even multiple of milliseconds
+                                                    // so this accumulates cycles that we than dump into millis
 
-uint32_t pixel_counter(void) {
+
+                                                                                                        
+
+uint32_t pixel_mills(void) {
     
-    uint32_t tempPixelCounter;
+    uint32_t tempMillis;
 
     ATOMIC_BLOCK( ATOMIC_FORCEON ) {
-        tempPixelCounter=pixelcounter;
+        tempMillis=millisCounter;
     }
-    return( tempPixelCounter );
+    return( tempMillis );
 }
 
 
@@ -123,7 +132,7 @@ uint32_t pixel_counter(void) {
 
 static void pixelTimersOn(void) {
     
-    pixelcounter = 0;          // Reset the pixel counter
+    millisCounter = 0;          // Reset the pixel counter
 
     // First the main Timer0 to drive R & G. We also use the overflow to jump to the next multiplexed pixel.
     // Lets start with a prescaller of 8, which will fire at 1Mhz/8 = gives us a ~80hz refresh rate on the full 6 leds which should look smooth
@@ -444,7 +453,18 @@ static void pixel_isr(void) {
             
             phase=0;            // Step to next pixel and start over
             
-            pixelcounter++;    // Used for timekeeping. Nice to increment here since this is the least time consuming phase
+            cyclesCounter+=CYCLES_PER_PIXEL;    // Used for timekeeping. Nice to increment here since this is the least time consuming phase
+            
+            while (cyclesCounter >= CYCLES_PER_MILLISECOND ) {
+                
+                millisCounter++;
+                cyclesCounter-=CYCLES_PER_MILLISECOND;
+                
+            }                
+            
+            // Note that we might have some cycles left. They will accumulate and eventually get folded into a full milli to 
+            // avoid errors building up. 
+            
             
             break;
                         

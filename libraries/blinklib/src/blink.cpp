@@ -114,7 +114,7 @@ void delay( unsigned long millis ) {
 
 unsigned long millis(void) {
     
-    return( pixel_counter() * MILLIS_PER_PIXEL );
+    return( pixel_mills() );
     
 }    
 

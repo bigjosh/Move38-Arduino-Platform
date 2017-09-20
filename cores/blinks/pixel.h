@@ -55,20 +55,22 @@ void pixel_SetAllRGB( uint8_t r, uint8_t g, uint8_t b  );
     //    5 = Overflow Phases per pixel
     //    6 = Pixels per frame
 
-
 #define PIXELS_PER_SECOND ( CYCLES_PER_SECOND / CYCLES_PER_PIXEL )
 
 #define MILLIS_PER_SECOND 1000
+
+#define CYCLES_PER_MILLISECOND ( CYCLES_PER_SECOND / MILLIS_PER_SECOND )
 
 // Milliseconds per pixel
 
 #define MILLIS_PER_PIXEL ( MILLIS_PER_SECOND / PIXELS_PER_SECOND )
 
-// Pixel counter increments monotonically by 1 each time the display of a new pixel is started
+// Milliseconds elapsed since last call to pixel_enable()
+// Resolution is limited by the pixel clock, which only updates about 
+// once per 2.5ms with 4Mhz system clock and /8 prescaller. 
 // Resets back to 0 on pixel_disable()
-
 // Assumes interrupts are enabled when called. 
 
-uint32_t pixel_counter(void);
+uint32_t pixel_mills(void);
     
 #endif /* RGB_PIXELS_H_ */
