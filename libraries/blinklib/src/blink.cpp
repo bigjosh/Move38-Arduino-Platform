@@ -42,7 +42,6 @@ Color makeColorRGB( byte r, byte g, byte b ) {
 */  
 
 
-
 Color makeColorHSB( uint8_t hue, uint8_t saturation, uint8_t brightness ) {
 
 	uint8_t r;
@@ -111,6 +110,12 @@ Color makeColorHSB( uint8_t hue, uint8_t saturation, uint8_t brightness ) {
     
 void delay( unsigned long millis ) {
     delay_ms( millis );
+}    
+
+unsigned long millis(void) {
+    
+    return( pixel_counter() * MILLIS_PER_PIXEL );
+    
 }    
 
 

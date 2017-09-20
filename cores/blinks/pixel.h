@@ -43,5 +43,32 @@ void pixel_disable(void);
 void pixel_setRGB( uint8_t p, uint8_t r, uint8_t g, uint8_t b );
 
 void pixel_SetAllRGB( uint8_t r, uint8_t g, uint8_t b  );
+
+/** Timing ***/
+
+
+#define CYCLES_PER_SECOND (F_CPU)
+
+#define CYCLES_PER_PIXEL ( 8 * 256 * 5  )
+    //    8 = Timer prescaller
+    //  256 = Timer steps per overflow
+    //    5 = Overflow Phases per pixel
+    //    6 = Pixels per frame
+
+
+#define PIXELS_PER_SECOND ( CYCLES_PER_SECOND / CYCLES_PER_PIXEL )
+
+#define MILLIS_PER_SECOND 1000
+
+// Milliseconds per pixel
+
+#define MILLIS_PER_PIXEL ( MILLIS_PER_SECOND / PIXELS_PER_SECOND )
+
+// Pixel counter increments monotonically by 1 each time the display of a new pixel is started
+// Resets back to 0 on pixel_disable()
+
+// Assumes interrupts are enabled when called. 
+
+uint32_t pixel_counter(void);
     
 #endif /* RGB_PIXELS_H_ */

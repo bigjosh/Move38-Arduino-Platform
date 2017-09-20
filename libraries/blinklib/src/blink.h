@@ -127,12 +127,6 @@ Color makeColorHSB( byte hue, byte saturation, byte brightness );
 
 void setColor( Color newColor);
 
-// Fade the tile to the new color taking `millis` milliseconds to make the transition.  
-// (1,000 millis = 1 second, max 65 seconds)
-
-void fadeTo( Color newColor, unsigned millis);
-
-
 // Set the pixel on the specified face (0-5) to the specified color
 
 void setFaceColor(  byte face, Color newColor );
@@ -147,6 +141,16 @@ void setFaceColor(  byte face, Color newColor );
 // Delay the specified number of milliseconds (1,000 millisecond = 1 second) 
 
 void delay( unsigned long millis );
+
+// Number of milliseconds since we started (since last time setup called).
+// Note that this can increase by more than 1 between calls, so always use greater than
+// and less than rather than equals for comparisons
+
+// Overflows after about 50 days 
+
+// Note that our clock is only accurate to about +/-10%
+
+unsigned long millis(void);
 
 /* 
 

@@ -39,6 +39,7 @@
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
 #include <util/delay.h>         // Must come after F_CPU definition
+#include <util/atomic.h>
 
 #include "debug.h"
 #include "pixel.h"
@@ -87,18 +88,6 @@ static void setupPixelPins(void) {
 }
 
 
-// Timer1 for internal time keeping (mostly timing IR pulses) because it is 16 bit and its pins happen to fall on ports that are handy for other stuff
-// Timer0 A=Red, B=Green. Both happen to be on handy pins
-// Timer2B for Blue duty. Works out perfectly because we can use OCR2A as a variable TOP to change the frequency for the charge pump, which is better to change than duty.
-
-// CLOCK CALCULATIONS
-// Master clock is running at 1Mhz mostly to avoid FCC 15 issues. 
-// Timer0 running with a /8 prescaller, so timer clock = 128Khz, so full cycle around 256 steps = 2.04ms, so full refresh of all 6 LEDs takes ~12ms giving 81Hz vidual refresh
-// The large scale timer is based on an overflowing uint16_t, so that will trigger every 2ms * 65536 = ~2 minutes
-
-// Note that we have limited prescaller options, only 1,8,64 - so while 1ms might have been better, 2ms is closest we can reasonably get. 
-
-
 // Timers are hardwired to colors. No pin portable way to do this.
 // RED   = OC0A
 // GREEN = OC0B
@@ -106,26 +95,35 @@ static void setupPixelPins(void) {
 // 
 // Blue is different
 // =================
-// Blue is not straight PWM since it is connected to a charge pump that charges on the + and activates LED on the 
-// TODO: Replace diode with MOSFET, which will require an additional pin for drive
+// Blue is not straight PWM since it is connected to a charge pump that charges on the high and activates LED on the low
 
 
-/*
 
-    2Mhz clock    
-      /8 timer prescaler
+// Pixel counter increments monotonically by 1 each time the display of a new pixel is started
+// Pixels happen at about 400Hz
+// Reset back to 0 on pixel_disable()
+// Will overflow after about 62 days...
+// https://www.google.com/search?q=(2%5E31)*2.5ms&rlz=1C1CYCW_enUS687US687&oq=(2%5E31)*2.5ms
 
-    1Khz overflow fire
-    1ms period.       
+static volatile uint32_t pixelcounter=0;           // Counts up once for every pixel (about 2.5ms)
 
-*/
+uint32_t pixel_counter(void) {
+    
+    uint32_t tempPixelCounter;
 
+    ATOMIC_BLOCK( ATOMIC_FORCEON ) {
+        tempPixelCounter=pixelcounter;
+    }
+    return( tempPixelCounter );
+}
 
 
 // Enable the timer that drives the pixel PWM and radial refresh 
 // Broken out since we call it both from setupTimers() and enablePixels()
 
 static void pixelTimersOn(void) {
+    
+    pixelcounter = 0;          // Reset the pixel counter
 
     // First the main Timer0 to drive R & G. We also use the overflow to jump to the next multiplexed pixel.
     // Lets start with a prescaller of 8, which will fire at 1Mhz/8 = gives us a ~80hz refresh rate on the full 6 leds which should look smooth
@@ -320,6 +318,7 @@ volatile uint8_t verticalRetraceFlag=0;     // Turns to 1 when we are about to s
                                      
 static uint8_t currentPixel;      // Which pixel are we on now?
 
+
 // Each pixel has 5 phases -
 // 0=Charging blue pump. All anodes are low. 
 // 1=Resting after pump charge. Get ready to show blue.
@@ -346,12 +345,12 @@ static uint8_t phase=0;
 // ... so one pixel takes 512us * 5 = ~2.5ms
 // 6 pixels per frame
 // ... so one frame takes 6 * 2.5ms = ~15ms
-// ... so refresh rate is 1/15ms = ~60Hz
+// ... so refresh rate is 1/15ms = ~66Hz
 
 // Called every time pixel timer0 overflows
 // Since OCR PWM values only get loaded from buffers at overflow by the AVR, 
 // this gives us plenty of time to get the new values into the buffers for next
-// pass, so none of this is timing critcal as long as we finish in time for next
+// pass, so none of this is timing critical as long as we finish in time for next
 // pass 
                                     
 static void pixel_isr(void) {   
@@ -359,6 +358,8 @@ static void pixel_isr(void) {
     // THIS IS COMPLICATED
     // Because of the buffering of the OCR registers, we are always setting values that will be loaded
     // the next time the timer overflows. 
+    
+    sei();
     
     switch (phase) {
         
@@ -371,8 +372,9 @@ static void pixel_isr(void) {
             
             if (currentPixel==PIXEL_COUNT) {
                 currentPixel=0;
-                
+                               
                 // TODO: Should we locally buffer values to avoid tearing when something changes mid frame or mid pixel?
+                // TODO: Hold values in array of structs for more efficient pointer access, and easier to buffer
                                 
             }
                   
@@ -441,6 +443,8 @@ static void pixel_isr(void) {
             OCR0B = 255;                                // Load OCR to turn off green at next overflow
             
             phase=0;            // Step to next pixel and start over
+            
+            pixelcounter++;    // Used for timekeeping. Nice to increment here since this is the least time consuming phase
             
             break;
                         
