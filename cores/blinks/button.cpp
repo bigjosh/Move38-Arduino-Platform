@@ -21,14 +21,51 @@
 
 // TODO: Do proper debounce when we have a timer available.
 
+
+
+// Callback that is called when the button state changes.
+// Note that you could get multiple consecutive calls with the
+// Same state if the button quickly toggles back and forth quickly enough that
+// we miss one phase. This is particularly true if there is a keybounce exactly when
+// and ISR is running.
+
+// Use BUTTON_DOWN() to check buttonstate when called. 
+
+// Confirmed that all the pre/postamble pushes and pops compile away if this is left blank
+
+// Weak reference so it (almost) compiles away if not used. 
+// (looks like GCC is not yet smart enough to see an empty C++ virtual invoke. Maybe some day!)
+
+void __attribute__((weak)) inline button_onChange(void) {
+}
+
+
+struct ISR_CALLBACK_BUTTON : ISR_CALLBACK_BASE<ISR_CALLBACK_BUTTON> {
+    
+    static const uint8_t running_bit = ISR_GATE_BUTTON_RUNNING_BIT;
+    static const uint8_t pending_bit = ISR_GATE_BUTTON_PENDING_BIT;
+    
+    static inline void callback(void) {
+        
+        button_onChange();
+        
+    }
+    
+};
+
+
 static volatile uint8_t button_flag;
 
-
 ISR(BUTTON_ISR)
-{
-	if (BUTTON_DOWN()) {
+{ 
+    uint8_t s = BUTTON_DOWN();
+        
+	if (s) {
 		button_flag = 1;
 	}
+    
+    ISR_CALLBACK_BUTTON::invokeCallback();
+                   
 }
 
 
