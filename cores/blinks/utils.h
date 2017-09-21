@@ -14,7 +14,12 @@
 #define CBI(x,b) (x&=~(1<<b))           // Clear bit in IO reg
 #define TBI(x,b) (x&(1<<b))             // Test bit in IO reg
 
-// Delay
+typedef struct {
+    uint8_t bytes[8] ;
+} utils_serialno_t;
 
+// Returns the device's unique 8-byte serial number
+
+utils_serialno_t const *utils_serialno(void);
 
 #endif /* UTILS_H_ */

@@ -158,6 +158,10 @@ unsigned long millis(void);
 
 */
 
+// The unique 64 bit serial number for this blink tile
+
+long long serialNumber(void);
+
 
 // Get the number of elements in an array.
 // https://stackoverflow.com/a/4415646/3152071

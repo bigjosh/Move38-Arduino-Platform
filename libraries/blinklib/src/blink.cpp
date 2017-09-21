@@ -15,11 +15,10 @@
 
 #include "blink.h"
 
-
-
 #include "pixel.h"
 #include "time.h"
 #include "button.h"
+#include "utils.h"
 
 void setColor( Color newColor ) {
     
@@ -115,6 +114,14 @@ void delay( unsigned long millis ) {
 unsigned long millis(void) {
     
     return( pixel_mills() );
+    
+}    
+
+// The unique 64 bit serial number for this blink tile
+
+long long serialNumber(void) {
+
+    *((long long *)utils_serialno());       // Convert the 8 bytes into a long long
     
 }    
 

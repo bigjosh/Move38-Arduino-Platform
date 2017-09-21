@@ -36,7 +36,7 @@
 // Weak reference so it (almost) compiles away if not used. 
 // (looks like GCC is not yet smart enough to see an empty C++ virtual invoke. Maybe some day!)
 
-void __attribute__((weak)) inline button_onChange(void) {
+void __attribute__((weak)) button_onChange(void) {
 }
 
 

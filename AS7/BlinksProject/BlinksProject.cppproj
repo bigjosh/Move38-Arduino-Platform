@@ -261,6 +261,10 @@
       <SubType>compile</SubType>
       <Link>time.h</Link>
     </Compile>
+    <Compile Include="..\..\cores\blinks\utils.cpp">
+      <SubType>compile</SubType>
+      <Link>utils.cpp</Link>
+    </Compile>
     <Compile Include="..\..\cores\blinks\utils.h">
       <SubType>compile</SubType>
       <Link>utils.h</Link>
