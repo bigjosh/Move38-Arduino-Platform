@@ -10,8 +10,8 @@ This core requires at least Arduino IDE v1.6.2, where v1.6.5+ is recommended. <b
 	- [Manual Installation](#manual-installation)
 * **[Getting started](#getting-started)**
 
-* **Digging deeper(#digging-deeper)**
-	- [Hardware Abstraction Layer](#Hardware-Abstraction-Layer)
+* **]Digging deeper](#digging-deeper)**
+	- [Hardware Abstraction Layer](#hardware-abstraction-layer)
 
 ## Programmers
 
