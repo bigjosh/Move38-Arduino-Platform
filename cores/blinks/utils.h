@@ -15,7 +15,7 @@
 #define TBI(x,b) (x&(1<<b))             // Test bit in IO reg
 
 typedef struct {
-    uint8_t bytes[8] ;
+    uint8_t bytes[9] ;
 } utils_serialno_t;
 
 // Returns the device's unique 8-byte serial number

@@ -62,3 +62,7 @@ Open Arduino IDE, and a new category in the boards menu called "Move38-manual" w
 * Hit the Play button.
 
 The IDE should compile the code and program the Blinks tile... and you should see pretty blinking lights!
+
+#### Digging deeper
+
+Most programmers will want to use the high level `blinks` API, but if you want to get closer to the hardware you can directly call into the `HAL` (Hardware Abstraction Layer) that the `blinks` API is built on top of. Documentation for this layer is in the [README.md](cores\blinks\README.md]) in the `cores\blinks` folder.

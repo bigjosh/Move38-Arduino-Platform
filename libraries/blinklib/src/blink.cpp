@@ -11,6 +11,9 @@
 
 */
 
+
+#include <avr/pgmspace.h>
+
 #include "Arduino.h"
 
 #include "blink.h"
@@ -19,6 +22,7 @@
 #include "time.h"
 #include "button.h"
 #include "utils.h"
+
 
 void setColor( Color newColor ) {
     
@@ -117,13 +121,18 @@ unsigned long millis(void) {
     
 }    
 
-// The unique 64 bit serial number for this blink tile
 
-long long serialNumber(void) {
+// Read the unique serial number for this blink tile
+// There are 9 bytes in all, so n can be 0-8
 
-    *((long long *)utils_serialno());       // Convert the 8 bytes into a long long
+
+byte getSerialNumberByte( byte n ) {
     
-}    
+    if (n>8) return(0);
+    
+    return utils_serialno()->bytes[n];
+
+}
 
 
 bool buttonDown(void) {

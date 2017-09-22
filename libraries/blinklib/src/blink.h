@@ -158,9 +158,10 @@ unsigned long millis(void);
 
 */
 
-// The unique 64 bit serial number for this blink tile
+// Read the unique serial number for this blink tile
+// There are 9 bytes in all, so n can be 0-8
 
-long long serialNumber(void);
+byte getSerialNumberByte( byte n );
 
 
 // Get the number of elements in an array.
