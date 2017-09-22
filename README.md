@@ -10,8 +10,8 @@ This core requires at least Arduino IDE v1.6.2, where v1.6.5+ is recommended. <b
 	- [Manual Installation](#manual-installation)
 * **[Getting started](#getting-started)**
 
-* **Digging deeper
-	- [Hardware Abstraction Layer](#hal)
+* **Digging deeper(#digging-deeper)**
+	- [Hardware Abstraction Layer](#Hardware-Abstraction-Layer)
 
 ## Programmers
 
@@ -66,6 +66,8 @@ Open Arduino IDE, and a new category in the boards menu called "Move38-manual" w
 
 The IDE should compile the code and program the Blinks tile... and you should see pretty blinking lights!
 
-#### Digging deeper
+### Digging Deeper
+
+#### Hardware Abstraction Layer
 
 Most programmers will want to use the high level `blinks` API, but if you want to get closer to the hardware you can directly call into the `HAL` (Hardware Abstraction Layer) that the `blinks` API is built on top of. Documentation for this layer is in the [README.md](cores/blinks/README.md) in the `cores/blinks` folder.
