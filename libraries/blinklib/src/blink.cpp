@@ -11,9 +11,7 @@
 
 */
 
-
 #include <avr/pgmspace.h>
-#include <util/atomic.h>
 
 #include "Arduino.h"
 
@@ -23,6 +21,15 @@
 #include "time.h"
 #include "button.h"
 #include "utils.h"
+
+// Debounce button pressed this much
+#define BUTTON_DEBOUNCE_MS 50
+
+// Delay for determining clicks
+// So, a click or double click will not be registered until this timeout
+// because we don't know yet if it is a single, double, or tripple
+
+#define BUTTON_CLICK_TIMEOUT_MS 330
 
 
 void setColor( Color newColor ) {
@@ -34,6 +41,15 @@ void setColor( Color newColor ) {
     
 }    
 
+
+void setFaceColor( byte face , Color newColor ) {
+    
+    // Adjust the 0-31 scale from the blinks color model to the internal 0-255 scale
+    // TODO: Should internal model be only 5 bits also?  Would save space in the gamma lookup table. I bet if we get the gamma values right that you can't see more than 5 bits anyway.
+    
+    pixel_setRGB( face , (( newColor >> 10 ) & 31 ) << 3 , (( newColor >> 5 ) & 31 ) << 3 , (( newColor  ) & 31  ) << 3 );
+    
+}
 
 // makeColorRGB defined as a macro for now so we get compile time calcuation for static colors.
 
@@ -134,7 +150,7 @@ byte getSerialNumberByte( byte n ) {
 
 // Keep all the states in one volatile byte that is shared between forground and callback contexts
 
-uint8_t volatile button_state_bits;
+static volatile byte button_state_bits;
 
 // This state is live - it changes asynchronously from up to down based on the debounce state of the button
 #define BUTTON_STATE_DOWN               0                   // The button is currently down (debounced)
@@ -150,61 +166,77 @@ uint8_t volatile button_state_bits;
 #define BUTTON_STATE_TRIPLECLICKED      6             // A triple click was detected
 
 
-static volatile bool button_state;                       // 0=up, 1=down
-static volatile uint32_t button_change_end_time=0;       // When bouncing for last state change is finished
+// // These all can be updated by callback, so must be volatile.
+
+static volatile bool buttonState;                       // 0=up, 1=down
+static volatile uint32_t buttonChangeEndTime=0;       // When bouncing for last state change is finished
 static volatile uint32_t button_clickend_time=0;         // Time when current click timeout will end
+
+
+static volatile bool buttonPressCount=0;                // Has the button been pressed since the last time we checked it?
 
 // This is called asynchronously by the HAL anytime the button changes state
 
-/*
 void button_callback_onChange(void) {
     
     // Grab a snapshot of the current state since it can change
-    bool buttonPressed=button_pressed();
+    bool buttonPressedNow=button_down();
+    unsigned long now=millis();
     
-    if ( button_pressed ) {
+    if (buttonPressedNow != buttonState ) {          // New state
         
-        if (!TBI( button_state_bits , BUTTON_DOWN) ) {      // Not currently pressed
+        if (buttonChangeEndTime <= now ) {       // It has been a while since last change, so not bouncing
             
+            // Ok, this is a real change 
             
+            buttonState = buttonPressedNow;        
+            buttonChangeEndTime = now + BUTTON_DEBOUNCE_MS;
             
-            // Fresh down, not a bounce
-        
-            SBI( button_state_bits , BUTTON_DOWN );         // Button is now DOWN
+            if (buttonState) {                  // New state, and the new state is down?
+                
+                // Count the new press
+                
+                if (buttonPressCount<255) {     // Don't overflow
+                    buttonPressCount++;
+                }                    
+                                
+            }                
             
-            button_changeTime = pixel_mills();              // Remember when we went down so we can debounce on the up
+        } else {
             
-            if 
-        
-        
-        
-        // Button just pressed 
-        
-        
-    
-    uint32_t timeNow = millis();
-    
-    if ( buttonNow )  {             // Button is down right now. 
-    
-    !button_state_bits == 0  !button_state) {          // B
-        
+            // TODO: DO we keep pushing the debounce time out as long as we are bouncing?
+            
+        }
         
     }        
+    
+            
+}  
 
-        
-    
-    
-    
-    
-}    
-
-*/
+// Debounced view of button state
 
 bool buttonDown(void) {
+      
+    return buttonState;
     
-    return button_state;
+}
+
+
+uint8_t buttonPressedCount(void) {
     
-}    
+    // the flag can get update asynchronously by the callback,
+    // so must to an atomic test and clear
+    
+    byte c;
+    
+    DO_ATOMICALLY {
+        c = buttonPressCount;
+        buttonPressCount = 0;
+    };        
+        
+    return c;
+    
+}
 
 
 // TODO: Need this?
@@ -239,7 +271,7 @@ unsigned long millis(void) {
     // millisCounter is 4 bytes long and is updated in the background
     // so we need an atomic block to make sure it does not change while we are reading it
 
-    ATOMIC_BLOCK( ATOMIC_FORCEON ) {
+    DO_ATOMICALLY {
         tempMillis=millisCounter;
     }
     return( tempMillis );

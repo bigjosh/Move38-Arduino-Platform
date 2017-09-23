@@ -431,7 +431,7 @@ static void pixel_isr(void) {
         
             activateAnode( currentPixel );
         
-            // Ok, now we are ready for all the PWMing to happen on this pixel in the follwing phases
+            // Ok, now we are ready for all the PWMing to happen on this pixel in the following phases
         
             // We will do blue first since we just charged the pump...
         

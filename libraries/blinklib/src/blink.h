@@ -170,6 +170,25 @@ byte getSerialNumberByte( byte n );
 #define COUNT_OF(x) ((sizeof(x)/sizeof(0[x])) / ((size_t)(!(sizeof(x) % sizeof(0[x])))))
 
 
+/* 
+
+    Button functions
+
+*/
+
+
+// Debounced view of button state
+
+bool buttonDown(void);
+
+// Returns the number of times the button has been pressed since the last call
+// cleared to 0 each time it is called
+// Stops counting higher when it reaches 255.
+// You can use `if buttonPressedCount()` to check if the button was pressed at all (typical case)
+
+byte buttonPressedCount(void);
+
+
 /*
 
     These hook functions are filled in by the sketch

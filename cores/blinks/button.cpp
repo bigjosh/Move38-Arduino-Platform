@@ -12,15 +12,15 @@
 
 
 #include "hardware.h"
+#include "callbacks.h"
 
 #include <avr/interrupt.h>
 #include <util/delay.h>					// _delay_ms() for debounce
 
+
+
 #include "button.h"
 #include "utils.h"
-
-// TODO: Do proper debounce when we have a timer available.
-
 
 
 // Callback that is called when the button state changes.
@@ -36,34 +36,23 @@
 // Weak reference so it (almost) compiles away if not used. 
 // (looks like GCC is not yet smart enough to see an empty C++ virtual invoke. Maybe some day!)
 
-void __attribute__((weak)) button_onChange(void) {
-}
 
-
-struct ISR_CALLBACK_BUTTON : ISR_CALLBACK_BASE<ISR_CALLBACK_BUTTON> {
+struct ISR_CALLBACK_BUTTON : CALLBACK_BASE<ISR_CALLBACK_BUTTON> {
     
-    static const uint8_t running_bit = ISR_GATE_BUTTON_RUNNING_BIT;
-    static const uint8_t pending_bit = ISR_GATE_BUTTON_PENDING_BIT;
+    static const uint8_t running_bit = CALLBACK_BUTTON_RUNNING_BIT;
+    static const uint8_t pending_bit = CALLBACK_BUTTON_PENDING_BIT;
     
     static inline void callback(void) {
         
-        button_onChange();
+        button_callback_onChange();
         
     }
     
 };
 
 
-static volatile uint8_t button_flag;
-
 ISR(BUTTON_ISR)
 { 
-    uint8_t s = BUTTON_DOWN();
-        
-	if (s) {
-		button_flag = 1;
-	}
-    
     ISR_CALLBACK_BUTTON::invokeCallback();
                    
 }
@@ -102,24 +91,6 @@ void button_disable(void) {
         
 }
 
-
-// Returns 1 if button pressed since the last time this was called
-
-uint8_t button_pressed(void) {
-	
-	// TODO: Use a proper timer to debounce here? Does it really matter for this?
-
-	_delay_ms( BUTTON_DEBOUNCE_MS );
-	
-	if (button_flag) {
-		
-		button_flag=0;
-		return 1;
-	} 
-	
-	return 0;
-	
-}
 
 // Returns 1 if button is currently down
 

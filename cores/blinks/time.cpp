@@ -18,14 +18,6 @@
 
 /** Timing ***/
 
-// Milliseconds elapsed since last call to pixel_enable()
-// Resolution is limited by the pixel clock, which only updates about
-// once per 2.5ms with 4Mhz system clock and /8 prescaller.
-// Resets back to 0 on pixel_disable()
-// Assumes interrupts are enabled when called.
-
-uint32_t pixel_mills(void);
-
 // Delay `millis` milliseconds. 
 // TODO: sleep to save power?
 // TODO: User timer?
