@@ -13,6 +13,7 @@
 
 
 #include <avr/pgmspace.h>
+#include <util/atomic.h>
 
 #include "Arduino.h"
 
@@ -110,15 +111,11 @@ Color makeColorHSB( uint8_t hue, uint8_t saturation, uint8_t brightness ) {
 // access to F_CPU and it would also limit them to only static delay times. 
 // By abstracting to a function, we can dynamically adjust F_CPU and 
 // also potentially sleep during the delay to save power rather than just burning cycles.     
+
+// TODO: Use millis timer to do this
     
 void delay( unsigned long millis ) {
     delay_ms( millis );
-}    
-
-unsigned long millis(void) {
-    
-    return( pixel_mills() );
-    
 }    
 
 
@@ -135,10 +132,148 @@ byte getSerialNumberByte( byte n ) {
 }
 
 
+// Keep all the states in one volatile byte that is shared between forground and callback contexts
+
+uint8_t volatile button_state_bits;
+
+// This state is live - it changes asynchronously from up to down based on the debounce state of the button
+#define BUTTON_STATE_DOWN               0                   // The button is currently down (debounced)
+
+// These states are sticky. They are set in the callback and cleared when checked in the foreground 
+#define BUTTON_STATE_CLICK_PENDING      1             // Waiting for timeout to declare a click
+#define BUTTON_STATE_CLICKED            2             // Waiting for timeout to declare a click
+
+#define BUTTON_STATE_DOUBLE_PENDING     3             // Waiting for timeout to declare a double click
+#define BUTTON_STATE_DOUBLECLICKED      4             // A double click was detected
+
+#define BUTTON_STATE_TRIPLE_PENDING     5             // Waiting for timeout to declare a triple click
+#define BUTTON_STATE_TRIPLECLICKED      6             // A triple click was detected
+
+
+static volatile bool button_state;                       // 0=up, 1=down
+static volatile uint32_t button_change_end_time=0;       // When bouncing for last state change is finished
+static volatile uint32_t button_clickend_time=0;         // Time when current click timeout will end
+
+// This is called asynchronously by the HAL anytime the button changes state
+
+/*
+void button_callback_onChange(void) {
+    
+    // Grab a snapshot of the current state since it can change
+    bool buttonPressed=button_pressed();
+    
+    if ( button_pressed ) {
+        
+        if (!TBI( button_state_bits , BUTTON_DOWN) ) {      // Not currently pressed
+            
+            
+            
+            // Fresh down, not a bounce
+        
+            SBI( button_state_bits , BUTTON_DOWN );         // Button is now DOWN
+            
+            button_changeTime = pixel_mills();              // Remember when we went down so we can debounce on the up
+            
+            if 
+        
+        
+        
+        // Button just pressed 
+        
+        
+    
+    uint32_t timeNow = millis();
+    
+    if ( buttonNow )  {             // Button is down right now. 
+    
+    !button_state_bits == 0  !button_state) {          // B
+        
+        
+    }        
+
+        
+    
+    
+    
+    
+}    
+
+*/
+
 bool buttonDown(void) {
     
-    return button_down();
+    return button_state;
     
+}    
+
+
+// TODO: Need this?
+
+volatile uint8_t verticalRetraceFlag=0;     // Turns to 1 when we are about to start a new refresh cycle at pixel zero
+// Once this turns to 1, you have about 2ms to load new values into the raw array
+// to have them displayed in the next frame.
+// Only matters if you want to have consistent frames and avoid visual tearing
+// which might not even matter for this application at 80hz
+// TODO: Is this empirically necessary?
+
+
+// Will overflow after about 62 days...
+// https://www.google.com/search?q=(2%5E31)*2.5ms&rlz=1C1CYCW_enUS687US687&oq=(2%5E31)*2.5ms
+
+static volatile uint32_t millisCounter=0;           // How many millisecends since most recent pixel_enable()?
+// Overflows after about 60 days
+// Note that resolution is limited by pixel refresh rate
+
+static uint16_t cyclesCounter=0;                    // Accumulate cycles to keep millisCounter accurate
+
+// The pixel rate will likely not be an even multiple of milliseconds
+// so this accumulates cycles that we than dump into millis
+
+
+// TODO: Clear out millis to zero on wake
+
+unsigned long millis(void) {
+    
+    uint32_t tempMillis;
+
+    // millisCounter is 4 bytes long and is updated in the background
+    // so we need an atomic block to make sure it does not change while we are reading it
+
+    ATOMIC_BLOCK( ATOMIC_FORCEON ) {
+        tempMillis=millisCounter;
+    }
+    return( tempMillis );
+}
+
+
+#define MILLIS_PER_SECOND 1000
+
+#define CYCLES_PER_SECOND (F_CPU)
+
+#define CYCLES_PER_MILLISECOND ( CYCLES_PER_SECOND / MILLIS_PER_SECOND )
+
+
+static void updateMillis(void) {
+    
+    cyclesCounter+=PIXEL_CYCLES_PER_FRAME;    // Used for timekeeping. Nice to increment here since this is the least time consuming phase
+    
+    while (cyclesCounter >= CYCLES_PER_MILLISECOND ) {
+        
+        millisCounter++;
+        cyclesCounter-=CYCLES_PER_MILLISECOND;
+        
+    }
+    
+                       
+    // Note that we might have some cycles left. They will accumulate and eventually get folded into a full milli to
+    // avoid errors building up.
+                           
+}    
+
+// This is called at the end of each frame, so about 66Hz
+
+void pixel_callback_onFrame(void) {
+    updateMillis();            
 }    
 
 // This is the entry point where the platform will pass control to 

@@ -39,7 +39,7 @@ bool buttonTrippleClicked();
 */
 
 // Returns true if the button currently pressed down 
-// Not debounced, this is the instantaneous state of the button
+// (Debounced)
 
 bool buttonDown();
 

@@ -9,7 +9,13 @@
 #include <avr/io.h>
 
 // Debounce button pressed this much
-#define BUTTON_DEBOUNCE_MS 40
+#define BUTTON_DEBOUNCE_MS 50
+
+// Delay for determining clicks
+// So, a click or double click will not be registered until this timeout
+// becuase we don't know yet if it is a single, double, or tripple
+
+#define BUTTON_CLICK_TIMEOUT_MS 330
 
 // Setup pins, interrupts. Call once at power up.
 
@@ -41,10 +47,8 @@ void button_disable(void);
 // Note that you could get multiple consecutive calls with the 
 // Same state if the button quickly toggles back and forth quickly enough that
 // we miss one phase. This is particularly true if there is a keybounce exactly when
-// and ISR is running. 
+// an ISR is running. 
 
-// buttonDownState is true if the button is currently pressed
-
-void button_onChange(uint8_t buttonDownState) __attribute__((weak));
+void button_callback_onChange(void) __attribute__((weak));
 
 #endif /* BUTTON_H_ */

@@ -28,10 +28,20 @@ The maximum allowed interrupt latency is dependent on clock speed and other fact
 
 #### Async Callbacks
 
-
 To support asynchronous callbacks without impacting interrupt latency, the HAL implements a pseudo interrupt system where the hardware interrupts are intercepted by the HAL and then re-dispatched to the callback functions.
 
-Only one callback can be active at a time and interrupts are enabled while callback functions are running. If another asynchronous event occurs while a callback is already running, the new callback is held until the running callback completes. Multiple events that would trigger the same callback are batched into a single call.
+Interrupts are enabled while callback functions are running, but only one instance of a callback can be active at a time. If another asynchronous event occurs while a callback is already running, the new callback is held until the running callback completes. Multiple events that would trigger the same callback are batched into a single call.
+
+This means that...
+
+2. Even though interrupts are enabled,  you callback will never be interrupted by another copy if itself
+2. If another trigger events happens while your callback is running, it will get called again right after the running copy returns
+3. If multiple trigger events happen while your callback is running, you may only get called once more when your currently running callback returns.
+4. If a triggering event occurs, your callback will always get called, even if the trigger disappears before the callback is invoked. 
+4. You should always write callbacks so they can deal with being called even if the triggering event is no longer present.    
+5. Any variables that are accessed only within your callback do not need to be `volatile` since there will only ever be one copy of the callback running.
+6. Any variables that are access by the foreground should be declared as `volatile` from the foreground process's point of view since these could be updated asynchronously by the callback. 
+7. Any variables that are shared between different callbacks should be declared as `volatile` from the reading callback's point of view since that callback could be interrupted by another callback.  
 
 #### The DEBUG subsystem
 

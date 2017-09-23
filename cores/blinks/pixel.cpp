@@ -45,6 +45,8 @@
 #include "pixel.h"
 #include "utils.h"
 
+#include "callbacks.h"
+
 
 // Here are the raw compare register values for each pixel
 // These are precomputed from brightness values because we read them often from inside an ISR
@@ -99,41 +101,11 @@ static void setupPixelPins(void) {
 
 
 
-// Pixel counter increments monotonically by 1 each time the display of a new pixel is started
-// Pixels happen at about 400Hz
-// Reset back to 0 on pixel_disable()
-// Will overflow after about 62 days...
-// https://www.google.com/search?q=(2%5E31)*2.5ms&rlz=1C1CYCW_enUS687US687&oq=(2%5E31)*2.5ms
-
-static volatile uint32_t millisCounter=0;           // How many millisecends since most recent pixel_enable()?
-                                                    // Overflows after about 60 days
-                                                    // Note that resolution is limited by pixel refresh rate
-                                                    
-static uint16_t cyclesCounter=0;                    // Accumulate cycles to keep millisCounter accurate
-                                                    // The pixel rate will likely not be an even multiple of milliseconds
-                                                    // so this accumulates cycles that we than dump into millis
-
-
-                                                                                                        
-
-uint32_t pixel_mills(void) {
-    
-    uint32_t tempMillis;
-
-    ATOMIC_BLOCK( ATOMIC_FORCEON ) {
-        tempMillis=millisCounter;
-    }
-    return( tempMillis );
-}
-
-
 // Enable the timer that drives the pixel PWM and radial refresh 
 // Broken out since we call it both from setupTimers() and enablePixels()
 
 static void pixelTimersOn(void) {
     
-    millisCounter = 0;          // Reset the pixel counter
-
     // First the main Timer0 to drive R & G. We also use the overflow to jump to the next multiplexed pixel.
     // Lets start with a prescaller of 8, which will fire at 1Mhz/8 = gives us a ~80hz refresh rate on the full 6 leds which should look smooth
     // TODO: How does frequency and duty relate to power efficiency? We can always lower to and trade resolution for faster cycles
@@ -163,7 +135,9 @@ static void pixelTimersOn(void) {
     
 
 	// When we get here, timer 0 is not running, timer pins are driving red and green LEDs and they are off.  
-	       
+
+    // We are using mode 3 here for FastPWM which defines the TOP (the value when the overflow interrupt happens) as 255
+    #define PIXEL_STEPS_PER_OVR    256      // USewd for timekeeping calculations below 
     
     TCCR0A =
         _BV( WGM00 ) | _BV( WGM01 ) |       // Set mode=3 (0b11)
@@ -171,6 +145,7 @@ static void pixelTimersOn(void) {
         _BV( COM0B1)                        // Clear OC0B on Compare Match, set OC0B at BOTTOM, (non-inverting mode)
     ;
     
+	// IMPORTANT:If you change the mode, you must update PIXEL_STEPS_PER_OVR above!!!!
     
 	
 	// TODO: Get two timers exactly in sync. Maybe preload TCNTs to account for the difference between start times?
@@ -196,9 +171,17 @@ static void pixelTimersOn(void) {
     SBI( TCCR2B , FOC2B );                  // This should force compare between OCR2B and TCNT2, which should SET the output in our mode (LED off)
         
     // Ok, everything is ready so turn on the timers!
+    
+    
+    #define PIXEL_PRESCALLER        8       // Used for timekeeping calculations below
 
     TCCR0B =                                // Turn on clk as soon as possible after setting COM bits to get the outputs into the right state
         _BV( CS01 );                        // clkIO/8 (From prescaler)- ~ This line also turns on the Timer0
+
+    // IMPORTANT!
+    // If you change this prescaller, you must update the PIXEL_PRESCALLER above!
+
+
 
     // The two timers might be slightly unsynchronized by a cycle, but that should not matter since all the action happens at the end of the cycle anyway.
     
@@ -317,12 +300,33 @@ void updateVccFlag(void) {                  // Set the flag based on ADC check o
 
 */
 
-volatile uint8_t verticalRetraceFlag=0;     // Turns to 1 when we are about to start a new refresh cycle at pixel zero
-                                            // Once this turns to 1, you have about 2ms to load new values into the raw array   
-                                            // to have them displayed in the next frame.
-                                            // Only matters if you want to have consistent frames and avoid visual tearing
-                                            // which might not even matter for this application at 80hz
-                                            // TODO: Is this empirically necessary?
+// Callback that is called after each frame is displayed
+// Note that you could get multiple consecutive calls with the
+// Same state if the button quickly toggles back and forth quickly enough that
+// we miss one phase. This is particularly true if there is a keybounce exactly when
+// and ISR is running.
+
+// Confirmed that all the pre/postamble pushes and pops compile away if this is left blank
+
+// Weak reference so it (almost) compiles away if not used.
+// (looks like GCC is not yet smart enough to see an empty C++ virtual invoke. Maybe some day!)
+
+void __attribute__((weak)) pixel_callback_onFrame(void) {
+}
+
+
+struct CALLBACK_PIXEL_FRAME : CALLBACK_BASE<CALLBACK_PIXEL_FRAME> {
+    
+    static const uint8_t running_bit = CALLBACK_PIXEL_FRAME_RUNNING_BIT;
+    static const uint8_t pending_bit = CALLBACK_PIXEL_FRAME_PENDING_BIT;
+    
+    static inline void callback(void) {
+        
+        pixel_callback_onFrame();
+        
+    }
+    
+};
 
                                      
 static uint8_t currentPixel;      // Which pixel are we on now?
@@ -335,12 +339,21 @@ static uint8_t currentPixel;      // Which pixel are we on now?
 // 3=Displaying green
 // 4=Displaying red
 
+
 // We need a rest because the pump sink is not connected to an OCR pin
 // so we need a 3 phase commit to turn off led, turn on pump, turn off pump, turn on led
 
 // TODO: Use 2 transistors to tie the pump sink and source to the same OCR pin. 
-    
+
 static uint8_t phase=0;
+
+
+// Need to compute timekeeping based off the pixel interrupt
+
+// This is hard coded into the Timer setup code in pixels.cpp
+
+// Number of timer cycles per overflow interrupt
+// Hard coded into the timer setup code
 
 
 // Some interesting time calculations:
@@ -401,7 +414,7 @@ static void pixel_isr(void) {
              
             // TODO: Handle the case where battery is high enough to drive blue directly and skip the pump
             
-            phase =1;
+            phase++;
                           
             break;
              
@@ -424,7 +437,7 @@ static void pixel_isr(void) {
         
             OCR2B=rawValueB[currentPixel];             // Load OCR to turn on blue at next overflow
         
-            phase =2;
+            phase++;
         
             break;
                                     
@@ -435,7 +448,7 @@ static void pixel_isr(void) {
             OCR2B = 255;                                // Load OCR to turn off blue at next overflow
             OCR0A = rawValueR[currentPixel];            // Load OCR to turn on red at next overflow
 
-            phase =3;            
+            phase++;           
             break;
             
         case 3: // Right now, the red LED is on. Get ready for green
@@ -444,33 +457,33 @@ static void pixel_isr(void) {
             OCR0A = 255;                                // Load OCR to turn off red at next overflow
             OCR0B = rawValueG[currentPixel];            // Load OCR to turn on green at next overflow
             
-            phase =4;
+            phase++;
             break;
             
         case 4: // Right now the green LED is on. 
                 
             OCR0B = 255;                                // Load OCR to turn off green at next overflow
             
-            phase=0;            // Step to next pixel and start over
+            #define PHASE_COUNT 5         // Used for timekeeping calculations
+            phase=0;                            // Step to next pixel and start over
+            // IMPORTANT: If you change the number of phases, you must update PHASE_COUNT above!
+
+
+            // Here we double check our calculations so we will remeber if we ever change 
+            // any of the inputs to CYCLES_PER_FRAME
             
-            cyclesCounter+=CYCLES_PER_PIXEL;    // Used for timekeeping. Nice to increment here since this is the least time consuming phase
+            #define CYCLES_PER_FRAME ( PIXEL_PRESCALLER * PIXEL_STEPS_PER_OVR * PHASE_COUNT  )
             
-            while (cyclesCounter >= CYCLES_PER_MILLISECOND ) {
-                
-                millisCounter++;
-                cyclesCounter-=CYCLES_PER_MILLISECOND;
-                
-            }                
-            
-            // Note that we might have some cycles left. They will accumulate and eventually get folded into a full milli to 
-            // avoid errors building up. 
-            
-            
+            #if CYCLES_PER_FRAME!=PIXEL_CYCLES_PER_FRAME
+                #error The PIXEL_CYCLES_PER_FRAME in pixel.h must match the actual values programmed into the timer
+            #endif
+
+            CALLBACK_PIXEL_FRAME::invokeCallback();
+
             break;
                         
     }        
     
-       
     
     /*    
 	

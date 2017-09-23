@@ -22,4 +22,9 @@ typedef struct {
 
 utils_serialno_t const *utils_serialno(void);
 
+// TODO: Where does this belong?
+void run(void);
+
+
+
 #endif /* UTILS_H_ */
