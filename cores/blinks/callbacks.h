@@ -88,4 +88,7 @@ struct CALLBACK_BASE {
 };
 
 
+// TODO: Check all public functions to make sure they are reentrant.
+// IF not, either guard them or document.
+
 #endif /* CALLBACKS_H_ */

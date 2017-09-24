@@ -173,7 +173,7 @@ static volatile uint32_t buttonChangeEndTime=0;       // When bouncing for last 
 static volatile uint32_t button_clickend_time=0;         // Time when current click timeout will end
 
 
-static volatile bool buttonPressCount=0;                // Has the button been pressed since the last time we checked it?
+static volatile byte buttonPressCount=0;                // Has the button been pressed since the last time we checked it?
 
 // This is called asynchronously by the HAL anytime the button changes state
 
