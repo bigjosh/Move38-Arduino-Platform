@@ -20,17 +20,26 @@
 bool neighborChanged();
 
 
-// Was the button clicked or double clicked since we last checked?
-// Note that there is a delay between when the button is first pressed
-// and when you see a buttonClicked() becuase we have to wait breifly to
-// to decide if that was just a single click or the first click of a double or
-// triple click. 
+// Was the button pressed or lifted since the last time we checked?
+// Note that these register the change the instant the button state changes 
+// without any delay, so good for latency sensitive cases.
+// It is debounced, so the button must have been in the previous state a minimum 
+// debounce time before a new detection will occur. 
 
-bool buttonClicked();
+bool buttonPressed(void);
+bool buttonLifted(void);
+
+// Was the button single, double , or multi clicked since we last checked?
+// Note that there is a delay after the button is first pressed 
+// before a click is registered because we have to wait to 
+// see if another button press is coming. 
+// A multiclick is 3 or more clicks
+
+bool buttonSingleClicked();
 
 bool buttonDoubleClicked();
 
-bool buttonTrippleClicked();
+bool buttonMultiClicked();
 
 /*
 
@@ -181,12 +190,10 @@ byte getSerialNumberByte( byte n );
 
 bool buttonDown(void);
 
-// Returns the number of times the button has been pressed since the last call
-// cleared to 0 each time it is called
-// Stops counting higher when it reaches 255.
-// You can use `if buttonPressedCount()` to check if the button was pressed at all (typical case)
+// Returns true if the button has been pressed since
+// the last time it was called. 
 
-byte buttonPressedCount(void);
+bool buttonPressed(void);
 
 
 /*

@@ -213,10 +213,6 @@
       <SubType>compile</SubType>
       <Link>debug.h</Link>
     </Compile>
-    <Compile Include="..\..\cores\blinks\DummySketch.cpp">
-      <SubType>compile</SubType>
-      <Link>DummySketch.cpp</Link>
-    </Compile>
     <Compile Include="..\..\cores\blinks\effects.cpp">
       <SubType>compile</SubType>
       <Link>effects.cpp</Link>

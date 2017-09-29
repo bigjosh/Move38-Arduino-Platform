@@ -26,7 +26,7 @@ Both the IR communications and the display RGB LED systems are very timing sensi
 
 The maximum allowed interrupt latency is dependent on clock speed and other factors that are still changing, so I can't give you a hard answer now- but in general try to only turn off interrupts for a few instructions. If you need atomicity longer than that, you a higher level semaphore or something like that. 
 
-#### Async Callbacks
+#### Asynchronous Callbacks
 
 To support asynchronous callbacks without impacting interrupt latency, the HAL implements a pseudo interrupt system where the hardware interrupts are intercepted by the HAL and then re-dispatched to the callback functions.
 

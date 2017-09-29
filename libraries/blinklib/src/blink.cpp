@@ -23,11 +23,14 @@
 #include "utils.h"
 
 // Debounce button pressed this much
-#define BUTTON_DEBOUNCE_MS 50
+// Empirically determined. At 50ms, I can click twice fast enough
+// that the second click it gets in the debounce. At 20ms, I do not 
+// any bounce even when I sllllooooowwwwly click. 
+#define BUTTON_DEBOUNCE_MS 20
 
 // Delay for determining clicks
 // So, a click or double click will not be registered until this timeout
-// because we don't know yet if it is a single, double, or tripple
+// because we don't know yet if it is a single, double, or triple
 
 #define BUTTON_CLICK_TIMEOUT_MS 330
 
@@ -168,21 +171,57 @@ static volatile byte button_state_bits;
 
 // // These all can be updated by callback, so must be volatile.
 
-static volatile bool buttonState;                       // 0=up, 1=down
-static volatile uint32_t buttonChangeEndTime=0;       // When bouncing for last state change is finished
+static volatile bool buttonState;                           // 0=up, 1=down
+static volatile uint32_t buttonChangeEndTime=0;             // When bouncing for last state change is finished
+
+static volatile byte clickCount=0;                       // Number of clicks in current click window 
 static volatile uint32_t button_clickend_time=0;         // Time when current click timeout will end
 
 
-static volatile byte buttonPressCount=0;                // Has the button been pressed since the last time we checked it?
+static volatile bool buttonPressedFlag=0;               // Has the button been pressed since the last time we checked it?
+static volatile bool buttonLiftedFlag=0;                // Has the button been lifted since the last time we checked it?
+
+static volatile bool singleClickedFlag=0;               // single click since the last time we checked it?
+static volatile bool doubleClickedFlag=0;               // double click since the last time we checked it?
+static volatile bool multiClickedFlag=0;                // multi click since the last time we checked it?
+
+
+// Tally how many clicks we got in the last click cycle and 
+// include what kind of click it was into the appropriate flag,
+// then reset to be ready for next window.
+
+// Do not need to atomically access these since this can only be called 
+// after the window is over, so will not update again until we clear it. 
+
+static void tallyPendingClicks(unsigned long now) {
+    
+   if ( now >= button_clickend_time ) {        // Most recent cycle already over?    
+       
+       if (!buttonState) {                     // Only register clicks if the button is up by now. 
+                                               // If the button is still down, then it is an aborted click
+                                               // so throw it away
+    
+            switch (clickCount) {
+                case 1: singleClickedFlag=1; break;
+                case 2: doubleClickedFlag=1; break;
+                case 3: multiClickedFlag=1; break;
+            }        
+            
+        }            
+    
+        clickCount=0;
+    }           
+}   
+
 
 // This is called asynchronously by the HAL anytime the button changes state
 
 void button_callback_onChange(void) {
     
-    // Grab a snapshot of the current state since it can change
+    // Grab a snapshot of the current state since it can change asynchronously 
     bool buttonPressedNow=button_down();
-    unsigned long now=millis();
-    
+    unsigned long now=millis();    
+        
     if (buttonPressedNow != buttonState ) {          // New state
         
         if (buttonChangeEndTime <= now ) {       // It has been a while since last change, so not bouncing
@@ -190,27 +229,43 @@ void button_callback_onChange(void) {
             // Ok, this is a real change 
             
             buttonState = buttonPressedNow;        
+            
             buttonChangeEndTime = now + BUTTON_DEBOUNCE_MS;
             
             if (buttonState) {                  // New state, and the new state is down?
                 
-                // Count the new press
+                buttonPressedFlag=1;                
                 
-                if (buttonPressCount<255) {     // Don't overflow
-                    buttonPressCount++;
-                }                    
-                                
-            }                
-            
-        } else {
-            
-            // TODO: DO we keep pushing the debounce time out as long as we are bouncing?
-            
-        }
-        
+                tallyPendingClicks(now);                          // Tally any pending clicks 
+                                                                            
+                button_clickend_time = now + BUTTON_CLICK_TIMEOUT_MS;   // Start click window over again
+                                                
+            } else {        // There was a change, but a lifting rather than pressing
+                
+                buttonLiftedFlag = 1;                
+
+                if ( now <= button_clickend_time ) {        
+                    
+                    // Button lifted inside window, so count this click
+                    
+                    if (clickCount<3) clickCount++;         // Count this click. Don't bother counting more than 3 clicks (needed also so we never overflow, could also do with an AND 3)
+                    
+                } else {                    
+                    
+                    // We are lifting now, so that means that the trailing click in the last cycle took too long
+                    // so we ignore any clicks in that cycle. 
+                    // This is so that you can start a click cycle, but then change you mind and hold down to cancel. 
+                    
+                    clickCount=0;
+                    
+                }
+                
+                // TODO: Check long press?
+                                    
+            }                          
+        } 
     }        
-    
-            
+                
 }  
 
 // Debounced view of button state
@@ -222,20 +277,80 @@ bool buttonDown(void) {
 }
 
 
-uint8_t buttonPressedCount(void) {
+
+/*
+
+The flags can get updated asynchronously by the callback,
+so we must use an atomic test and clear to avoid races.
+
+Glorified macro to test and clear a flag. Less typing and more readable what it happening. 
+This should really be built into atomic.h.
+
+Compiles neatly to...
+
+    240:	f8 94       	cli
+    242:	80 91 00 01 	lds	r24, 0x0100	; 0x800100 <__data_end>
+    246:	10 92 00 01 	sts	0x0100, r1	; 0x800100 <__data_end>
+    24a:	78 94       	sei
+    24c:	08 95       	ret
+
+*/
+
+
+static bool testAndClear(volatile bool &flag ) {
     
-    // the flag can get update asynchronously by the callback,
-    // so must to an atomic test and clear
-    
-    byte c;
+    bool c;
     
     DO_ATOMICALLY {
-        c = buttonPressCount;
-        buttonPressCount = 0;
-    };        
-        
-    return c;
+        c = flag;
+        flag = 0;
+    };
     
+    return c;
+}
+
+// For click check functions will...
+// Check to see if there is an already expired click cycle
+// and if so, will tally any pending clicks.
+// Then tests the desired flag and resets it. 
+// This is lazy evaluation so we do not need 
+// an extra timer to detect the end of a click cycle. 
+
+static bool timeoutAndTally(volatile bool &flag ) {
+    
+    bool c;
+    
+    DO_ATOMICALLY {
+        unsigned long now = millis();
+        tallyPendingClicks(now);        
+        c = flag;
+        flag = 0;
+    };
+    
+    return c;
+}
+
+
+bool buttonPressed(void) {        
+   return testAndClear(buttonPressedFlag);    
+}
+
+bool buttonLifted(void) {
+   return testAndClear( buttonLiftedFlag );
+}
+
+
+bool buttonSingleClicked(void) {
+    return timeoutAndTally( singleClickedFlag );
+}
+
+
+bool buttonDoubleClicked(void) {
+    return timeoutAndTally( doubleClickedFlag);
+}
+
+bool buttonMultiClicked(void) {
+    return timeoutAndTally( multiClickedFlag);
 }
 
 
