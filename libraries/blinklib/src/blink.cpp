@@ -12,6 +12,7 @@
 */
 
 #include <avr/pgmspace.h>
+#include <limits.h>
 
 #include "Arduino.h"
 
@@ -33,6 +34,8 @@
 // because we don't know yet if it is a single, double, or triple
 
 #define BUTTON_CLICK_TIMEOUT_MS 330
+
+#define BUTTON_LONGPRESS_TIME_MS 2000       // How long you must hold button down to register a long press. 
 
 
 void setColor( Color newColor ) {
@@ -151,39 +154,39 @@ byte getSerialNumberByte( byte n ) {
 }
 
 
-// Keep all the states in one volatile byte that is shared between forground and callback contexts
-
-static volatile byte button_state_bits;
-
-// This state is live - it changes asynchronously from up to down based on the debounce state of the button
-#define BUTTON_STATE_DOWN               0                   // The button is currently down (debounced)
-
-// These states are sticky. They are set in the callback and cleared when checked in the foreground 
-#define BUTTON_STATE_CLICK_PENDING      1             // Waiting for timeout to declare a click
-#define BUTTON_STATE_CLICKED            2             // Waiting for timeout to declare a click
-
-#define BUTTON_STATE_DOUBLE_PENDING     3             // Waiting for timeout to declare a double click
-#define BUTTON_STATE_DOUBLECLICKED      4             // A double click was detected
-
-#define BUTTON_STATE_TRIPLE_PENDING     5             // Waiting for timeout to declare a triple click
-#define BUTTON_STATE_TRIPLECLICKED      6             // A triple click was detected
-
-
 // // These all can be updated by callback, so must be volatile.
 
-static volatile bool buttonState;                           // 0=up, 1=down
-static volatile uint32_t buttonChangeEndTime=0;             // When bouncing for last state change is finished
+static volatile bool buttonState=0;                     // Current debounced state
+static volatile uint32_t buttonLastChangeTime=0;        // The last time we saw the button different from the current state
+                                                        // Use for debouncing                                                                                                               
 
-static volatile byte clickCount=0;                       // Number of clicks in current click window 
-static volatile uint32_t button_clickend_time=0;         // Time when current click timeout will end
+static volatile uint32_t buttonChangeEndTime=0;         // When the bouncing for last state change will be finished
+static volatile uint32_t button_clickend_time=0;        // When the current click will be terminate
 
+static volatile byte clickCount=0;                                  // Number of clicks in current click window 
+//static volatile uint32_t button_longpress_end_time=ULLONG_MAX;      // Time when current click will be long click
 
 static volatile bool buttonPressedFlag=0;               // Has the button been pressed since the last time we checked it?
 static volatile bool buttonLiftedFlag=0;                // Has the button been lifted since the last time we checked it?
 
+
+static volatile bool clickPending=0;                    // Is there a click action pending?
 static volatile bool singleClickedFlag=0;               // single click since the last time we checked it?
 static volatile bool doubleClickedFlag=0;               // double click since the last time we checked it?
 static volatile bool multiClickedFlag=0;                // multi click since the last time we checked it?
+
+static volatile bool buttonLongClickedFlag=0;           // Has the button been long clicked since the last time we checked it?
+
+static volatile uint8_t maxCompletedClickCount=0;       // Remember the most completed clicks to support the clickCount() function
+
+
+// How clicks are processed:
+// Each time a press is detected, we (re)start the click timeout window.
+// If a lift is detected within the timeout window, then we increment the click counter.
+// If the timeout window has expired and the button is still down, then the person long pressed 
+// at the end of the click cycle, which we interpret as wanting to cancel the click cycle. 
+// If the timeout window has expired and the button is up, then we detect a valid click cycle
+// and update all the click flags and variables. 
 
 
 // Tally how many clicks we got in the last click cycle and 
@@ -191,9 +194,11 @@ static volatile bool multiClickedFlag=0;                // multi click since the
 // then reset to be ready for next window.
 
 // Do not need to atomically access these since this can only be called 
-// after the window is over, so will not update again until we clear it. 
+// after the window is over, so will not update again until we clear it.
+ 
+// Must be called atomically
 
-static void tallyPendingClicks(unsigned long now) {
+static void updateClickState(unsigned long now) {
     
    if ( now >= button_clickend_time ) {        // Most recent cycle already over?    
        
@@ -201,156 +206,224 @@ static void tallyPendingClicks(unsigned long now) {
                                                // If the button is still down, then it is an aborted click
                                                // so throw it away
     
-            switch (clickCount) {
-                case 1: singleClickedFlag=1; break;
-                case 2: doubleClickedFlag=1; break;
-                case 3: multiClickedFlag=1; break;
-            }        
+            if (clickCount==1) singleClickedFlag=1;
+            else if (clickCount==2) doubleClickedFlag=1;
+            else if (clickCount>=3) multiClickedFlag=1;
+            
+        
+            if (clickCount > maxCompletedClickCount ) {
+            
+                maxCompletedClickCount=clickCount;
+            
+            }            
             
         }            
+    
+        // Get ready for next click cycle (will throw away previous cycle if the button is still down)
     
         clickCount=0;
     }           
 }   
 
 
+/*
+
+// Call anytime the current buttonDown condition does not match the debounced buttonState
+// Must be called atomically
+
+static void updateButtonState( const unsigned long now) {
+ 
+    if ( now >= buttonLastChangeTime+BUTTON_DEBOUNCE_MS ) {       // It has been a while since last change, so not bouncing
+            
+        // Ok, this is a real, debounced change 
+            
+        buttonState = !buttonState;         // Invert the buttonState (we only get here if they were different)
+
+        updateClickState(now);            // Tally any pending clicks
+                        
+        if (buttonState) {                  // New state, and the new state is down?
+                
+            buttonPressedFlag=1;          
+                                                                                                       
+            button_clickend_time = now + BUTTON_CLICK_TIMEOUT_MS;   // Start click window over again
+                
+//            button_longpress_end_time = now + BUTTON_LONGPRESS_TIME_MS; 
+                
+                                                
+        } else {        // There was a change, but a lifting rather than pressing
+                
+            buttonLiftedFlag = 1;
+                         
+            if ( now <= button_clickend_time ) {        
+                    
+                // Button lifted inside window, so count this click
+                    
+                if (clickCount<255) clickCount++;         // Count this click.(needed also so we never overflow, could also do with an AND 3)
+                    
+            } 
+                            
+            // TODO: Check long press?
+                                                    
+        }           
+        
+    } 
+    
+}    
+
+*/
+
+// Can be called anytime to update the internal button states to account for changes
+// in time and button position.
+
+// We break this out as a separate function because there are two distinct times that the state can change.
+// Things can obviously change any time the button position changes and fires the ISR
+// But the state can also change spontaneously without any interrupt because the debounce window
+// times out. Imagine a very short press that is shorter than the debounce window. In this case,
+// the initial down ISR will correctly see the button press event, but then the subsequent up 
+// ISR will happen while we are still in the debounce window, so we don't want to detect a lift event.
+// The lift event happens abstractly after the debounce window expires and the button position is still up,
+// but there is no corresponding ISR for this since noting in the world actually changed. We pick this up 
+// by updating the internal state anytime one of the functions that checks it are called. 
+
+// There is a hard case when a short pulse happens, so only the press event is detected (the lift happened during the bounce window).
+// If then there is press that happens before one of the polling functions is called, then we will not see the intermediate lift event
+// Because the button looks like it is just still down from the first press. Hmmmm..
+
+
+
+// Must be called atomically
+// Only call if buttonstate and the current button position are different or else you might get false positives. 
+
+static void updateButtonState(unsigned long now , bool buttonPositionNow )  {
+    
+           
+    if ( now > buttonLastChangeTime + BUTTON_DEBOUNCE_MS ) {        // Ignore any changes while bouncing
+        
+        // If we get here, then we are not bouncing
+        
+        if (buttonPositionNow) {
+            
+            // Button position currently down
+            
+            buttonState=true;
+            
+            if (buttonPressedFlag) {        // This is an odd case where the button was lifted during the debounce, and then pressed again without a test inbetween
+                buttonLiftedFlag = true;    // This is the only way would could get here with button pressed, debounced state up, and pressedFlag true
+            }
+            
+            buttonPressedFlag=true;            
+            
+        } else {  // !buttonPositionNow
+            
+            buttonState=false;
+            
+            if (buttonLiftedFlag) {
+                buttonPressedFlag = true;   // This is an odd case where the button was pressed during the debounce, and then lifted again without a test inbetween
+            }
+            
+            buttonLiftedFlag=true;
+            
+        }
+        
+    }
+    
+}    
+
 // This is called asynchronously by the HAL anytime the button changes state
+// Also called internally to update the state whenever the foreground checks,
+// but must be run atomically from there.  
 
 void button_callback_onChange(void) {
-    
-    // Grab a snapshot of the current state since it can change asynchronously 
-    bool buttonPressedNow=button_down();
-    unsigned long now=millis();    
-        
-    if (buttonPressedNow != buttonState ) {          // New state
-        
-        if (buttonChangeEndTime <= now ) {       // It has been a while since last change, so not bouncing
-            
-            // Ok, this is a real change 
-            
-            buttonState = buttonPressedNow;        
-            
-            buttonChangeEndTime = now + BUTTON_DEBOUNCE_MS;
-            
-            if (buttonState) {                  // New state, and the new state is down?
-                
-                buttonPressedFlag=1;                
-                
-                tallyPendingClicks(now);                          // Tally any pending clicks 
-                                                                            
-                button_clickend_time = now + BUTTON_CLICK_TIMEOUT_MS;   // Start click window over again
-                                                
-            } else {        // There was a change, but a lifting rather than pressing
-                
-                buttonLiftedFlag = 1;                
 
-                if ( now <= button_clickend_time ) {        
-                    
-                    // Button lifted inside window, so count this click
-                    
-                    if (clickCount<3) clickCount++;         // Count this click. Don't bother counting more than 3 clicks (needed also so we never overflow, could also do with an AND 3)
-                    
-                } else {                    
-                    
-                    // We are lifting now, so that means that the trailing click in the last cycle took too long
-                    // so we ignore any clicks in that cycle. 
-                    // This is so that you can start a click cycle, but then change you mind and hold down to cancel. 
-                    
-                    clickCount=0;
-                    
-                }
-                
-                // TODO: Check long press?
-                                    
-            }                          
-        } 
+    // Grab a snapshot of the current state since it can change asynchronously
+    unsigned long now = millis();    
+    bool buttonPositionNow = button_down();
+
+    if ( buttonPositionNow != buttonState ) {        // Only do anything if the button has changed
+
+        updateButtonState(now, buttonPositionNow);
+    
+        // We only reset the bounce window if the state actually changed.
+        // This covers an odd case where the button goes down and triggers an ISR, but by the time the ISR
+        // runs, the button is up again so we don't change the state. If we started the window, then we would
+        // ignore the next down we got in that bounce. 
+    
+        buttonLastChangeTime = now;         // We restart the debounce window every time the button position changes
     }        
-                
+                               
 }  
+
+static void updateButtonStateAtomically(void) {
+   
+    DO_ATOMICALLY {
+        bool buttonPositionNow = button_down();
+        
+        if ( buttonPositionNow != buttonState ) {        // Only do anything if the button has changed
+            updateButtonState( millis() , buttonPositionNow );
+        }
+    }    
+}
 
 // Debounced view of button state
 
 bool buttonDown(void) {
+    
+    updateButtonStateAtomically();
       
     return buttonState;
     
 }
 
 
+// Check to see if the click state has changed because the click window expired. 
 
-/*
+static void updateClickStateAtomically(void) {
 
-The flags can get updated asynchronously by the callback,
-so we must use an atomic test and clear to avoid races.
-
-Glorified macro to test and clear a flag. Less typing and more readable what it happening. 
-This should really be built into atomic.h.
-
-Compiles neatly to...
-
-    240:	f8 94       	cli
-    242:	80 91 00 01 	lds	r24, 0x0100	; 0x800100 <__data_end>
-    246:	10 92 00 01 	sts	0x0100, r1	; 0x800100 <__data_end>
-    24a:	78 94       	sei
-    24c:	08 95       	ret
-
-*/
-
-
-static bool testAndClear(volatile bool &flag ) {
-    
-    bool c;
-    
     DO_ATOMICALLY {
-        c = flag;
-        flag = 0;
-    };
-    
-    return c;
-}
+        updateClickState( millis() );
+    }
+}    
 
-// For click check functions will...
-// Check to see if there is an already expired click cycle
-// and if so, will tally any pending clicks.
-// Then tests the desired flag and resets it. 
-// This is lazy evaluation so we do not need 
-// an extra timer to detect the end of a click cycle. 
+bool buttonPressed(void) {     
 
-static bool timeoutAndTally(volatile bool &flag ) {
+    updateButtonStateAtomically();
     
-    bool c;
-    
-    DO_ATOMICALLY {
-        unsigned long now = millis();
-        tallyPendingClicks(now);        
-        c = flag;
-        flag = 0;
-    };
-    
-    return c;
-}
+    if ( buttonPressedFlag ) {
+        buttonPressedFlag=false;
+        return true;
+    }
 
-
-bool buttonPressed(void) {        
-   return testAndClear(buttonPressedFlag);    
-}
+    return false;
+}            
+          
 
 bool buttonLifted(void) {
-   return testAndClear( buttonLiftedFlag );
+    
+    updateButtonStateAtomically();
+
+    // This test does not need to be atomic. No race
+    // because we only clear here, and only set in ISR
+    
+    
+    if ( buttonLiftedFlag ) {
+        buttonLiftedFlag=false;
+        return true;
+    }
+
+    return false;
 }
 
-
 bool buttonSingleClicked(void) {
-    return timeoutAndTally( singleClickedFlag );
+    //return timeoutAndTally( singleClickedFlag );
 }
 
 
 bool buttonDoubleClicked(void) {
-    return timeoutAndTally( doubleClickedFlag);
+    //return timeoutAndTally( doubleClickedFlag);
 }
 
 bool buttonMultiClicked(void) {
-    return timeoutAndTally( multiClickedFlag);
+    //return timeoutAndTally( multiClickedFlag);
 }
 
 

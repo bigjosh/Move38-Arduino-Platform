@@ -51,7 +51,7 @@ static void init(void) {
     
     power_init();
     
-    adc_init();			// Init ADC to start measuring battery voltage
+    adc_init();			    // Init ADC to start measuring battery voltage
     
     ir_init();
     ir_enable(); 
