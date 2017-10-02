@@ -15,6 +15,7 @@
 #include "utils.h"
 #include "ir.h"
 #include "pixel.h"
+#include "timer.h"
 #include "button.h"
 #include "adc.h"
 #include "power.h"
@@ -43,6 +44,26 @@ static void mhz_init(void) {
 }    
 
 
+// This will put all timers into sync mode, where they will stop dead
+// We can then run the enable() fucntions as we please to get them all set up
+// and then release them all at the same exact time
+// We do this to get timer0/timer1 and timer2 to be exactly out of phase
+// with each other so they can run without stepping on each other
+// This assumes that one of the timers will start with its coutner 1/2 way finished
+//..which timer2 does. 
+
+void holdTimers(void) {
+    SBI(GTCCR,TSM);         // Activate sync mode
+    SBI(GTCCR,PSRASY);      // Stop timer0 and timer1
+    SBI(GTCCR,PSRSYNC);     // Stop timer2
+}     
+
+
+void releaseTimers(void) {
+    CBI(GTCCR,TSM);            // Release all timers at the same moment
+}    
+
+
 static void init(void) {
 
     mhz_init();				// switch to 4Mhz. TODO: Some day it would be nice to go back to 1Mhz for FCC, but lets just get things working now.
@@ -50,16 +71,21 @@ static void init(void) {
     DEBUG_INIT();			// Handy debug outputs on unused pins
     
     power_init();
+    timer_init();
+    button_init();
     
     adc_init();			    // Init ADC to start measuring battery voltage
-    
+    pixel_init();    
     ir_init();
+
+    
     ir_enable(); 
         
-    pixel_init();
-    pixel_enable();
+    holdTimers();        
+    pixel_enable();    
+    timer_enable();
+    releaseTimers();
     
-    button_init();
     button_enable();
     
     sei();					// Let interrupts happen. For now, this is the timer overflow that updates to next pixel.
@@ -71,7 +97,7 @@ int main(void)
 	init();
 	
     while (1) {
-	    run();
+	    //run();
     }        
 		
 	return 0;

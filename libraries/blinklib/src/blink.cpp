@@ -347,8 +347,10 @@ void button_callback_onChange(void) {
         // This covers an odd case where the button goes down and triggers an ISR, but by the time the ISR
         // runs, the button is up again so we don't change the state. If we started the window, then we would
         // ignore the next down we got in that bounce. 
-    
+        
         buttonLastChangeTime = now;         // We restart the debounce window every time the button position changes
+        
+       
     }        
                                
 }  

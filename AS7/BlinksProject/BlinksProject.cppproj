@@ -249,13 +249,13 @@
       <SubType>compile</SubType>
       <Link>power.h</Link>
     </Compile>
-    <Compile Include="..\..\cores\blinks\time.cpp">
+    <Compile Include="..\..\cores\blinks\timer.cpp">
       <SubType>compile</SubType>
-      <Link>time.cpp</Link>
+      <Link>timer.cpp</Link>
     </Compile>
-    <Compile Include="..\..\cores\blinks\time.h">
+    <Compile Include="..\..\cores\blinks\timer.h">
       <SubType>compile</SubType>
-      <Link>time.h</Link>
+      <Link>timer.h</Link>
     </Compile>
     <Compile Include="..\..\cores\blinks\utils.cpp">
       <SubType>compile</SubType>

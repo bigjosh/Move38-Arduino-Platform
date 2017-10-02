@@ -17,11 +17,9 @@
 #include <avr/interrupt.h>
 #include <util/delay.h>					// _delay_ms() for debounce
 
-
-
 #include "button.h"
 #include "utils.h"
-
+#include "debug.h"
 
 // Callback that is called when the button state changes.
 // Note that you could get multiple consecutive calls with the
@@ -51,18 +49,9 @@ struct ISR_CALLBACK_BUTTON : CALLBACK_BASE<ISR_CALLBACK_BUTTON> {
 };
 
 
-ISR(BUTTON_ISR)
-{ 
-    ISR_CALLBACK_BUTTON::invokeCallback();
-                   
-}
-
-
 void button_init(void) {
-		
 	// Pin change interrupt setup
-	SBI( PCICR , BUTTON_PCI );          // Enable the pin group
-	
+	SBI( PCICR , BUTTON_PCI );          // Enable the pin group	
 }
 
 // Enable pullup and interrupts on button
@@ -71,21 +60,16 @@ void button_enable(void) {
 
 	// GPIO setup
 	SBI( BUTTON_PORT , BUTTON_BIT);     // Leave in input mode, enable pull-up
-
-	// Pin change interrupt setup
-	SBI( BUTTON_MASK , BUTTON_PCINT);   // Enable pin in Pin Change Mask Register
     
 }    
 
 
-// Disable pull-up and interrupts
+// Disable pull-up 
 // You'd want to do this to save power in the case where the
 // button is stuck down and therefore shorting out the pull-up
 
 void button_disable(void) {
 
-    // disable pin change interrupt 
-    CBI( BUTTON_MASK , BUTTON_PCINT);   // Enable pin in Pin Change Mask Register
 
     CBI( BUTTON_PORT , BUTTON_BIT);     // Leave in input mode, disable pull-up
         
@@ -99,3 +83,30 @@ uint8_t button_down(void) {
 	return BUTTON_DOWN();
 	
 }
+
+
+
+ISR(BUTTON_ISR)
+{
+    ISR_CALLBACK_BUTTON::invokeCallback();
+    
+}
+
+// Enable callback to button_callback_onChange on button change interrupt
+// Typically used to wake from sleep, but could also be used for low latency
+// button decoding - but remeber that there is not 1:1 mapping of changes on the 
+// button pin to calls to the ISR, so timer-based button decoding likely easier
+// and more efficient.
+
+void button_ISR_on(void) {
+	// Pin change interrupt setup
+	SBI( BUTTON_MASK , BUTTON_PCINT);   // Enable pin in Pin Change Mask Register
+    
+}
+
+void button_ISR_off(void) {
+    // disable pin change interrupt
+    CBI( BUTTON_MASK , BUTTON_PCINT);   // Disable pin in Pin Change Mask Register    
+}
+
+    

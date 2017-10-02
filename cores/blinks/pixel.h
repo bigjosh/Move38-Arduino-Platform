@@ -56,12 +56,6 @@ void pixel_SetAllRGB( uint8_t r, uint8_t g, uint8_t b  );
 
 #define PIXEL_CYCLES_PER_FRAME (8 * 256 * 5)
 
-// User supplied callback that is called when the button state changes.
-// Note that you could get multiple consecutive calls with the
-// Same state if the button quickly toggles back and forth quickly enough that
-// we miss one phase. This is particularly true if there is a key bounce exactly when
-// and ISR is running.
-
 // Called at the end of each display frame, which is currently
 // about 66Hz
 

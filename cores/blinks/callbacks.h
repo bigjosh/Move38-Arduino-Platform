@@ -39,8 +39,13 @@
 #define CALLBACK_IR_RUNNING_BIT             2
 #define CALLBACK_IR_PENDING_BIT             3
 
+#define CALLBACK_TIMER_RUNNING_BIT          4
+#define CALLBACK_TIMER_PENDING_BIT          5
+
 #define CALLBACK_PIXEL_FRAME_RUNNING_BIT    6
 #define CALLBACK_PIXEL_FRAME_PENDING_BIT    7
+
+
 
 // Below is a glorified macro so we do not need to retype the invovkeCallback
 // code for each call back - but we still get very clean and short ISR code

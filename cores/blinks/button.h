@@ -8,11 +8,11 @@
 
 #include <avr/io.h>
 
-// Setup pins, interrupts. Call once at power up.
+// Call once at power up.
 
 void button_init(void);
 
-// Enable pullup and interrupts on button
+// Enable pullup on button
 // TODO: We need a way to disable pull-ups in case the button is stuck down in a pocket or drawer. 
 
 void button_enable(void);
@@ -21,8 +21,7 @@ void button_enable(void);
 
 uint8_t button_down(void);
 
-
-// Disable pull-up and interrupts
+// Disable pull-up 
 // You'd want to do this to save power in the case where the
 // button is stuck down and therefore shorting out the pull-up
 
@@ -43,5 +42,21 @@ void button_disable(void);
 
 
 void button_callback_onChange(void) __attribute__((weak));
+
+
+// Enable callback to button_callback_onChange on button change interrupt
+// Typically used to wake from sleep, but could also be used for low latency
+// button decoding - but remeber that there is not 1:1 mapping of changes on the
+// button pin to calls to the ISR, so timer-based button decoding likely easier
+// and more efficient.
+
+// Call after button_enable()
+
+void button_ISR_on(void);
+
+// Call before button_disable()
+
+void button_ISR_off(void);
+
 
 #endif /* BUTTON_H_ */

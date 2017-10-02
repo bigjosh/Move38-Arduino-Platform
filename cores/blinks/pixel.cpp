@@ -106,9 +106,7 @@ static void setupPixelPins(void) {
 
 static void pixelTimersOn(void) {
     
-    // First the main Timer0 to drive R & G. We also use the overflow to jump to the next multiplexed pixel.
-    // Lets start with a prescaller of 8, which will fire at 1Mhz/8 = gives us a ~80hz refresh rate on the full 6 leds which should look smooth
-    // TODO: How does frequency and duty relate to power efficiency? We can always lower to and trade resolution for faster cycles
+    // Timer0 to drive R & G PWM. We also use the overflow to jump to the next multiplexed pixel.
     
     // We are running in FAST PWM mode where we continuously count up to TOP and then overflow.
 	// Since we are using both outputs, I think we are stuck with Mode 3 = Fast PWM that does not let use use a different TOP
@@ -150,14 +148,9 @@ static void pixelTimersOn(void) {
 	
 	// TODO: Get two timers exactly in sync. Maybe preload TCNTs to account for the difference between start times?
 
-    // ** Next setup Timer2 for blue. This is different because for the charge pump. We have to drive the pin HIGH to charge
+    // ** Next setup Timer2 for blue PWM. This is different because for the charge pump. We have to drive the pin HIGH to charge
     // the capacitor, then the LED lights on the LOW.
-    // So maybe the best way to handle this is to just always be charging except the very short times when we are ofF?
-    // Normally this means the LED will be on dimly that while time, but we can compensate by only turn on the BOOST enable
-    // pin when there is actually blue in that pixel right now, and maybe bump down the raw compare values to compensate for the
-    // the leakage brightness when the battery voltage is high enough to cause some? Should work!
-
-
+    
     TCCR2A =
     _BV( COM2B1) |                        // Clear OC0B on Compare Match, set OC0B at BOTTOM, (non-inverting mode) (clearing turns off pump and on LED)
     _BV( WGM01) | _BV( WGM00)             // Mode 3 - Fast PWM TOP=0xFF
@@ -376,7 +369,9 @@ static uint8_t phase=0;
 // pass 
                                     
 static void pixel_isr(void) {   
-            
+    
+    DEBUGB_PULSE(20);
+                
     // THIS IS COMPLICATED
     // Because of the buffering of the OCR registers, we are always setting values that will be loaded
     // the next time the timer overflows. 
