@@ -55,13 +55,27 @@ void timer_enable(void) {
     
     // This is pretty simple since we are not using any of the outputs and 
     // we are running in the default "normal" mode
+    
+    /*
+        23.7.1 Normal Mode
+        The simplest mode of operation is the Normal mode (WGM2[2:0] = 0). In this mode the counting direction
+        is always up (incrementing), and no counter clear is performed. The counter simply overruns when it
+        passes its maximum 8-bit value (TOP = 0xFF) and then restarts from the bottom (0x00).        
+    */
+
+    #if TIMER_RANGE != 0x100
+        #error Must change the definition of TIMER_RANGE to match the actual values in the timer2
+    #endif
 
     TCNT2 = 128;                        // Start completely out of phase with the other timer. See holdTimers()
+    
     TCCR2B = _BV( CS21 );               // Start the timer with Prescaller /8    
     
-    #if F_TIMER != ( F_CPU /8 /256 )      
-        #error Must change the definition of F_TIMER to match the actual values in the timer2
+    #if TIMER_PRESCALER != 8
+        #error Must change the definition of TIMER_PRESCALLER to match the actual values in the timer2
     #endif
+    
+    
         
 }        
 
@@ -92,8 +106,10 @@ struct ISR_CALLBACK_TIMER : CALLBACK_BASE< ISR_CALLBACK_TIMER> {
 
 ISR( TIMER2_OVF_vect ) {
     
-    DEBUGA_PULSE(20);
+    //DEBUGA_PULSE(20);
+    DEBUGA_1();
     ISR_CALLBACK_TIMER::invokeCallback();
+    DEBUGA_0();
 }    
 
 /** Timing ***/
