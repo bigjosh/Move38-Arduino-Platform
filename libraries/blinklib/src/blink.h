@@ -35,6 +35,9 @@ bool buttonLifted(void);
 // see if another button press is coming. 
 // A multiclick is 3 or more clicks
 
+// Remember that these click events fire a short time after the button is lifted on the final click
+// If the button is held down too long on the last click, then click interaction is aborted.
+
 bool buttonSingleClicked();
 
 bool buttonDoubleClicked();
@@ -44,6 +47,10 @@ bool buttonMultiClicked();
 
 // The number of clicks in the longest consecutive valid click cycle since the last time called. 
 byte buttonClickCount(void);
+
+// Remember that a long press fires while the button is still down
+bool buttonLongPressed(void);
+
     
 
 /*

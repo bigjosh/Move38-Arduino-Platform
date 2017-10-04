@@ -180,12 +180,13 @@ static uint8_t buttonDebounceCountdown=0;               // How long until we are
 static uint16_t clickWindowCountdown=0;                 // How long until we close the current click window. 0=done TODO: Make this 8bit by reducing scan rate. 
 static uint8_t clickPendingcount=0;                     // How many clicks so far int he current click window
 
+static uint16_t longPressCountdown=0;                   // How long until the current press becomes a long press
 
 static volatile bool singleClickedFlag=0;               // single click since the last time we checked it?
 static volatile bool doubleClickedFlag=0;               // double click since the last time we checked it?
 static volatile bool multiClickedFlag=0;                // multi click since the last time we checked it?
 
-static volatile bool buttonLongClickedFlag=0;           // Has the button been long clicked since the last time we checked it?
+static volatile bool longPressFlag=0;                   // Has the button been long pressed since the last time we checked it?
 
 static volatile uint8_t maxCompletedClickCount=0;       // Remember the most completed clicks to support the clickCount() function
 
@@ -203,41 +204,55 @@ static void updateButtonState(void) {
             
             buttonDebounceCountdown--;
             
-        }        
+        }  
         
-        if (clickWindowCountdown) {
+        if (longPressCountdown) {
             
-            clickWindowCountdown--;
+            longPressCountdown--;
             
-            if (clickWindowCountdown==0) {      // Click window just expired
+            if (longPressCountdown==0) {
                 
-                if (!buttonState) {              // Button is up, so register clicks 
+                if (buttonState) {
                     
-                    if (clickPendingcount==1) {
-                        singleClickedFlag=1;
-                    } else if (clickPendingcount==2) {
-                        doubleClickedFlag=1;
-                    } else {
-                        multiClickedFlag=1;
-                    }                                                                        
-                    
-                    
-                    if (clickPendingcount > maxCompletedClickCount ) {
-                        maxCompletedClickCount=clickPendingcount;   
-                    }                            
-                    
-                    
-                    
-                }                                        
-                
-                clickPendingcount=0;        // Start next cycle (aborts any pending clicks if button was still down
-                
-                
-            }                            
+                    longPressFlag = 1;
+                }
+            }                                           
             
-        }            
+            // We can nestle thew click window countdown in here because a click will ALWAYS happen inside a long press...
         
+            if (clickWindowCountdown) {
             
+                clickWindowCountdown--;
+            
+                if (clickWindowCountdown==0) {      // Click window just expired
+                
+                    if (!buttonState) {              // Button is up, so register clicks 
+                    
+                        if (clickPendingcount==1) {
+                            singleClickedFlag=1;
+                        } else if (clickPendingcount==2) {
+                            doubleClickedFlag=1;
+                        } else {
+                            multiClickedFlag=1;
+                        }                                                                        
+                    
+                    
+                        if (clickPendingcount > maxCompletedClickCount ) {
+                            maxCompletedClickCount=clickPendingcount;   
+                        }                            
+                    
+                    
+                    
+                    }                                        
+                
+                    clickPendingcount=0;        // Start next cycle (aborts any pending clicks if button was still down
+                
+                
+                }                            
+            
+            }            
+        
+        }                    
             
         
     }  else {       // New button position
@@ -254,6 +269,7 @@ static void updateButtonState(void) {
                 }                        
                 
                 clickWindowCountdown = TIMER_MS_TO_TICKS( BUTTON_CLICK_TIMEOUT_MS );
+                longPressCountdown   = TIMER_MS_TO_TICKS( BUTTON_LONGPRESS_TIME_MS ); 
                 
             } else {
                 buttonLiftedFlag=1;                
@@ -329,6 +345,11 @@ bool buttonDoubleClicked(void) {
 bool buttonMultiClicked(void) {
     return testAndClearFlag( multiClickedFlag );
 }
+
+bool buttonLongPressed(void) {
+    return testAndClearFlag( longPressFlag );
+}
+
 
 uint8_t buttonClickCount(void) {
     
