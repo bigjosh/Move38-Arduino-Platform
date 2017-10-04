@@ -189,7 +189,7 @@ static volatile bool buttonLiftedFlag=0;                // Has the button been l
 
 static uint8_t buttonDebounceCountdown=0;               // How long until we are done bouncing. Only touched in the callback
 
-// Called periodically by the timer to check the button
+// Called once per tick by the timer to check the button postition
 // and update the button state variables.
 
 static void updateButtonState(void) {
@@ -535,7 +535,8 @@ static void updateMillis(void) {
                            
 }    
 
-// This is called at the end of each frame, so about 66Hz
+// This is called by timer2 about every 512us
+// TODO: Reduce this rate by phasing the timer call?
 
 void timer_callback(void) {
     updateMillis();            
