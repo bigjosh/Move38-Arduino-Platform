@@ -810,9 +810,9 @@ void ir_init(void) {
     DEBUG_INIT();     // TODO: Get rid of all debug stuff
       
     
-    IR_ANODE_DDR = IR_BITS ;    // Set all ANODES to drive (and leave forever)
-                                // The PORT will be 0, so these will be driven low
-                                // until we actively send a pulse
+    IR_ANODE_DDR |= IR_BITS ;       // Set all ANODES to drive (and leave forever)
+                                    // The PORT will be 0, so these will be driven low
+                                    // until we actively send a pulse
                             
     // Leave cathodes DDR in input mode. When we write to PORT, then we will be enabling pull-up which is enough to charge the 
     // LEDs and saves having to switch DDR every charge. 

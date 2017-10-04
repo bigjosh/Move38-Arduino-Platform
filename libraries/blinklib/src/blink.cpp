@@ -19,9 +19,11 @@
 #include "blink.h"
 
 #include "pixel.h"
-#include "time.h"
+#include "timer.h"
 #include "button.h"
 #include "utils.h"
+
+#include "debug.h"
 
 // Debounce button pressed this much
 // Empirically determined. At 50ms, I can click twice fast enough
@@ -156,7 +158,6 @@ byte getSerialNumberByte( byte n ) {
 
 // // These all can be updated by callback, so must be volatile.
 
-static volatile bool buttonState=0;                     // Current debounced state
 static volatile uint32_t buttonLastChangeTime=0;        // The last time we saw the button different from the current state
                                                         // Use for debouncing                                                                                                               
 
@@ -166,8 +167,6 @@ static volatile uint32_t button_clickend_time=0;        // When the current clic
 static volatile byte clickCount=0;                                  // Number of clicks in current click window 
 //static volatile uint32_t button_longpress_end_time=ULLONG_MAX;      // Time when current click will be long click
 
-static volatile bool buttonPressedFlag=0;               // Has the button been pressed since the last time we checked it?
-static volatile bool buttonLiftedFlag=0;                // Has the button been lifted since the last time we checked it?
 
 
 static volatile bool clickPending=0;                    // Is there a click action pending?
@@ -178,6 +177,56 @@ static volatile bool multiClickedFlag=0;                // multi click since the
 static volatile bool buttonLongClickedFlag=0;           // Has the button been long clicked since the last time we checked it?
 
 static volatile uint8_t maxCompletedClickCount=0;       // Remember the most completed clicks to support the clickCount() function
+
+
+
+
+
+static volatile bool buttonState=0;                     // Current debounced state
+
+static volatile bool buttonPressedFlag=0;               // Has the button been pressed since the last time we checked it?
+static volatile bool buttonLiftedFlag=0;                // Has the button been lifted since the last time we checked it?
+
+static uint8_t buttonDebounceCountdown=0;               // How long until we are done bouncing. Only touched in the callback
+
+// Called once per tick by the timer to check the button postition
+// and update the button state variables.
+
+static void updateButtonState(void) {
+        
+    bool buttonPositon = button_down();
+    
+    if ( buttonPositon == buttonState ) {
+        
+        if (buttonDebounceCountdown) {
+            
+            buttonDebounceCountdown--;
+            
+        }            
+        
+    }  else {       // New button position
+        
+        if (!buttonDebounceCountdown) {         // Done bouncing
+            
+            buttonState = buttonPositon;        
+            
+            if (buttonPositon) {
+                buttonPressedFlag=1;
+            } else {
+                buttonLiftedFlag=1;
+            }                                
+            
+        }
+        
+        // Restart the countdown anytime the button position changes
+        
+        buttonDebounceCountdown = TIMER_MS_TO_TICKS( BUTTON_DEBOUNCE_MS );
+        
+    }        
+                        
+    
+}
+
 
 
 // How clicks are processed:
@@ -224,6 +273,7 @@ static void updateClickState(unsigned long now) {
         clickCount=0;
     }           
 }   
+
 
 
 /*
@@ -294,6 +344,8 @@ static void updateButtonState( const unsigned long now) {
 // Must be called atomically
 // Only call if buttonstate and the current button position are different or else you might get false positives. 
 
+/*
+
 static void updateButtonState(unsigned long now , bool buttonPositionNow )  {
     
            
@@ -341,7 +393,7 @@ void button_callback_onChange(void) {
 
     if ( buttonPositionNow != buttonState ) {        // Only do anything if the button has changed
 
-        updateButtonState(now, buttonPositionNow);
+        //updateButtonState(now, buttonPositionNow);
     
         // We only reset the bounce window if the state actually changed.
         // This covers an odd case where the button goes down and triggers an ISR, but by the time the ISR
@@ -361,7 +413,7 @@ static void updateButtonStateAtomically(void) {
         bool buttonPositionNow = button_down();
         
         if ( buttonPositionNow != buttonState ) {        // Only do anything if the button has changed
-            updateButtonState( millis() , buttonPositionNow );
+            //updateButtonState( millis() , buttonPositionNow );
         }
     }    
 }
@@ -370,12 +422,11 @@ static void updateButtonStateAtomically(void) {
 
 bool buttonDown(void) {
     
-    updateButtonStateAtomically();
+    //updateButtonStateAtomically();
       
     return buttonState;
     
 }
-
 
 // Check to see if the click state has changed because the click window expired. 
 
@@ -386,9 +437,9 @@ static void updateClickStateAtomically(void) {
     }
 }    
 
-bool buttonPressed(void) {     
+*/
 
-    updateButtonStateAtomically();
+bool buttonPressed(void) {     
     
     if ( buttonPressedFlag ) {
         buttonPressedFlag=false;
@@ -400,13 +451,9 @@ bool buttonPressed(void) {
           
 
 bool buttonLifted(void) {
-    
-    updateButtonStateAtomically();
-
     // This test does not need to be atomic. No race
     // because we only clear here, and only set in ISR
-    
-    
+        
     if ( buttonLiftedFlag ) {
         buttonLiftedFlag=false;
         return true;
@@ -414,7 +461,7 @@ bool buttonLifted(void) {
 
     return false;
 }
-
+/*
 bool buttonSingleClicked(void) {
     //return timeoutAndTally( singleClickedFlag );
 }
@@ -428,7 +475,7 @@ bool buttonMultiClicked(void) {
     //return timeoutAndTally( multiClickedFlag);
 }
 
-
+*/
 // TODO: Need this?
 
 volatile uint8_t verticalRetraceFlag=0;     // Turns to 1 when we are about to start a new refresh cycle at pixel zero
@@ -444,12 +491,7 @@ volatile uint8_t verticalRetraceFlag=0;     // Turns to 1 when we are about to s
 
 static volatile uint32_t millisCounter=0;           // How many millisecends since most recent pixel_enable()?
 // Overflows after about 60 days
-// Note that resolution is limited by pixel refresh rate
-
-static uint16_t cyclesCounter=0;                    // Accumulate cycles to keep millisCounter accurate
-
-// The pixel rate will likely not be an even multiple of milliseconds
-// so this accumulates cycles that we than dump into millis
+// Note that resolution is limited by timer tick rate
 
 
 // TODO: Clear out millis to zero on wake
@@ -468,34 +510,37 @@ unsigned long millis(void) {
 }
 
 
-#define MILLIS_PER_SECOND 1000
+// TODO: This is accurate and correct, but so inefficient. 
+// We can do better. 
 
-#define CYCLES_PER_SECOND (F_CPU)
+static uint16_t cyclesCounter=0;                    // Accumulate cycles to keep millisCounter accurate
 
-#define CYCLES_PER_MILLISECOND ( CYCLES_PER_SECOND / MILLIS_PER_SECOND )
-
+#if TIMER_CYCLES_PER_TICK > UINT16_MAX
+    #error Overflow on cyclesCounter
+#endif
 
 static void updateMillis(void) {
     
-    cyclesCounter+=PIXEL_CYCLES_PER_FRAME;    // Used for timekeeping. Nice to increment here since this is the least time consuming phase
+    cyclesCounter+=TIMER_CYCLES_PER_TICK;    // Used for timekeeping. Nice to increment here since this is the least time consuming phase
     
-    while (cyclesCounter >= CYCLES_PER_MILLISECOND ) {
+    while (cyclesCounter >= CYCLES_PER_MS  ) {      // While covers cases where TIMER_CYCLES_PER_TICK >= CYCLES_PER_MILLISECOND * 2 
         
         millisCounter++;
-        cyclesCounter-=CYCLES_PER_MILLISECOND;
+        cyclesCounter-=CYCLES_PER_MS ;
         
-    }
-    
+    }    
                        
-    // Note that we might have some cycles left. They will accumulate and eventually get folded into a full milli to
+    // Note that we might have some cycles left. They will accumulate in cyclescounter and eventually get folded into a full milli to
     // avoid errors building up.
                            
 }    
 
-// This is called at the end of each frame, so about 66Hz
+// This is called by timer2 about every 512us
+// TODO: Reduce this rate by phasing the timer call?
 
-void pixel_callback_onFrame(void) {
+void timer_callback(void) {
     updateMillis();            
+    updateButtonState();
 }    
 
 // This is the entry point where the platform will pass control to 

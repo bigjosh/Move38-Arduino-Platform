@@ -77,7 +77,6 @@ static void init(void) {
     adc_init();			    // Init ADC to start measuring battery voltage
     pixel_init();    
     ir_init();
-
     
     ir_enable(); 
         
@@ -91,13 +90,22 @@ static void init(void) {
     sei();					// Let interrupts happen. For now, this is the timer overflow that updates to next pixel.
 
 }    
+
+
+
+// This empty run() lets us at least compile when no higher API is present.
+
+void __attribute__((weak)) run(void) {
+    
+    pixel_SetAllRGB( 0,  255 ,  0  );
+}
     
 int main(void)
 {
 	init();
 	
     while (1) {
-	    //run();
+	    run();
     }        
 		
 	return 0;
