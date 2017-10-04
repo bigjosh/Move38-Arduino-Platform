@@ -34,6 +34,9 @@
 // Weak reference so it (almost) compiles away if not used. 
 // (looks like GCC is not yet smart enough to see an empty C++ virtual invoke. Maybe some day!)
 
+    return;   
+}    
+
 
 struct ISR_CALLBACK_BUTTON : CALLBACK_BASE<ISR_CALLBACK_BUTTON> {
     
@@ -94,7 +97,7 @@ ISR(BUTTON_ISR)
 
 // Enable callback to button_callback_onChange on button change interrupt
 // Typically used to wake from sleep, but could also be used for low latency
-// button decoding - but remeber that there is not 1:1 mapping of changes on the 
+// button decoding - but remember that there is not 1:1 mapping of changes on the 
 // button pin to calls to the ISR, so timer-based button decoding likely easier
 // and more efficient.
 

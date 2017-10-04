@@ -71,20 +71,19 @@ static void init(void) {
     DEBUG_INIT();			// Handy debug outputs on unused pins
     
     power_init();
-    //timer_init();
+    timer_init();
     button_init();
     
     adc_init();			    // Init ADC to start measuring battery voltage
     pixel_init();    
     ir_init();
-
     
     ir_enable(); 
         
-    //holdTimers();        
+    holdTimers();        
     pixel_enable();    
-    //timer_enable();
-    //releaseTimers();
+    timer_enable();
+    releaseTimers();
     
     button_enable();
     

@@ -41,7 +41,7 @@ void button_disable(void);
 // Much more rigorous to think in terms of state changes than absolute values.
 
 
-void button_callback_onChange(void) __attribute__((weak));
+void button_callback_onChange(void);
 
 
 // Enable callback to button_callback_onChange on button change interrupt
