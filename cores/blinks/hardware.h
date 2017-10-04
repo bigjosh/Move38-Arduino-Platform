@@ -12,6 +12,8 @@
 #define HARDWARE_H_
 
 #include <avr/io.h>
+#include <avr/interrupt.h>
+#include "utils.h"
 
 /*** PIXELS ***/
 
@@ -64,7 +66,7 @@
 // blue LED + Schottky
 
 #define BLUE_SINK_PORT PORTE
-#define BLUE_SINK_DDE  DDRE
+#define BLUE_SINK_DDR  DDRE
 #define BLUE_SINK_BIT  3
 
 /*** IR ***/ 
@@ -136,5 +138,19 @@
 #define BUTTON_PCINT   PCINT23
 
 #define BUTTON_DOWN() (!TBI(BUTTON_PIN,BUTTON_BIT))           // PCINT23 - pulled low when button pressed
+
+
+// This mess is to avoid "warning: "F_CPU" redefined" under Arduino IDE.
+// If you know a better way, please tell me!
+
+#ifdef F_CPU
+   #undef F_CPU
+#endif
+
+#define F_CPU 4000000				// Default fuses are DIV8 so we boot at 1Mhz,
+// but then we change the prescaler to get to 4Mhz by the time user code runs
+
+#define FACE_COUNT 6				// Total number of IRLEDs
+
 
 #endif /* HARDWARE_H_ */

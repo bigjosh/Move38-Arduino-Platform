@@ -193,10 +193,6 @@
       <SubType>compile</SubType>
       <Link>Arduino.h</Link>
     </Compile>
-    <Compile Include="..\..\cores\blinks\blinks.h">
-      <SubType>compile</SubType>
-      <Link>blinks.h</Link>
-    </Compile>
     <Compile Include="..\..\cores\blinks\button.cpp">
       <SubType>compile</SubType>
       <Link>button.cpp</Link>
@@ -205,13 +201,17 @@
       <SubType>compile</SubType>
       <Link>button.h</Link>
     </Compile>
+    <Compile Include="..\..\cores\blinks\callbacks.h">
+      <SubType>compile</SubType>
+      <Link>callbacks.h</Link>
+    </Compile>
+    <Compile Include="..\..\cores\blinks\debug.cpp">
+      <SubType>compile</SubType>
+      <Link>debug.cpp</Link>
+    </Compile>
     <Compile Include="..\..\cores\blinks\debug.h">
       <SubType>compile</SubType>
       <Link>debug.h</Link>
-    </Compile>
-    <Compile Include="..\..\cores\blinks\DummySketch.cpp">
-      <SubType>compile</SubType>
-      <Link>DummySketch.cpp</Link>
     </Compile>
     <Compile Include="..\..\cores\blinks\effects.cpp">
       <SubType>compile</SubType>
@@ -248,6 +248,18 @@
     <Compile Include="..\..\cores\blinks\power.h">
       <SubType>compile</SubType>
       <Link>power.h</Link>
+    </Compile>
+    <Compile Include="..\..\cores\blinks\timer.cpp">
+      <SubType>compile</SubType>
+      <Link>timer.cpp</Link>
+    </Compile>
+    <Compile Include="..\..\cores\blinks\timer.h">
+      <SubType>compile</SubType>
+      <Link>timer.h</Link>
+    </Compile>
+    <Compile Include="..\..\cores\blinks\utils.cpp">
+      <SubType>compile</SubType>
+      <Link>utils.cpp</Link>
     </Compile>
     <Compile Include="..\..\cores\blinks\utils.h">
       <SubType>compile</SubType>

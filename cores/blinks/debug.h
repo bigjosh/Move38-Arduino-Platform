@@ -13,6 +13,9 @@
 
 #include "utils.h"          // Grab SBI and CBI
 
+#include <util/delay.h>     // Pull in _delay_us() for pulse functions
+
+
 // This enables debug features like output on the debug port
 // and some extra sanity parameter checks.
 
