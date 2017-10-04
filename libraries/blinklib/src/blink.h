@@ -41,6 +41,11 @@ bool buttonDoubleClicked();
 
 bool buttonMultiClicked();
 
+
+// The number of clicks in the longest consecutive valid click cycle since the last time called. 
+byte buttonClickCount(void);
+    
+
 /*
 
 	This set of functions lets you read the current state of the environment.
@@ -105,6 +110,7 @@ typedef unsigned Color;
 #define MAGENTA     MAKECOLOR_RGB(31, 0,31)
 
 
+#define WHITE       MAKECOLOR_RGB(31,31,31)
 
 #define OFF     MAKECOLOR_RGB( 0, 0, 0)
 

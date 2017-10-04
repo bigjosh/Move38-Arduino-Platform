@@ -95,10 +95,10 @@ static void init(void) {
 
 // This empty run() lets us at least compile when no higher API is present.
 
-void __attribute__((weak)) run(void) {
-    
+void __attribute__((weak)) run(void) {    
     pixel_SetAllRGB( 0,  255 ,  0  );
 }
+       
     
 int main(void)
 {
@@ -106,6 +106,7 @@ int main(void)
 	
     while (1) {
 	    run();
+        // TODO: Sleep here and only wake on new event
     }        
 		
 	return 0;
