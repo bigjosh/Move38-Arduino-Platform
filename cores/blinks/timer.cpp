@@ -35,6 +35,8 @@
 
 #include "timer.h"
 
+#include "ir_callback.h"    // Just connects the IR periodic callback to the timer ticks
+
 #if F_CPU != 4000000
     #error This code assumes 4Mhz clock
 #endif
@@ -106,10 +108,10 @@ struct ISR_CALLBACK_TIMER : CALLBACK_BASE< ISR_CALLBACK_TIMER> {
 
 ISR( TIMER2_OVF_vect ) {
     
-    //DEBUGA_PULSE(20);
-    DEBUGA_1();
+    //DEBUGA_1();
+    ir_tick_isr_callback();             // Call the IR callback with interrupts off
     ISR_CALLBACK_TIMER::invokeCallback();
-    DEBUGA_0();
+    //DEBUGA_0();
 }    
 
 /** Timing ***/
