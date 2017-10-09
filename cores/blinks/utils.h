@@ -28,7 +28,12 @@ utils_serialno_t const *utils_serialno(void);
 
 #define FOREACH_FACE(x) for(int x = 0; x < FACE_COUNT ; ++ x)       // Pretend this is a real language with iterators
 
-#define DO_ATOMICALLY ATOMIC_BLOCK(ATOMIC_FORCEON)                  // Non-HAL codes always runs with interrupts on, so giove users a way to do things atomically.
+#define DO_ATOMICALLY ATOMIC_BLOCK(ATOMIC_FORCEON)                  // Non-HAL codes always runs with interrupts on, so give users a way to do things atomically.
+
+void inline INC_NO_OVERFLOW( uint8_t &x ) {
+    if (!(++x)) x--;            // Prevent overflow by decrementing if we do overflow. 
+}    
+
 
 // TODO: Where does this belong?
 void run(void);

@@ -210,7 +210,7 @@ void ir_send( uint8_t face , uint8_t data ) {
      
      // These internal variables are only updated in ISR, so don't need to be volatile.
      uint8_t buffer;                  // Buffer for RX in progress.
-     uint8_t bitcount;                // Valid data bits in the buffer +1. Sets to 1 when a valid sync is detected. When we get to 8, we have a good byte if the parity checks.
+     uint8_t nextbit;                // Valid data bits in the buffer +1. Sets to 1 when a valid sync is detected. When we get to 8, we have a good byte if the parity checks.
      
      uint8_t pulse_count;             // Number of pulses received in most recent tick
      uint8_t pulse_accumulator;       // Accumulate prior pulses here (at most contains 2 ticks for now)     
@@ -242,7 +242,6 @@ ISR(IR_ISR)
     // TODO: Could save lots by redoing in ASM
     // TODO: Look into moving _zero_reg_ out of R! to save a push/pop and eor.
         
-    asm("nop");
             
     uint8_t ir_LED_triggered_bits = (~IR_CATHODE_PIN) & IR_BITS;      // A 1 means that LED triggered
 
@@ -280,8 +279,10 @@ ISR(IR_ISR)
     do {
            
         if ( ir_LED_triggered_bits & ledBitwalk )  {         // Did we just get a pulse on this LED?
+
+            asm("nop");
             
-            rx_ptr->pulse_count++;
+            INC_NO_OVERFLOW( rx_ptr->pulse_count) ;
             
         }  //  if ( ir_LED_triggered_bits & bitmask ) 
 
@@ -312,9 +313,14 @@ void ir_tick_isr_callback(){
         
         uint8_t pulses= rx_ptr->pulse_count;                // This compiles nicely to Z with offset
 
-        if (!pulses) {                                     // No pulses in this tick, at least means any pending symbol is complete
+        if (pulses==0) {                                     // No pulses in this tick, at least means any pending symbol is complete
             
-            
+            uint8_t accumulator = rx_ptr->pulse_accumulator;
+
+
+            // Here we just got a an Idle Window, so the accumulator holds the number of pulses in all the windows ticks up to now
+/*
+           
             if (ledBitwalk==_BV(0)) {    // Only debug on led #1
                 
                 if (rx_ptr->pulse_accumulator==2) {         // 0 symbol found
@@ -327,7 +333,10 @@ void ir_tick_isr_callback(){
                     DEBUGB_PULSE(50);
                 }
                 
-            }                     
+            }             
+            
+  */          
+
             
             rx_ptr->pulse_accumulator=0;
             rx_ptr->pulse_ticks=0;

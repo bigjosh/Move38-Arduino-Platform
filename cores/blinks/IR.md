@@ -21,127 +21,78 @@ AND
 When ever an LED discharges below the digital threshold voltage on the connected pin, an interrupt handler quickly recharges the LED to be ready for the next trigger.
 
 
+
+#### Timing windows
+
+
+The timing window must be short enough that spontaneous triggers from ambient light are unlikely. 
+
+The timing window must be long enough to contain the longest symbol, with an additional margin to account for the maximum difference between the sender and receiver clocks. That is, if the sender's clock is slow and the receiver's clock is fast, the maximum symbol sent by the sender must still be shorter than a single time window as measured by the receiver's clock. 
+
+Currently the timing window is specified as 600us by `IR_WINDOW_US` in `ir.c` . 
+
+
+#### Flashes
+
+All communication is a result of the receiver detecting flashes sent by the sender. All information in encoded in the timing between consecutive flashes. Flashes are digital - you either get them or not.
+
+Longer flashes are easier to detect, but if too long a single flash can be misinterpreted as multiple shorter flashes if the flash takes longer than it takes for the receiver to detect it and then recharge to be ready for the next one.      
+
+The minimum detectable flash length depends on the alignment of the receiving and sending LEDs and the battery voltage levels.  
+
+The minimum time between consecutive flashes depends on the time it takes for the receiver to detect a flash and recharge the LED to be ready for the next one. This in turn mostly depends on the receive interrupt latency. 
+  
+The length of a flash is currently defined as 10us by `IR_PULSE_TIME_US` in `ir.c`.
+
+The time between consecutive flashes is currently defined as 100us by `IR_SPACE_TIME_US` in `ir.c`.
+
+Note that the current space time is conservative and can likely be shortened once maximum interrupt latency for the whole system is measured.  
+
 #### Idle windows
 
-We use a ~1.2ms idle window to space events int the protocol. This is long enough to contain a full symbol, but short enough that we are unlikely to see a trigger within a single idle window following a charge.  
+A timing window with no flashes transmitted is an idle window. 
+
+
+#### Sync 
+
+A single flash followed by an idle window is a sync. Since a sync is out of band from regular symbols, it allows synchronization between sender and receiver. 
+
+Sync's also insure that symbols are protected from spontaneous ambient light triggers (see preambled below).
+
+
+#### Preamble
+
+A preamble is two consecutive syncs. All transmitted frames begin with a preamble, although the first sync may not be received (see below).   
 
 
 #### Symbols
 
-Our two symbols are a 0-bit and a 1-bit.
+A symbol is the smallest piece of data that can be sent. 
 
-We represent a 0-bit as two flashes about 100us apart, followed by one idle window. 
+Each symbol is represented by 2 or more consecutive flashes followed by an idle window.
 
-We represent a 1-bit as three flashes about 100us apart, followed by one idle window. 
-
-Keep in mind that the LED capacitance is always discharging due to ambient light, so a single discharge can either be due to a flash, or just due to ambient light. The multiple flashes in our symbols are close enough together that the resulting triggers on the receiving LED could not be the result of normal ambient light.
-
-
-#### Preamble 
-
-A preamble consists of...
-
-1. An idle window
-2. A single flash
-3. An idle window
-4. A single flash
-5. An idle window
-
-  
-#### Purpose of the preamble
-
-If we only sent symbols, occasionally we might send a symbol just after the receiving LEDs happened to have triggered due to ambient light. In this case, we might mistakenly see the 2 flashes of a 0-bit symbol as 3 flashes of a 1-bit symbol (or read the 4 flashes of a 1-bit as noise). 
-
-The preamble avoid this by making sure that every symbol is always preceded by a flash and one idle window. This ensures that the receiving LED is charged when the symbol is sent, and so the receiving LED will only trigger due to a flash and not ambient light. 
-
-We always send 2 single flashes to because if we only sent one, then it is possible that the single flash could have been immediately preceded by a spontaneous ambient light trigger, and we would see the combination of the ambient trigger and the flash as a 0-bit symbol. 
+All symbols must fit within a single time window of the receiver, so the number of symbols is limited by the (1) the length of each flash, (2) the time between consecutive flashes, (3) the length of a timing window. 
 
 #### Frames
 
-All data is transmitted inside of frames. 
+All data is transmitted inside of frames.
 
-Each frame starts with a preamble and is followed by 9 symbols representing 8 data bits followed by a parity bit. 
+Each transmitted frame starts with a preamble followed by one or more symbols. 
 
-#### Interpretation of single flashes
+#### Sync function 
 
-We interpret each received single flash as a start-of-frame marker.
+A single flash (sync symbol) can not occur inside a frame, so it serves to mark the beginning of a frame. Anytime a sync is received, any frame in progress is aborted. 
 
-The means that we might begin receiving a frame after a spontaneous ambient light trigger. We depend on error detection to reject this case before it is interpreted as a valid frame.
+#### Preamble transmission 
 
-We will also often begin receiving a frame after the first flash in the preamble. This case is benign since the 2nd preamble flash will restart the frame. 
+If a spontaneous discharge on the receiver happens immediately before a sync flash, the receiver could mistakenly see that as as two flashes.
+
+To prevent this, the transmitter always starts a frame with a preamble consisting of two consecutive sync symbols. The first sync flash causes the LED to recharge ensuring that there is no spontaneous trigger before the second sync flash. 
+
+Receivers should be able to deal with multiple consecutive syncs. In fact, receivers should be able to abort any decode in progress and resync anytime they see a sync. 
 
 #### Error detection
 
-We primarily depend on the fact that the trigger patterns of the two valid symbols are very unlikely to appear due to noise. Ambient light creates single triggers separated by more than an idle window. Noise (like direct sunlight) creates many rapid triggers between idle windows (if idle windows appear at all). 
+We primarily depend on the fact that the trigger patterns of the valid symbols are very unlikely to appear due to noise. Ambient light creates single triggers separated by more than an idle window. Noise (like direct sunlight) can create many rapid triggers that continue longer than a a time window.
 
-We also have secondary tests for correct frame length and parity bit for further reduce the chance of receiving corrupt data. These help protect mostly from a series of missed flashes resulting in a missed symbol, or a single missed flash making a 1-bit symbol look like a 0-bit symbol.             
-
-
-
- 
-
-
-  
-
-   
-
-    
-
-These functions provide low level access to the hardware. The `Blinks` API is built on top of these functions and provides a higher level view more that is more appropriate for most game developers.
-
-Reasons to use this HAL:
-
-1. You want to do something not supported in the higher level API. In this case, you can include the `.h` file for the subsystem you need direct access to directly in your sketch, but you have to be careful not to step on the toes of the other API calls. 
-2. You want to make your own higher programming model. Wish you could program your Blinks using an SmallTalk actor based model? Or an ELM functional state transformation model? You can build is from scratch starting with these functions!    
-
-
-#### Conventions
-  
-
-Each subsystem has a `.h` file and a `.cpp` file. 
-
-Most subsystems offer these base functions...
-
-`subsystem_init()` - On time hardware initialization run at power up.
-`subsystem_enable()` - Start operation. Called after either `_init` or `_disable`
-`subsystem_disable()` - Stop the subsystem to save power. Called after `_enable`   
-
-
-#### Disabling interrupts
-
-Both the IR communications and the display RGB LED systems are very timing sensitive, so it is important that interrupts never be turned off for too long.   
-
-The maximum allowed interrupt latency is dependent on clock speed and other factors that are still changing, so I can't give you a hard answer now- but in general try to only turn off interrupts for a few instructions. If you need atomicity longer than that, you a higher level semaphore or something like that. 
-
-#### Asynchronous Callbacks
-
-To support asynchronous callbacks without impacting interrupt latency, the HAL implements a pseudo interrupt system where the hardware interrupts are intercepted by the HAL and then re-dispatched to the callback functions.
-
-Interrupts are enabled while callback functions are running, but only one instance of a callback can be active at a time. If another asynchronous event occurs while a callback is already running, the new callback is held until the running callback completes. Multiple events that would trigger the same callback are batched into a single call.
-
-This means that...
-
-2. Even though interrupts are enabled,  you callback will never be interrupted by another copy if itself
-2. If another trigger events happens while your callback is running, it will get called again right after the running copy returns
-3. If multiple trigger events happen while your callback is running, you may only get called once more when your currently running callback returns.
-4. If a triggering event occurs, your callback will always get called, even if the trigger disappears before the callback is invoked. 
-4. You should always write callbacks so they can deal with being called even if the triggering event is no longer present.    
-5. Any variables that are accessed only within your callback do not need to be `volatile` since there will only ever be one copy of the callback running.
-6. Any variables that are access by the foreground should be declared as `volatile` from the foreground process's point of view since these could be updated asynchronously by the callback. 
-7. Any variables that are shared between different callbacks should be declared as `volatile` from the reading callback's point of view since that callback could be interrupted by another callback.  
-
-#### The DEBUG subsystem
-
-It can be hard to debug code on a little board with no screen or keyboard. The `DEBUG` subsystem gives you at least a couple of bits of IO to interact with your program during debugging. 
-
-To use the `DEBUG` subsystem you must `#define DEBUG` a the top of your source file(s). 
-
-The debug system uses pins #6 and #19 for communications. Hopefully these will be broken out on future PCB versions.  
- 
- 
-#### Other files
-
-`Arduino.h` is automatically included in all Arduino sketches and defines some of the the Arduino API functions that make sense on Blinks. 
-  
-`WMath.cpp` is taken from the Arduino core. It provides wrappers for some `random()` functions from `stdlib` and the `map()` function.
- 
+Higher protocols can ensure integrity with data level error checking like checksums and partities.    
