@@ -8,12 +8,13 @@
 #ifndef BLINK_H_
 #define BLINK_H_
 
-#include <Arduino.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 // Duplicated from Arduino.h
 
-typedef bool boolean;
 typedef uint8_t byte;
+
 
 /* 
 
