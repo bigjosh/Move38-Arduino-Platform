@@ -34,6 +34,17 @@ void inline INC_NO_OVERFLOW( uint8_t &x ) {
     if (!(++x)) x--;            // Prevent overflow by decrementing if we do overflow. 
 }    
 
+/* 
+  Compiles to:
+  
+ 280:	24 81       	ldd	r18, Z+4	; 0x04
+ 282:	2f 5f       	subi	r18, 0xFF	; 255
+ 284:	09 f0       	breq	.+2      	; 0x288 <__vector_4+0x50>
+ 286:	24 83       	std	Z+4, r18	; 0x04  
+
+*/
+
+// TODO: Is there some binary way to do this withouth the branch?
 
 // TODO: Where does this belong?
 void run(void);

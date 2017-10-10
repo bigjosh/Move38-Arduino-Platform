@@ -179,6 +179,9 @@
         <avrgcccpp.assembler.debugging.DebugLevel>Default (-Wa,-g)</avrgcccpp.assembler.debugging.DebugLevel>
       </AvrGccCpp>
     </ToolchainSettings>
+    <OutputFileName>libBlinksProject</OutputFileName>
+    <OutputFileExtension>.a</OutputFileExtension>
+    <OutputType>StaticLibrary</OutputType>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="..\..\cores\blinks\adc.cpp">
