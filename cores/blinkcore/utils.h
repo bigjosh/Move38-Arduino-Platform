@@ -11,6 +11,11 @@
 
 #include <util/atomic.h>
 
+// Duplicated from Arduino.h
+
+typedef bool boolean;
+typedef uint8_t byte;
+
 // Bit manipulation macros
 #define SBI(x,b) (x|= (1<<b))           // Set bit in IO reg
 #define CBI(x,b) (x&=~(1<<b))           // Clear bit in IO reg

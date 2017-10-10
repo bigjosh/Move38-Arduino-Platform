@@ -25,9 +25,8 @@
 #define Arduino_h
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <math.h>
-
-#include <avr/pgmspace.h>
 
 #ifdef __cplusplus
 extern "C"{

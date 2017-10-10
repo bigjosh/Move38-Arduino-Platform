@@ -127,6 +127,7 @@ ISR( TIMER2_OVF_vect ) {
 // TODO: Build this on top of our own mills command
 // or use a timer callback
 
+
 void delay_ms( unsigned long millis) { 
     
     while (millis >= 1000 ) {
@@ -150,6 +151,6 @@ void delay_ms( unsigned long millis) {
         millis -= 1;
 }
     
-    
+  
 }    
 

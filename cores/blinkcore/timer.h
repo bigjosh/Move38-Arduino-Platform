@@ -12,6 +12,7 @@
 // `when` is the time in millis when you want to get called. 
 // Calling start on an already running timer resets its `when` time.
 
+#include "hardware.h"		// We need for F_CPU
 
 class Timer_Callback {
     
