@@ -17,7 +17,7 @@
 
 #include <Arduino.h>
 
-#include "blink.h"
+#include "blinklib.h"
 
 #include "pixel.h"
 #include "timer.h"

@@ -254,7 +254,7 @@ ISR(IR_ISR)
 
     // only debug on IR0    
     if ( ir_LED_triggered_bits & _BV(0) ) {        // IR1
-        //DEBUGB_PULSE(1);
+        DEBUGB_PULSE(1);
     }
             
     // If a pulse comes in after we sample but before we finish charging and enabling pin change, then we will miss it
@@ -319,6 +319,14 @@ static void inline decode_symbol(  ir_rx_state_t *ptr   , uint8_t pulses ) {
         // It is a data symbol
                
         uint8_t bit = (pulses==3);     // Decode the data symbol
+		
+		
+		if (bit) {
+			DEBUGA_PULSE(10);
+			
+		} else {
+			DEBUGB_PULSE(10);	
+		}
                
         if (ptr->nextbit == 8) {     // Do we already have a full byte?
             
