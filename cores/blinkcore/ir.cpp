@@ -165,11 +165,9 @@ void ir_tx_pulse( uint8_t bitmask ) {
      
 }
 
-// For testing. 
-
 // from http://www.microchip.com/forums/m587239.aspx
 
-uint8_t oddParity(uint8_t p) {
+static uint8_t oddParity(uint8_t p) {
       p = p ^ (p >> 4 | p << 4);
       p = p ^ (p >> 2);
       p = p ^ (p >> 1);
@@ -329,9 +327,11 @@ static void inline decode_symbol(  ir_rx_state_t *ptr   , uint8_t pulses ) {
                
         // It is a data symbol
 
+        //DEBUGB_BITS(ptr->nextbit);
+
         uint8_t bit = (pulses==3);    // 2=0-bit, 3=1-bit
         			               
-        if (ptr->nextbit == 8) {     // Do we already have a full byte?
+        if (ptr->nextbit == 9 ) {     // Do we already have a full byte?
 
             // If so, then this is party
                    
@@ -346,6 +346,8 @@ static void inline decode_symbol(  ir_rx_state_t *ptr   , uint8_t pulses ) {
                 }
                        
                 ptr->lastValue = ptr->buffer;
+                
+                DEBUGB_BITS(ptr->buffer);                
                        
             } else {
                        
@@ -365,7 +367,7 @@ static void inline decode_symbol(  ir_rx_state_t *ptr   , uint8_t pulses ) {
                 ptr->buffer |=bit;
                 ptr->nextbit++;
 
-                DEBUGB_BITS(ptr->buffer);
+                //DEBUGB_BITS(ptr->buffer);
                    
         }
         

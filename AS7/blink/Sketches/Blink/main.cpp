@@ -18,6 +18,28 @@ void setup() {
 
 #define IDLE_TIME_US 1100
 
+static uint8_t oddParityx(uint8_t p) {
+    p = p ^ (p >> 4 | p << 4);
+    p = p ^ (p >> 2);
+    p = p ^ (p >> 1);
+    return p & 1;
+}
+
+void txbit( bool bit ) {
+    
+	ir_tx_pulse( 0b00111111 );
+	_delay_us(200);
+	ir_tx_pulse( 0b00111111 );
+
+	if (bit) {
+    	_delay_us(200);
+    	ir_tx_pulse( 0b00111111 );
+	}
+			
+	_delay_us(IDLE_TIME_US);
+    
+}                
+
 void loop() {
 	
 	
@@ -35,18 +57,12 @@ void loop() {
 	  
 		while (bit--) {
 
-			ir_tx_pulse( 0b00111111 );
-			_delay_us(200);
-			ir_tx_pulse( 0b00111111 );
-
-			if (TBI( x , bit )) {
-				_delay_us(200);
-				ir_tx_pulse( 0b00111111 );
-			}
-		  
-			_delay_us(IDLE_TIME_US);
+                txbit( TBI( x , bit ) );
 	  
 		}
+        
+        txbit( oddParityx( x) );
+        
 		sei();
 		
 	  

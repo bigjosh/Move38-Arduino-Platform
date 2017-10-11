@@ -15,6 +15,11 @@
 #include <avr/interrupt.h>
 #include "utils.h"
 
+
+// TODO: Get rid of this when we donm'ty need it everywhere anymore
+#define DEBUG_MODE
+
+
 /*** PIXELS ***/
 
 // Note that we depend on PIXEL_COUNT from blinks.h
