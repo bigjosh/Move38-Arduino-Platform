@@ -6,7 +6,7 @@
  * I can't think of a more elegant way to do this without the overhead of a functrion pointer, can you?
  * This only needs to be included in timer.cpp and ir.cpp.
  *
- *
+ * THis makes me think that IR decode should be handled at the next higher layer. 
  */ 
 
 #ifndef IR_CALLBACK_H_

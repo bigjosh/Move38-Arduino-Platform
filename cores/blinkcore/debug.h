@@ -21,12 +21,13 @@
 
 // DebugA on pin #19 PE2
 // DebugB on pin  #6 PE1
+// DebugC on pin  #3 PE0
 
 #define DEBUG_MODE
 
 #ifdef DEBUG_MODE
 
-#define DEBUG_INIT()            SBI( DDRE  , 2); SBI(DDRE,1)         
+#define DEBUG_INIT()            SBI( DDRE  , 2); SBI(DDRE,1); SBI( DDRE , 0 )
 
 #define DEBUGA_1()               SBI( PORTE , 2)
 #define DEBUGA_0()               CBI( PORTE , 2)
@@ -35,6 +36,11 @@
 #define DEBUGB_1()               SBI( PORTE , 1)
 #define DEBUGB_0()               CBI( PORTE , 1)
 #define DEBUGB_PULSE(width_us)   DEBUGB_1();_delay_us(width_us-2);DEBUGB_0()   // Generate a pulse. width must be >= 2us.
+
+#define DEBUGC_1()               SBI( PORTE , 0)
+#define DEBUGC_0()               CBI( PORTE , 0)
+#define DEBUGC_PULSE(width_us)   DEBUGC_1();_delay_us(width_us-2);DEBUGC_0()   // Generate a pulse. width must be >= 2us.
+
 
 #define DEBUG_ERROR(error)       debug_error(error)                 // output an error code
 
@@ -49,6 +55,22 @@
 #define DEBUGB_1()
 #define DEBUGB_0()
 #define DEBUGB_PULSE(width_us)
+
+void inline DEBUGB_BITS( uint8_t b ) {
+
+    DEBUGB_PULSE(1);
+
+    for( int i=0; i<8; i++ ) {
+
+        if (TBI( b , i ) ){
+            DEBUGB_1();
+        }
+        _delay_us(20);
+        DEBUGB_0();
+
+    }
+
+}
 
 #endif
 

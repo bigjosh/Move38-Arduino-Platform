@@ -41,6 +41,8 @@
     #error This code assumes 4Mhz clock
 #endif
 
+// TODO: Run the timer top so one overflow is exactly 500ms to make millis calcs easier. 
+
 // We will run in normal mode where we always count up to 255 and then overflow
 // We will use the overflow interrupt to drive most of our tasks
 

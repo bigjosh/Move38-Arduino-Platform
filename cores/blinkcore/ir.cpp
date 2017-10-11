@@ -254,7 +254,7 @@ ISR(IR_ISR)
 
     // only debug on IR0    
     if ( ir_LED_triggered_bits & _BV(0) ) {        // IR1
-        DEBUGB_PULSE(1);
+        //DEBUGC_PULSE(1);
     }
             
     // If a pulse comes in after we sample but before we finish charging and enabling pin change, then we will miss it
@@ -298,38 +298,41 @@ ISR(IR_ISR)
             
 }
 
-// Abort any frame that might bein progress. We call this when we see anything invalid. 
+// Abort any frame that might be in progress. We call this when we see anything invalid. 
 
-static void inline aboretFrame(  ir_rx_state_t *ptr   ) {
+static void inline abortFrame(  ir_rx_state_t *ptr   ) {
     ptr->nextbit=0;                         // 0 here means no frame in progress. It gets set to 1 when we get a sync 
+
+    
+    if (ptr==ir_rx_states) DEBUGA_PULSE(20);
 }    
+
+// Start decoding the 8 data + 1 partiy bits  of a frame
+
+static void inline startFrame(  ir_rx_state_t *ptr   ) {
+	ptr->nextbit=1;                         // 0 here means no frame in progress. It gets set to 1 when we get a sync
+}
+
 
 // We just received a symbol on this LED as marked by a trailing idle window
 
 static void inline decode_symbol(  ir_rx_state_t *ptr   , uint8_t pulses ) {
 
+
     // here accumulator can only be 1,2, or 3 (higher values are rejected below when the pulse are being accumulated)
            
     if (pulses==1) {       // Sync symbol, start reading data symbols into the buffer...
                
-        ptr->nextbit=1;
+        startFrame(ptr);		// Ready to start receiving data bits		
                
     } else {        // if (accumulator ==2 || accumulator==3 )  - Got idle window, there was a valid data symbol
                
         // It is a data symbol
-               
-        uint8_t bit = (pulses==3);     // Decode the data symbol
-		
-		
-		if (bit) {
-			DEBUGA_PULSE(10);
-			
-		} else {
-			DEBUGB_PULSE(10);	
-		}
-               
+
+        uint8_t bit = (pulses==3);    // 2=0-bit, 3=1-bit
+        			               
         if (ptr->nextbit == 8) {     // Do we already have a full byte?
-            
+
             // If so, then this is party
                    
             if ( oddParity( ptr-> buffer) == bit ) {     // Check parity
@@ -344,24 +347,28 @@ static void inline decode_symbol(  ir_rx_state_t *ptr   , uint8_t pulses ) {
                        
                 ptr->lastValue = ptr->buffer;
                        
-                } else {
+            } else {
                        
-                // Flag parity error
-                SBI( ptr->stateBits , STATEBITS_PARITY );
+				// Flag parity error
+				SBI( ptr->stateBits , STATEBITS_PARITY );
                        
-            }
+			}
                    
-            // Start over looking for a new frame
-            
-            aboretFrame(ptr);
+			// Frame finished, start over looking for a new frame            
+	        abortFrame(ptr);
                    
-            } else {        // bitcount < 8
+            // Note that buffer naturally shifts out old value, so we do not need to reset it. 
+
+        } else {        // bitcount < 8
                    
-                ptr->buffer <<=1;
+                ptr->buffer <<=1;           
                 ptr->buffer |=bit;
                 ptr->nextbit++;
+
+                DEBUGB_BITS(ptr->buffer);
                    
         }
+        
                
     }
           
@@ -374,15 +381,38 @@ static void inline decode_symbol(  ir_rx_state_t *ptr   , uint8_t pulses ) {
 static void inline led_tick(  ir_rx_state_t *ptr  ) {
     
     // Get the number of pulses that happened in the last tick
+	
         
-    uint8_t pulses= ptr->pulse_count;                // This compiles nicely to Z with offset
+    uint8_t pulses= ptr->pulse_count;                // This compiles nicely to Z with offset		
+
+
+		do {
+			#warning debug code
+
+			//** DEBUG
+
+			if (ptr==ir_rx_states) {
+		        uint8_t a= pulses;                // This compiles nicely to Z with offset
+	 	 	 
+		        while (a--) {
+			        _delay_us(20);
+			        DEBUGC_PULSE(20); 
+		        }
+		    }
+
+		} while (false); 
+
+
+
 
     if (pulses==0) {
-        
+
+	
         // No pulses in the last tick, so check to see if there is a symbol receipt in progress...
 
         uint8_t accumulator = ptr->pulse_accumulator;
-    
+
+       			    
         if (accumulator>0) {
             
             // We got a valid symbol. Process it. 
@@ -396,130 +426,79 @@ static void inline led_tick(  ir_rx_state_t *ptr  ) {
         } else {        // accumulator == 0
         
             // current tick idle, previous tick was also idle
+			// Remember that a tick is only 1/2 of a window
+			
+			ptr->tickCount++;
                
-            if (++ptr->tickCount > 2) {               // maximum number of consecutive idle windows in a frame is 2
+            if ( ptr->tickCount > 2) {               // maximum number of consecutive idle windows in a frame is 1 - which is 3 ticks
                 
                 // There have been more than 2 consecutive idle windows. This is an error, so abort any frame that it is progress
             
-                ptr->nextbit=0;          // invalidate any frame in progress. It might already be 0, which is ok. 
+                abortFrame(ptr);          // invalidate any frame in progress. It might already be 0, which is ok. 
                 ptr->tickCount=0;        // Reset back down. At least keeps us from overflowing. 
                 
             }                
         }
 
     } else {    // pulses > 0 - so we got pulses in the last tick
-        
-        // If there have been more than 2 consecutive ticks with pulses, then this is an error
-        
-        if (++ptr->tickCount > 2) {               // maximum number of consecutive idle windows in a frame is 2
-                
-            // There have been more than 2 consecutive ticks with pulses. This is an error, so abort any frame that it is progress
-                
-            ptr->nextbit=0;          // invalidate any frame in progress. It might already be 0, which is ok.
-            ptr->tickCount=0;        // Reset back down. At least keeps us from overflowing.
-                
+
+        // ERROR CHECK: More than 3 pulses in a window is too many, and is an error
+
+        if (ptr->pulse_count>3) {
+            abortFrame(ptr);
+            /*   TODO: Set a noise bit? */
         } else {
+
+            // TODO: This code could be more direct?
+
+            if (ptr->pulse_accumulator==0) {       // the previous tick was idle
+
+                ptr->tickCount=0;                   // Reset counter
+
+            } 
+                    
+            // If there have been more than 2 consecutive ticks with pulses (including this one), then this is an error
+		
+		    ptr->tickCount++;
+        
+            // TODO: This should be 2
+            if (ptr->tickCount > 3) {               // maximum number of windows with consecutive pulses in a frame is 1, which is 2 ticks (remember that a <tick is 1/2 a window)
+                
+                // There have been more than 2 consecutive ticks with pulses. This is an error, so abort any frame that it is progress
+                
+                abortFrame(ptr);         // invalidate any frame in progress. It might already be 0, which is ok.
+                ptr->tickCount=0;        // Reset back down. At least keeps us from overflowing.
+                
+            } else {
             
-            ptr->pulse_accumulator += pulses;
-            
-        }      
+                ptr->pulse_accumulator += pulses;
+
+                // TODO: ERROR CHECK accumulator cant be more than 3 or abort
+                /*
+                if (ptr->pulse_accumulator>3) {
+                    abortFrame(ptr);
+                    //   TODO: Set a noise bit? 
+                } 
+                */     
+            }      
+        }
         
         ptr->pulse_count= 0;        
                     
     }            
+	
+
            
 }    
-        
-/*        
-    else {        // pulses==0, so this might be the sience after a symbol..
-            
-        if (rx_ptr->pulse_ticks) {          // Any pulses received that could be symbols? (ignores if no pulses happened since last time)
-                
-            uint8_t accumulator = rx_ptr->pulse_accumulator;
-                
-            if ( accumulator!= 2 && accumulator != 3) {      // Only valid symbols now are 2 or 3 pulses
-                    
-                // Not a valid number of pulses, but be noise
-                    
-                rx_ptr->bitcount=0;     // Start over again (we need now to see a full good byte before we sync again)
-                SBI( rx_ptr->stateBits , STATEBITS_NOISE );
-                    
-                    
-            }  else {
-                    
-                // Ok, got a valid symbol - decode it!
-                    
-                uint8_t bit = ( accumulator == 3 );         // 2=0, 3=1
-                    
-                uint8_t bitcount=rx_ptr->bitcount;
-                    
-                if (bitcount==0) {          // Nothing in the buffer yet
-                        
-                    if (bit) {          // Did we get a start bit?
-                            
-                        // Start receiving next 8 bits of data + parity bit!
-                        bitcount=1;
-                        rx_ptr->buffer=0;
-                            
-                    }                            
-                        
-                    // Note that if we got a 0 here, then we are idle so just wait for the start bit
-                    // This makes it possible to sync by sending 9 0's.                         
-                        
-                } else if (bitcount==8) {          
-                    // We have received a full byte, so this bit is the parity. Check it!
-                        
-                    if ( bit == oddParity( rx_ptr->buffer ) ) { 
-                            
-                        // Parity checks! We got a good full byte!
-                            
-                        if ( TBI(  rx_ptr->stateBits , STATEBITS_READY ) ) {  // Already a byte ready but not yet read?
-                                
-                            SBI( rx_ptr->stateBits , STATEBITS_OVERFLOW );    
-                                
-                        } 
-                            
-                        rx_ptr->lastValue = rx_ptr->buffer;
-                            
-                    } else {
-                            
-                        // Flag parity error
-                        SBI( rx_ptr->stateBits , STATEBITS_PARITY );                     
-                            
-                    }
-                        
-                    // Start over looking for a new byte
-                    bitcount=0;                            
-                        
-                } else {        // bitcount < 8
-                        
-                    rx_ptr->buffer <<=1;
-                    rx_ptr->buffer |=bit;
-                    rx_ptr->bitcount++;
-                        
-                }                                               
-                    
-            }                    
-                
-            // Start looking for a good symbol
-            rx_ptr->pulse_accumulator=0;
-            rx_ptr->pulse_ticks=0;
-                
-        }                
-                
-    }
-*/
-
-         
- 
 
 // Called form timer.cpp every tick.
 // Here we process the counts from the previous tick. 
 
-
 void ir_tick_isr_callback(){
 
-    //DEBUGA_PULSE(1);
+
+	#warning debug
+    DEBUGC_PULSE(1);
     
     uint8_t ledBitwalk = _BV( IRLED_COUNT-1 );           // We will walk down though the 6 leds
     
@@ -533,154 +512,9 @@ void ir_tick_isr_callback(){
         ledBitwalk >>=1;
             
     }  while (ledBitwalk);
-    
-    //DEBUGA_0();
+    	
                                    
 }    
-
-/*
-
-// Superseded by idiomatic Arduino functions
-
-uint8_t irled_rx_overflowBits(void) {
-	
-	return irled_rx_overflow;
-	
-}
-
-*/
-
-
-/*
-
-// Superseded by idiomatic Arduino functions
-
-// Returns last received data for requested face 
-// bit 2 is 1 if data found, 0 if not
-// if bit 2 set, then bit 1 & 0 are the data
-
-uint8_t ir_read( uint8_t led) {
-
-    uint8_t data = irled_RX_value[ led ];
-
-    // Look for the starting pattern of 01 at the beginning of the data
-
-    if ( ( data  & 0b00001100 ) == 0b00000100 ) {
-
-        cli();                          // Must be atomic
-        irled_RX_value[ led ] = 0;      // Clear out for next byte
-        irled_rx_overflow &= ~_BV(led); // Clear out overflow flag
-        sei(); 
-                
-        return( data );
-        
-    } else {
-        
-        return(0);
-    }        
-    
-}    
-
-*/
-
-// Returns true if data is available to be read on the requested face
-// Always returns immediately
-// Cleared by subseqent irReadDibit()
-// `led` must be less than FACE_COUNT
-/*
-uint8_t irIsAvailable( uint8_t face ) {
-    
-    uint8_t data = irled_RX_value[ face ];
-
-    // Look for the starting pattern of 01 at the beginning of the data
-
-    if ( ( data  & 0b00001100 ) == 0b00000100 ) {
-        
-        return( 1 );
-        
-    } else {
-        
-        return (0 );
-        
-    }                
-                  
-}    
-
-// Returns last received dibit (value 0-3) for requested face
-// Blocks if no data ready
-// `led` must be less than FACE_COUNT
-
-uint8_t irReadDibit( uint8_t face) {
-        
-    uint8_t data = irled_RX_value[ face ];
-
-    // Block until we see the starting pattern of 01 at the beginning of the data
-
-    while ( ( data  & 0b00001100 ) != 0b00000100 );
-
-    cli();                          // Must be atomic
-    irled_RX_value[ face ] = 0;      // Clear out for next byte
-    irled_rx_overflow &= ~_BV(face); // Clear out overflow flag
-    sei();
-        
-    return( data  & 0b00000011 );
-           
-}    
-
-
-// Returns true if data was lost because new data arrived before old data was read
-// Next read will return the older data (new data does not over write old)
-// Always returns immediately
-// Cleared by subseqent irReadDibit()
-// `led` must be less than FACE_COUNT
-
-uint8_t irOverFlowFlag( uint8_t face ) {
-    
-    return ( _BV( face ) & irled_rx_overflow );    
-}    
-
-
-// Blocks if there is already a transmission in progress on this face
-// Returns immediately if no transmit already in progress
-// `led` must be less than FACE_COUNT
-
-void irFlush( uint8_t face ) {
-
-    // while ( ir_tx_data[face]);          // Wait until any currently in progress transmission is complete
-    
-}    
-
-// Transmits the lower 2 bits (dibit) of data on requested face
-// Blocks if there is already a transmission in progress on this face
-// Returns immediately and continues transmission in background if no transmit already in progress
-// `led` must be less than FACE_COUNT
-
-void irSendDibit( uint8_t face , uint8_t data ) {
-    
-}    
-
-*/
-// IR comms uses the 16 bit timer1 
-// We only want 8 bits so will set the TOP at 256.
-// 
-// We run this timer at /8 prescaller so at 4Mhz will hit (our simulated) TOP of 256 every ~0.5ms
-// TODO: Coordinate with PIXEL timers so they do not step on each other. 
-
-
-// Transmits the lower 2 bits (dibit) of data on all faces
-// Blocks if there is already a transmission in progress on any face
-// Returns immediately and continues transmission in background if no transmits are already in progress
-
-void irSendAllDibit(  uint8_t data ) {
-        
-    for( uint8_t face =0; face< FACE_COUNT; face++) {
-        
-        irSendDibit( face, data );
-        
-    }        
-    
-}    
-
 
 // We use the general interrupt control register to gate interrupts on and off rather than the mask
 

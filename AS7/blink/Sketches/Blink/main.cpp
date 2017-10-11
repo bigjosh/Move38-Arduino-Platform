@@ -1,6 +1,13 @@
 #include "Arduino.h"
+#include "hardware.h"
 
 #include "blinklib.h"
+
+#include "ir.h"
+
+#include "utils.h"
+
+#include "util/delay.h"
 
 void setup() {
 
@@ -8,17 +15,44 @@ void setup() {
 
 }
 
+
+#define IDLE_TIME_US 1100
+
 void loop() {
-
-	// a millisecond is 1/1,000th of a second, so
-	// delay(500) will wait 1/2 a second, so
-	// this code will blink the tile on and off
-	// once per second!
-
-	setColor( RED );
-	delay(500);
-
-	setColor( OFF );
-	delay(500);
 	
+	
+	for( int x=0; x<255; x++ ) {
+	  
+		cli();
+		// Sync pulses....
+		ir_tx_pulse( 0b00111111 );
+		_delay_us(IDLE_TIME_US);
+		ir_tx_pulse( 0b00111111 );
+		_delay_us(IDLE_TIME_US);
+		
+		
+		int bit=8;
+	  
+		while (bit--) {
+
+			ir_tx_pulse( 0b00111111 );
+			_delay_us(200);
+			ir_tx_pulse( 0b00111111 );
+
+			if (TBI( x , bit )) {
+				_delay_us(200);
+				ir_tx_pulse( 0b00111111 );
+			}
+		  
+			_delay_us(IDLE_TIME_US);
+	  
+		}
+		sei();
+		
+	  
+		setColor( dim(GREEN,16) );
+		delay(50);       // Show the color long enough to see
+		setColor(OFF);
+		delay(200);
+	}
 }
