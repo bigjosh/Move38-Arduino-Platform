@@ -8,6 +8,14 @@
 #ifndef BLINK_H_
 #define BLINK_H_
 
+#include <stdbool.h>
+#include <stdint.h>
+
+// Duplicated from Arduino.h
+
+typedef uint8_t byte;
+
+
 /* 
 
 	This set of functions let you test for changes in the environment. 

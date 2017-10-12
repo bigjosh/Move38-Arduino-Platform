@@ -13,17 +13,18 @@
 
 #include <avr/pgmspace.h>
 #include <limits.h>
+#include <stdint.h>
 
-#include "Arduino.h"
+#include <Arduino.h>
 
-#include "blink.h"
+#include "blinklib.h"
 
 #include "pixel.h"
 #include "timer.h"
 #include "button.h"
 #include "utils.h"
 
-#include "debug.h"
+//#include "debug.h"
 
 // Debounce button pressed this much
 // Empirically determined. At 50ms, I can click twice fast enough
@@ -407,7 +408,8 @@ unsigned long millis(void) {
 
 static uint16_t cyclesCounter=0;                    // Accumulate cycles to keep millisCounter accurate
 
-#if TIMER_CYCLES_PER_TICK > UINT16_MAX
+
+#if TIMER_CYCLES_PER_TICK >  0xffff //UINT16_MAX
     #error Overflow on cyclesCounter
 #endif
 
@@ -449,3 +451,5 @@ void run(void) {
     }        
     
 }    
+
+

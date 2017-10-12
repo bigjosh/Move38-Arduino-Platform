@@ -5,7 +5,7 @@
  * Author : josh.com
  */ 
 
-#include "Arduino.h"
+//#include "Arduino.h"
 #include "hardware.h"
 
 #include <avr/sleep.h>
@@ -94,11 +94,11 @@ static void init(void) {
 
 
 // This empty run() lets us at least compile when no higher API is present.
-
+/*
 void __attribute__((weak)) run(void) {    
     pixel_SetAllRGB( 0,  255 ,  0  );
 }
-       
+*/     
     
 int main(void)
 {

@@ -10,17 +10,33 @@
 
 #define IRLED_COUNT FACE_COUNT
 
+ 
 // Setup pins, interrupts
 
 void ir_init(void);
 
 // Enable IR normal operation (call after init or disable)
 
+// TODO: Specify specific LEDs?
+
 void ir_enable(void);
 
 // Stop IR interrupts (call after enable)
 
 void ir_disable(void);
+
+// Called anytime on of the IR LEDs triggers, which could
+// happen because it received a flash or just because
+// enough ambient light accumulated
+
+void __attribute__((weak)) ir_callback(uint8_t triggered_bits);
+
+// Send a pulse on all LEDs that have a 1 in bitmask
+// bit 0= D1, bit 1= D2...
+
+// TODO: Allow user to specify pulse width? We'd need a variable _delay_us() function.
+
+void ir_tx_pulse( uint8_t bitmask );
 
 // The RX API...
 

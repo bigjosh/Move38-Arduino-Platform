@@ -35,9 +35,13 @@
 
 #include "timer.h"
 
+#include "ir_callback.h"    // Just connects the IR periodic callback to the timer ticks
+
 #if F_CPU != 4000000
     #error This code assumes 4Mhz clock
 #endif
+
+// TODO: Run the timer top so one overflow is exactly 500ms to make millis calcs easier. 
 
 // We will run in normal mode where we always count up to 255 and then overflow
 // We will use the overflow interrupt to drive most of our tasks
@@ -106,10 +110,10 @@ struct ISR_CALLBACK_TIMER : CALLBACK_BASE< ISR_CALLBACK_TIMER> {
 
 ISR( TIMER2_OVF_vect ) {
     
-    //DEBUGA_PULSE(20);
-    DEBUGA_1();
+    //DEBUGA_1();
+    ir_tick_isr_callback();             // Call the IR callback with interrupts off
     ISR_CALLBACK_TIMER::invokeCallback();
-    DEBUGA_0();
+    //DEBUGA_0();
 }    
 
 /** Timing ***/
@@ -124,6 +128,7 @@ ISR( TIMER2_OVF_vect ) {
 
 // TODO: Build this on top of our own mills command
 // or use a timer callback
+
 
 void delay_ms( unsigned long millis) { 
     
@@ -148,6 +153,6 @@ void delay_ms( unsigned long millis) {
         millis -= 1;
 }
     
-    
+  
 }    
 

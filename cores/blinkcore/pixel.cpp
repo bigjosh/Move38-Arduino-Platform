@@ -370,7 +370,7 @@ static uint8_t phase=0;
                                     
 static void pixel_isr(void) {   
     
-    DEBUGB_PULSE(20);
+    //DEBUGB_PULSE(20);
                 
     // THIS IS COMPLICATED
     // Because of the buffering of the OCR registers, we are always setting values that will be loaded
