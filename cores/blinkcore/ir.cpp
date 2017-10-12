@@ -39,8 +39,11 @@
 // Currently chosen empirically to work with some tile cases Jon made 7/28/17
  #define IR_PULSE_TIME_US 10    // Used for sending flashes
  
+ 
+// TODO: Optimize this for actual max interrupt latency and max throughput
  // Must be long enough that receiver can detect distinct flashes even at maximum interrupt latency
- #define IR_SPACE_TIME_US 100   // Used for sending flashes
+ // But short enough that 3 flashes can not be longer than a window even with local interrupts lowing us down, and the remote having a faster clock
+ #define IR_SPACE_TIME_US 450   // Used for sending flashes
  
  // Must be long enough that a full window fits inside two timer ticks including the max clock differnece between sender and reciever. 
  #define IR_WINDOW_US 1100       // Used for sending idle windows. 
@@ -101,13 +104,21 @@ void ir_tx_pulse( uint8_t bitmask ) {
     // ANODE always driven. Typically DDR driven and PORT low when we are waiting to RX pulses.
     // CATHODE is input, so DDR not driven and PORT low. 
     
-    uint8_t cathode_ddr_save = IR_CATHODE_DDR;
+                         
+    uint8_t cathode_ddr_save = IR_CATHODE_DDR;          // We don't want to mess with the upper bits not used for IR LEDs
     
     PCMSK1 &= ~bitmask;                                 // stop Triggering interrupts on these cathode pins because they are going to change when we pulse
+        
+    // Now we don't have to worry about...
+    // (1) a received pulse on this LED interfering with our transmit and 
+    // (2) Our fiddling the LED bits causing an interrupt on this LED and fireing the receive code
     
     IR_CATHODE_DDR |= bitmask ;   // Drive Cathode too (now driving low)
     
     // Right now both cathode and anode are driven and both are low - so LED off
+    
+        
+    // if we got interrupted here, then the pulse could get long enough to look like 2 pulses. 
 
     // Anode pins are driven output and low normally, so this will
     // make them be driven high output 
@@ -125,7 +136,7 @@ void ir_tx_pulse( uint8_t bitmask ) {
     _delay_us( IR_PULSE_TIME_US );
                 
     IR_ANODE_PIN  = bitmask;    // Un-Blink! Sets anodes back to low (still output)      (Remember, a write to PIN actually toggles PORT)
-
+        
     // Right now both cathode and anode are driven and both are low - so LED off
 
     IR_CATHODE_DDR = cathode_ddr_save;   // Cathode back to input too (now driving low) 
@@ -150,8 +161,7 @@ void ir_tx_pulse( uint8_t bitmask ) {
     IR_CATHODE_PIN =  bitmask;
     
     _delay_us( IR_CHARGE_TIME_US ); 
-        
-    
+            
     PCMSK1 |= bitmask;                  // Re-enable pin change on the pins we just charged up
                                         // Note that we must do this while we know the pins are still high
                                         // or there might be a *tiny* race condition if the pin changed in the cycle right after
@@ -162,7 +172,7 @@ void ir_tx_pulse( uint8_t bitmask ) {
     // Stop charging LED cathode pins (toggle the triggered bits back o what they were)
     
     IR_CATHODE_PIN =  bitmask;                 
-     
+   
 }
 
 // from http://www.microchip.com/forums/m587239.aspx
@@ -190,25 +200,15 @@ void ir_send( uint8_t face , uint8_t data ) {
 */
 
 
-// 2 pulse=0 bit
-// 3 pulse=1 bit
-
-// 1 pulse doesn't mean anything because a pulse can happen spontaneously just from he LEDs leakage. 
-
 // TODO: More symbols to increase bandwidth
 
-// A count of how many triggers in the last timer tick
-
- #define STATEBITS_READY        1    // Value in lastValue is valid
- #define STATEBITS_PARITY       2    // There was an RX parity error
- #define STATEBITS_OVERFLOW     3    // A received byte in lastValue was overwritten with a new value
- #define STATEBITS_NOISE        4    // We saw unexpected extra pulses inside data
- 
  
  typedef struct {
      
      volatile uint8_t lastValue;      // Last successfully decoded RX value.
-     volatile uint8_t stateBits;
+     volatile uint8_t readyFlag;      // Is there a valid value in lastValue?   We break this out so that access does not need to be atomic to reset it. 
+     
+     volatile uint8_t errorBits;      // Error conditions seen 
      
      // These internal variables are only updated in ISR, so don't need to be volatile.
      uint8_t buffer;                  // Buffer for RX in progress.
@@ -217,17 +217,19 @@ void ir_send( uint8_t face , uint8_t data ) {
      uint8_t pulse_count;             // Number of pulses received in most recent tick
      uint8_t pulse_accumulator;       // Accumulate the number of pulses in the tickCount previous ticks. 
      uint8_t tickCount;               // Number of ticks since current phase started (phase is either receiving a symbol or idle) 
-     
-     uint8_t validSymbol;             // Reset when we see an idle window. Set when we see more than 3 pulses in a window, more than 3 pulses in a symbol, more than 2 ticks in a symbol. 
-          
+
+     // This struct should be 8 bytes long. See assert below. 
+              
  } ir_rx_state_t;
+
+// I am not ready to pull in C++11 just to get thisa line, but you should still heed it...
+//static_assert( sizeof( ir_rx_state_t ) == 8 , "You really want to this struct to be 8. It makes the emmited pointer calculations much smaller and faster. ");
 
  // We keep these in together in a a struct to get faster access via
  // Data Indirect with Displacement opcodes
 
  ir_rx_state_t ir_rx_states[IRLED_COUNT];
- 
- 
+  
 // This gets called anytime one of the IR LED cathodes has a level change drops. This typically happens because some light 
 // hit it and discharged the capacitance, so the pin goes from high to low. We initialize each pin at high, and we charge it
 // back to high everything it drops low, so we should in practice only ever see high to low transitions here.
@@ -237,7 +239,7 @@ void ir_send( uint8_t face , uint8_t data ) {
 ISR(IR_ISR)
 {	
 
-    //DEBUGA_1();                
+    //DEBUGB_1();                
     
     // ===Time critcal section start===
     
@@ -292,7 +294,7 @@ ISR(IR_ISR)
         
     } while (ledBitwalk);
 
-   //DEBUGA_0();   
+   //DEBUGB_0();   
             
 }
 
@@ -302,10 +304,10 @@ static void inline abortFrame(  ir_rx_state_t *ptr   ) {
     ptr->nextbit=0;                         // 0 here means no frame in progress. It gets set to 1 when we get a sync 
 
     
-    if (ptr==ir_rx_states) DEBUGA_PULSE(20);
+    //if (ptr==ir_rx_states) DEBUGA_PULSE(20);
 }    
 
-// Start decoding the 8 data + 1 partiy bits  of a frame
+// Start decoding the 8 data + 1 parity bits  of a frame
 
 static void inline startFrame(  ir_rx_state_t *ptr   ) {
 	ptr->nextbit=1;                         // 0 here means no frame in progress. It gets set to 1 when we get a sync
@@ -334,25 +336,28 @@ static void inline decode_symbol(  ir_rx_state_t *ptr   , uint8_t pulses ) {
         if (ptr->nextbit == 9 ) {     // Do we already have a full byte?
 
             // If so, then this is party
+            
+            // TODO: Compute running party as we read bits?
                    
             if ( oddParity( ptr-> buffer) == bit ) {     // Check parity
                        
                 // Parity checks! We got a good full byte!
                        
-                if ( TBI(  ptr->stateBits , STATEBITS_READY ) ) {  // Already a byte ready but not yet read?
+                if ( ptr->readyFlag ) {  // Already a byte ready but not yet read?
                            
-                    SBI( ptr->stateBits , STATEBITS_OVERFLOW );    // Signal the overflow (we overwrite existing on overflow)
+                    SBI( ptr->errorBits , ERRORBIT_OVERFLOW );    // Signal the overflow (we overwrite existing on overflow)
                            
                 }
                        
                 ptr->lastValue = ptr->buffer;
+                ptr->readyFlag = 1;
                 
-                DEBUGB_BITS(ptr->buffer);                
+                //DEBUGB_BITS(ptr->buffer);                
                        
             } else {
                        
 				// Flag parity error
-				SBI( ptr->stateBits , STATEBITS_PARITY );
+				SBI( ptr->errorBits , ERRORBIT_PARITY );
                        
 			}
                    
@@ -383,29 +388,28 @@ static void inline decode_symbol(  ir_rx_state_t *ptr   , uint8_t pulses ) {
 static void inline led_tick(  ir_rx_state_t *ptr  ) {
     
     // Get the number of pulses that happened in the last tick
-	
-        
+    	        
     uint8_t pulses= ptr->pulse_count;                // This compiles nicely to Z with offset		
 
-
+/*
 		do {
 			#warning debug code
 
-			//** DEBUG
+			// DEBUG
 
 			if (ptr==ir_rx_states) {
 		        uint8_t a= pulses;                // This compiles nicely to Z with offset
 	 	 	 
 		        while (a--) {
-			        _delay_us(20);
-			        DEBUGC_PULSE(20); 
+                    DEBUGC_0();
+			        _delay_us(5);
+                    DEBUGC_1();
+			        _delay_us(5);
 		        }
 		    }
 
 		} while (false); 
-
-
-
+*/
 
     if (pulses==0) {
 
@@ -413,7 +417,6 @@ static void inline led_tick(  ir_rx_state_t *ptr  ) {
         // No pulses in the last tick, so check to see if there is a symbol receipt in progress...
 
         uint8_t accumulator = ptr->pulse_accumulator;
-
        			    
         if (accumulator>0) {
             
@@ -432,13 +435,18 @@ static void inline led_tick(  ir_rx_state_t *ptr  ) {
 			
 			ptr->tickCount++;
                
-            if ( ptr->tickCount > 2) {               // maximum number of consecutive idle windows in a frame is 1 - which is 3 ticks
+            // TODO: Reduce this to 2 when we confirm max interrupt latency can't make us blow out into a next window.  Will improve error detection  when signal is very weak. Does it make a practical difference? Probably not becuase other filters will catch it. 
+               
+            if ( ptr->tickCount > 3) {               // maximum number of consecutive idle windows in a frame is 1 - which is 3 ticks. We give an extra here until we know max interrupt latency. 
                 
                 // There have been more than 2 consecutive idle windows. This is an error, so abort any frame that it is progress
             
                 abortFrame(ptr);          // invalidate any frame in progress. It might already be 0, which is ok. 
-                ptr->tickCount=0;        // Reset back down. At least keeps us from overflowing. 
                 
+                SBI( ptr->errorBits , ERRORBIT_NOISE );
+                
+                ptr->tickCount=0;        // Reset back down. At least keeps us from overflowing.
+                                
             }                
         }
 
@@ -448,7 +456,7 @@ static void inline led_tick(  ir_rx_state_t *ptr  ) {
 
         if (ptr->pulse_count>3) {
             abortFrame(ptr);
-            /*   TODO: Set a noise bit? */
+            SBI( ptr->errorBits , ERRORBIT_NOISE );
         } else {
 
             // TODO: This code could be more direct?
@@ -462,26 +470,32 @@ static void inline led_tick(  ir_rx_state_t *ptr  ) {
             // If there have been more than 2 consecutive ticks with pulses (including this one), then this is an error
 		
 		    ptr->tickCount++;
-        
-            // TODO: This should be 2
-            if (ptr->tickCount > 3) {               // maximum number of windows with consecutive pulses in a frame is 1, which is 2 ticks (remember that a <tick is 1/2 a window)
+                 
+            // Max number of frames a symbol can take is ( IR_PULSE_TIME_US + IR_SPACE_TIME_US ) * 3. 
+         
+            // TODO: reduce this when we know max interrupt latency. WIll improve noise rejection. 
+            
+            if (ptr->tickCount > 5) {               // maximum number of windows with consecutive pulses. way too high now until we nail down max interrupt latency. 
                 
                 // There have been more than 2 consecutive ticks with pulses. This is an error, so abort any frame that it is progress
                 
                 abortFrame(ptr);         // invalidate any frame in progress. It might already be 0, which is ok.
+                SBI( ptr->errorBits , ERRORBIT_DROPOUT );
+                                
                 ptr->tickCount=0;        // Reset back down. At least keeps us from overflowing.
                 
             } else {
             
                 ptr->pulse_accumulator += pulses;
 
-                // TODO: ERROR CHECK accumulator cant be more than 3 or abort
-                /*
+                // Our longest symbol (for now) is a 1-bit, which is 3 pulses long.
+                // Check accumulator cant be more than 3 or abort
+                
                 if (ptr->pulse_accumulator>3) {
                     abortFrame(ptr);
-                    //   TODO: Set a noise bit? 
+                    SBI( ptr->errorBits , ERRORBIT_NOISE );
                 } 
-                */     
+                     
             }      
         }
         
@@ -498,9 +512,8 @@ static void inline led_tick(  ir_rx_state_t *ptr  ) {
 
 void ir_tick_isr_callback(){
 
-
-	#warning debug
-    DEBUGC_PULSE(1);
+	//#warning debug
+    //DEBUGC_1();
     
     uint8_t ledBitwalk = _BV( IRLED_COUNT-1 );           // We will walk down though the 6 leds
     
@@ -514,7 +527,8 @@ void ir_tick_isr_callback(){
         ledBitwalk >>=1;
             
     }  while (ledBitwalk);
-    	
+
+    //DEBUGC_0();    	
                                    
 }    
 
@@ -558,4 +572,110 @@ void ir_init(void) {
     IR_MASK |= IR_PCINT;             // Enable pin in Pin Change Mask Register for all 6 cathode pins. Any change after this will set the pending interrupt flag.
                                      // TODO: Single LEDs can get masked here if they get noisy to avoid spurious wakes 
                                               
+}
+
+
+// Read the error state of the indicated LED
+// Clears the bits on read
+
+uint8_t ir_getErrorBits( uint8_t led ) {
+    
+    uint8_t bits;
+
+    ir_rx_state_t *ptr = ir_rx_states + led;        
+    
+    // Must do the snap-and-clear atomically because otherwise i bit might get set by the ISR 
+    // after we snapped, but before we cleared, and then then clear could clobber it. 
+    
+    DO_ATOMICALLY {
+    
+        bits = ptr->errorBits;        // snapshot current value    
+        ptr->errorBits=0;                      // Clear out the bits we are grabbing
+        
+    }     
+    
+    return bits; 
+}    
+
+// Is there a received data ready to be read?
+uint8_t ir_isReady( uint8_t led ) {
+    return( ir_rx_states[led].readyFlag );    
+}    
+
+// Read the most recently received data. Blocks if no data ready
+
+// 2602 bytes   15.9 % Full
+
+uint8_t ir_getData( uint8_t led ) {
+        
+    ir_rx_state_t *ptr = ir_rx_states + led;        // This turns out to generate much more efficient code than array access. ptr saves 25 bytes. :/   Even so, the emitted ptr dereference code is awful.
+    
+    while (!ptr->readyFlag);
+        
+    // No need to atomic here since these accesses are lockstep, so the data can not be updated until we clear the ready bit        
+    
+    uint8_t d = ptr->lastValue;
+    
+    ptr->readyFlag=0;
+
+    return d;    
+    
+}    
+
+
+static void txbit( uint8_t bitmask, uint8_t bit ) {
+    
+    // 2 blinks for a 0-bit
+    
+    ir_tx_pulse( bitmask );
+    _delay_us(IR_SPACE_TIME_US);
+    ir_tx_pulse( bitmask );
+
+    if (bit) {
+        
+       // 3 blinks for a 1-bit
+        
+        _delay_us(IR_SPACE_TIME_US);
+        ir_tx_pulse( bitmask );
+    }
+    
+    _delay_us(IR_WINDOW_US);
+    
+}
+
+void ir_sendData( uint8_t face , uint8_t data ) {
+    
+    //DEBUGA_1();
+    #warning sending on all faces
+    uint8_t ledBitmask = IR_BITS; // _BV( face );       // Only send on one LED
+    
+    // TODO: Check for RX in progress here?
+    
+	// Sync pulses....
+    
+    #warning this hangs when compiled under AS7 and interrupts of off
+    
+	ir_tx_pulse( ledBitmask );
+	_delay_us(IR_WINDOW_US);
+	ir_tx_pulse( ledBitmask);
+	_delay_us(IR_WINDOW_US);
+				
+	uint8_t bitwalker=0b10000000;
+    bool parityBit = 0;
+
+    do {		
+        
+        bool bit = data & bitwalker;
+
+    	txbit(  ledBitmask , bit );
+        
+        parityBit ^= bit;
+        
+        bitwalker >>=1;
+    		
+	} while (bitwalker);
+    		
+	txbit( ledBitmask, parityBit );	
+    
+    //DEBUGA_0();	
 }

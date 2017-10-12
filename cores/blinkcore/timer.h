@@ -39,7 +39,7 @@ void timer_disable(void);
 
 // User supplied callback. Called every 512us with interrupts on. Should complete work in <<256us.
 
-void timer_callback(void) __attribute__((weak));
+void timer_callback(void);
 
 // These values are based on how we actually program the timer registers in timer_enable()
 // There are checked with assertion there, so don't chnage these without chaning the actual registers first

@@ -88,11 +88,6 @@ void timer_disable(void) {
 }    
 
 
-void __attribute__((weak)) timer_callback(void) {
-}
-
-
-
 struct ISR_CALLBACK_TIMER : CALLBACK_BASE< ISR_CALLBACK_TIMER> {
     
     static const uint8_t running_bit = CALLBACK_TIMER_RUNNING_BIT;
@@ -110,10 +105,11 @@ struct ISR_CALLBACK_TIMER : CALLBACK_BASE< ISR_CALLBACK_TIMER> {
 
 ISR( TIMER2_OVF_vect ) {
     
-    //DEBUGA_1();
     ir_tick_isr_callback();             // Call the IR callback with interrupts off
+
+    
     ISR_CALLBACK_TIMER::invokeCallback();
-    //DEBUGA_0();
+    
 }    
 
 /** Timing ***/

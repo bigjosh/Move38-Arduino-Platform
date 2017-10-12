@@ -24,6 +24,8 @@
 #include "button.h"
 #include "utils.h"
 
+#include "debug.h"
+
 //#include "debug.h"
 
 // Debounce button pressed this much
@@ -196,8 +198,16 @@ static volatile uint8_t maxCompletedClickCount=0;       // Remember the most com
 // and update the button state variables.
 
 static void updateButtonState(void) {
-        
+    
+       
     bool buttonPositon = button_down();
+    
+    
+    if (buttonPositon) {
+        DEBUGB_1();
+    } else {
+        DEBUGB_0();
+    }                
     
     if ( buttonPositon == buttonState ) {
         
@@ -282,6 +292,7 @@ static void updateButtonState(void) {
         buttonDebounceCountdown = TIMER_MS_TO_TICKS( BUTTON_DEBOUNCE_MS );
         
     }        
+                        
                         
     
 }
@@ -368,6 +379,11 @@ uint8_t buttonClickCount(void) {
     return t;
 }    
 
+void button_callback(void) {
+    // Empty since we do not need to do anything in the interrupt with the above timer sampling scheme. 
+    // Nice becuase bounces can come fast and furious.     
+}    
+
 
 // TODO: Need this?
 
@@ -433,8 +449,10 @@ static void updateMillis(void) {
 // TODO: Reduce this rate by phasing the timer call?
 
 void timer_callback(void) {
+    DEBUGC_1();
     updateMillis();            
     updateButtonState();
+    DEBUGC_0();
 }    
 
 // This is the entry point where the platform will pass control to 
