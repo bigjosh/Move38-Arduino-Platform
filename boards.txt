@@ -18,7 +18,7 @@ tile.upload.tool=nothing
 
 tile.program.tool=avrdude
 
-tile.build.core=blinks
+tile.build.core=blinkcore
 tile.build.board=AVR_Blink
 
 # Note that we actually boot up with DIV8 fuse programmed, so 

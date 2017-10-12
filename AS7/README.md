@@ -2,10 +2,14 @@
 
 This directory holds an Atmel Studio 7 Solution and Project with all the firmware files.
 
-All files except for `sketch.cpp` are included as links to the arduino directories, so any updates you make in AS7 will be reflected in the arduino structure.
+All files are included as links to the arduino directories, so any updates you make in AS7 will be reflected in the arduino structure.
 
-The `skecth.cpp` file is a stub of an arduino-style sketch. You can write code where and then copy everything except the `#include "Arduino.h" into an arduino sketch.
+There is a project temple here called `` that makes it easy to create new sketches that use the `blinkslib` library. You need to import this zip file into Atmel Studio...
 
-The `boards.txt` does not have any boards. It is just here so that the Arduino IDE does not complain when it sees this `AS7` directory as a platform. Otherwise we would need to manually copy files into the `hardware` tree from an AS7 directory. With multipule copies of files things get messy, so worth this hack here especially since it does not impact normal people who use the boards manager to install.
+http://www.atmel.com/webdoc/atmelstudio/atmelstudio.GettingStarted.ProjectImporter.TemplateImporter.html
+
+...and then you can use "Add New Project..." to quickly make new sketches with all the setting and directories right.
+
+After you are done, you can copy and paste the source code into a INO file in the Arduino IDE. 
 
 I much prefer working in AS7 to the Arduino IDE so it was worth the effort to make this. 
