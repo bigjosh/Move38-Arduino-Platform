@@ -230,15 +230,17 @@ bool buttonPressed(void);
 
 
 
-// Send data
+// Send data on a single face. Data is 7-bits wide, top bit is ignored. 
 
 void irSendData( uint8_t face , uint8_t data );
 
+// Broadcast data on all faces. Data is 7-bits wide, top bit is ignored. 
 
-// Is there a received data ready to be read?
+void irBroadcastData( uint8_t data );
 
-uint8_t irIsReady( uint8_t face );
+// Is there a received data ready to be read on the indicated face? Returns 0 if none. 
 
+bool irIsReadyOnFace( uint8_t face );
 
 // Read the most recently received data. Value 0-127. Blocks if no data ready.
 

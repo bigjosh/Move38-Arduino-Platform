@@ -83,7 +83,7 @@ static uint8_t oddParity(uint8_t p) {
      
      // These internal variables are only updated in ISR, so don't need to be volatile.
      
-     // I think access to this first element is slightly faster, so most frequently used should go here
+     // I think access to the  first element is slightly faster, so most frequently used should go here
      
      uint8_t bitstream;               // The tail of the last sample window states. 
      
@@ -121,9 +121,6 @@ static void gotBit(ir_rx_state_t *ptr, bool bit ) {
 
         if (buffer & 0b10000000) {     // We have already deserialized 7 bits, so this final bit is parity
         
-
-        
-            
             // TODO: Do we even need a parity check? Can any error really get though?
 
             
@@ -138,11 +135,12 @@ static void gotBit(ir_rx_state_t *ptr, bool bit ) {
                     SBI( ptr->errorBits , ERRORBIT_OVERFLOW );
                                                            
                 }             
-                
-                
+                                
                 ptr->lastValue = buffer;                    // Save new value (overwrites in case of overflow)
                 
             }  else {
+
+                DEBUGB_PULSE(50);
 
                 // Signal the parity error happened if anyone cares to check
                 
@@ -219,7 +217,21 @@ static void reset(ir_rx_state_t  *ptr, uint8_t errorReasonBit ) {
         
         bitstream |= bit;               // Save the new bit
         
-        // This can be massively optimized once we get the algorithm right
+        // The bitstream is a timeline of the last 8 samples, rightmost bit is the newest.
+        // A 1 here means that we saw an IR pulse in that sample. 
+        
+        // The reason that this looks a bit complicated is because the clocks of sender and receiver
+        // are not perfectly synced, so the sender can send two consecutive blinks but we 
+        // might see them with a space between them depending on how things line up. 
+        
+        // 1 blink is always a 0-bit
+        // 2 blinks is always a 1-bit
+        // 3 blinks is always a sync signal
+        // There is always 2 empty samples at the end of each of the above symbols. 
+              
+        // TODO: This can be massively optimized once we get the algorithm finalized.
+        // TODO: Maybe zero out top bits when we match so we don't need to mask with AND?
+       
         
         if ( (bitstream & 0b00011111) == 0b00000100 ) {     // Got a valid 0-bit symbol
             gotBit( ptr , 0 );
@@ -237,9 +249,7 @@ static void reset(ir_rx_state_t  *ptr, uint8_t errorReasonBit ) {
             reset(ptr , ERRORBIT_NOISE);
         }            
 
-        
-                
-        
+       
         ptr->bitstream = bitstream;
                          
         ptr--;                    
@@ -252,132 +262,6 @@ static void reset(ir_rx_state_t  *ptr, uint8_t errorReasonBit ) {
      
 }     
  
-void led_onTick(void) {
-    
-    
-    /*
-    
-    // Get the number of pulses that happened in the last tick
-    	        
-    uint8_t pulses= ptr->pulse_count;                // This compiles nicely to Z with offset		
-
-
-		do {
-			#warning debug code
-
-			// DEBUG
-
-			if (ptr==ir_rx_states) {
-		        uint8_t a= pulses;                // This compiles nicely to Z with offset
-	 	 	 
-		        while (a--) {
-                    DEBUGC_1();
-			        _delay_us(10);
-                    DEBUGC_0();
-			        _delay_us(10);
-		        }
-		    }
-
-		} while (false); 
-
-
-    if (pulses==0) {
-
-	
-        // No pulses in the last tick, so check to see if there is a symbol receipt in progress...
-
-        uint8_t accumulator = ptr->pulse_accumulator;
-       			    
-        if (accumulator>0) {
-            
-            // We got a valid symbol. Process it. 
-            
-            decode_symbol( ptr ,  accumulator );
-            
-            ptr->pulse_accumulator=0;
-            
-            ptr->tickCount=1;           // One consecutive idle window so far (this one!)...
-        
-        } else {        // accumulator == 0
-        
-            // current tick idle, previous tick was also idle
-			// Remember that a tick is only 1/2 of a window
-			
-			ptr->tickCount++;
-               
-            // TODO: Reduce this to 2 when we confirm max interrupt latency can't make us blow out into a next window.  Will improve error detection  when signal is very weak. Does it make a practical difference? Probably not becuase other filters will catch it. 
-               
-            if ( ptr->tickCount > 3) {               // maximum number of consecutive idle windows in a frame is 1 - which is 3 ticks. We give an extra here until we know max interrupt latency. 
-                
-                // There have been more than 2 consecutive idle windows. This is an error, so abort any frame that it is progress
-            
-                abortFrame(ptr);          // invalidate any frame in progress. It might already be 0, which is ok. 
-                
-                SBI( ptr->errorBits , ERRORBIT_NOISE );
-                
-                ptr->tickCount=0;        // Reset back down. At least keeps us from overflowing.
-                                
-            }                
-        }
-
-    } else {    // pulses > 0 - so we got pulses in the last tick
-
-        // ERROR CHECK: More than 3 pulses in a window is too many, and is an error
-
-        if (ptr->pulse_count>3) {
-            abortFrame(ptr);
-            SBI( ptr->errorBits , ERRORBIT_NOISE );
-        } else {
-
-            // TODO: This code could be more direct?
-
-            if (ptr->pulse_accumulator==0) {       // the previous tick was idle
-
-                ptr->tickCount=0;                   // Reset counter
-
-            } 
-                    
-            // If there have been more than 2 consecutive ticks with pulses (including this one), then this is an error
-		
-		    ptr->tickCount++;
-                 
-            // Max number of frames a symbol can take is ( IR_PULSE_TIME_US + IR_SPACE_TIME_US ) * 3. 
-         
-            // TODO: reduce this when we know max interrupt latency. WIll improve noise rejection. 
-            
-            if (ptr->tickCount > 5) {               // maximum number of windows with consecutive pulses. way too high now until we nail down max interrupt latency. 
-                
-                // There have been more than 2 consecutive ticks with pulses. This is an error, so abort any frame that it is progress
-                
-                abortFrame(ptr);         // invalidate any frame in progress. It might already be 0, which is ok.
-                SBI( ptr->errorBits , ERRORBIT_DROPOUT );
-                                
-                ptr->tickCount=0;        // Reset back down. At least keeps us from overflowing.
-                
-            } else {
-            
-                ptr->pulse_accumulator += pulses;
-
-                // Our longest symbol (for now) is a 1-bit, which is 3 pulses long.
-                // Check accumulator cant be more than 3 or abort
-                
-                if (ptr->pulse_accumulator>3) {
-                    abortFrame(ptr);
-                    SBI( ptr->errorBits , ERRORBIT_NOISE );
-                } 
-                     
-            }      
-        }
-        
-        ptr->pulse_count= 0;        
-                    
-    }            
-    
-    */
-	
-
-           
-}    
 
 // Read the error state of the indicated LED
 // Clears the bits on read
@@ -401,11 +285,13 @@ uint8_t ir_getErrorBits( uint8_t led ) {
     return bits; 
 }    
 
-// Is there a received data ready to be read?
+// Is there a received data ready to be read on this face?
 
-uint8_t irIsReady( uint8_t led ) {
-    return( ir_rx_states[led].lastValue );    
+bool irIsReadyOnFace( uint8_t led ) {
+    return( ir_rx_states[led].lastValue != 0 );    
 }    
+
+
 
 // Read the most recently received data. Blocks if no data ready
 
@@ -462,10 +348,11 @@ static void txbit( uint8_t ledBitmask, uint8_t bit ) {
     
 }
 
-void irSendData( uint8_t face , uint8_t data ) {
+// Internal send to all faces with a 1 in the bitmask. 
+
+static void irBitmaskSendData( uint8_t ledBitmask , uint8_t data ) {
     
-    #warning sending on all faces
-    uint8_t ledBitmask = ALL_IR_BITS; // _BV( face );       // Only send on one LED
+    // Note that we do not need to mask out the top bit of data because the bitwalker does it automatically. 
     
     // TODO: Check for RX in progress here?
 
@@ -473,32 +360,44 @@ void irSendData( uint8_t face , uint8_t data ) {
     
     // Three consecutive pulses will reset RX state
     // We need to send 4 to ensure the RX sees at least 3
-   
+    
     txsyncpulse( ledBitmask );
     txsyncpulse( ledBitmask );
     txsyncpulse( ledBitmask );
     txsyncpulse( ledBitmask );
-  
-   // Two spaces at the end of sync to load at least 1 zero into the bitstream
+    
+    // Two spaces at the end of sync to load at least 1 zero into the bitstream
 
-   _delay_us(IR_SPACE_TIME_US);
-   _delay_us(IR_SPACE_TIME_US);    
-      
-	uint8_t bitwalker=0b01000000;                       // Send 7 bits of data
+    _delay_us(IR_SPACE_TIME_US);
+    _delay_us(IR_SPACE_TIME_US);
+    
+    uint8_t bitwalker=0b01000000;                       // Send 7 bits of data
     bool parityBit = 0;
 
-    do {		
+    do {
         
         bool bit = data & bitwalker;
 
-    	txbit(  ledBitmask , bit );
+        txbit(  ledBitmask , bit );
         
-     // TODO: Faster parity calculation   
+        // TODO: Faster parity calculation
         parityBit ^= bit;
         
         bitwalker >>=1;
-    		
-	} while (bitwalker);
-    		
-	txbit( ledBitmask, parityBit );	           // parity bit, 1=odd number of 1's in data
+        
+    } while (bitwalker);
+    
+    txbit( ledBitmask, parityBit );	           // parity bit, 1=odd number of 1's in data    
+}    
+
+void irSendData( uint8_t face , uint8_t data ) {
+    
+    irBitmaskSendData( _BV( face ) , data );
+    
+}
+
+void irBroadcastData( uint8_t data ) {
+    
+    irBitmaskSendData( ALL_IR_BITS , data ); 
+    
 }
