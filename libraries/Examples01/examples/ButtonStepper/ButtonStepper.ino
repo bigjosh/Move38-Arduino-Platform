@@ -1,4 +1,4 @@
-#include "blink.h"
+#include "blinklib.h"
 
 // Use the buttonPressed() function to move a blue pixel one step around the face 
 // each time the button is pressed down.
