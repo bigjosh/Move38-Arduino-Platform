@@ -324,9 +324,6 @@ static uint8_t sendpulses_biutmask;
 
 ISR(TIMER1_CAPT_vect) {
     
-    
-    DEBUGA_1();    
-    
     ir_tx_pulse_internal( sendpulses_biutmask );
             
      sendpulses_remaining--;    
@@ -338,7 +335,6 @@ ISR(TIMER1_CAPT_vect) {
     
     // if timer not stopped, then we will automatically fire again next time we hit the TOP
             
-    DEBUGA_0();
 }    
 
 

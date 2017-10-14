@@ -109,8 +109,8 @@ static uint8_t oddParity(uint8_t p) {
 
 static void gotBit(ir_rx_state_t *ptr, bool bit ) {
         
-    //if (bit)    DEBUGB_PULSE(40);
-    //else DEBUGB_PULSE(20);
+    if (bit) DEBUGB_PULSE(40);
+    else DEBUGB_PULSE(20);
     
     uint8_t buffer=ptr->buffer;
     
@@ -176,7 +176,14 @@ static void reset(ir_rx_state_t  *ptr, uint8_t errorReasonBit ) {
     ptr->buffer=0;         // Start searching for next sync. 
     SBI( ptr->errorBits , errorReasonBit );
     
-    
+    if (errorReasonBit==ERRORBIT_DROPOUT) {
+        DEBUGA_PULSE(100); 
+    } else if (errorReasonBit==ERRORBIT_NOISE) {
+        DEBUGA_PULSE(200);
+    } else {
+        DEBUGA_PULSE(300);
+    }        
+                            
 }
 
 
@@ -187,11 +194,10 @@ static void reset(ir_rx_state_t  *ptr, uint8_t errorReasonBit ) {
  void updateIRComs(void) {
      
      
-    DEBUGB_1(); 
     uint8_t bits = ir_test_and_charge();
     
-    //if ( TBI( bits , 0 ) ) DEBUGC_PULSE(50);
-    //else DEBUGC_PULSE(10);
+    if ( TBI( bits , 0 ) ) DEBUGC_PULSE(50);
+    else DEBUGC_PULSE(10);
     
 //    if (ir_rx_states->buffer) DEBUGA_1();
 //    else DEBUGA_0();
@@ -227,10 +233,9 @@ static void reset(ir_rx_state_t  *ptr, uint8_t errorReasonBit ) {
         // 3 blinks is always a sync signal
         // There is always 2 empty samples at the end of each of the above symbols. 
               
-        // TODO: This can be massively optimized once we get the algorithm finalized.
+        // TODO: I think this can be optimized better than a bunch of ifs?
         // TODO: Maybe zero out top bits when we match so we don't need to mask with AND?
-       
-        
+               
         if ( (bitstream & 0b00011111) == 0b00000100 ) {     // Got a valid 0-bit symbol
             gotBit( ptr , 0 );
         } else if ( (bitstream & 0b00111111) == 0b00001100 ) {   // Got a valid 1-bit symbol (no gap between pulses)
@@ -241,10 +246,17 @@ static void reset(ir_rx_state_t  *ptr, uint8_t errorReasonBit ) {
             sync( ptr );
 //        } else if ( (bitstream & 0b00001111) == 0b00000000 ) {   // TODO: Re-enstate this shorter window. Too long since last trigger. 
 //            reset(ptr , ERRORBIT_DROPOUT );                      // This was triggering because we were taking too long. Relax for now. 
-        } else if ( (bitstream & 0b00011111) == 0b00000000 ) {   // Too long since last trigger
-            reset(ptr , ERRORBIT_DROPOUT );           
-        } else if ( (bitstream & 0b00011111) == 0b00010101 ) {   // Not a valid pattern. Noise. 
-            reset(ptr , ERRORBIT_NOISE);
+        } else {
+    
+            // Only bother checking for errors if we are currently actually receiving a frame
+            
+            if (ptr->buffer) {                       
+                if ( (bitstream & 0b00011111) == 0b00000000 ) {   // Too long since last trigger            
+                    reset(ptr , ERRORBIT_DROPOUT );                      
+                } else if ( (bitstream & 0b00011111) == 0b00010101 ) {   // Not a valid pattern. Noise. 
+                    reset(ptr , ERRORBIT_NOISE);
+                }                
+            }                
         }            
        
         ptr->bitstream = bitstream;
@@ -255,7 +267,6 @@ static void reset(ir_rx_state_t  *ptr, uint8_t errorReasonBit ) {
     
 //    if (ir_rx_states->buffer) DEBUGA_1();
 //    else DEBUGA_0();
-    DEBUGB_0();
      
 }     
  
