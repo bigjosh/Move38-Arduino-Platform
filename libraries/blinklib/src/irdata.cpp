@@ -263,7 +263,7 @@ static void reset(ir_rx_state_t  *ptr, uint8_t errorReasonBit ) {
 // Read the error state of the indicated LED
 // Clears the bits on read
 
-uint8_t ir_getErrorBits( uint8_t led ) {
+uint8_t irGetErrorBits( uint8_t led ) {
     
     uint8_t bits;
 

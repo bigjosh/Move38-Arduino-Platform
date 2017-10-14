@@ -16,10 +16,6 @@
 typedef bool boolean;
 typedef uint8_t byte;
 
-// Bit manipulation macros
-#define SBI(x,b) (x|= (1<<b))           // Set bit in IO reg
-#define CBI(x,b) (x&=~(1<<b))           // Clear bit in IO reg
-#define TBI(x,b) (x&(1<<b))             // Test bit in IO reg
 
 typedef struct {
     uint8_t bytes[9] ;
@@ -28,16 +24,6 @@ typedef struct {
 // Returns the device's unique 8-byte serial number
 
 utils_serialno_t const *utils_serialno(void);
-
-// *** Ultils
-
-#define FOREACH_FACE(x) for(int x = 0; x < FACE_COUNT ; ++ x)       // Pretend this is a real language with iterators
-
-#define DO_ATOMICALLY ATOMIC_BLOCK(ATOMIC_FORCEON)                  // Non-HAL codes always runs with interrupts on, so give users a way to do things atomically.
-
-void inline INC_NO_OVERFLOW( uint8_t &x ) {
-    if (!(++x)) x--;            // Prevent overflow by decrementing if we do overflow. 
-}    
 
 /* 
   Compiles to:

@@ -1,3 +1,35 @@
+/*
+
+    IR teser
+    
+    Test for errors on IR link by sending a pattern and then checking for missed steps on the receiver.
+    
+    On startup, we are in SEND MODE. We broadcast the pattern on all faces. Each step of the blue led
+    indicates one step of the pattern. 
+    
+    Single click switches us to SYNC MODE. In sync mode we look for data on all faces. When we receive something,
+    we then switch to RECEIVE MODE and start looking for the pattern on that face starting at the initial step we just received.
+    All LEDs are yellow while we search.
+    
+    In RECEIVE MODE, we continue reading data off the face that we found in SYNC MODE and checking to make sure no
+    steps in the pattern are skipped. As long as sequence is continuous, we indicate the pattern steps with a spinning green LED.
+    If we get data that does not match the next expected sequence in the pattern, then we go in to ERROR mode. 
+    
+    In ERROR MODE, we display red leds to indicate what errro condicitons were detected...
+    
+        FACE   CONDITION
+        ====   ============================================
+          0    Missed step in sequence (always lit)
+          1    Droppout (too long an idle  gap while reading in a frame - low signal strength or blocked path) 
+          2    Noise (too many flashes detected or flashes in wrong places - strong ambient light)
+          3    Overflow (too slow reading new data - a new frame came in before we read out the last one)
+          4    Parity (received a frame that was valid in form, but the error checking bit was wrong)
+          
+    Single click exits ERROR MODE and goes back to SEND MODE.           
+
+
+*/
+
 #include "Arduino.h"
 
 #include "blinklib.h"
@@ -12,14 +44,6 @@
 
 void setup() {
 
-    // No setup needed for this simple example!
-
-    for( int b=0; b<31; b++ ) {
-        setColor( dim( GREEN , b ) );
-        delay(100);
-    }
-
-    setColor(OFF);
 }
 
 typedef enum { TX , RX, SYNC , ERROR } mode_t;
@@ -123,8 +147,7 @@ void loop() {
                 if (count==topCount) {       // Roll over when we hit top (IR only transmits 7 bit)
                     count=0;
                 }                    
-    
-            
+                            
                 if (count == irGetData(rxFace) ) {          // Match?
                     
                     uint8_t count_pixel= count % FACE_COUNT;
@@ -136,6 +159,28 @@ void loop() {
                     }                        
                     
                 } else { // No match - error
+                    
+                    setColor( OFF );        // Clear all pixels
+                    
+                    setFaceColor( 0 , RED );    // Show error with at least 1 red pixel
+                    
+                    uint8_t errorBits = irGetErrorBits(rxFace);
+                    
+                    if ( errorBits & ERRORBIT_DROPOUT) {
+                        setFaceColor(1 , RED) ;
+                    }                        
+
+                    if ( errorBits & ERRORBIT_NOISE) {
+                        setFaceColor(2 , RED) ;
+                    }
+
+                    if ( errorBits & ERRORBIT_OVERFLOW) {
+                        setFaceColor(3 , RED) ;
+                    }
+
+                    if ( errorBits & ERRORBIT_PARITY) {
+                        setFaceColor(4 , RED) ;
+                    }
                     
                     mode = ERROR; 
                     
@@ -155,9 +200,7 @@ void loop() {
 
         case ERROR:
 
-            setColor(RED);
-
-            // Do nothing in error mode - just show solid red
+            // Do nothing in error mode - just keep showing the red error code
             break;
 
     }
