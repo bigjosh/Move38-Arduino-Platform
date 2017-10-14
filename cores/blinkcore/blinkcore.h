@@ -26,9 +26,4 @@
 
 #define DO_ATOMICALLY ATOMIC_BLOCK(ATOMIC_FORCEON)                  // Non-HAL code always runs with interrupts on, so give users a way to do things atomically.
 
-void inline INC_NO_OVERFLOW( uint8_t &x ) {
-    if (!(++x)) x--;            // Prevent overflow by decrementing if we do overflow.
-}
-
-
 #endif
