@@ -28,34 +28,29 @@ void ir_enable(void);
 
 void ir_disable(void);
 
-
-// Send a pulse on all LEDs that have a 1 in bitmask
-// bit 0= D1, bit 1= D2...
-// This clobbers whatever charge was on the selected LEDs, so only call after you have checked it.
-
-// Must be atomic so that...
-// 1) the IR ISR doesnt show up and see our wierd registers, and
-// 2) The flashes don't get interrupted and streched out long enough to cause 2 triggers
-
 // TODO: Queue TX so they only happen after a successful RX or idle time. Unnecessary since TX time so short?
 
-// ASSUMES INTERRUPTS ON!!!! DONT CALL INTERNALLY!
-// TODO: Make a public facing version that brackets with ATOMIC
+// Send a series of pulses with spacing_ticks clock ticks between each pulse (or as quickly as possible if spacing too short)
+// If count=0 then 256 pulses will be sent.
+// If spaceing_ticks==0, then the time between pulses will be 65536 ticks
 
-// TODO: INcorporate this into the tick handle so we will be charging anyway.
+// bit 0= led IR0 , bit 1= led IR1...
 
-void ir_tx_pulse( uint8_t bitmask );
+// This clobbers whatever charge was on the selected LEDs, so only call after you have checked it.
+// TODO: Fix this. Save previous charge state
 
-// Called anytime on of the IR LEDs triggers, which could
-// happen because it received a flash or just because
-// enough ambient light accumulated
-
+void ir_tx_pulses(uint8_t count, uint16_t spacing_ticks , uint8_t bitmask);
 
 // Measure the IR LEDs to to see if they have been triggered.
 // Returns a 1 in each bit for each LED that was fired.
 // Fired LEDs are recharged.
 
 uint8_t ir_test_and_charge( void );
+
+
+// Called anytime on of the IR LEDs triggers, which could
+// happen because it received a flash or just because
+// enough ambient light accumulated
 
 void __attribute__((weak)) ir_callback(uint8_t triggered_bits);
 

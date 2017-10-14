@@ -32,8 +32,7 @@ const uint8_t x = ERRORBIT_DUMMY;
 
 #include "ir.h"
 #include "utils.h"
-
-
+#include "timer.h"          // get US_TO_CYCLES()
 
 
 #include "irdata.h"
@@ -60,7 +59,7 @@ const uint8_t x = ERRORBIT_DUMMY;
 
 //#define IR_SYNC_TIME_US (IR_WINDOW_US - (( ((unsigned long) IR_WINDOW_US * IR_CLOCK_SPREAD_PCT) ) / 100UL ) - TX_PULSE_OVERHEAD  )  // Used for sending flashes. Must be longer than one IR timer tick including if this clock is slow and RX is fast.
 
- #define IR_SYNC_TIME_US (300)  // Used for sending flashes. Must be longer than one IR timer tick including if this clock is slow and RX is fast.
+ #define IR_SYNC_TIME_US (400)  // Used for sending flashes. Must be longer than one IR timer tick including if this clock is slow and RX is fast.
 
 // from http://www.microchip.com/forums/m587239.aspx
 
@@ -109,24 +108,21 @@ static uint8_t oddParity(uint8_t p) {
 // Got a valid bit. Deserialize it.
 
 static void gotBit(ir_rx_state_t *ptr, bool bit ) {
-    
-    
-    if (bit)    DEBUGB_PULSE(40);
-    else DEBUGB_PULSE(20);
+        
+    //if (bit)    DEBUGB_PULSE(40);
+    //else DEBUGB_PULSE(20);
     
     uint8_t buffer=ptr->buffer;
     
     if (buffer) {           // There must be at least a leading 1-bit from the sync pulse or else we are not sync'ed
         
-
         if (buffer & 0b10000000) {     // We have already deserialized 7 bits, so this final bit is parity
         
             // TODO: Do we even need a parity check? Can any error really get though?
-
             
-            if ( oddParity( buffer ) != bit ) {     // Parity checks (negate becuase of the leading non-data 1-bit
+            if ( oddParity( buffer ) != bit ) {     // Parity checks (negate because of the leading non-data 1-bit
 
-                DEBUGA_BITS( buffer );
+                //DEBUGA_BITS( buffer );
                 
                 if (ptr->lastValue) {   // Already have a value?
 
@@ -140,7 +136,7 @@ static void gotBit(ir_rx_state_t *ptr, bool bit ) {
                 
             }  else {
 
-                DEBUGB_PULSE(50);
+                //DEBUGB_PULSE(50);
 
                 // Signal the parity error happened if anyone cares to check
                 
@@ -190,22 +186,24 @@ static void reset(ir_rx_state_t  *ptr, uint8_t errorReasonBit ) {
  
  void updateIRComs(void) {
      
+     
+    DEBUGB_1(); 
     uint8_t bits = ir_test_and_charge();
     
-    if ( TBI( bits , 0 ) ) DEBUGC_PULSE(50);
-    else DEBUGC_PULSE(10);
+    //if ( TBI( bits , 0 ) ) DEBUGC_PULSE(50);
+    //else DEBUGC_PULSE(10);
     
 //    if (ir_rx_states->buffer) DEBUGA_1();
 //    else DEBUGA_0();
     
-
   
-#warning only processing IR0    
-//    ir_rx_state_t *ptr = ir_rx_states + IRLED_COUNT -1;
-//    uint8_t bitwalker = 0b00100000;
-    
-    uint8_t bitwalker = 0b00000001;
-    ir_rx_state_t *ptr = ir_rx_states;;
+    ir_rx_state_t *ptr = ir_rx_states + IRLED_COUNT -1;
+    uint8_t bitwalker = 0b00100000;
+
+
+    //    #warning only processing IR0    
+    //uint8_t bitwalker = 0b00000001;
+    //ir_rx_state_t *ptr = ir_rx_states;;
 
     while (bitwalker) {
         
@@ -248,7 +246,6 @@ static void reset(ir_rx_state_t  *ptr, uint8_t errorReasonBit ) {
         } else if ( (bitstream & 0b00011111) == 0b00010101 ) {   // Not a valid pattern. Noise. 
             reset(ptr , ERRORBIT_NOISE);
         }            
-
        
         ptr->bitstream = bitstream;
                          
@@ -258,7 +255,7 @@ static void reset(ir_rx_state_t  *ptr, uint8_t errorReasonBit ) {
     
 //    if (ir_rx_states->buffer) DEBUGA_1();
 //    else DEBUGA_0();
-    
+    DEBUGB_0();
      
 }     
  
@@ -314,35 +311,23 @@ uint8_t irGetData( uint8_t led ) {
 
 
 
-static void txsyncpulse( uint8_t ledBitmask ) {
-    ir_tx_pulse( ledBitmask );
-    _delay_us(IR_SYNC_TIME_US);
-}
-
-
-static void txpulse( uint8_t ledBitmask) {
-    ir_tx_pulse( ledBitmask );                          
-    _delay_us(IR_SPACE_TIME_US);                        
-}    
-
-
 static void txbit( uint8_t ledBitmask, uint8_t bit ) {
     
     // 1 blinks for a 0-bit
     
-    txpulse( ledBitmask );
-    
     if (bit) {
+    
+        ir_tx_pulses( 2 , US_TO_CYCLES( IR_SPACE_TIME_US ), ledBitmask );
         
-       // 2 blinks for a 1-bit        
-        txpulse( ledBitmask );
-        
-    }
+    } else {
 
+        ir_tx_pulses( 1 , US_TO_CYCLES( IR_SPACE_TIME_US ) , ledBitmask );
+        
+    }                    
+    
     // Two spaces at the end of each bit
 
-    _delay_us(IR_SPACE_TIME_US);
-    _delay_us(IR_SPACE_TIME_US);
+    _delay_us(IR_SPACE_TIME_US*2);
 
     
     
@@ -361,15 +346,15 @@ static void irBitmaskSendData( uint8_t ledBitmask , uint8_t data ) {
     // Three consecutive pulses will reset RX state
     // We need to send 4 to ensure the RX sees at least 3
     
-    txsyncpulse( ledBitmask );
-    txsyncpulse( ledBitmask );
-    txsyncpulse( ledBitmask );
-    txsyncpulse( ledBitmask );
+    ir_tx_pulses( 4 , US_TO_CYCLES( IR_SYNC_TIME_US ) , ledBitmask );
     
-    // Two spaces at the end of sync to load at least 1 zero into the bitstream
+    // >2 spaces at the end of sync to load at least 1 zero into the bitstream
 
-    _delay_us(IR_SPACE_TIME_US);
-    _delay_us(IR_SPACE_TIME_US);
+
+    // TODO: Maybe do a timer based delay that does
+    // not accumulate additional time when interrupted?
+    
+    _delay_us(IR_SPACE_TIME_US*2);
     
     uint8_t bitwalker=0b01000000;                       // Send 7 bits of data
     bool parityBit = 0;

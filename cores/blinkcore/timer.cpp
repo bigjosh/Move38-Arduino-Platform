@@ -48,8 +48,7 @@
 // We will use the overflow interrupt to drive most of our tasks
 
 void timer_init(void) {
-    
-    
+        
     SBI( TIMSK2 , TOIE2 );      // Enable interrupt on overflow
     
 }
@@ -74,14 +73,12 @@ void timer_enable(void) {
 
     TCNT2 = 128;                        // Start completely out of phase with the other timer. See holdTimers()
     
-    TCCR2B = _BV( CS21 );               // Start the timer with Prescaller /8    
+    TCCR2B = _BV( CS21 );               // Start the timer with Prescaller /8
     
     #if TIMER_PRESCALER != 8
         #error Must change the definition of TIMER_PRESCALLER to match the actual values in the timer2
     #endif
-    
-    
-        
+            
 }        
 
 void timer_disable(void) {    

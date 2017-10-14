@@ -162,16 +162,16 @@ void ir_init(void) {
 
 // TODO: Queue TX so they only happen after a successful RX or idle time. Unnecessary since TX time so short?
 
-// ASSUMES INTERRUPTS ON!!!! DONT CALL INTERNALLY!
+// ASSUMES INTERRUPTS OFF!!!! 
 // TODO: Make a public facing version that brackets with ATOMIC
 
 // TODO: INcorporate this into the tick handle so we will be charging anyway. 
 
-void ir_tx_pulse( uint8_t bitmask ) {
+static inline void ir_tx_pulse_internal( uint8_t bitmask ) {
     
-    ATOMIC_BLOCK(ATOMIC_FORCEON) {
         
         // TODO: Check for input before sending and abort if found...
+        // TODO: Maybe as easy as saving the cathode values and then only charging again if they were high?
 
         // Remember that the normal state for IR LED pins is...
         // ANODE always driven. Typically DDR driven and PORT low when we are waiting to RX pulses.
@@ -245,8 +245,9 @@ void ir_tx_pulse( uint8_t bitmask ) {
         // Stop charging LED cathode pins (toggle the triggered bits back o what they were)
     
         IR_CATHODE_PIN =  bitmask;                 
-    }       
+        
 }
+
 
 
 // Measure the IR LEDs to to see if they have been triggered.
@@ -299,3 +300,74 @@ uint8_t ir_test_and_charge( void ) {
 
 }
 
+
+/*
+
+    We need a way to send pulses with precise spacing between them, otherwise
+    and interrupt could happen between pulses and spread them out enough 
+    that they are no longer recognized. 
+    
+    We will use Timer1 dedicated to this task for now. We will run in CTC mode
+    and send our pulses on each TOP. This way we will never have to modify the 
+    counter while the timer is running- possibly loosing counts. 
+    
+    We will use ICR1 to define the top. This leaves the OCRs free for maybe other things?
+    
+    Mode 12: CTC TOP=ICR1 WGM13, WGM12
+    
+*/
+
+static volatile uint8_t sendpulses_remaining;
+static uint8_t sendpulses_biutmask;
+
+// Currently clocks at 23us @ 4Mhz
+
+ISR(TIMER1_CAPT_vect) {
+    
+    
+    DEBUGA_1();    
+    
+    ir_tx_pulse_internal( sendpulses_biutmask );
+            
+     sendpulses_remaining--;    
+    
+    if (!sendpulses_remaining) {
+        // stop timer when no more pulses to send
+        TCCR1B = 0;             // Sets prescaler to 0 which stops the timer. 
+    }        
+    
+    // if timer not stopped, then we will automatically fire again next time we hit the TOP
+            
+    DEBUGA_0();
+}    
+
+
+
+// Send a series of pulses with spacing_ticks clock ticks between each pulse (or as quickly as possible if spacing too short)
+// If count=0 then 256 pulses will be sent. 
+// If spaceing_ticks==0, then the time between pulses will be 65536 ticks
+
+// TODO: Add a version that doesn't block and let's you specify a margin at the end before the next TX
+// can start? Use overflow bit to see if past. Easy?
+
+// TODO: Use fast PWM mode so OCR1 is buffered. We can then load the margin value
+// on the last pass and it will get automatically swapped in after the final pulse.
+// We can then quickly test the compare bit to see if the margin is over. 
+
+void ir_tx_pulses(uint8_t count, uint16_t spacing_ticks , uint8_t bitmask) {
+    
+    sendpulses_remaining = count;    
+    sendpulses_biutmask=bitmask;
+    
+    ICR1 = spacing_ticks;           // We will fire ISR when we hit this, and also roll back to 0. 
+    
+    TCNT1 = 0;// spacing_ticks-1;          // Grease the wheels. This will make the 1st pulse go out as soon as we turn on the timer
+    
+    TIMSK1 |= _BV(ICIE1);                // Enable the ISR when we hit ICR1
+    
+    // Start clock in mode 12 with /1 prescaller (one timer tick per clock tick)
+    TCCR1B = _BV( WGM12) | _BV( WGM13) | _BV( CS10);            // clk/1
+    
+    while (sendpulses_remaining);       // Wait to complete
+        
+}

@@ -457,9 +457,9 @@ void timer_callback(void) {
     updateIRComs(); 
     updateMillis();            
     updateButtonState();
-}    
+}
 
-// This is the entry point where the platform will pass control to 
+// This is the entry point where the blinkcore platform will pass control to 
 // us after initial power-up is complete
 
 void run(void) {

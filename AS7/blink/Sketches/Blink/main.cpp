@@ -43,6 +43,10 @@ const uint8_t topCount = ( (1<<7) / FACE_COUNT ) * 6;
 bool irLastValue( uint8_t led );
 
 void loop() {
+    
+    irBroadcastData( 0xff );
+    delay(100);
+    return;
            
         
     if( buttonSingleClicked() ) {
@@ -57,8 +61,7 @@ void loop() {
             mode=TX;
             setColor(OFF);  // Clear the last GREEN and maybe BLUE pixel. Neatness counts.            
         }
-        
-        
+                
     }
     
 
@@ -80,6 +83,9 @@ void loop() {
             
             FOREACH_FACE(x) {
                 irBroadcastData( count );
+                
+                #warning intentional slowdown
+                _delay_ms(10);
             }                
                                         
             setColor( OFF );
