@@ -239,13 +239,19 @@ static void reset(ir_rx_state_t  *ptr, uint8_t errorReasonBit ) {
             gotBit( ptr , 1 );
         } else if ( (bitstream & 0b00000111) == 0b00000111 ) {   // Got a sync (can happen again on next sample when 4 consecutive pulses) 
             sync( ptr );
-//        } else if ( (bitstream & 0b00001111) == 0b00000000 ) {   // TODO: Re-enstate this shorter window. Too long since last trigger. 
-//            reset(ptr , ERRORBIT_DROPOUT );                      // This was triggering because we were taking too long. Relax for now. 
-        } else if ( (bitstream & 0b00011111) == 0b00000000 ) {   // Too long since last trigger
-            reset(ptr , ERRORBIT_DROPOUT );           
-        } else if ( (bitstream & 0b00011111) == 0b00010101 ) {   // Not a valid pattern. Noise. 
-            reset(ptr , ERRORBIT_NOISE);
-        }            
+        } else {
+            
+            // Only bother checking for errors if we are currently actually receiving a frame
+    
+            if (ptr->buffer) {
+                if ( (bitstream & 0b00011111) == 0b00000000 ) {   // Too long since last trigger
+                    reset(ptr , ERRORBIT_DROPOUT );
+                    } else if ( (bitstream & 0b00011111) == 0b00010101 ) {   // Not a valid pattern. Noise.
+                    reset(ptr , ERRORBIT_NOISE);
+                }
+            }            
+            
+        }                        
        
         ptr->bitstream = bitstream;
                          
