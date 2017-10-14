@@ -361,7 +361,7 @@ void ir_tx_pulses(uint8_t count, uint16_t spacing_ticks , uint8_t bitmask) {
     
     ICR1 = spacing_ticks;           // We will fire ISR when we hit this, and also roll back to 0. 
     
-    TCNT1 = 0;// spacing_ticks-1;          // Grease the wheels. This will make the 1st pulse go out as soon as we turn on the timer
+    TCNT1 = spacing_ticks-1;          // Grease the wheels. This will make the 1st pulse go out as soon as we turn on the timer
     
     TIMSK1 |= _BV(ICIE1);                // Enable the ISR when we hit ICR1
     

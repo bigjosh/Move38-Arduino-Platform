@@ -43,12 +43,7 @@ const uint8_t topCount = ( (1<<7) / FACE_COUNT ) * 6;
 bool irLastValue( uint8_t led );
 
 void loop() {
-    
-    irBroadcastData( 0xff );
-    delay(100);
-    return;
-           
-        
+                       
     if( buttonSingleClicked() ) {
         
         // Click in TX goes to SYNC.
@@ -56,6 +51,13 @@ void loop() {
         
         if (mode==TX) {
             mode=SYNC;
+            
+            // Clear out any left over receives and start looking fresh now
+            FOREACH_FACE(x) {
+                if (irIsReadyOnFace(x)) {
+                    irGetData(x);
+                }                                    
+            }                
             setColor(OFF);  // Clear the last RED pixel. Neatness counts. 
         } else {
             mode=TX;
@@ -77,20 +79,13 @@ void loop() {
                 count=0;
             }
             
-            setFaceColor( count % FACE_COUNT , RED );        // Turn on next one
+            setFaceColor( count % FACE_COUNT , BLUE );        // Turn on next one
             
             // TODO: send all faces at once
             
-            FOREACH_FACE(x) {
-                irBroadcastData( count );
+            irBroadcastData( count );
+            _delay_ms(20);
                 
-                #warning intentional slowdown
-                _delay_ms(10);
-            }                
-                                        
-            setColor( OFF );
-        
-
             break;
 
         case SYNC:
@@ -99,8 +94,11 @@ void loop() {
             
             FOREACH_FACE(x) {
                 
+                // Sync to the first face we see data on
+                
                 if (irIsReadyOnFace(x)) {
-            
+                    
+                    count = irGetData(x);             
                     rxFace = x;
                     mode = RX;
                     setColor( OFF );        // Clean off yellow before we start to spin. 
@@ -120,28 +118,35 @@ void loop() {
                 
                 setFaceColor( count % FACE_COUNT , OFF );       // Turn off previous pixel                
                 
-                setFaceColor( rxFace , BLUE );                  // Show where it is coming from (will get overwritten by spinning green below where there is a fight)
-
                 count++;        // next number expected 
                 
                 if (count==topCount) {       // Roll over when we hit top (IR only transmits 7 bit)
                     count=0;
                 }                    
     
-/*            
-                if (count == irGetData(rxFace) ) {
-                
-                    mode = ERROR;
-                
-                } else {
-                
-                    setFaceColor( count % FACE_COUNT , GREEN );       // Turn off previous pixel
+            
+                if (count == irGetData(rxFace) ) {          // Match?
                     
-                }
-*/
+                    uint8_t count_pixel= count % FACE_COUNT;
+                               
+                    setFaceColor( count_pixel , GREEN );       // Turn on next pixel
+                    
+                    if ( count_pixel != rxFace ) {
+                        setFaceColor( rxFace , BLUE );          // Indicate which face we are synced to
+                    }                        
+                    
+                } else { // No match - error
+                    
+                    mode = ERROR; 
+                    
+                }                    
+                
+              
 
-                count = irGetData(rxFace);
-                setFaceColor( count % FACE_COUNT , GREEN );       // Turn off previous pixel
+                //count = irGetData(rxFace);
+                //setFaceColor( count % FACE_COUNT , GREEN );       // Turn off previous pixel
+                
+                
 
 
             }
