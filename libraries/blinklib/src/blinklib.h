@@ -196,12 +196,6 @@ unsigned long millis(void);
 byte getSerialNumberByte( byte n );
 
 
-// Get the number of elements in an array.
-// https://stackoverflow.com/a/4415646/3152071
-
-#define COUNT_OF(x) ((sizeof(x)/sizeof(0[x])) / ((size_t)(!(sizeof(x) % sizeof(0[x])))))
-
-
 /* 
 
     Button functions

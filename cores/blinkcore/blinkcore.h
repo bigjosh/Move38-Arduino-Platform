@@ -22,7 +22,15 @@
 #define CBI(x,b) (x&=~(1<<b))           // Clear bit in IO reg
 #define TBI(x,b) (x&(1<<b))             // Test bit in IO reg
 
+
+// 'Cause C ain't got iterators and all those FOR loops are too ugly. 
 #define FOREACH_FACE(x) for(int x = 0; x < FACE_COUNT ; ++ x)       // Pretend this is a real language with iterators
+
+// Get the number of elements in an array.
+#define COUNT_OF(x) ((sizeof(x)/sizeof(x[0]))) 
+
+
+
 
 #define DO_ATOMICALLY ATOMIC_BLOCK(ATOMIC_FORCEON)                  // Non-HAL code always runs with interrupts on, so give users a way to do things atomically.
 
