@@ -1,5 +1,4 @@
 #include "Arduino.h"
-#include "hardware.h"
 
 #include "blinklib.h"
 
@@ -9,66 +8,123 @@
 
 #include "util/delay.h"
 
+#include "debug.h"
+
 void setup() {
 
-	// No setup needed for this simple example!
+    // No setup needed for this simple example!
 
+    for( int b=0; b<31; b++ ) {
+        setColor( dim( GREEN , b ) );
+        delay(100);
+    }
+
+    setColor(OFF);
 }
 
+typedef enum { TX , RX, SYNC , ERROR } mode_t;
 
-#define IDLE_TIME_US 1100
+mode_t mode=TX;      // Are we transmitting or receiving?
 
-static uint8_t oddParityx(uint8_t p) {
-    p = p ^ (p >> 4 | p << 4);
-    p = p ^ (p >> 2);
-    p = p ^ (p >> 1);
-    return p & 1;
-}
-
-void txbit( bool bit ) {
-    
-	ir_tx_pulse( 0b00111111 );
-	_delay_us(200);
-	ir_tx_pulse( 0b00111111 );
-
-	if (bit) {
-    	_delay_us(200);
-    	ir_tx_pulse( 0b00111111 );
-	}
-			
-	_delay_us(IDLE_TIME_US);
-    
-}                
+uint8_t count=0;
 
 void loop() {
-	
-	
-	for( int x=0; x<255; x++ ) {
-	  
-		cli();
-		// Sync pulses....
-		ir_tx_pulse( 0b00111111 );
-		_delay_us(IDLE_TIME_US);
-		ir_tx_pulse( 0b00111111 );
-		_delay_us(IDLE_TIME_US);
-		
-		
-		int bit=8;
-	  
-		while (bit--) {
+        
+    if( buttonSingleClicked() ) {
+        
+        // Click in TX goes to SYNC.
+        // Click any other mode goes back to TX
+        
+        if (mode==TX) {
+            mode=SYNC;
+            } else {
+            mode=TX;
+        }
+        
+        
+    }
+   /*
+    if (mode==TX) {     
+        setColor(RED);
+        delay(100);
+        setColor(OFF);
+    } else {        
+        setColor(GREEN);
+        delay(100);
+        setColor(OFF);
+    }                
+    
+    return;
+    
+    */
 
-                txbit( TBI( x , bit ) );
-	  
-		}
+    switch (mode) {
+
+        case TX:
         
-        txbit( oddParityx( x) );
+            setColor( RED );
         
-		sei();
-		
-	  
-		setColor( dim(GREEN,16) );
-		delay(50);       // Show the color long enough to see
-		setColor(OFF);
-		delay(200);
-	}
+            irSendData( 0 , count );
+        
+            count++;
+        
+            delay(50);
+        
+            setColor( OFF );
+        
+            delay(100);
+
+            break;
+
+        case SYNC:
+
+            setColor( YELLOW );
+        
+            if ( 0 && !irIsReady(0)) {          // Wait for 1st message to come in
+            
+                count = irGetData(0);
+
+                } else {
+
+                delay(20);
+                setColor(OFF);
+
+            }
+
+            break;
+        
+
+        case RX:
+        
+        
+            if (!irIsReady(0)) {          // Wait for 1st message to come in
+
+                count++;        // next number expected (rolls on overflow)
+            
+                if (count != irGetData(0) ) {
+                
+                    mode = ERROR;
+                
+                    } else {
+                
+                    setColor(GREEN);
+                    delay(50);
+                    setColor(OFF);
+                }
+
+            }
+        
+            break;
+
+        case ERROR:
+
+            setColor(RED);
+
+
+            // Do nothing in error mode - just show solid red
+            break;
+
+    }
+    
 }
+

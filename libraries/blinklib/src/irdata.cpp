@@ -496,7 +496,7 @@ void irSendData( uint8_t face , uint8_t data ) {
      // TODO: Faster parity calculation   
         parityBit ^= bit;
         
-     //   bitwalker >>=1;
+        bitwalker >>=1;
     		
 	} while (bitwalker);
     		
