@@ -7,6 +7,7 @@
 
 //#include "Arduino.h"
 #include "hardware.h"
+#include "blinkcore.h"
 
 #include <avr/sleep.h>
 #include <avr/interrupt.h>

@@ -35,6 +35,7 @@
 // TODO: Really nail down the blue booster 
 
 #include "hardware.h"
+#include "blinkcore.h"
 
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
@@ -548,9 +549,9 @@ static void pixelTimerOff(void) {
 
 ISR(TIMER0_OVF_vect)
 {       
-    DEBUGA_1();
+//    DEBUGA_1();
     pixel_isr();
-    DEBUGA_0();
+//    DEBUGA_0();
     return;	
 }
 

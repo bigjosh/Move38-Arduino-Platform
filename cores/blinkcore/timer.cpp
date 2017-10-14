@@ -22,6 +22,7 @@
 #include <assert.h>         // For static_assert
 
 #include "hardware.h"
+#include "blinkcore.h"
 
 #include <util/delay.h>
 
@@ -105,10 +106,9 @@ struct ISR_CALLBACK_TIMER : CALLBACK_BASE< ISR_CALLBACK_TIMER> {
 
 ISR( TIMER2_OVF_vect ) {
     
-    ir_tick_isr_callback();             // Call the IR callback with interrupts off
-
-    
+//    DEBUGC_1();
     ISR_CALLBACK_TIMER::invokeCallback();
+//    DEBUGC_0();
     
 }    
 

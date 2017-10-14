@@ -15,7 +15,6 @@
 #include "callbacks.h"
 
 #include <avr/interrupt.h>
-#include <util/delay.h>					// _delay_ms() for debounce
 
 #include "button.h"
 #include "utils.h"

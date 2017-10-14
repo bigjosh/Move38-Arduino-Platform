@@ -5,8 +5,10 @@
  *
  */ 
 
-#ifndef BLINK_H_
-#define BLINK_H_
+#ifndef BLINKLIB_H_
+#define BLINKLIB_H_
+
+#include "blinkcore.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -217,6 +219,44 @@ bool buttonDown(void);
 bool buttonPressed(void);
 
 
+
+
+/* 
+
+    IR communications functions
+
+*/
+
+
+
+
+// Send data
+
+void irSendData( uint8_t face , uint8_t data );
+
+
+// Is there a received data ready to be read?
+
+uint8_t irIsReady( uint8_t face );
+
+
+// Read the most recently received data. Value 0-127. Blocks if no data ready.
+
+uint8_t irGetData( uint8_t led );
+
+
+#define ERRORBIT_PARITY       2    // There was an RX parity error
+#define ERRORBIT_OVERFLOW     3    // A received byte in lastValue was overwritten with a new value
+#define ERRORBIT_NOISE        4    // We saw unexpected extra pulses inside data
+#define ERRORBIT_DROPOUT      5    // We saw too few pulses, or two big a space between pulses
+#define ERRORBIT_DUMMY        6
+
+// Read the error state of the indicated LED
+// Clears the bits on read
+
+uint8_t irGetErrorBits( uint8_t face );
+
+
 /*
 
     These hook functions are filled in by the sketch
@@ -234,4 +274,4 @@ void setup(void);
 
 void loop();
 
-#endif /* BLINK_H_ */
+#endif /* BLINKLIB_H_ */

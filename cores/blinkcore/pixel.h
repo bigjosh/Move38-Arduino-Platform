@@ -9,6 +9,8 @@
 #ifndef RGB_PIXELS_H_
 #define RGB_PIXELS_H_
 
+#include "blinkcore.h"
+
 #include <avr/io.h>
 
 // True today, but could imagine a blinks with 1 pixel or one with with 18 pixels...

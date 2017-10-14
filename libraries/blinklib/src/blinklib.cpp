@@ -17,6 +17,9 @@
 
 #include <Arduino.h>
 
+#define DEBUG_MODE
+
+
 #include "blinklib.h"
 
 #include "pixel.h"
@@ -26,7 +29,10 @@
 
 #include "debug.h"
 
-//#include "debug.h"
+#include "irdata.h"
+
+
+#include "debug.h"
 
 // Debounce button pressed this much
 // Empirically determined. At 50ms, I can click twice fast enough
@@ -201,14 +207,7 @@ static void updateButtonState(void) {
     
        
     bool buttonPositon = button_down();
-    
-    
-    if (buttonPositon) {
-        DEBUGB_1();
-    } else {
-        DEBUGB_0();
-    }                
-    
+           
     if ( buttonPositon == buttonState ) {
         
         if (buttonDebounceCountdown) {
@@ -379,9 +378,9 @@ uint8_t buttonClickCount(void) {
     return t;
 }    
 
-void button_callback(void) {
+void button_callback_onChange(void) {
     // Empty since we do not need to do anything in the interrupt with the above timer sampling scheme. 
-    // Nice becuase bounces can come fast and furious.     
+    // Nice because bounces can come fast and furious.     
 }    
 
 
@@ -422,8 +421,14 @@ unsigned long millis(void) {
 // TODO: This is accurate and correct, but so inefficient. 
 // We can do better. 
 
-static uint16_t cyclesCounter=0;                    // Accumulate cycles to keep millisCounter accurate
+// TODO: chance timer to 500us so increment is faster.
+// TODO: Change time to uint24 _t
 
+// Supported!!! https://gcc.gnu.org/wiki/avr-gcc#types
+
+// __uint24 timer24;
+
+static uint16_t cyclesCounter=0;                    // Accumulate cycles to keep millisCounter accurate
 
 #if TIMER_CYCLES_PER_TICK >  0xffff //UINT16_MAX
     #error Overflow on cyclesCounter
@@ -449,16 +454,17 @@ static void updateMillis(void) {
 // TODO: Reduce this rate by phasing the timer call?
 
 void timer_callback(void) {
-    DEBUGC_1();
+    updateIRComs(); 
     updateMillis();            
     updateButtonState();
-    DEBUGC_0();
 }    
 
 // This is the entry point where the platform will pass control to 
 // us after initial power-up is complete
 
 void run(void) {
+    
+    //while (1) DEBUGC_PULSE(20);
     
     setup();
     
