@@ -43,7 +43,7 @@
 //#include "debug.h"
 
 void setup() {
-
+    // This page intionally left blank
 }
 
 typedef enum { TX , RX, SYNC , ERROR } mode_t;
@@ -122,13 +122,16 @@ void loop() {
                 
                 if (irIsReadyOnFace(x)) {
                     
-                    count = irGetData(x);             
+                    count = irGetData(x);   
+                    irGetErrorBits(x);     // Clear out any left over errors (only care about errros from when we synced)
+                              
                     rxFace = x;
                     mode = RX;
                     setColor( OFF );        // Clean off yellow before we start to spin. 
                     break;                                   
                 
                 } 
+
                 
             }                
             
@@ -166,19 +169,19 @@ void loop() {
                     
                     uint8_t errorBits = irGetErrorBits(rxFace);
                     
-                    if ( errorBits & ERRORBIT_DROPOUT) {
+                    if ( bitRead(errorBits , ERRORBIT_DROPOUT) ){
                         setFaceColor(1 , RED) ;
                     }                        
 
-                    if ( errorBits & ERRORBIT_NOISE) {
+                    if ( bitRead(errorBits , ERRORBIT_NOISE  ) ){
                         setFaceColor(2 , RED) ;
                     }
 
-                    if ( errorBits & ERRORBIT_OVERFLOW) {
+                    if ( bitRead(errorBits , ERRORBIT_OVERFLOW) ) {
                         setFaceColor(3 , RED) ;
                     }
 
-                    if ( errorBits & ERRORBIT_PARITY) {
+                    if ( bitRead(errorBits , ERRORBIT_PARITY  ) ) {
                         setFaceColor(4 , RED) ;
                     }
                     
@@ -206,5 +209,4 @@ void loop() {
     }
     
 }
-
 
