@@ -6,10 +6,12 @@
     THEORY OF OPERATION
     ===================
     
-    All communication is 7 bits wide. This leaves us with an 8th bit to use as a canary bit to save needing any counters.
+    All communication is currently 8 bits wide, 7 data bits followed by 1 parity bid (odd). MSB sent first. 
     
-    Bytes are transmitted least significant bit first.
-    
+    Internally, we use an 8-bit buffer and always lead with a 1-bit, so the fully loaded value "0" has the high bit set. 
+    This lets us tell the difference between "nothing" and the loaded value "0". It also lets us walk that leading 1-bit up the byte so that when
+    it finally hits the MSB we know that the shifting is complete. This saves a counter. 
+        
     IR_MASK by default allows interrupts on all faces. 
     TODO: When noise causes a face to wake us from sleep too much, we can turn off the mask bit for a while.
     
@@ -71,12 +73,7 @@ static uint8_t oddParity(uint8_t p) {
 }
 
 
-
-// TODO: Smaller window to increase bandwidth
-
-
-// You really want sizeof( ir_rx_state_t) to be  a power of 2. It makes the emmited pointer calculations much smaller and faster.
-
+// You really want sizeof( ir_rx_state_t) to be  a power of 2. It makes the emitted pointer calculations much smaller and faster.
 
  typedef struct {
      
@@ -92,10 +89,8 @@ static uint8_t oddParity(uint8_t p) {
      volatile uint8_t lastValue;      // Last successfully decoded RX value. 1 in high bit means valid and unread. 0= empty. 
      
      volatile uint8_t errorBits;      // Error conditions seen 
-     
-     
           
-     // This struct should be even power of 2 long. See assert below. 
+     // This struct should be even power of 2 long. 
               
  } ir_rx_state_t;
 
@@ -108,9 +103,11 @@ static uint8_t oddParity(uint8_t p) {
 // Got a valid bit. Deserialize it.
 
 static void gotBit(ir_rx_state_t *ptr, bool bit ) {
-        
-    //if (bit)    DEBUGB_PULSE(40);
-    //else DEBUGB_PULSE(20);
+    
+    
+    // DEBUGB is decoded bitstream. Wide pulse is 1-bit.
+    if (bit)    DEBUGB_PULSE(40);
+    else DEBUGB_PULSE(20);
     
     uint8_t buffer=ptr->buffer;
     
@@ -158,6 +155,7 @@ static void gotBit(ir_rx_state_t *ptr, bool bit ) {
         
     }        
     
+    
 }    
 
 // Got a sync symbol. Start parsing bits.
@@ -176,6 +174,15 @@ static void reset(ir_rx_state_t  *ptr, uint8_t errorReasonBit ) {
     ptr->buffer=0;         // Start searching for next sync. 
     SBI( ptr->errorBits , errorReasonBit );
     
+ 
+    // Set scope to single trigger on DEBUGA channel to view reason for error. 
+    if (errorReasonBit==ERRORBIT_DROPOUT) {
+           DEBUGA_PULSE(100);
+       } else if (errorReasonBit==ERRORBIT_NOISE) {
+           DEBUGA_PULSE(200);
+       } else {
+           DEBUGA_PULSE(300);
+    }    
     
 }
 
@@ -187,16 +194,12 @@ static void reset(ir_rx_state_t  *ptr, uint8_t errorReasonBit ) {
  void updateIRComs(void) {
      
      
-    DEBUGB_1(); 
     uint8_t bits = ir_test_and_charge();
     
-    //if ( TBI( bits , 0 ) ) DEBUGC_PULSE(50);
-    //else DEBUGC_PULSE(10);
-    
-//    if (ir_rx_states->buffer) DEBUGA_1();
-//    else DEBUGA_0();
-    
-  
+    // DEBUGC is the sample clock. A long pulse means a trigger on led IR0 durring prior window
+    if ( TBI( bits , 0 ) ) DEBUGC_PULSE(50);
+    else DEBUGC_PULSE(10);		 
+      
     ir_rx_state_t *ptr = ir_rx_states + IRLED_COUNT -1;
     uint8_t bitwalker = 0b00100000;
 
@@ -258,11 +261,7 @@ static void reset(ir_rx_state_t  *ptr, uint8_t errorReasonBit ) {
         ptr--;                    
         bitwalker >>=1;
     }        
-    
-//    if (ir_rx_states->buffer) DEBUGA_1();
-//    else DEBUGA_0();
-    DEBUGB_0();
-     
+         
 }     
  
 

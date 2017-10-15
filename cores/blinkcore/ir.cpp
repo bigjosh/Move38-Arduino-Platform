@@ -34,11 +34,12 @@
 // A bit cycle is one timer tick, currently 512us
 
 //TODO: Optimize these to be exact minimum for the distance in the real physical object    
+//TODO: This can likely be reduced or eliminated when we increase sampling rate
 
-#define IR_CHARGE_TIME_US 5        // How long to charge the LED though the pull-up
+#define IR_CHARGE_TIME_US 2        // How long to charge the LED though the pull-up
 
 // Currently chosen empirically to work with some tile cases Jon made 7/28/17
-#define IR_PULSE_TIME_US 10    // Used for sending flashes
+#define IR_PULSE_TIME_US 20         // Used for sending flashes
 
 
 #if ALL_IR_BITS != IR_BITS
@@ -50,6 +51,8 @@
   
  
 static inline void chargeLEDs( uint8_t bitmask ) {
+    
+    uint8_t ir_cathode_ddr_cache = IR_CATHODE_DDR;       // This will not change unless we change it, so no need to reload it every access
     
      PCMSK1 &= ~bitmask;                                 // stop Triggering interrupts on these pins because they are going to change when we charge them
     
@@ -67,7 +70,9 @@ static inline void chargeLEDs( uint8_t bitmask ) {
         Writing a '1' to PINxn toggles the value of PORTxn, independent on the value of DDRxn. 
     */
     
-    IR_CATHODE_PIN =  bitmask;
+    IR_CATHODE_PIN =  bitmask;       // This enables pull-ups on charge pins
+        
+    IR_CATHODE_DDR = ir_cathode_ddr_cache | bitmask;       // This will drive the charge pins high 
     
     // Empirically this is how long it takes to charge 
     // and avoid false positive triggers in 1ms window 12" from halogen desk lamp
@@ -84,9 +89,12 @@ static inline void chargeLEDs( uint8_t bitmask ) {
                                         // we finished charging but before we enabled interrupts. This would latch
                                         // forever.
                                                                                     
-    // Stop charging LED cathode pins (toggle the triggered bits back to what they were)
+    // Stop charging LED cathode pins
     
-    IR_CATHODE_PIN = bitmask;     
+     
+    IR_CATHODE_DDR = ir_cathode_ddr_cache;          // Back to the way we started, charge pins now only pulled-up
+     
+    IR_CATHODE_PIN = bitmask;                       // toggle pull-ups off, now cathodes pure inputs 
                                                           
 }    
 
@@ -165,7 +173,7 @@ void ir_init(void) {
 // ASSUMES INTERRUPTS OFF!!!! 
 // TODO: Make a public facing version that brackets with ATOMIC
 
-// TODO: INcorporate this into the tick handle so we will be charging anyway. 
+// TODO: Incorporate this into the tick handler so we will be charging anyway. 
 
 static inline void ir_tx_pulse_internal( uint8_t bitmask ) {
     
@@ -212,13 +220,9 @@ static inline void ir_tx_pulse_internal( uint8_t bitmask ) {
         
         // Right now both cathode and anode are driven and both are low - so LED off
 
-        IR_CATHODE_DDR = cathode_ddr_save;   // Cathode back to input too (now driving low) 
       
         // charge up receiver cathode pin while keeping other pins intact
            
-        // This will enable the pull-ups on the LEDs we want to change without impacting other pins
-        // The other pins will stay whatever they were.
-    
         // NOTE: We are doing something tricky here. Writing a 1 to a PIN bit actually toggles the PORT bit. 
         // This saves about 10 instructions to manually load, or, and write back the bits to the PORT. 
         
@@ -232,6 +236,9 @@ static inline void ir_tx_pulse_internal( uint8_t bitmask ) {
         // TODO: These need to be asm because it sticks a load here.
                
         IR_CATHODE_PIN =  bitmask;
+        
+        // Cathodes are now being driven high 
+
     
         _delay_us( IR_CHARGE_TIME_US ); 
             
@@ -242,9 +249,10 @@ static inline void ir_tx_pulse_internal( uint8_t bitmask ) {
                                             // recharge timeout.
     
     
-        // Stop charging LED cathode pins (toggle the triggered bits back o what they were)
-    
-        IR_CATHODE_PIN =  bitmask;                 
+        
+        IR_CATHODE_DDR = cathode_ddr_save;   // Cathode back to input too (pull-ups still on)
+        
+        IR_CATHODE_PIN =  bitmask;           // Disable pull-ups. Everything back to pure input. 
         
 }
 
@@ -323,10 +331,7 @@ static uint8_t sendpulses_biutmask;
 // Currently clocks at 23us @ 4Mhz
 
 ISR(TIMER1_CAPT_vect) {
-    
-    
-    DEBUGA_1();    
-    
+       
     ir_tx_pulse_internal( sendpulses_biutmask );
             
      sendpulses_remaining--;    
@@ -336,9 +341,7 @@ ISR(TIMER1_CAPT_vect) {
         TCCR1B = 0;             // Sets prescaler to 0 which stops the timer. 
     }        
     
-    // if timer not stopped, then we will automatically fire again next time we hit the TOP
-            
-    DEBUGA_0();
+    // if timer not stopped, then we will automatically fire again next time we hit the TOP            
 }    
 
 
