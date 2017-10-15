@@ -1,7 +1,0 @@
-##########################################
-## 
-## This is an empty boards file that exists only
-## so we can keep our handy AS7 files in the Ardiuno IDE
-## hardware tree and not have it complain about the AS7 "platform".
-##
-##########################################
