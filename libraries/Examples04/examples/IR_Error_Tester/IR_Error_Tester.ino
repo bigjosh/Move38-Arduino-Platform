@@ -188,14 +188,6 @@ void loop() {
                     mode = ERROR; 
                     
                 }                    
-                
-              
-
-                //count = irGetData(rxFace);
-                //setFaceColor( count % FACE_COUNT , GREEN );       // Turn off previous pixel
-                
-                
-
 
             }
         
@@ -209,4 +201,5 @@ void loop() {
     }
     
 }
+
 
