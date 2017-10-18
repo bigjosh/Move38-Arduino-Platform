@@ -1,7 +1,7 @@
-/*
- * blink.h
+/**
+ * @file blinklib.h
  *
- * This defines a high-level interface to the blinks tile hardware.
+ * @brief This defines a high-level interface to the blinks tile hardware.
  *
  */ 
 
@@ -24,29 +24,33 @@ typedef uint8_t byte;
 
 */
 
-// Did the state on any face change since last called?
-// Get the neighbor states with getNeighborState()
+/**
+ * Did the state on any face change since last called?
+ * Get the neighbor states with getNeighborState()
+ */
 
 bool neighborChanged();
 
-
-// Was the button pressed or lifted since the last time we checked?
-// Note that these register the change the instant the button state changes 
-// without any delay, so good for latency sensitive cases.
-// It is debounced, so the button must have been in the previous state a minimum 
-// debounce time before a new detection will occur. 
+/**
+ * Was the button pressed or lifted since the last time we checked?
+ * Note that these register the change the instant the button state changes 
+ * without any delay, so good for latency sensitive cases.
+ * It is debounced, so the button must have been in the previous state a minimum 
+ * debounce time before a new detection will occur. 
+ */
 
 bool buttonPressed(void);
 bool buttonLifted(void);
 
-// Was the button single, double , or multi clicked since we last checked?
-// Note that there is a delay after the button is first pressed 
-// before a click is registered because we have to wait to 
-// see if another button press is coming. 
-// A multiclick is 3 or more clicks
-
-// Remember that these click events fire a short time after the button is lifted on the final click
-// If the button is held down too long on the last click, then click interaction is aborted.
+/**
+ * Was the button single, double , or multi clicked since we last checked?
+ * Note that there is a delay after the button is first pressed 
+ * before a click is registered because we have to wait to 
+ * see if another button press is coming. 
+ * A multiclick is 3 or more clicks
+ * Remember that these click events fire a short time after the button is lifted on the final click
+ * If the button is held down too long on the last click, then click interaction is aborted.
+ */
 
 bool buttonSingleClicked();
 
@@ -55,10 +59,14 @@ bool buttonDoubleClicked();
 bool buttonMultiClicked();
 
 
-// The number of clicks in the longest consecutive valid click cycle since the last time called. 
+/**
+ * The number of clicks in the longest consecutive valid click cycle since the last time called.
+ */
 byte buttonClickCount(void);
 
-// Remember that a long press fires while the button is still down
+/**
+ * Remember that a long press fires while the button is still down
+ */
 bool buttonLongPressed(void);
 
     
@@ -69,13 +77,17 @@ bool buttonLongPressed(void);
 
 */
 
-// Returns true if the button currently pressed down 
-// (Debounced)
+/**
+ * Returns true if the button currently pressed down 
+ * (Debounced)
+ */
 
 bool buttonDown();
 
-// Returns the last received state of the indicated face, or
-// 0 if no messages received recently on indicated face
+/**
+ * Returns the last received state of the indicated face, or
+ * 0 if no messages received recently on indicated face
+ */
 
 byte getNeighborState( byte face );
 
@@ -89,10 +101,12 @@ byte getNeighborState( byte face );
 
 */
 
-// Set our state to newState. This state is repeatedly broadcast to any
-// neighboring tiles. 
-// Note that setting our state to 0 make us stop broadcasting and effectively 
-// disappear from the view of neighboring tiles. 
+/**
+ * Set our state to newState. This state is repeatedly broadcast to any
+ * neighboring tiles. 
+ * Note that setting our state to 0 make us stop broadcasting and effectively 
+ * disappear from the view of neighboring tiles. 
+ */
 
 void setState( byte newState );
 
@@ -154,12 +168,16 @@ inline Color dim( Color color, byte brightness) {
 // Make a new color in the HSB colorspace. All values are 0-255.
 
 Color makeColorHSB( byte hue, byte saturation, byte brightness );
-    
-// Change the tile to the specified color 
+
+/**
+ * Change the tile to the specified color
+ */
 
 void setColor( Color newColor);
 
-// Set the pixel on the specified face (0-5) to the specified color
+/**
+ * Set the pixel on the specified face (0-5) to the specified color
+ */
 
 void setFaceColor(  byte face, Color newColor );
 
@@ -170,7 +188,9 @@ void setFaceColor(  byte face, Color newColor );
 
 */
 
-// Delay the specified number of milliseconds (1,000 millisecond = 1 second) 
+/**
+ * Delay the specified number of milliseconds (1,000 millisecond = 1 second) 
+ */
 
 void delay( unsigned long millis );
 
@@ -190,8 +210,10 @@ unsigned long millis(void);
 
 */
 
-// Read the unique serial number for this blink tile
-// There are 9 bytes in all, so n can be 0-8
+/**
+ * Read the unique serial number for this blink tile
+ * There are 9 bytes in all, so n can be 0-8
+ */
 
 byte getSerialNumberByte( byte n );
 
@@ -203,12 +225,16 @@ byte getSerialNumberByte( byte n );
 */
 
 
-// Debounced view of button state
+/**
+ * Debounced view of button state
+ */
 
 bool buttonDown(void);
 
-// Returns true if the button has been pressed since
-// the last time it was called. 
+/**
+ * Returns true if the button has been pressed since
+ * the last time it was called. 
+ */
 
 bool buttonPressed(void);
 
@@ -223,20 +249,27 @@ bool buttonPressed(void);
 
 
 
-
-// Send data on a single face. Data is 7-bits wide, top bit is ignored. 
+/**
+ * Send data on a single face. Data is 7-bits wide, top bit is ignored. 
+ */
 
 void irSendData( uint8_t face , uint8_t data );
 
-// Broadcast data on all faces. Data is 7-bits wide, top bit is ignored. 
+/**
+ * Broadcast data on all faces. Data is 7-bits wide, top bit is ignored. 
+ */
 
 void irBroadcastData( uint8_t data );
 
-// Is there a received data ready to be read on the indicated face? Returns 0 if none. 
+/**
+ * Is there a received data ready to be read on the indicated face? Returns 0 if none.
+ */
 
 bool irIsReadyOnFace( uint8_t face );
 
-// Read the most recently received data. Value 0-127. Blocks if no data ready.
+/**
+ * Read the most recently received data. Value 0-127. Blocks if no data ready.
+ */
 
 uint8_t irGetData( uint8_t led );
 
@@ -247,8 +280,10 @@ uint8_t irGetData( uint8_t led );
 #define ERRORBIT_DROPOUT      5    // We saw too few pulses, or two big a space between pulses
 #define ERRORBIT_DUMMY        6
 
-// Read the error state of the indicated LED
-// Clears the bits on read
+/**
+ * Read the error state of the indicated LED
+ * Clears the bits on read
+ */
 
 uint8_t irGetErrorBits( uint8_t face );
 
@@ -260,14 +295,17 @@ uint8_t irGetErrorBits( uint8_t face );
 
 */
 
-
-// Called when this sketch is first loaded and then 
-// every time the tile wakes from sleep
+/**
+ * Called when this sketch is first loaded and then 
+ * every time the tile wakes from sleep
+ */
 
 void setup(void);
 
-// Called repeatedly just after the display pixels
-// on the tile face are updated
+/**
+ * Called repeatedly just after the display pixels
+ * on the tile face are updated
+ */
 
 void loop();
 
