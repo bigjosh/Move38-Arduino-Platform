@@ -4,8 +4,14 @@
 .. include:: ../../README.rst
    :end-before: ----
 
-Class Documentation
+Blink Lib
 ===================
 
 .. doxygenfile:: blinklib.h
+   :project: Move38-Arduino-Platform
+
+Blink Core
+===================
+
+.. doxygenfile:: button.h
    :project: Move38-Arduino-Platform

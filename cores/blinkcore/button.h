@@ -1,5 +1,7 @@
-/*
- * button.h
+/**
+ * @file button.h
+ *
+ * @brief Low level button functionality.
  *
  */ 
 

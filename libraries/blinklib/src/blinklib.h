@@ -87,6 +87,8 @@ bool buttonDown();
 /**
  * Returns the last received state of the indicated face, or
  * 0 if no messages received recently on indicated face
+ *
+ * @param face Which side of the Blink from which to get the neighbor's state
  */
 
 byte getNeighborState( byte face );
@@ -118,9 +120,11 @@ void setState( byte newState );
 
 typedef unsigned Color;
 
-
-// Number of brightness levels in each channel of a color
-#define BRIGHTNESS_LEVELS 32
+/**
+ * @name Color Helpers
+ */
+///@{
+#define BRIGHTNESS_LEVELS 32 ///< Number of brightness levels in each channel of a color
 
 #define GET_R(color) ((color>>10)&31)
 #define GET_G(color) ((color>> 5)&31)
@@ -144,6 +148,7 @@ typedef unsigned Color;
 #define WHITE       MAKECOLOR_RGB(31,31,31)
 
 #define OFF     MAKECOLOR_RGB( 0, 0, 0)
+///@}
 
 // We inline this so we can get compile time simplification for static colors
 
@@ -274,11 +279,16 @@ bool irIsReadyOnFace( uint8_t face );
 uint8_t irGetData( uint8_t led );
 
 
-#define ERRORBIT_PARITY       2    // There was an RX parity error
-#define ERRORBIT_OVERFLOW     3    // A received byte in lastValue was overwritten with a new value
-#define ERRORBIT_NOISE        4    // We saw unexpected extra pulses inside data
-#define ERRORBIT_DROPOUT      5    // We saw too few pulses, or two big a space between pulses
+/**
+ * @name Error Codes
+ */
+///@{
+#define ERRORBIT_PARITY       2    ///< There was an RX parity error
+#define ERRORBIT_OVERFLOW     3    ///< A received byte in lastValue was overwritten with a new value
+#define ERRORBIT_NOISE        4    ///< We saw unexpected extra pulses inside data
+#define ERRORBIT_DROPOUT      5    ///< We saw too few pulses, or two big a space between pulses
 #define ERRORBIT_DUMMY        6
+///@}
 
 /**
  * Read the error state of the indicated LED
