@@ -240,39 +240,19 @@ static void activateAnode( uint8_t line ) {
     
 }
 
-static void deactivateAnode( uint8_t line ) {           
+// Deactivate all anodes. Faster to blindly do all of them than to figure out which is
+// is currently on and just do that one. 
+
+static void deactivateAnodes(void) {           
     	
-		// TODO: Must be  a faster way than switch. 
-		// Maybe a #PROGMEM table lookup?
-		
-        switch (line) {
+    // Each of these compiles to a single instruction        
+    CBI( PIXEL1_PORT , PIXEL1_BIT );
+    CBI( PIXEL2_PORT , PIXEL2_BIT );
+    CBI( PIXEL3_PORT , PIXEL3_BIT );
+    CBI( PIXEL4_PORT , PIXEL4_BIT );
+    CBI( PIXEL5_PORT , PIXEL5_BIT );
+    CBI( PIXEL6_PORT , PIXEL6_BIT );
             
-            case 0:
-            CBI( PIXEL1_PORT , PIXEL1_BIT );
-            break;
-            
-            case 1:
-            CBI( PIXEL2_PORT , PIXEL2_BIT );
-            break;
-            
-            case 2:
-            CBI( PIXEL3_PORT , PIXEL3_BIT );
-            break;
-            
-            case 3:
-            CBI( PIXEL4_PORT , PIXEL4_BIT );
-            break;
-            
-            case 4:
-            CBI( PIXEL5_PORT , PIXEL5_BIT );
-            break;
-
-            case 5:
-            CBI( PIXEL6_PORT , PIXEL6_BIT );
-            break;
-            
-        }
-
 }
 
 /*
@@ -384,7 +364,7 @@ static void pixel_isr(void) {
         
         case 0:   // In this phase, we step to the next pixel and start charging the pump. All PWMs are currently off. 
 
-            deactivateAnode( currentPixel );        
+            deactivateAnodes();        
                                     
             currentPixel++;
             
@@ -521,7 +501,7 @@ static void pixelTimerOff(void) {
     // before driving all cathodes low
     
     
-    deactivateAnode( currentPixel );
+    deactivateAnodes( );
     SBI( BLUE_SINK_PORT , BLUE_SINK_BIT);                       // Set the blue sink low to avoid any current leaks
                                                                    
     TCCR2B = 0;                     // Timer/counter2 stopped.
