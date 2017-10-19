@@ -459,35 +459,7 @@ static void pixel_isr(void) {
             break;
                         
     }        
-    
-    
-    /*    
-	
-    if ( 0 && vccAboveBlueFlag) {           // TODO: Driving blue directly for now to avoid using up timeslice!
-        /// TODO: TESTING BLUE HIGH VOLTAGE
         
-        // TODO: This takes too long! Do it in the background!
-        // TODO: We are capping the blue brightness here to make sure this does not exceed phase timeslot allowed just so we can get IR working.
-
-//        uint8_t d=  255-rawValueB[currentPixel];     // TODO: Currect code but too slow
-
-        uint8_t d= 64-(rawValueB[currentPixel]/4);     // TODO: Fix This!
-
-    
-        while (d--) {
-           //_delay_us(1);
-        }
-    
-		
-    
-        //_delay_us(200);
-    
- 
-        SBI(BLUE_SINK_PORT,BLUE_SINK_BIT);      // TODO: TESTING BLUE HIGH VOLTAGE
-	}
-	
-	*/
-    
     
 } 
 
