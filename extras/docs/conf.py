@@ -2,7 +2,7 @@ import sys
 import os
 import shlex
 import subprocess
-import sphinx_bootstrap_theme
+import guzzle_sphinx_theme
 
 read_the_docs_build = os.environ.get('READTHEDOCS', None) == 'True'
 
@@ -33,5 +33,6 @@ latex_documents = [
    u'Move38-Arduino-Platform', 'manual'),
 ]
 
-html_theme = 'bootstrap'
-html_theme_path = sphinx_bootstrap_theme.get_html_theme_path()
+html_theme = 'guzzle_sphinx_theme'
+html_theme_path = guzzle_sphinx_theme.html_theme_path()
+extensions.append("guzzle_sphinx_theme")
