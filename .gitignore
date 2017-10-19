@@ -2,5 +2,6 @@
 [Dd]ebug/
 [Rr]elease/
 .vs
-extras/docs/xml
-extras/docs/_build
+docs/xml
+docs/html
+docs/_*
