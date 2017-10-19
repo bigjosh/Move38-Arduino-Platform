@@ -2,6 +2,7 @@ import sys
 import os
 import shlex
 import subprocess
+import sphinx_bootstrap_theme
 
 read_the_docs_build = os.environ.get('READTHEDOCS', None) == 'True'
 
@@ -31,3 +32,6 @@ latex_documents = [
   (master_doc, 'Move38-Arduino-Platform.tex', u'Move38-Arduino-Platform Documentation',
    u'Move38-Arduino-Platform', 'manual'),
 ]
+
+html_theme = 'bootstrap'
+html_theme_path = sphinx_bootstrap_theme.get_html_theme_path()
