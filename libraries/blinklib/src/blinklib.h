@@ -78,8 +78,7 @@ bool buttonLongPressed(void);
 */
 
 /**
- * Returns true if the button currently pressed down 
- * (Debounced)
+ * Returns true if the button is currently pressed down.
  */
 
 bool buttonDown();
@@ -150,16 +149,19 @@ typedef unsigned Color;
 #define OFF     MAKECOLOR_RGB( 0, 0, 0)
 ///@}
 
+/**
+ * Make a new color from RGB values. Each value can be 0-31.
+ */
 // We inline this so we can get compile time simplification for static colors
-
-// Make a new color from RGB values. Each value can be 0-31. 
 
 inline Color makeColorRGB( byte red, byte green, byte blue ) {
     return MAKECOLOR_RGB( red , green , blue );
 }
 
 
-// Dim the specified color. Brightness is 0-31 (0=off, 31=don't dim at all-keep original color)
+/**
+ * Dim the specified color. Brightness is 0-31 (0=off, 31=don't dim at all-keep original color)
+ */
 // Inlined to allow static simplification at compile time
 
 inline Color dim( Color color, byte brightness) {
@@ -170,7 +172,9 @@ inline Color dim( Color color, byte brightness) {
     );
 }
 
-// Make a new color in the HSB colorspace. All values are 0-255.
+/**
+ * Make a new color in the HSB colorspace. All values are 0-255.
+ */
 
 Color makeColorHSB( byte hue, byte saturation, byte brightness );
 
@@ -199,9 +203,11 @@ void setFaceColor(  byte face, Color newColor );
 
 void delay( unsigned long millis );
 
-// Number of milliseconds since we started (since last time setup called).
-// Note that this can increase by more than 1 between calls, so always use greater than
-// and less than rather than equals for comparisons
+/**
+ * Number of milliseconds since we started (since last time setup called).
+ * Note that this can increase by more than 1 between calls, so always use greater than
+ * and less than rather than equals for comparisons
+ */
 
 // Overflows after about 50 days 
 
