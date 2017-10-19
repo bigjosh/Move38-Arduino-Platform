@@ -108,7 +108,7 @@
 
 /*
     PCICR
-    Bit 1 – PCIE1:?Pin Change Interrupt Enable 1
+    Bit 1 - PCIE1:?Pin Change Interrupt Enable 1
     When the PCIE1 bit is set and the I-bit in the Status Register (SREG) is set, pin change interrupt 1 is
     enabled. Any change on any enabled PCINT[14:8] pin will cause an interrupt. The corresponding interrupt
     of Pin Change Interrupt Request is executed from the PCI1 Interrupt Vector. PCINT[14:8] pins are
@@ -117,7 +117,7 @@
 
 /*
     PCMSK1
-    Bits 0, 1, 2, 3, 4, 5, 6 – PCINT8, PCINT9, PCINT10, PCINT11, PCINT12, PCINT13, PCINT14:?Pin
+    Bits 0, 1, 2, 3, 4, 5, 6 - PCINT8, PCINT9, PCINT10, PCINT11, PCINT12, PCINT13, PCINT14:?Pin
     Change Enable Mask
     Each PCINT[15:8]-bit selects whether pin change interrupt is enabled on the corresponding I/O pin. If
     PCINT[15:8] is set and the PCIE1 bit in PCICR is set, pin change interrupt is enabled on the
