@@ -213,7 +213,7 @@ void setFaceColor(  byte face, Color newColor );
 /**
  * Delay the specified number of milliseconds (1,000 millisecond = 1 second)
  *
- *@param millis The number of milliseconds to delay
+ * @param millis The number of milliseconds to delay
  */
 
 void delay( unsigned long millis );
