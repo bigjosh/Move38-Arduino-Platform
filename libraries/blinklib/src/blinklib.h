@@ -185,7 +185,7 @@ inline Color dim( Color color, byte brightness) {
 Color makeColorHSB( byte hue, byte saturation, byte brightness );
 
 /**
- * @image html images/leds.png
+ * @image html static/images/leds.png
  *
  * Change the tile to the specified color
  *

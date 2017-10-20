@@ -1,7 +1,7 @@
 Blinks
 ======
 
-.. image:: images/smiley-blinks.*
+.. image:: static/images/smiley-blinks.*
 
 Welcome welcome welcome!
 

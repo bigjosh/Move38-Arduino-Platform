@@ -33,6 +33,6 @@ latex_documents = [
 
 html_theme = "sphinx_rtd_theme"
 templates_path = ['templates']
-html_static_path = ['templates/static']
+html_static_path = ['static']
 html_show_sphinx = False
 html_show_sourcelink = False
