@@ -1,4 +1,40 @@
 body {
-  background: red;
   color: red;
+}
+
+.wy-nav-top {
+  display: block;
+}
+.wy-nav-side {
+  left: -300px;
+}
+.wy-nav-side.shift {
+  width: 85%;
+  left: 0;
+}
+.wy-side-scroll,
+.wy-side-nav-search,
+.wy-menu.wy-menu-vertical {
+  width: auto;
+}
+.wy-nav-content-wrap {
+  margin-left: 0;
+}
+.wy-nav-content-wrap.shift {
+  position: fixed;
+  min-width: 100%;
+  left: 85%;
+  top: 0;
+  height: 100%;
+  overflow: hidden;
+}
+.wy-nav-top, .wy-side-nav-search {
+  background-color: #008FFF;
+}
+
+.document img {
+    display: block;
+    margin: 0 auto;
+    width: 100%;
+    max-width: 600px;
 }
