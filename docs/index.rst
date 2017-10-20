@@ -1,11 +1,13 @@
 Blinks
 ======
 
+.. image:: images/smiley-blinks.*
+
 Welcome welcome welcome!
 
 .. toctree::
    :maxdepth: 2
 
-   quickstart
+   getting-started
    blinklib
    blinkcore
