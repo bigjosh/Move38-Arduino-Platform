@@ -92,9 +92,6 @@ bool buttonDown();
 
 byte getNeighborState( byte face );
 
-// Returns true if we have recently received a valid message from a neighbor
-// on the indicated face
-
 
 /*
 
@@ -106,7 +103,9 @@ byte getNeighborState( byte face );
  * Set our state to newState. This state is repeatedly broadcast to any
  * neighboring tiles. 
  * Note that setting our state to 0 make us stop broadcasting and effectively 
- * disappear from the view of neighboring tiles. 
+ * disappear from the view of neighboring tiles.
+ *
+ * @param newState The new state that should be set.
  */
 
 void setState( byte newState );
@@ -146,11 +145,15 @@ typedef unsigned Color;
 
 #define WHITE       MAKECOLOR_RGB(31,31,31)
 
-#define OFF     MAKECOLOR_RGB( 0, 0, 0)
+#define OFF         MAKECOLOR_RGB( 0, 0, 0)
 ///@}
 
 /**
  * Make a new color from RGB values. Each value can be 0-31.
+ *
+ * @param red
+ * @param green
+ * @param blue
  */
 // We inline this so we can get compile time simplification for static colors
 
@@ -161,6 +164,9 @@ inline Color makeColorRGB( byte red, byte green, byte blue ) {
 
 /**
  * Dim the specified color. Brightness is 0-31 (0=off, 31=don't dim at all-keep original color)
+ *
+ * @param color
+ * @param brightness
  */
 // Inlined to allow static simplification at compile time
 
@@ -182,12 +188,17 @@ Color makeColorHSB( byte hue, byte saturation, byte brightness );
  * @image html images/leds.png
  *
  * Change the tile to the specified color
+ *
+ * @param newColor
  */
 
 void setColor( Color newColor);
 
 /**
  * Set the pixel on the specified face (0-5) to the specified color
+ *
+ * @param face
+ * @param newColor
  */
 
 void setFaceColor(  byte face, Color newColor );
@@ -200,7 +211,9 @@ void setFaceColor(  byte face, Color newColor );
 */
 
 /**
- * Delay the specified number of milliseconds (1,000 millisecond = 1 second) 
+ * Delay the specified number of milliseconds (1,000 millisecond = 1 second)
+ *
+ *@param millis The number of milliseconds to delay
  */
 
 void delay( unsigned long millis );
@@ -226,6 +239,8 @@ unsigned long millis(void);
 /**
  * Read the unique serial number for this blink tile
  * There are 9 bytes in all, so n can be 0-8
+ *
+ * @param n
  */
 
 byte getSerialNumberByte( byte n );
@@ -263,25 +278,34 @@ bool buttonPressed(void);
 
 
 /**
- * Send data on a single face. Data is 7-bits wide, top bit is ignored. 
+ * Send data on a single face. Data is 7-bits wide, top bit is ignored.
+ *
+ * @param face
+ * @param data
  */
 
 void irSendData( uint8_t face , uint8_t data );
 
 /**
- * Broadcast data on all faces. Data is 7-bits wide, top bit is ignored. 
+ * Broadcast data on all faces. Data is 7-bits wide, top bit is ignored.
+ *
+ * @param data
  */
 
 void irBroadcastData( uint8_t data );
 
 /**
  * Is there a received data ready to be read on the indicated face? Returns 0 if none.
+ *
+ * @param face
  */
 
 bool irIsReadyOnFace( uint8_t face );
 
 /**
  * Read the most recently received data. Value 0-127. Blocks if no data ready.
+ *
+ * @param led
  */
 
 uint8_t irGetData( uint8_t led );
@@ -301,6 +325,8 @@ uint8_t irGetData( uint8_t led );
 /**
  * Read the error state of the indicated LED
  * Clears the bits on read
+ *
+ * @param face
  */
 
 uint8_t irGetErrorBits( uint8_t face );
