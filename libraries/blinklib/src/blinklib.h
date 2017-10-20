@@ -18,11 +18,22 @@
 typedef uint8_t byte;
 
 
-/* 
+/**
+ * @name Memory
+ * @image html static/images/processor.svg
+ */
+///@{
 
-	This set of functions let you test for changes in the environment. 
+/**
+ * Set our state to newState. This state is repeatedly broadcast to any
+ * neighboring tiles. 
+ * Note that setting our state to 0 make us stop broadcasting and effectively 
+ * disappear from the view of neighboring tiles.
+ *
+ * @param newState The new state that should be set.
+ */
 
-*/
+void setState(byte newState);
 
 /**
  * Did the state on any face change since last called?
@@ -32,14 +43,34 @@ typedef uint8_t byte;
 bool neighborChanged();
 
 /**
- * Was the button pressed or lifted since the last time we checked?
- * Note that these register the change the instant the button state changes 
- * without any delay, so good for latency sensitive cases.
- * It is debounced, so the button must have been in the previous state a minimum 
- * debounce time before a new detection will occur. 
+ * Returns the last received state of the indicated face, or
+ * 0 if no messages received recently on indicated face
+ *
+ * @param face Which side of the Blink from which to get the neighbor's state
+ */
+
+byte getNeighborState( byte face );
+
+///@}
+
+/**
+ * @name Button
+ * @image html static/images/button.svg
+ */
+///@{
+
+/**
+ * Returns true if the button has been pressed since
+ * the last time it was called. 
  */
 
 bool buttonPressed(void);
+
+/**
+ * Returns true if the button has been lifted since
+ * the last time it was called. 
+ */
+
 bool buttonLifted(void);
 
 /**
@@ -69,46 +100,13 @@ byte buttonClickCount(void);
  */
 bool buttonLongPressed(void);
 
-    
-
-/*
-
-	This set of functions lets you read the current state of the environment.
-
-*/
-
 /**
  * Returns true if the button is currently pressed down.
  */
 
-bool buttonDown();
+bool buttonDown(void);
 
-/**
- * Returns the last received state of the indicated face, or
- * 0 if no messages received recently on indicated face
- *
- * @param face Which side of the Blink from which to get the neighbor's state
- */
-
-byte getNeighborState( byte face );
-
-
-/*
-
-	This set of functions lets you change the state of the environment.
-
-*/
-
-/**
- * Set our state to newState. This state is repeatedly broadcast to any
- * neighboring tiles. 
- * Note that setting our state to 0 make us stop broadcasting and effectively 
- * disappear from the view of neighboring tiles.
- *
- * @param newState The new state that should be set.
- */
-
-void setState( byte newState );
+///@}
 
 // Color type holds 4 bits for each R,G,B. Top bit is currently unused.
 
@@ -149,6 +147,12 @@ typedef unsigned Color;
 ///@}
 
 /**
+ * @name LEDs
+ * @image html static/images/leds.svg
+ */
+///@{
+
+/**
  * Make a new color from RGB values. Each value can be 0-31.
  *
  * @param red
@@ -185,8 +189,6 @@ inline Color dim( Color color, byte brightness) {
 Color makeColorHSB( byte hue, byte saturation, byte brightness );
 
 /**
- * @image html static/images/leds.png
- *
  * Change the tile to the specified color
  *
  * @param newColor
@@ -203,6 +205,7 @@ void setColor( Color newColor);
 
 void setFaceColor(  byte face, Color newColor );
 
+///@}
 
 /* 
 
@@ -246,36 +249,12 @@ unsigned long millis(void);
 byte getSerialNumberByte( byte n );
 
 
-/* 
-
-    Button functions
-
-*/
-
 
 /**
- * Debounced view of button state
+ * @name Comms
+ * @image html static/images/comms.svg
  */
-
-bool buttonDown(void);
-
-/**
- * Returns true if the button has been pressed since
- * the last time it was called. 
- */
-
-bool buttonPressed(void);
-
-
-
-
-/* 
-
-    IR communications functions
-
-*/
-
-
+///@{
 
 /**
  * Send data on a single face. Data is 7-bits wide, top bit is ignored.
@@ -331,13 +310,13 @@ uint8_t irGetData( uint8_t led );
 
 uint8_t irGetErrorBits( uint8_t face );
 
+///@}
 
 
-/*
-
-    These hook functions are filled in by the sketch
-
-*/
+/**
+ * @name Sketch
+ */
+///@{
 
 /**
  * Called when this sketch is first loaded and then 
@@ -352,5 +331,7 @@ void setup(void);
  */
 
 void loop();
+
+///@}
 
 #endif /* BLINKLIB_H_ */

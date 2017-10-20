@@ -1,5 +1,13 @@
 body {
+  color: #222;
+}
+
+h1, h2, h3, h4, h5 {
   color: red;
+}
+
+a, a:visited {
+  color: #008FFF;
 }
 
 .wy-nav-top {
@@ -36,5 +44,16 @@ body {
     display: block;
     margin: 0 auto;
     width: 100%;
-    max-width: 600px;
+    max-height: 16em;
+}
+
+.rst-content dl:not(.docutils) dt {
+  color: #008FFF;
+  border-color: #008FFF;
+}
+
+.rst-content tt.literal,
+.rst-content tt.literal,
+.rst-content code.literal {
+  color: red;
 }
