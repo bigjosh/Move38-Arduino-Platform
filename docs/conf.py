@@ -9,7 +9,7 @@ read_the_docs_build = os.environ.get('READTHEDOCS', None) == 'True'
 if read_the_docs_build:
     subprocess.call('doxygen', shell=True)
 
-extensions = ['breathe', 'guzzle_sphinx_theme']
+extensions = ['breathe']
 breathe_projects = { 'Move38-Arduino-Platform': 'xml' }
 breathe_default_project = "Move38-Arduino-Platform"
 source_suffix = '.rst'
