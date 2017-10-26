@@ -217,6 +217,8 @@ static volatile uint8_t maxCompletedClickCount=0;       // Remember the most com
 // Called once per tick by the timer to check the button position
 // and update the button state variables.
 
+// Note: this runs in Callback context in the timercallback
+
 static void updateButtonState(void) {
     
        
@@ -447,6 +449,8 @@ static uint16_t cyclesCounter=0;                    // Accumulate cycles to keep
 #if TIMER_CYCLES_PER_TICK >  BLINKCORE_UINT16_MAX 
     #error Overflow on cyclesCounter
 #endif
+
+// Note this runs in callback contrext
 
 static void updateMillis(void) {
     

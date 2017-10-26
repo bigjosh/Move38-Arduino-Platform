@@ -23,19 +23,13 @@
 
 #define DEBUG_MODE
 
-
 #include "debug.h"
 #include "blinklib.h"
-
-const uint8_t x = ERRORBIT_DUMMY;
-
-
 
 
 #include "ir.h"
 #include "utils.h"
 #include "timer.h"          // get US_TO_CYCLES()
-
 
 #include "irdata.h"
 
@@ -190,10 +184,10 @@ static void reset(ir_rx_state_t  *ptr, uint8_t errorReasonBit ) {
 // Called once per timer tick
 // Check all LEDs, decode any changes
  
+ // NOte this runs in callback context in timercallback. 
  
  void updateIRComs(void) {
-     
-     
+          
     uint8_t bits = ir_test_and_charge();
     
     // DEBUGC is the sample clock. A long pulse means a trigger on led IR0 durring prior window

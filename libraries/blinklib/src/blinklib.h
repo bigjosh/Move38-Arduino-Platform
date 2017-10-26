@@ -27,8 +27,9 @@ typedef uint8_t byte;
 // Did the state on any face change since last called?
 // Get the neighbor states with getNeighborState()
 
-bool neighborChanged();
+// TODO: State view not implemented yet. You can use irIsReadyOnFace() instead.
 
+//bool neighborChanged();
 
 // Was the button pressed or lifted since the last time we checked?
 // Note that these register the change the instant the button state changes 
@@ -60,9 +61,7 @@ byte buttonClickCount(void);
 
 // Remember that a long press fires while the button is still down
 bool buttonLongPressed(void);
-
     
-
 /*
 
 	This set of functions lets you read the current state of the environment.
@@ -76,6 +75,8 @@ bool buttonDown();
 
 // Returns the last received state of the indicated face, or
 // 0 if no messages received recently on indicated face
+
+// TODO: State view not implemented yet. You can use irGetData() instead
 
 byte getNeighborState( byte face );
 
@@ -94,7 +95,9 @@ byte getNeighborState( byte face );
 // Note that setting our state to 0 make us stop broadcasting and effectively 
 // disappear from the view of neighboring tiles. 
 
-void setState( byte newState );
+// TODO: State view not implemented yet. You can use irBroadcastData() instead.
+    
+// void setState( byte newState );
 
 // Color type holds 4 bits for each R,G,B. Top bit is currently unused.
 
