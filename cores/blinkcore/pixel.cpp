@@ -48,6 +48,7 @@
 
 #include "callbacks.h"
 
+#include "timer.h"      // We piggyback actual timer callback in pixel since we are using that clock for PWM
 
 // Here are the raw compare register values for each pixel
 // These are precomputed from brightness values because we read them often from inside an ISR
@@ -88,6 +89,26 @@ static void setupPixelPins(void) {
 	SBI( BLUE_SINK_PORT , BLUE_SINK_BIT);   // Set the sink output high so blue LED will not come on
 	SBI( BLUE_SINK_DDR  , BLUE_SINK_BIT);
 	
+}
+
+
+// This will put all timers into sync mode, where they will stop dead
+// We can then run the enable() fucntions as we please to get them all set up
+// and then release them all at the same exact time
+// We do this to get timer0/timer1 and timer2 to be exactly out of phase
+// with each other so they can run without stepping on each other
+// This assumes that one of the timers will start with its coutner 1/2 way finished
+//..which timer2 does.
+
+void holdTimers(void) {
+    SBI(GTCCR,TSM);         // Activate sync mode - both timers halted
+    SBI(GTCCR,PSRASY);      // Reset prescaller for timer2
+    SBI(GTCCR,PSRSYNC);     // Reset prescaller for timer0 and timer1
+}
+
+
+void releaseTimers(void) {
+    CBI(GTCCR,TSM);            // Release all timers at the same moment
 }
 
 
@@ -168,7 +189,11 @@ static void pixelTimersOn(void) {
     
     
     #define PIXEL_PRESCALLER        8       // Used for timekeeping calculations below
+    
+    
+    holdTimers();           // Hold the timers so when we start them they will be exactly synced  
 
+    
     TCCR0B =                                // Turn on clk as soon as possible after setting COM bits to get the outputs into the right state
         _BV( CS01 );                        // clkIO/8 (From prescaler)- ~ This line also turns on the Timer0
 
@@ -181,13 +206,11 @@ static void pixelTimersOn(void) {
     
     TCCR2B =                                // Turn on clk as soon as possible after setting COM bits to get the outputs into the right state
         _BV( CS21 );                        // clkI/O/8 (From prescaler)- This line also turns on the Timer0
+                    
                                             // NOTE: There is a datasheet error that calls this bit CA21 - it is actually defined as CS21
-        
-    // TODO: Maybe use Timer2 to drive the ISR since it has Count To Top mode available. We could reset Timer0 from there.
+    releaseTimers();                        // Timer0 and timer1 now in lockstep
         
 }
-
-
 
 
 static void setupTimers(void) {
@@ -301,6 +324,23 @@ struct CALLBACK_PIXEL_FRAME : CALLBACK_BASE<CALLBACK_PIXEL_FRAME> {
     }
     
 };
+
+
+#warning timercallback not called now...
+
+struct ISR_CALLBACK_TIMER : CALLBACK_BASE< ISR_CALLBACK_TIMER> {
+    
+    static const uint8_t running_bit = CALLBACK_TIMER_RUNNING_BIT;
+    static const uint8_t pending_bit = CALLBACK_TIMER_PENDING_BIT;
+    
+    static inline void callback(void) {
+        
+        timer_callback();
+        
+    }
+    
+};
+
 
                                      
 static uint8_t currentPixel;      // Which pixel are we on now?
@@ -445,7 +485,7 @@ static void pixel_isr(void) {
             // IMPORTANT: If you change the number of phases, you must update PHASE_COUNT above!
 
 
-            // Here we double check our calculations so we will remeber if we ever change 
+            // Here we double check our calculations so we will remember if we ever change 
             // any of the inputs to CYCLES_PER_FRAME
             
             #define CYCLES_PER_FRAME ( PIXEL_PRESCALLER * PIXEL_STEPS_PER_OVR * PHASE_COUNT  )
