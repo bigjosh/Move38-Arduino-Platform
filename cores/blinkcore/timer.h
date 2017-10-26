@@ -3,28 +3,31 @@
  *
  * Timer related functions
  *
+ * Note that the RGB pixel PWM uses timer0 and timer2, so we piggy back on timer0 overflow to
+ * provide the timer callback. That means all this code lives in pixel.h
+ *
  */ 
 
 #ifndef TIMER_H_
 #define TIMER_H_
 
-// Class for a timer-based callback
-// `when` is the time in millis when you want to get called. 
-// Calling start on an already running timer resets its `when` time.
-
 #include "blinkcore.h"
-
 
 // These values are based on how we actually program the timer registers in timer_enable()
 // There are checked with assertion there, so don't change these without changing the actual registers first
-
 
 // User supplied callback. Called every 512us with interrupts on. Should complete work in <<256us.
 // Actually called form pixel.cpp since we also use the pixel timer for time keeping
 
 void timer_callback(void);
 
-#define TIMER_CYCLES_PER_TICK (TIMER_PRESCALER*TIMER_RANGE)
+#define TIMER_PRESCALER 8       // How much we divide the F_CPU by to get the timer0 frequency
+
+#define TIMER_TOP 256           // How many timer ticks per overflow?
+
+#define TIMER_PHASE_COUNT  5    // How many phases between timer callback? 
+
+#define TIMER_CYCLES_PER_TICK (TIMER_PRESCALER*TIMER_TOP*TIMER_PHASE_COUNT)
 
 #define F_TIMER ( F_CPU / TIMER_CYCLES_PER_TICK )       // Timer overflow frequency. Units of TICKS/SEC. Comes out to 1953.125 = 1.953125 kilohertz, 512us per tick
 
@@ -39,9 +42,5 @@ void timer_callback(void);
 #define CYCLES_PER_US (F_CPU/US_PER_SECOND)
 
 #define US_TO_CYCLES(us) (us * CYCLES_PER_US )
-   
-// Delay `millis` milliseconds.
-
-void delay_ms( unsigned long millis);    
-    
+      
 #endif /* TIMER_H_ */

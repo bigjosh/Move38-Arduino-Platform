@@ -350,6 +350,9 @@ ISR(TIMER1_CAPT_vect) {
 // If count=0 then 256 pulses will be sent. 
 // If spaceing_ticks==0, then the time between pulses will be 65536 ticks
 
+// Assumes timer1 stopped on entry, leaves timer1 stopped on exit
+// Assumes timer1 overflow flag cleared on entry, leaves clear on exit
+
 // TODO: Add a version that doesn't block and let's you specify a margin at the end before the next TX
 // can start? Use overflow bit to see if past. Easy?
 
@@ -368,9 +371,18 @@ void ir_tx_pulses(uint8_t count, uint16_t spacing_ticks , uint8_t bitmask) {
     
     TIMSK1 |= _BV(ICIE1);                // Enable the ISR when we hit ICR1
     
+    
+    
     // Start clock in mode 12 with /1 prescaller (one timer tick per clock tick)
     TCCR1B = _BV( WGM12) | _BV( WGM13) | _BV( CS10);            // clk/1
     
     while (sendpulses_remaining);       // Wait to complete
-        
+    
+    CBI( TIMSK1 , ICIE1 );                // Be a good citizen and disable ISR when done. We share this timer with delay_ms().
+    
+    // Note that the timer was already stopped in the last call of the ISR.    
+    // Note overflow flag cleared automatically when ISR called, but could overflow again is timer period super short compared to int latency
+    
+    CBI( TIFR1 , TOV1 );         // Clear overflow flag in case it is set
+            
 }

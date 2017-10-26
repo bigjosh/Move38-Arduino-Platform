@@ -31,6 +31,7 @@
 
 #include "irdata.h"
 
+#include "delay.h"
 
 #include "debug.h"
 
@@ -148,7 +149,20 @@ Color makeColorHSB( uint8_t hue, uint8_t saturation, uint8_t brightness ) {
 // TODO: Use millis timer to do this
     
 void delay( unsigned long millis ) {
-    delay_ms( millis );
+    
+    // delay_ms() has a maximum value of millis it can handle, so we call 
+    // multiple times if necessary to build up the delay. 
+    // Not perfect, but likely good enough to get withing a ms on delays longer than 20 sec
+    
+    while (millis) {
+        
+        unsigned nextDelay = min( millis , max_delay_ms);
+        
+        delay_ms( nextDelay );
+        
+        millis -= nextDelay;
+                
+    }        
 }    
 
 
@@ -430,7 +444,7 @@ unsigned long millis(void) {
 
 static uint16_t cyclesCounter=0;                    // Accumulate cycles to keep millisCounter accurate
 
-#if TIMER_CYCLES_PER_TICK >  0xffff //UINT16_MAX
+#if TIMER_CYCLES_PER_TICK >  BLINKCORE_UINT16_MAX 
     #error Overflow on cyclesCounter
 #endif
 

@@ -100,14 +100,14 @@ static void setupPixelPins(void) {
 // This assumes that one of the timers will start with its coutner 1/2 way finished
 //..which timer2 does.
 
-void holdTimers(void) {
+static void holdTimers(void) {
     SBI(GTCCR,TSM);         // Activate sync mode - both timers halted
     SBI(GTCCR,PSRASY);      // Reset prescaller for timer2
     SBI(GTCCR,PSRSYNC);     // Reset prescaller for timer0 and timer1
 }
 
 
-void releaseTimers(void) {
+static void releaseTimers(void) {
     CBI(GTCCR,TSM);            // Release all timers at the same moment
 }
 
@@ -156,27 +156,32 @@ static void pixelTimersOn(void) {
 
 	// When we get here, timer 0 is not running, timer pins are driving red and green LEDs and they are off.  
 
-    // We are using mode 3 here for FastPWM which defines the TOP (the value when the overflow interrupt happens) as 255
-    #define PIXEL_STEPS_PER_OVR    256      // USewd for timekeeping calculations below 
+    // We are using Timer0 mode 3 here for FastPWM which defines the TOP (the value when the overflow interrupt happens) as 255    
     
     TCCR0A =
         _BV( WGM00 ) | _BV( WGM01 ) |       // Set mode=3 (0b11)
         _BV( COM0A1) |                      // Clear OC0A on Compare Match, set OC0A at BOTTOM, (non-inverting mode) (clearing turns LED on)
         _BV( COM0B1)                        // Clear OC0B on Compare Match, set OC0B at BOTTOM, (non-inverting mode)
     ;
+
+    #if TIMER_TOP != 256
+        #Timer TOP is hardcoded as 256 in this mode, must match value uesed in calculations
+    #endif
     
 	// IMPORTANT:If you change the mode, you must update PIXEL_STEPS_PER_OVR above!!!!
     
-	
-	// TODO: Get two timers exactly in sync. Maybe preload TCNTs to account for the difference between start times?
-
-    // ** Next setup Timer2 for blue PWM. This is different because for the charge pump. We have to drive the pin HIGH to charge
-    // the capacitor, then the LED lights on the LOW.
+    // Next setup Timer2 for blue PWM. 
+    // When the output pin goes low, it pulls down on the charge pump cap
+    // which pulls down the blue RGB cathode to negative voltage, lighting the blue led
     
     TCCR2A =
-    _BV( COM2B1) |                        // Clear OC0B on Compare Match, set OC0B at BOTTOM, (non-inverting mode) (clearing turns off pump and on LED)
+    _BV( COM2B1) |                        // 1 0 = Clear OC0B on Compare Match (blue on), set OC0B at BOTTOM (blue off), (non-inverting mode)
     _BV( WGM01) | _BV( WGM00)             // Mode 3 - Fast PWM TOP=0xFF
     ;
+
+    #if TIMER_TOP != 256 
+        #Timer TOP is hardcoded as 256 in this mode, must match value used in calculations
+    #endif
 
     
     // Timer2 (B)                           // Charge pump is attached to OC2B
@@ -187,26 +192,30 @@ static void pixelTimersOn(void) {
         
     // Ok, everything is ready so turn on the timers!
     
-    
-    #define PIXEL_PRESCALLER        8       // Used for timekeeping calculations below
-    
-    
+        
     holdTimers();           // Hold the timers so when we start them they will be exactly synced  
 
     
     TCCR0B =                                // Turn on clk as soon as possible after setting COM bits to get the outputs into the right state
         _BV( CS01 );                        // clkIO/8 (From prescaler)- ~ This line also turns on the Timer0
 
+    #if TIMER_PRESCALER != 8
+        # Actual hardware prescaller must match value used in calculations 
+    #endif
+
     // IMPORTANT!
-    // If you change this prescaller, you must update the PIXEL_PRESCALLER above!
-
-
+    // If you change this prescaller, you must update the the value in timer.h!
 
     // The two timers might be slightly unsynchronized by a cycle, but that should not matter since all the action happens at the end of the cycle anyway.
     
     TCCR2B =                                // Turn on clk as soon as possible after setting COM bits to get the outputs into the right state
         _BV( CS21 );                        // clkI/O/8 (From prescaler)- This line also turns on the Timer0
                     
+
+    #if TIMER_PRESCALER != 8
+        # Actual hardware prescaller must match value used in calculations
+    #endif
+
                                             // NOTE: There is a datasheet error that calls this bit CA21 - it is actually defined as CS21
     releaseTimers();                        // Timer0 and timer1 now in lockstep
         
@@ -297,36 +306,15 @@ void updateVccFlag(void) {                  // Set the flag based on ADC check o
 
 */
 
-// Callback that is called after each frame is displayed
-// Note that you could get multiple consecutive calls with the
-// Same state if the button quickly toggles back and forth quickly enough that
-// we miss one phase. This is particularly true if there is a keybounce exactly when
-// and ISR is running.
-
-// Confirmed that all the pre/postamble pushes and pops compile away if this is left blank
+// Callback that is called once per frame 
+// Called during a nice visual lull when there are two consecutive phases where RGB LEDs are off
+// so plenty of time to do any updates without visual tearing. 
 
 // Weak reference so it (almost) compiles away if not used.
 // (looks like GCC is not yet smart enough to see an empty C++ virtual invoke. Maybe some day!)
 
-void __attribute__((weak)) pixel_callback_onFrame(void) {
-}
+// Confirmed that all the pre/postamble pushes and pops compile away if this is left blank
 
-
-struct CALLBACK_PIXEL_FRAME : CALLBACK_BASE<CALLBACK_PIXEL_FRAME> {
-    
-    static const uint8_t running_bit = CALLBACK_PIXEL_FRAME_RUNNING_BIT;
-    static const uint8_t pending_bit = CALLBACK_PIXEL_FRAME_PENDING_BIT;
-    
-    static inline void callback(void) {
-        
-        pixel_callback_onFrame();
-        
-    }
-    
-};
-
-
-#warning timercallback not called now...
 
 struct ISR_CALLBACK_TIMER : CALLBACK_BASE< ISR_CALLBACK_TIMER> {
     
@@ -340,7 +328,6 @@ struct ISR_CALLBACK_TIMER : CALLBACK_BASE< ISR_CALLBACK_TIMER> {
     }
     
 };
-
 
                                      
 static uint8_t currentPixel;      // Which pixel are we on now?
@@ -431,7 +418,17 @@ static void pixel_isr(void) {
             // TODO: Handle the case where battery is high enough to drive blue directly and skip the pump
             
             phase++;
-                          
+            
+            // Now we call the timer callback function
+            // This is a great place to do it because the pixels will be off for the next 2 phases
+            // while we charge the pump. This give the foreground some time to make updates that will
+            // all show up simultaneously when we turn on the 1st pixel. 
+            
+            // The frequency of this call is calculated in timer.h by F_TIMER
+            // The time between calls is calculated in timer.h by TIMER_CYCLES_PER_TICK
+            
+            ISR_CALLBACK_TIMER::invokeCallback();
+                                      
             break;
              
         case 1:
@@ -477,25 +474,15 @@ static void pixel_isr(void) {
             break;
             
         case 4: // Right now the green LED is on. 
-                
+        
+            #if TIMER_PHASE_COUNT!= 5
+                #error If this switch does not have 5 cases, then need to update the TIMER_PHASE_COUNT in timer.h to make calculations colrrect
+            #endif
+                       
             OCR0B = 255;                                // Load OCR to turn off green at next overflow
             
-            #define PHASE_COUNT 5         // Used for timekeeping calculations
             phase=0;                            // Step to next pixel and start over
-            // IMPORTANT: If you change the number of phases, you must update PHASE_COUNT above!
-
-
-            // Here we double check our calculations so we will remember if we ever change 
-            // any of the inputs to CYCLES_PER_FRAME
-            
-            #define CYCLES_PER_FRAME ( PIXEL_PRESCALLER * PIXEL_STEPS_PER_OVR * PHASE_COUNT  )
-            
-            #if CYCLES_PER_FRAME!=PIXEL_CYCLES_PER_FRAME
-                #error The PIXEL_CYCLES_PER_FRAME in pixel.h must match the actual values programmed into the timer
-            #endif
-
-            CALLBACK_PIXEL_FRAME::invokeCallback();
-
+                    
             break;
                         
     }        
