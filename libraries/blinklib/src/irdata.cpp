@@ -93,10 +93,28 @@ static uint8_t oddParity(uint8_t p) {
  // Data Indirect with Displacement opcodes
 
  ir_rx_state_t ir_rx_states[IRLED_COUNT];
+
+
+// Received a valid byte 
+ 
+ static void gotByte( ir_rx_state_t *ptr , const byte b ) {
+
+        if (ptr->lastValue) {   // Already have a value?
+
+            // Signal the overflow happened if anyone cares to check
+                    
+            SBI( ptr->errorBits , ERRORBIT_OVERFLOW );
+                    
+        }
+                
+        ptr->lastValue = b;                    // Save new value (overwrites in case of overflow)
+     
+ }     
+ 
   
 // Got a valid bit. Deserialize it.
 
-static void gotBit(ir_rx_state_t *ptr, bool bit ) {
+static void gotBit(ir_rx_state_t *ptr, const bool bit ) {
     
     
     // DEBUGB is decoded bitstream. Wide pulse is 1-bit.
@@ -115,15 +133,8 @@ static void gotBit(ir_rx_state_t *ptr, bool bit ) {
 
                 //DEBUGA_BITS( buffer );
                 
-                if (ptr->lastValue) {   // Already have a value?
+                gotByte( ptr , buffer );
 
-                    // Signal the overflow happened if anyone cares to check
-                    
-                    SBI( ptr->errorBits , ERRORBIT_OVERFLOW );
-                                                           
-                }             
-                                
-                ptr->lastValue = buffer;                    // Save new value (overwrites in case of overflow)
                 
             }  else {
 
@@ -287,10 +298,7 @@ bool irIsReadyOnFace( uint8_t led ) {
     return( ir_rx_states[led].lastValue != 0 );    
 }    
 
-
-
 // Read the most recently received data. Blocks if no data ready
-
 
 uint8_t irGetData( uint8_t led ) {
         
@@ -306,7 +314,7 @@ uint8_t irGetData( uint8_t led ) {
 
     return d & 0b01111111;      // Don't show our internal flag. 
     
-}    
+}
 
 
 

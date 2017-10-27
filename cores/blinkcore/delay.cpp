@@ -21,7 +21,7 @@
 // TODO: After all this work, seems like probably better handled in blinklib by just polling on millis()?
 // Maybe this is good for sleeping while in delay? Nah. Oh well. 
     
-void delay_ms( uint16_t ms ) {
+void delay_msx( uint16_t ms ) {
         
     
     TCNT1 = 0;          // Start timer at 0. Assumes timer is normally stopped. 

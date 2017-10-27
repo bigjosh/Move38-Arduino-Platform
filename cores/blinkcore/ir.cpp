@@ -365,9 +365,13 @@ void ir_tx_pulses(uint8_t count, uint16_t spacing_ticks , uint8_t bitmask) {
     sendpulses_remaining = count;    
     sendpulses_biutmask=bitmask;
     
-    ICR1 = spacing_ticks;           // We will fire ISR when we hit this, and also roll back to 0. 
+    ICR1 = spacing_ticks;               // We will fire ISR when we hit this, and also roll back to 0. 
     
-    TCNT1 = spacing_ticks-1;          // Grease the wheels. This will make the 1st pulse go out as soon as we turn on the timer
+    TCNT1 = spacing_ticks-1;            // Grease the wheels. This will make the 1st pulse go out as soon as we turn on the timer
+    
+    SBI( TIFR1 , ICF1 );                // Clear TOP match flag in case it is set.
+                                        // "ICF can be cleared by writing a logic one to its bit location."
+    
     
     TIMSK1 |= _BV(ICIE1);                // Enable the ISR when we hit ICR1
     
@@ -376,13 +380,12 @@ void ir_tx_pulses(uint8_t count, uint16_t spacing_ticks , uint8_t bitmask) {
     // Start clock in mode 12 with /1 prescaller (one timer tick per clock tick)
     TCCR1B = _BV( WGM12) | _BV( WGM13) | _BV( CS10);            // clk/1
     
+    // TODO: Use the ISR bit to signal when done ebucase it is in an IO register
+    
     while (sendpulses_remaining);       // Wait to complete
     
     CBI( TIMSK1 , ICIE1 );                // Be a good citizen and disable ISR when done. We share this timer with delay_ms().
     
     // Note that the timer was already stopped in the last call of the ISR.    
-    // Note overflow flag cleared automatically when ISR called, but could overflow again is timer period super short compared to int latency
-    
-    CBI( TIFR1 , TOV1 );         // Clear overflow flag in case it is set
             
 }

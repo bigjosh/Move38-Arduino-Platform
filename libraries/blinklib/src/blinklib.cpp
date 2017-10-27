@@ -35,6 +35,14 @@
 
 #include "debug.h"
 
+// IR CONSTANTS
+
+#define STATE_BROADCAST_SPACING_MS  50           // How often do we broadcast our state to neighboring tiles?
+
+#define STATE_ABSENSE_TIMEOUT_MS 250             // If we don't get any state received on a face for this long, we set their state to 0
+
+// BUTTON CONSTANTS
+
 // Debounce button pressed this much
 // Empirically determined. At 50ms, I can click twice fast enough
 // that the second click it gets in the debounce. At 20ms, I do not 
@@ -49,6 +57,8 @@
 
 #define BUTTON_LONGPRESS_TIME_MS 2000       // How long you must hold button down to register a long press. 
 
+
+// PIXEL FUNCTIONS
 
 void setColor( Color newColor ) {
     
@@ -139,7 +149,9 @@ Color makeColorHSB( uint8_t hue, uint8_t saturation, uint8_t brightness ) {
     return( makeColorRGB( r >> 3 , g >> 3  , b >> 3 ) );
 }
 
+/*
 
+// Simpler delay based on millis() below. Not as precice, but so much simpler and way good enough. 
     
 // Note that we do not expose _delay_ms() to the user since then they would need
 // access to F_CPU and it would also limit them to only static delay times. 
@@ -165,6 +177,7 @@ void delay( unsigned long millis ) {
     }        
 }    
 
+*/
 
 // Read the unique serial number for this blink tile
 // There are 9 bytes in all, so n can be 0-8
@@ -177,6 +190,17 @@ byte getSerialNumberByte( byte n ) {
     return utils_serialno()->bytes[n];
 
 }
+
+
+/** IR Functions **/
+
+// Return the last received value on the specified face, or 0 if no value receieved recently 
+
+byte getNeighborState( byte face ) {
+    
+    
+    
+}    
 
 
 // // These all can be updated by callback, so must be volatile.
@@ -433,6 +457,16 @@ unsigned long millis(void) {
     return( tempMillis );
 }
 
+// Delay for `ms` milliseconds
+
+void delay( unsigned long ms ) {
+    
+    unsigned long endtime = millis() + ms;
+    
+    while (millis() < endtime);
+    
+}    
+
 
 // TODO: This is accurate and correct, but so inefficient. 
 // We can do better. 
@@ -489,6 +523,8 @@ void run(void) {
     while (1) {
      
         loop();
+        
+        // TODO: Sleep here
            
     }        
     
