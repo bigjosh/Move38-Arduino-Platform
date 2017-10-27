@@ -50,55 +50,9 @@
 
   
  
-static inline void chargeLEDs( uint8_t bitmask ) {
-    
-    uint8_t ir_cathode_ddr_cache = IR_CATHODE_DDR;       // This will not change unless we change it, so no need to reload it every access
-    
-     PCMSK1 &= ~bitmask;                                 // stop Triggering interrupts on these pins because they are going to change when we charge them
-    
-    // charge up receiver cathode pins while keeping other pins intact
-           
-    // This will enable the pull-ups on the LEDs we want to change without impacting other pins
-    // The other pins will stay whatever they were.
-    
-    // NOTE: We are doing something tricky here. Writing a 1 to a PIN bit actually toggles the PORT bit. 
-    // This saves about 10 instructions to manually load, or, and write back the bits to the PORT. 
-    
-    
-    /*
-        19.2.2. Toggling the Pin
-        Writing a '1' to PINxn toggles the value of PORTxn, independent on the value of DDRxn. 
-    */
-    
-    IR_CATHODE_PIN =  bitmask;       // This enables pull-ups on charge pins
-        
-    IR_CATHODE_DDR = ir_cathode_ddr_cache | bitmask;       // This will drive the charge pins high 
-    
-    // Empirically this is how long it takes to charge 
-    // and avoid false positive triggers in 1ms window 12" from halogen desk lamp
-    
-    _delay_us( IR_CHARGE_TIME_US );
-    
-    
-    // Only takes a tiny bit of time to charge up the cathode, even though the pull-up so no extra delay needed here...
-    
-
-    PCMSK1 |= bitmask;                  // Re-enable pin change on the pins we just charged up
-                                        // Note that we must do this while we know the pins are still high
-                                        // or there might be a *tiny* race condition if the pin changed in the cycle right after
-                                        // we finished charging but before we enabled interrupts. This would latch
-                                        // forever.
-                                                                                    
-    // Stop charging LED cathode pins
-    
-     
-    IR_CATHODE_DDR = ir_cathode_ddr_cache;          // Back to the way we started, charge pins now only pulled-up
-     
-    IR_CATHODE_PIN = bitmask;                       // toggle pull-ups off, now cathodes pure inputs 
-                                                          
-}    
 
 
+ 
 
 // This gets called anytime one of the IR LED cathodes has a level change drops. This typically happens because some light
 // hit it and discharged the capacitance, so the pin goes from high to low. We initialize each pin at high, and we charge it
@@ -257,6 +211,53 @@ static inline void ir_tx_pulse_internal( uint8_t bitmask ) {
 }
 
 
+static inline void chargeLEDs( uint8_t bitmask ) {
+    
+    uint8_t ir_cathode_ddr_cache = IR_CATHODE_DDR;       // This will not change unless we change it, so no need to reload it every access
+    
+     PCMSK1 &= ~bitmask;                                 // stop Triggering interrupts on these pins because they are going to change when we charge them
+    
+    // charge up receiver cathode pins while keeping other pins intact
+           
+    // This will enable the pull-ups on the LEDs we want to change without impacting other pins
+    // The other pins will stay whatever they were.
+    
+    // NOTE: We are doing something tricky here. Writing a 1 to a PIN bit actually toggles the PORT bit. 
+    // This saves about 10 instructions to manually load, or, and write back the bits to the PORT. 
+    
+    
+    /*
+        19.2.2. Toggling the Pin
+        Writing a '1' to PINxn toggles the value of PORTxn, independent on the value of DDRxn. 
+    */
+    
+    IR_CATHODE_PIN =  bitmask;       // This enables pull-ups on charge pins
+        
+    IR_CATHODE_DDR = ir_cathode_ddr_cache | bitmask;       // This will drive the charge pins high 
+    
+    // Empirically this is how long it takes to charge 
+    // and avoid false positive triggers in 1ms window 12" from halogen desk lamp
+    
+    _delay_us( IR_CHARGE_TIME_US );
+    
+    
+    // Only takes a tiny bit of time to charge up the cathode, even though the pull-up so no extra delay needed here...
+    
+
+    PCMSK1 |= bitmask;                  // Re-enable pin change on the pins we just charged up
+                                        // Note that we must do this while we know the pins are still high
+                                        // or there might be a *tiny* race condition if the pin changed in the cycle right after
+                                        // we finished charging but before we enabled interrupts. This would latch
+                                        // forever.
+                                                                                    
+    // Stop charging LED cathode pins
+    
+     
+    IR_CATHODE_DDR = ir_cathode_ddr_cache;          // Back to the way we started, charge pins now only pulled-up
+     
+    IR_CATHODE_PIN = bitmask;                       // toggle pull-ups off, now cathodes pure inputs 
+                                                          
+}    
 
 // Measure the IR LEDs to to see if they have been triggered.
 // Returns a 1 in each bit for each LED that was fired.

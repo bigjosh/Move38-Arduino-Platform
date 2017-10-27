@@ -195,16 +195,17 @@ static void pixelTimersOn(void) {
         
     holdTimers();           // Hold the timers so when we start them they will be exactly synced  
 
+    // If you change this prescaller, you must update the the TIMER_PRESCALLER
     
     TCCR0B =                                // Turn on clk as soon as possible after setting COM bits to get the outputs into the right state
         _BV( CS01 );                        // clkIO/8 (From prescaler)- ~ This line also turns on the Timer0
 
     #if TIMER_PRESCALER != 8
-        # Actual hardware prescaller must match value used in calculations 
+        # Actual hardware prescaller for Timer1 must match value used in calculations 
     #endif
 
     // IMPORTANT!
-    // If you change this prescaller, you must update the the value in timer.h!
+    // If you change this prescaller, you must update the the TIMER_PRESCALLER
 
     // The two timers might be slightly unsynchronized by a cycle, but that should not matter since all the action happens at the end of the cycle anyway.
     
@@ -213,7 +214,7 @@ static void pixelTimersOn(void) {
                     
 
     #if TIMER_PRESCALER != 8
-        # Actual hardware prescaller must match value used in calculations
+        # Actual hardware prescaller for Timer2 must match value used in calculations
     #endif
 
                                             // NOTE: There is a datasheet error that calls this bit CA21 - it is actually defined as CS21
@@ -384,6 +385,9 @@ static void pixel_isr(void) {
     // Because of the buffering of the OCR registers, we are always setting values that will be loaded
     // the next time the timer overflows. 
     
+    
+    ISR_CALLBACK_TIMER::invokeCallback();
+    
     sei();
     
     switch (phase) {
@@ -427,7 +431,7 @@ static void pixel_isr(void) {
             // The frequency of this call is calculated in timer.h by F_TIMER
             // The time between calls is calculated in timer.h by TIMER_CYCLES_PER_TICK
             
-            ISR_CALLBACK_TIMER::invokeCallback();
+//            ISR_CALLBACK_TIMER::invokeCallback();
                                       
             break;
              
@@ -486,6 +490,8 @@ static void pixel_isr(void) {
             break;
                         
     }        
+        
+        
         
     
 } 

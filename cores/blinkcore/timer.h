@@ -27,7 +27,7 @@ void timer_callback(void);
 
 #define TIMER_PHASE_COUNT  5    // How many phases between timer callback? 
 
-#define TIMER_CYCLES_PER_TICK (TIMER_PRESCALER*TIMER_TOP*TIMER_PHASE_COUNT)
+#define TIMER_CYCLES_PER_TICK (TIMER_PRESCALER*TIMER_TOP)
 
 #define F_TIMER ( F_CPU / TIMER_CYCLES_PER_TICK )       // Timer overflow frequency. Units of TICKS/SEC. Comes out to 1953.125 = 1.953125 kilohertz, 512us per tick
 

@@ -438,6 +438,7 @@ volatile uint8_t verticalRetraceFlag=0;     // Turns to 1 when we are about to s
 // https://www.google.com/search?q=(2%5E31)*2.5ms&rlz=1C1CYCW_enUS687US687&oq=(2%5E31)*2.5ms
 
 static volatile uint32_t millisCounter=0;           // How many millisecends since most recent pixel_enable()?
+
 // Overflows after about 60 days
 // Note that resolution is limited by timer tick rate
 
@@ -484,7 +485,7 @@ static uint16_t cyclesCounter=0;                    // Accumulate cycles to keep
     #error Overflow on cyclesCounter
 #endif
 
-// Note this runs in callback contrext
+// Note this runs in callback context
 
 static void updateMillis(void) {
     
@@ -494,6 +495,8 @@ static void updateMillis(void) {
         
         millisCounter++;
         cyclesCounter-=CYCLES_PER_MS ;
+        
+        DEBUGB_PULSE(10);
         
     }    
                        
