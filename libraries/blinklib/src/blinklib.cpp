@@ -14,6 +14,7 @@
 #include <avr/pgmspace.h>
 #include <limits.h>
 #include <stdint.h>
+#include <stddef.h>     // NULL
 
 #include <Arduino.h>
 
@@ -21,6 +22,7 @@
 
 
 #include "blinklib.h"
+#include "chainfunction.h"
 
 #include "pixel.h"
 #include "timer.h"
@@ -504,6 +506,25 @@ void timer_callback(void) {
     updateButtonState();
 }
 
+Chainfunction *onLoopChain = NULL;
+
+// Call all the functions on the chain (if any)... 
+
+static void callOnLoopChain(void ) {
+    
+    Chainfunction *c = onLoopChain;
+    
+    while (c) {
+        
+        c->callback();
+        
+        c=c->next;
+        
+    }        
+    
+    
+}    
+
 // This is the entry point where the blinkcore platform will pass control to 
 // us after initial power-up is complete
 
@@ -517,10 +538,25 @@ void run(void) {
      
         loop();
         
+        callOnLoopChain();
+        
         // TODO: Sleep here
            
     }        
     
 }    
+
+
+// Add a function to be called after each pass though loop()
+
+// `cons` onto the linked list of functions
+
+void addOnLoop( Chainfunction *chainfunction ) {
+    
+    chainfunction->next = onLoopChain;
+    onLoopChain = chainfunction;
+    
+}    
+
 
 

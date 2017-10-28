@@ -41,21 +41,25 @@ byte getNeighborState( byte face );
 void setState( byte newState );
 
 
-// We use this trickery to let the blinkstate library see the protoypes for its own functions
-// and the IR functions from blinklib, but hide the IR functions when a user includes 
-// this header file.
-// https://gcc.gnu.org/onlinedocs/cpp/Common-Predefined-Macros.html
+// The blinkstate file needs to be able to call the blinklib IR functions, but we need to cover them
+// for anyone else. We could have two copies of blnkistate.h (one for blinkstate's exclusive use) 
+// but then they could get out of sync and that is ugly. 
+// An clean way would be to use __BASE_FILE__..... but Arduino doesn't give us that. 
+// Instead we use this canary which is #defined in blinkstate.cpp
 
-#if "__BASE_FILE__" != "blinkstate.h"
+#ifndef BLINKSTATE_CANNARY
 
     // We need to hide the direct IR functions or else they might consume IR events that we need to read
     // This is kind of hackish, but can you think of a better way?
+    
+    // It gets worse, Arduino will not less us use an #error inside the #define, so we must resort to this ugly __force_error() shenanegans
+    // At least the user gets to see the error string.... :/
 
-    #define irIsReadyOnFace(face)       #error The irIsReadyOnFace() function is not available while using the blinkstate library 
+    #define irIsReadyOnFace(face)       __force_error("The irIsReadyOnFace() function is not available while using the blinkstate library")
 
-    #define irGetData(led)              #error The irGetData() function is not available while using the blinkstate library 
+    #define irGetData(led)            __force_error("The irGetData() function is not available while using the blinkstate library")
 
-    #define irGetErrorBits(face)        #error The irGetErrorBits() function is not available while using the blinkstate library 
+    #define irGetErrorBits(face)      __force_error("The irGetErrorBits() function is not available while using the blinkstate library")
 
 #endif
 

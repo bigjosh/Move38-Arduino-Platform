@@ -24,7 +24,14 @@
 #include <stddef.h>
 
 #include "blinklib.h"
+
 #include "chainfunction.h"
+
+// Tell blinkstate.h to save the IR functions just for us...
+
+#define BLINKSTATE_CANNARY
+
+#include "blinkstate.h"
 
 #define STATE_BROADCAST_RATE_MS 100             // Minimum number of milliseconds between broadcasting the same state again
 

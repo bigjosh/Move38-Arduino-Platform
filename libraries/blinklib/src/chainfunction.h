@@ -19,7 +19,7 @@ struct Chainfunction {
         
     void (*callback)(void);
     
-    void *(next)(void);
+    Chainfunction *next;
         
     Chainfunction( void (*cb)(void) ) {
      
