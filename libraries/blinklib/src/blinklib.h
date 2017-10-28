@@ -10,6 +10,8 @@
 
 #include "blinkcore.h"
 
+#include "chainfunction.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -73,20 +75,46 @@ bool buttonLongPressed(void);
 
 bool buttonDown();
 
-// Returns the last received state of the indicated face, or
-// 0 if no messages received recently on indicated face
 
-// TODO: State view not implemented yet. You can use irGetData() instead
 
-byte getNeighborState( byte face );
+/* 
+    IR communications functions
+*/
 
-// Returns true if we have recently received a valid message from a neighbor
-// on the indicated face
+
+// Send data on a single face. Data is 7-bits wide, top bit is ignored. 
+
+void irSendData( uint8_t face , uint8_t data );
+
+// Broadcast data on all faces. Data is 7-bits wide, top bit is ignored. 
+
+void irBroadcastData( uint8_t data );
+
+// Is there a received data ready to be read on the indicated face? Returns 0 if none. 
+
+bool irIsReadyOnFace( uint8_t face );
+
+// Read the most recently received data. Value 0-127. Blocks if no data ready.
+
+uint8_t irGetData( uint8_t led );
+
+
+#define ERRORBIT_PARITY       2    // There was an RX parity error
+#define ERRORBIT_OVERFLOW     3    // A received byte in lastValue was overwritten with a new value
+#define ERRORBIT_NOISE        4    // We saw unexpected extra pulses inside data
+#define ERRORBIT_DROPOUT      5    // We saw too few pulses, or two big a space between pulses
+#define ERRORBIT_DUMMY        6
+
+// Read the error state of the indicated LED
+// Clears the bits on read
+
+uint8_t irGetErrorBits( uint8_t face );
+
 
 
 /*
 
-	This set of functions lets you change the state of the environment.
+	This set of functions lets you control the colors on the face RGB LEDs 
 
 */
 
@@ -273,5 +301,9 @@ void setup(void);
 // on the tile face are updated
 
 void loop();
+
+// Add a function to be called after each pass though loop()
+
+void addOnLoop( Chainfunction *chainfunction );
 
 #endif /* BLINKLIB_H_ */

@@ -7,39 +7,20 @@
  * This state value is continuously broadcast on all of its faces.
  * Each tile also remembers the most recently received state value from he neighbor on each of its faces. 
  * 
- * This library depends on the blinklib library for communications with neighbors. 
+ * Note that this library depends on the blinklib library for communications with neighbors. The blinklib
+ * IR read functions are not available when using the blinkstate library. 
+ *
+ * Note that the beacon transmissions only occur when the loop() function returns, so it is important
+ * that sketches using this model return from loop() frequently.
+ *
  */ 
 
 #ifndef BLINKSTATE_H_
 #define BLINKSTATE_H_
 
-#include "blinkcore.h"
-
-#include <stdbool.h>
-#include <stdint.h>
-
-/* 
-
-	This set of functions let you test for changes in the environment. 
-
-*/
-
-// Did the state on any face change since last called?
-// Get the neighbor states with getNeighborState()
-
-bool neighborChanged();
-
-
-/*
-
-	This set of functions lets you read the current state of the environment.
-
-*/
-
-// Returns true if the button currently pressed down 
-// (Debounced)
-
-bool buttonDown();
+#ifndef BLINKCORE_H_
+    #error You must #include blinkcore.h before blinkstate.h
+#endif    
 
 // Returns the last received state of the indicated face, or
 // 0 if no messages received recently on indicated face
@@ -49,193 +30,33 @@ byte getNeighborState( byte face );
 // Returns true if we have recently received a valid message from a neighbor
 // on the indicated face
 
-
-/*
-
-	This set of functions lets you change the state of the environment.
-
-*/
-
 // Set our state to newState. This state is repeatedly broadcast to any
 // neighboring tiles. 
+
 // Note that setting our state to 0 make us stop broadcasting and effectively 
 // disappear from the view of neighboring tiles. 
 
+// By default we power up in state 0. 
+
 void setState( byte newState );
 
-// Color type holds 4 bits for each R,G,B. Top bit is currently unused.
 
-// TODO: Do we need 5 bits of resolution for each color?
-// TODO: Use top bit(s) for something useful like automatic
-//       blink or twinkle or something like that. 
+// We use this trickery to let the blinkstate library see the protoypes for its own functions
+// and the IR functions from blinklib, but hide the IR functions when a user includes 
+// this header file.
+// https://gcc.gnu.org/onlinedocs/cpp/Common-Predefined-Macros.html
 
-typedef unsigned Color;
+#if "__BASE_FILE__" != "blinkstate.h"
 
+    // We need to hide the direct IR functions or else they might consume IR events that we need to read
+    // This is kind of hackish, but can you think of a better way?
 
-// Number of brightness levels in each channel of a color
-#define BRIGHTNESS_LEVELS 32
+    #define irIsReadyOnFace(face)       #error The irIsReadyOnFace() function is not available while using the blinkstate library 
 
-#define GET_R(color) ((color>>10)&31)
-#define GET_G(color) ((color>> 5)&31)
-#define GET_B(color) ((color    )&31)
+    #define irGetData(led)              #error The irGetData() function is not available while using the blinkstate library 
 
-// R,G,B are all in the domain 0-31
-// Here we expose the interal color representation, but it is worth it
-// to get the performance and size benefits of static compilation 
-// Shame no way to do this right in C/C++
+    #define irGetErrorBits(face)        #error The irGetErrorBits() function is not available while using the blinkstate library 
 
-#define MAKECOLOR_RGB(r,g,b) ((r&31)<<10|(g&31)<<5|(b&31))
+#endif
 
-#define RED         MAKECOLOR_RGB(31, 0, 0)
-#define YELLOW      MAKECOLOR_RGB(31,31, 0)
-#define GREEN       MAKECOLOR_RGB( 0,31, 0)
-#define CYAN        MAKECOLOR_RGB( 0,31,31)
-#define BLUE        MAKECOLOR_RGB( 0, 0,31)
-#define MAGENTA     MAKECOLOR_RGB(31, 0,31)
-
-
-#define WHITE       MAKECOLOR_RGB(31,31,31)
-
-#define OFF     MAKECOLOR_RGB( 0, 0, 0)
-
-// We inline this so we can get compile time simplification for static colors
-
-// Make a new color from RGB values. Each value can be 0-31. 
-
-inline Color makeColorRGB( byte red, byte green, byte blue ) {
-    return MAKECOLOR_RGB( red , green , blue );
-}
-
-
-// Dim the specified color. Brightness is 0-31 (0=off, 31=don't dim at all-keep original color)
-// Inlined to allow static simplification at compile time
-
-inline Color dim( Color color, byte brightness) {
-    return makeColorRGB(
-        (GET_R(color)*brightness)/31,
-        (GET_G(color)*brightness)/31,
-        (GET_B(color)*brightness)/31
-    );
-}
-
-// Make a new color in the HSB colorspace. All values are 0-255.
-
-Color makeColorHSB( byte hue, byte saturation, byte brightness );
-    
-// Change the tile to the specified color 
-
-void setColor( Color newColor);
-
-// Set the pixel on the specified face (0-5) to the specified color
-
-void setFaceColor(  byte face, Color newColor );
-
-
-/* 
-
-    Timing functions
-
-*/
-
-// Delay the specified number of milliseconds (1,000 millisecond = 1 second) 
-
-void delay( unsigned long millis );
-
-// Number of milliseconds since we started (since last time setup called).
-// Note that this can increase by more than 1 between calls, so always use greater than
-// and less than rather than equals for comparisons
-
-// Overflows after about 50 days 
-
-// Note that our clock is only accurate to about +/-10%
-
-unsigned long millis(void);
-
-/* 
-
-    Utility functions
-
-*/
-
-// Read the unique serial number for this blink tile
-// There are 9 bytes in all, so n can be 0-8
-
-byte getSerialNumberByte( byte n );
-
-
-/* 
-
-    Button functions
-
-*/
-
-
-// Debounced view of button state
-
-bool buttonDown(void);
-
-// Returns true if the button has been pressed since
-// the last time it was called. 
-
-bool buttonPressed(void);
-
-
-
-
-/* 
-
-    IR communications functions
-
-*/
-
-
-
-
-// Send data on a single face. Data is 7-bits wide, top bit is ignored. 
-
-void irSendData( uint8_t face , uint8_t data );
-
-// Broadcast data on all faces. Data is 7-bits wide, top bit is ignored. 
-
-void irBroadcastData( uint8_t data );
-
-// Is there a received data ready to be read on the indicated face? Returns 0 if none. 
-
-bool irIsReadyOnFace( uint8_t face );
-
-// Read the most recently received data. Value 0-127. Blocks if no data ready.
-
-uint8_t irGetData( uint8_t led );
-
-
-#define ERRORBIT_PARITY       2    // There was an RX parity error
-#define ERRORBIT_OVERFLOW     3    // A received byte in lastValue was overwritten with a new value
-#define ERRORBIT_NOISE        4    // We saw unexpected extra pulses inside data
-#define ERRORBIT_DROPOUT      5    // We saw too few pulses, or two big a space between pulses
-#define ERRORBIT_DUMMY        6
-
-// Read the error state of the indicated LED
-// Clears the bits on read
-
-uint8_t irGetErrorBits( uint8_t face );
-
-
-
-/*
-
-    These hook functions are filled in by the sketch
-
-*/
-
-
-// Called when this sketch is first loaded and then 
-// every time the tile wakes from sleep
-
-void setup(void);
-
-// Called repeatedly just after the display pixels
-// on the tile face are updated
-
-void loop();
-
-#endif /* BLINKLIB_H_ */
+#endif /* BLINKSTATE_H_ */

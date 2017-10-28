@@ -194,18 +194,8 @@ byte getSerialNumberByte( byte n ) {
 
 /** IR Functions **/
 
-// Return the last received value on the specified face, or 0 if no value receieved recently 
-
-byte getNeighborState( byte face ) {
-    
-    
-    
-}    
-
 
 // // These all can be updated by callback, so must be volatile.
-
-
 
 
 // Click Semantics
