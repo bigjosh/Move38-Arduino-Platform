@@ -511,7 +511,10 @@ Chainfunction *onLoopChain = NULL;
 // Call all the functions on the chain (if any)... 
 
 static void callOnLoopChain(void ) {
-    
+
+    (onLoopChain->callback)();
+
+/*    
     Chainfunction *c = onLoopChain;
     
     while (c) {
@@ -521,7 +524,7 @@ static void callOnLoopChain(void ) {
         c=c->next;
         
     }        
-    
+  */  
     
 }    
 

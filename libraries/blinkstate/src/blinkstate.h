@@ -63,4 +63,10 @@ void setState( byte newState );
 
 #endif
 
+
+// Manually add our hooks
+
+void blinkStateBegin(void);
+
+
 #endif /* BLINKSTATE_H_ */

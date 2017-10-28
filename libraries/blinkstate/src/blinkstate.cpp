@@ -38,25 +38,34 @@
 #define STATE_EXIRE_TIME_MS     250              // If we have not heard anything on this this face in this long, then assume no neighbor there
 
 
+// TODO: The compiler hates these arrays. Maybe use struct so it can do indirect offsets?
 
-
+static byte lastValue[FACE_COUNT];               // Last recieved value
 static unsigned long expireTime[FACE_COUNT];     // time when last received state will expire
+
+
+static void updateRecievedState( uint8_t face ) {
+
+    if ( irIsReadyOnFace(face) ) {
+            
+        lastValue[face] = irGetData(face);       
+            
+        // We could cache this calculation, but for now this is simpler.
+            
+        expireTime[face] = millis() + STATE_EXIRE_TIME_MS;
+            
+    } 
+    
+}    
+
 
 // check and see if any states recently updated....
 
-static void readStates(void) {
+static void updateRecievedStates(void) {
     
     FOREACH_FACE(x) {
         
-        if ( irIsReadyOnFace(x) ) {
-            
-            // We could cache this calculation, but for now this is simpler.
-            
-            expireTime[x] = millis() + STATE_EXIRE_TIME_MS;
-            
-            irGetData(x);       // We read and dump just to clear the ready flag.
-            
-        }
+        updateRecievedState( x );
         
     }
     
@@ -85,10 +94,12 @@ static void broadcastState(void) {
 void blinkStateOnLoop(void) {
 
     // Check for anything coming in...
-    readStates();
+    updateRecievedStates();
+    
+    
     // Check for anything going out...
     
-    if ( localStateNextSendTime <= millis() ) {         // Time for next broadcast?
+    if ( localStateNextSendTime <= millis() && localState ) {         // Time for next broadcast? Do we have a statet to send (0=don't send)
         
         broadcastState(); 
         
@@ -103,7 +114,7 @@ Chainfunction blinkStateOnLoopChain( blinkStateOnLoopChain );
 // Something tricky here:  I can not good place to automatically add
 // our onLoop() hook at compile time, and we
 // don't want to follow idiomatic Arduino ".begin()" pattern, so we
-// hack it by adding here the first time anything trhat could use state
+// hack it by adding here the first time anything that could use state
 // stuff is called. This is an ugly hack. :/
 
 // TODO: This is a good place for a GPIO register bit. Then we could inline the test to a single instruction.,
@@ -112,11 +123,22 @@ static uint8_t hookRegisteredFlag=0;        // Did we already register?
 
 static void registerHook(void) {
     if (!hookRegisteredFlag) {
+        
+        
         addOnLoop( &blinkStateOnLoopChain ); 
         hookRegisteredFlag=1;
     }        
 }    
 
+// Manually add our hooks
+
+void blinkStateBegin(void) {
+    
+    blinkStateOnLoopChain.callback = blinkStateOnLoop;
+    
+    addOnLoop( &blinkStateOnLoopChain );
+    hookRegisteredFlag=1;    
+}    
 
 // Returns the last received state of the indicated face, or
 // 0 if no messages received recently on indicated face
@@ -124,34 +146,23 @@ static void registerHook(void) {
 byte getNeighborState( byte face ) {
     
     registerHook();     // Check everytime. Maybe a begin() better?
-        
-    if (irIsReadyOnFace(face)) {
-            
-        // New data came in since we last readStates(), so need to update the expire time...            
-        expireTime[face] = millis() + STATE_EXIRE_TIME_MS;
-                        
-        // This will clear the ready flag in the case where new data just came in.
-        
-        return irGetData(face);
-
-    }  else {
-        
-        if ( expireTime[face] <= millis() ) { 
-                                                       
-            // We use the fact that irGetData() always returns the *last* recieved data
-            // to avoid needing o store a copy ourselves. 
+    
+    updateRecievedState( face ) ;       // Refresh
                
-            return irGetData(face);
+    if ( expireTime[face] <= millis() ) { 
+                                                       
+        // We use the fact that irGetData() always returns the *last* recieved data
+        // to avoid needing o store a copy ourselves. 
+               
+        return lastValue[ face ]; 
         
-        }  else {
+    }  else {
                 
-            // Face expired
-            return 0;
-        
-        }        
+        // Face expired
+        return 0;
         
     }        
-                    
+        
     
 }    
 
