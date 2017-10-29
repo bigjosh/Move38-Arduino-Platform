@@ -136,28 +136,40 @@ static inline void ir_tx_pulse_internal( uint8_t bitmask ) {
         // TODO: Maybe as easy as saving the cathode values and then only charging again if they were high?
 
         // Remember that the normal state for IR LED pins is...
-        // ANODE always driven. Typically DDR driven and PORT low when we are waiting to RX pulses.
-        // CATHODE is input, so DDR not driven and PORT low. 
-    
-                         
+        // ANODE always driven. PORT low when we are waiting to RX pulses or charging. PORT driven high when transmitting a pulse. 
+        // CATHODE is input when waiting for RX pulses, so DDR not driven and PORT low. CATHODE is driven high when charging and driven low when sending a pulse. 
+        
+        // See ir.MD in this repo for more explainations
+                             
         uint8_t cathode_ddr_save = IR_CATHODE_DDR;          // We don't want to mess with the upper bits not used for IR LEDs
     
         PCMSK1 &= ~bitmask;                                 // stop Triggering interrupts on these cathode pins because they are going to change when we pulse
+
+        // TODO: Current blinklib does not use IR interrupts, so We could get rid of this bu would only save a couple instructions/cycles
         
         // Now we don't have to worry about...
         // (1) a received pulse on this LED interfering with our transmit and 
-        // (2) Our fiddling the LED bits causing an interrupt on this LED and fireing the receive code
+        // (2) Our fiddling the LED bits causing an interrupt on this LED 
+        
+        uint8_t savedCathodeBits = IR_CATHODE_PIN & bitmask;         // Read the current IR bit states so we can put them back the way they were and preserve any pending received bits
     
         IR_CATHODE_DDR |= bitmask ;   // Drive Cathode too (now driving low)
     
         // Right now both cathode and anode are driven and both are low - so LED off
-    
-        
+            
         // if we got interrupted here, then the pulse could get long enough to look like 2 pulses. 
 
         // Anode pins are driven output and low normally, so this will
         // make them be driven high output 
-     
+        
+        // NOTE: We are doing something tricky here. Writing a 1 to a PIN bit actually toggles the PORT bit. 
+        // This saves about 10 instructions to manually load, or, and write back the bits to the PORT. 
+        
+        /*
+        19.2.2. Toggling the Pin
+        Writing a '1' to PINxn toggles the value of PORTxn, independent on the value of DDRxn. 
+        */
+             
         IR_ANODE_PIN  = bitmask;    // Blink!       (Remember, a write to PIN actually toggles PORT)
     
         // Right now anode driven and high, so LED on!
@@ -173,26 +185,18 @@ static inline void ir_tx_pulse_internal( uint8_t bitmask ) {
         IR_ANODE_PIN  = bitmask;    // Un-Blink! Sets anodes back to low (still output)      (Remember, a write to PIN actually toggles PORT)
         
         // Right now both cathode and anode are driven and both are low - so LED off
-
       
-        // charge up receiver cathode pin while keeping other pins intact
-           
-        // NOTE: We are doing something tricky here. Writing a 1 to a PIN bit actually toggles the PORT bit. 
-        // This saves about 10 instructions to manually load, or, and write back the bits to the PORT. 
-        
-        /*
-        19.2.2. Toggling the Pin
-        Writing a '1' to PINxn toggles the value of PORTxn, independent on the value of DDRxn. 
-        */
-    
+        // charge up receiver cathode pins while keeping other pins intact
+               
         // TODO: Only recharge pins that we high when we started
     
         // TODO: These need to be asm because it sticks a load here.
+        
+        // Set cathode high for any bitmasked pins that were high wehn we started
                
-        IR_CATHODE_PIN =  bitmask;
+        IR_CATHODE_PIN =  savedCathodeBits;
         
         // Cathodes are now being driven high 
-
     
         _delay_us( IR_CHARGE_TIME_US ); 
             
@@ -206,7 +210,7 @@ static inline void ir_tx_pulse_internal( uint8_t bitmask ) {
         
         IR_CATHODE_DDR = cathode_ddr_save;   // Cathode back to input too (pull-ups still on)
         
-        IR_CATHODE_PIN =  bitmask;           // Disable pull-ups. Everything back to pure input. 
+        IR_CATHODE_PIN =  savedCathodeBits;  // Disable pull-ups. Everything back to pure input. 
         
 }
 

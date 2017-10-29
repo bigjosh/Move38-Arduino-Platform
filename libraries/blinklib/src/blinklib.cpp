@@ -510,6 +510,8 @@ Chainfunction *onLoopChain = NULL;
 
 // Call all the functions on the chain (if any)... 
 
+#warning  We are not calling the full onLoop() chain, only the first element. Need to get this function pointer link list working. 
+
 static void callOnLoopChain(void ) {
 
     (onLoopChain->callback)();

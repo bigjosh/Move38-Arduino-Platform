@@ -384,11 +384,10 @@ static void pixel_isr(void) {
     // THIS IS COMPLICATED
     // Because of the buffering of the OCR registers, we are always setting values that will be loaded
     // the next time the timer overflows. 
-    
-    
+        
     ISR_CALLBACK_TIMER::invokeCallback();
     
-    sei();
+    sei();                      // We don't care if we get interrupted as long as we finish before the PWM counters start turning on LEDs again (the PWM always starts with LED off and then turns on when we hit the output compare)
     
     switch (phase) {
         
