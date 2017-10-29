@@ -87,8 +87,8 @@ static uint8_t oddParity(uint8_t p) {
      // This struct should be even power of 2 long. 
               
  } ir_rx_state_t;
-
-
+ 
+ 
  // We keep these in together in a a struct to get faster access via
  // Data Indirect with Displacement opcodes
 
@@ -390,6 +390,34 @@ void irSendData( uint8_t face , uint8_t data ) {
 
 void irBroadcastData( uint8_t data ) {
     
-    irBitmaskSendData( ALL_IR_BITS , data ); 
+    
+    // Find all the IR LEDs that do not currently have an RX in progress...
+    
+    uint8_t bitmask=0;
+    
+    uint8_t bitwalker = _BV( IRLED_COUNT-1 ); 
+    
+    ir_rx_state_t *ptr = ir_rx_states + IRLED_COUNT - 1;      
+    
+    while (bitwalker) {
+        
+        if (ptr->buffer) {
+            bitmask |= bitwalker;
+        }            
+        
+        ptr--;
+        
+        bitwalker >>=1;
+        
+    }        
+        
+    // Send our first transmission only to those that do not have RX in progress
+            
+    irBitmaskSendData( bitmask , data ); 
+    
+    // Ok, but the time the above TX completes, whatever RX's that were in progress should be complete (each RX is a TX from the other side!)
+    // so should be clear to send to those now...
+    
+    irBitmaskSendData( (~bitmask) &  ALL_IR_BITS , data );    
     
 }
