@@ -21,6 +21,8 @@
 
 #define DEBUG_MODE
 
+#include "debug.h"
+
 #include <stddef.h>
 
 #include "blinklib.h"
@@ -33,14 +35,14 @@
 
 #include "blinkstate.h"
 
-#define STATE_BROADCAST_RATE_MS 100             // Minimum number of milliseconds between broadcasting the same state again
+#define STATE_BROADCAST_RATE_MS  100             // Minimum number of milliseconds between broadcasting the same state again
 
-#define STATE_EXIRE_TIME_MS     250              // If we have not heard anything on this this face in this long, then assume no neighbor there
+#define STATE_EXPIRE_TIME_MS     250             // If we have not heard anything on this this face in this long, then assume no neighbor there
 
 
 // TODO: The compiler hates these arrays. Maybe use struct so it can do indirect offsets?
 
-static byte lastValue[FACE_COUNT];               // Last recieved value
+static byte lastValue[FACE_COUNT];               // Last received value
 static unsigned long expireTime[FACE_COUNT];     // time when last received state will expire
 
 
@@ -52,7 +54,7 @@ static void updateRecievedState( uint8_t face ) {
             
         // We could cache this calculation, but for now this is simpler.
             
-        expireTime[face] = millis() + STATE_EXIRE_TIME_MS;
+        expireTime[face] = millis() + STATE_EXPIRE_TIME_MS;
             
     } 
     
@@ -72,13 +74,15 @@ static void updateRecievedStates(void) {
 }
 
 static byte localState=0;
-static byte localStateNextSendTime;
+static unsigned long localStateNextSendTime;
 
 // Broadcast our local state
 
 static void broadcastState(void) {
     
+    DEBUGA_1();
     irBroadcastData( localState );
+    DEBUGA_0();
     localStateNextSendTime = millis() + STATE_BROADCAST_RATE_MS;
     
 }
@@ -99,7 +103,7 @@ void blinkStateOnLoop(void) {
     
     // Check for anything going out...
     
-    if ( localStateNextSendTime <= millis() && localState ) {         // Time for next broadcast? Do we have a state to send (0=don't send)
+    if ( localState && (localStateNextSendTime <= millis()) ) {         // Anything to send (state 0=don't send)? Time for next broadcast? 
         
         broadcastState(); 
         
