@@ -99,7 +99,7 @@ void blinkStateOnLoop(void) {
     
     // Check for anything going out...
     
-    if ( localStateNextSendTime <= millis() && localState ) {         // Time for next broadcast? Do we have a statet to send (0=don't send)
+    if ( localStateNextSendTime <= millis() && localState ) {         // Time for next broadcast? Do we have a state to send (0=don't send)
         
         broadcastState(); 
         
@@ -149,11 +149,8 @@ byte getNeighborState( byte face ) {
     
     updateRecievedState( face ) ;       // Refresh
                
-    if ( expireTime[face] <= millis() ) { 
-                                                       
-        // We use the fact that irGetData() always returns the *last* recieved data
-        // to avoid needing o store a copy ourselves. 
-               
+    if ( expireTime[face] > millis() ) {        // Expire time in the futre?
+                                                                      
         return lastValue[ face ]; 
         
     }  else {
@@ -182,7 +179,7 @@ void setState( byte newState ) {
 
     registerHook();     // Check everytime. Maybe a begin() better?
     
-    if ( newState != localState ) {
+    if ( newState != localState ) {     // Ignore redundant setting to same state (
     
         localState = newState;
     
