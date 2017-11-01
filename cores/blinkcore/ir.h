@@ -5,12 +5,15 @@
  *
  */ 
 
-#ifndef IR_COMMS_H_
-#define IR_COMMS_H_
+#ifndef IR_H_
+#define IR_H_
+
+#include "blinkcore.h"
 
 #define IRLED_COUNT FACE_COUNT
 
- 
+#define ALL_IR_BITS (0b00111111)        // All six IR LEDs
+
 // Setup pins, interrupts
 
 void ir_init(void);
@@ -25,100 +28,34 @@ void ir_enable(void);
 
 void ir_disable(void);
 
+// TODO: Queue TX so they only happen after a successful RX or idle time. Unnecessary since TX time so short?
+
+// Send a series of pulses with spacing_ticks clock ticks between each pulse (or as quickly as possible if spacing too short)
+// If count=0 then 256 pulses will be sent.
+// If spaceing_ticks==0, then the time between pulses will be 65536 ticks
+
+// bit 0= led IR0 , bit 1= led IR1...
+
+// This clobbers whatever charge was on the selected LEDs, so only call after you have checked it.
+// TODO: Fix this. Save previous charge state
+
+void ir_tx_pulses(uint8_t count, uint16_t spacing_ticks , uint8_t bitmask);
+
+// Measure the IR LEDs to to see if they have been triggered.
+// Returns a 1 in each bit for each LED that was fired.
+// Fired LEDs are recharged.
+
+uint8_t ir_test_and_charge( void );
+
+
 // Called anytime on of the IR LEDs triggers, which could
 // happen because it received a flash or just because
 // enough ambient light accumulated
 
 void __attribute__((weak)) ir_callback(uint8_t triggered_bits);
 
-// Send a pulse on all LEDs that have a 1 in bitmask
-// bit 0= D1, bit 1= D2...
-
-// TODO: Allow user to specify pulse width? We'd need a variable _delay_us() function.
-
-void ir_tx_pulse( uint8_t bitmask );
-
-// The RX API...
-
-// Returns last received data (value 0-3) for requested face
-// bit 2 is 1 if data found, 0 if not
-// if bit 2 set, then bit 1 & 0 are the data
-// So possible return values:
-// 0x00=0b00000000=No data received since last read
-// 0x04=0b00000100=Received 0
-// 0x04=0b00000101=Received 1
-// 0x04=0b00000110=Received 2
-// 0x04=0b00000111=Received 3
-
-// Superseded by idiomatic Arduino functions
-
-// uint8_t ir_read( uint8_t led);
-
-
-
-// If bit set, then a new byte was received before the previous byte in the buffer was read.
-// Currently the buffered byte is kept. 
-// The bit is cleared when the currently buffered byte is read. 
-
-// Superseded by idiomatic Arduino functions
-
-// uint8_t irled_rx_overflowBits(void);             
-
-// Transmit a value (0-3) on face
-// (only 2 bits of data for now)
-// If no transmit in progress, then returns immediately and starts the transmit within 500us
-// IF a transmit is in progress, then blocks until that is complete. 
-
-// Superseded by idiomatic Arduino functions
-
-//void ir_send( uint8_t face , uint8_t data );
-
-
-// The functions below are for Arduino consumption
-
-// TODO: Give people bytes rather than measly dibits
-
-// Returns last received dibit (value 0-3) for requested face
-// Blocks if no data ready
-// `face` must be less than FACE_COUNT
-
-uint8_t irReadDibit( uint8_t face);
-
-// Returns true if data is available to be read on the requested face
-// Always returns immediately
-// Cleared by subseqent irReadDibit()
-// `face` must be less than FACE_COUNT
-
-uint8_t irIsAvailable( uint8_t face );
-
-// Returns true if data was lost because new data arrived before old data was read
-// Next read will return the older data (new data does not over write old)
-// Always returns immediately
-// Cleared by subseqent irReadDibit()
-// `face` must be less than FACE_COUNT
-
-uint8_t irOverFlowFlag( uint8_t face );
-
-// Transmits the lower 2 bits (dibit) of data on requested face
-// Blocks if there is already a transmission in progress on this face
-// Returns immediately and continues transmission in background if no transmit already in progress
-// `face` must be less than FACE_COUNT
-
-void irSendDibit( uint8_t face , uint8_t data );
-
-// Transmits the lower 2 bits (dibit) of data on all faces
-// Blocks if there is already a transmission in progress on any face
-// Returns immediately and continues transmission in background if no transmits are already in progress
-
-void irSendAllDibit(  uint8_t data );
-
-// Blocks if there is already a transmission in progress on this face
-// Returns immediately if no transmit already in progress
-// `face` must be less than FACE_COUNT
-
-void irFlush( uint8_t face );
 
 #define WAKEON_IR_BITMASK_NONE     0             // Don't wake on any IR change
 #define WAKEON_IR_BITMASK_ALL      IR_BITS       // Don't wake on any IR change
 
-#endif /* IR-COMMS_H_ */
+#endif /* IR_H_ */

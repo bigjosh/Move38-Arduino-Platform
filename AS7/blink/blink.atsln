@@ -9,6 +9,11 @@ Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "blinklib", "blinklib\blinkl
 EndProject
 Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "Blink", "Sketches\Blink\Blink.cppproj", "{C3728EB0-DD95-4D36-9694-C16A953BBF73}"
 EndProject
+Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "blinkstate", "blinkstate\blinkstate.cppproj", "{C7103C5C-377A-4589-89B5-EE449B21A39A}"
+	ProjectSection(ProjectDependencies) = postProject
+		{C03AA8CA-16E3-4A37-9986-EEAA5CBCEFD6} = {C03AA8CA-16E3-4A37-9986-EEAA5CBCEFD6}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|AVR = Debug|AVR
@@ -27,6 +32,10 @@ Global
 		{C3728EB0-DD95-4D36-9694-C16A953BBF73}.Debug|AVR.Build.0 = Debug|AVR
 		{C3728EB0-DD95-4D36-9694-C16A953BBF73}.Release|AVR.ActiveCfg = Release|AVR
 		{C3728EB0-DD95-4D36-9694-C16A953BBF73}.Release|AVR.Build.0 = Release|AVR
+		{C7103C5C-377A-4589-89B5-EE449B21A39A}.Debug|AVR.ActiveCfg = Debug|AVR
+		{C7103C5C-377A-4589-89B5-EE449B21A39A}.Debug|AVR.Build.0 = Debug|AVR
+		{C7103C5C-377A-4589-89B5-EE449B21A39A}.Release|AVR.ActiveCfg = Release|AVR
+		{C7103C5C-377A-4589-89B5-EE449B21A39A}.Release|AVR.Build.0 = Release|AVR
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

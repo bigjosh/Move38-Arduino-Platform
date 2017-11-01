@@ -9,6 +9,8 @@
 #ifndef RGB_PIXELS_H_
 #define RGB_PIXELS_H_
 
+#include "blinkcore.h"
+
 #include <avr/io.h>
 
 // True today, but could imagine a blinks with 1 pixel or one with with 18 pixels...
@@ -41,7 +43,7 @@ void pixel_disable(void);
 // Need some exponential compression at the top here
 // Maybe look up tables to make all calculations be one step at the cost of memory?
 
-void pixel_setRGB( uint8_t p, uint8_t r, uint8_t g, uint8_t b );
+void pixel_setRGB( uint8_t face, uint8_t r, uint8_t g, uint8_t b );
 
 void pixel_SetAllRGB( uint8_t r, uint8_t g, uint8_t b  );
 

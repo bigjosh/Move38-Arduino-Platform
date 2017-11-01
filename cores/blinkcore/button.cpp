@@ -15,7 +15,6 @@
 #include "callbacks.h"
 
 #include <avr/interrupt.h>
-#include <util/delay.h>					// _delay_ms() for debounce
 
 #include "button.h"
 #include "utils.h"
@@ -33,10 +32,8 @@
 
 // Weak reference so it (almost) compiles away if not used. 
 // (looks like GCC is not yet smart enough to see an empty C++ virtual invoke. Maybe some day!)
-
-void __attribute__((weak)) button_callback_onChange(void)  {
-    return;   
-}    
+// REMOVED WEAK REFERENCE! THE COMPILER SOMETIMES WOULD LINK THE WEAK RATHER THAN THE STRONG! WTF GCC?!?! 
+// So for now, you must supply empty stubs. :/
 
 
 struct ISR_CALLBACK_BUTTON : CALLBACK_BASE<ISR_CALLBACK_BUTTON> {
@@ -93,7 +90,6 @@ uint8_t button_down(void) {
 ISR(BUTTON_ISR)
 {
     ISR_CALLBACK_BUTTON::invokeCallback();
-    
 }
 
 // Enable callback to button_callback_onChange on button change interrupt
@@ -112,5 +108,3 @@ void button_ISR_off(void) {
     // disable pin change interrupt
     CBI( BUTTON_MASK , BUTTON_PCINT);   // Disable pin in Pin Change Mask Register    
 }
-
-    

@@ -5,8 +5,12 @@
  *
  */ 
 
-#ifndef BLINK_H_
-#define BLINK_H_
+#ifndef BLINKLIB_H_
+#define BLINKLIB_H_
+
+#include "blinkcore.h"
+
+#include "chainfunction.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -25,8 +29,9 @@ typedef uint8_t byte;
 // Did the state on any face change since last called?
 // Get the neighbor states with getNeighborState()
 
-bool neighborChanged();
+// TODO: State view not implemented yet. You can use irIsReadyOnFace() instead.
 
+//bool neighborChanged();
 
 // Was the button pressed or lifted since the last time we checked?
 // Note that these register the change the instant the button state changes 
@@ -58,9 +63,7 @@ byte buttonClickCount(void);
 
 // Remember that a long press fires while the button is still down
 bool buttonLongPressed(void);
-
     
-
 /*
 
 	This set of functions lets you read the current state of the environment.
@@ -72,18 +75,46 @@ bool buttonLongPressed(void);
 
 bool buttonDown();
 
-// Returns the last received state of the indicated face, or
-// 0 if no messages received recently on indicated face
 
-byte getNeighborState( byte face );
 
-// Returns true if we have recently received a valid message from a neighbor
-// on the indicated face
+/* 
+    IR communications functions
+*/
+
+
+// Send data on a single face. Data is 7-bits wide, top bit is ignored. 
+
+void irSendData( uint8_t face , uint8_t data );
+
+// Broadcast data on all faces. Data is 7-bits wide, top bit is ignored. 
+
+void irBroadcastData( uint8_t data );
+
+// Is there a received data ready to be read on the indicated face? Returns 0 if none. 
+
+bool irIsReadyOnFace( uint8_t face );
+
+// Read the most recently received data. Value 0-127. Blocks if no data ready.
+
+uint8_t irGetData( uint8_t led );
+
+
+#define ERRORBIT_PARITY       2    // There was an RX parity error
+#define ERRORBIT_OVERFLOW     3    // A received byte in lastValue was overwritten with a new value
+#define ERRORBIT_NOISE        4    // We saw unexpected extra pulses inside data
+#define ERRORBIT_DROPOUT      5    // We saw too few pulses, or two big a space between pulses
+#define ERRORBIT_DUMMY        6
+
+// Read the error state of the indicated LED
+// Clears the bits on read
+
+uint8_t irGetErrorBits( uint8_t face );
+
 
 
 /*
 
-	This set of functions lets you change the state of the environment.
+	This set of functions lets you control the colors on the face RGB LEDs 
 
 */
 
@@ -92,7 +123,9 @@ byte getNeighborState( byte face );
 // Note that setting our state to 0 make us stop broadcasting and effectively 
 // disappear from the view of neighboring tiles. 
 
-void setState( byte newState );
+// TODO: State view not implemented yet. You can use irBroadcastData() instead.
+    
+// void setState( byte newState );
 
 // Color type holds 4 bits for each R,G,B. Top bit is currently unused.
 
@@ -194,12 +227,6 @@ unsigned long millis(void);
 byte getSerialNumberByte( byte n );
 
 
-// Get the number of elements in an array.
-// https://stackoverflow.com/a/4415646/3152071
-
-#define COUNT_OF(x) ((sizeof(x)/sizeof(0[x])) / ((size_t)(!(sizeof(x) % sizeof(0[x])))))
-
-
 /* 
 
     Button functions
@@ -215,6 +242,47 @@ bool buttonDown(void);
 // the last time it was called. 
 
 bool buttonPressed(void);
+
+
+
+
+/* 
+
+    IR communications functions
+
+*/
+
+
+
+
+// Send data on a single face. Data is 7-bits wide, top bit is ignored. 
+
+void irSendData( uint8_t face , uint8_t data );
+
+// Broadcast data on all faces. Data is 7-bits wide, top bit is ignored. 
+
+void irBroadcastData( uint8_t data );
+
+// Is there a received data ready to be read on the indicated face? Returns 0 if none. 
+
+bool irIsReadyOnFace( uint8_t face );
+
+// Read the most recently received data. Value 0-127. Blocks if no data ready.
+
+uint8_t irGetData( uint8_t led );
+
+
+#define ERRORBIT_PARITY       2    // There was an RX parity error
+#define ERRORBIT_OVERFLOW     3    // A received byte in lastValue was overwritten with a new value
+#define ERRORBIT_NOISE        4    // We saw unexpected extra pulses inside data
+#define ERRORBIT_DROPOUT      5    // We saw too few pulses, or two big a space between pulses
+#define ERRORBIT_DUMMY        6
+
+// Read the error state of the indicated LED
+// Clears the bits on read
+
+uint8_t irGetErrorBits( uint8_t face );
+
 
 
 /*
@@ -234,4 +302,8 @@ void setup(void);
 
 void loop();
 
-#endif /* BLINK_H_ */
+// Add a function to be called after each pass though loop()
+
+void addOnLoop( Chainfunction *chainfunction );
+
+#endif /* BLINKLIB_H_ */

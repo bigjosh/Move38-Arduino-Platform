@@ -1,4 +1,4 @@
-#include "blink.h"
+#include "blinklib.h"
 
 // ClickTest
 // Blinks RED   for a single click

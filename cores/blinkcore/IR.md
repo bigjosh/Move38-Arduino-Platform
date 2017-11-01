@@ -21,6 +21,17 @@ AND
 When ever an LED discharges below the digital threshold voltage on the connected pin, an interrupt handler quickly recharges the LED to be ready for the next trigger.
 
 
+##### DDR and PORTs of IR LEDs during different states
+
+
+| State | Anode DDR | Anode PORT | Cathode DDR | Cathode PORT | Notes |
+| --- | --- | --- | --- | --- | --- |
+| Charging | High (driving) | Low | High (driving) | High  | Led reverse biased |
+| Listening | High (driving) | Low | Low (input) | Low (no pull-up) | Cathode sees input go low when charge depleted |
+| Sending | High (driving) | High | High (driving) | Low | Normal forward voltage lights LED |
+
+Note that Anode DDR is always driven so we never touch that after enabling IR system. 
+
 
 #### Timing windows
 

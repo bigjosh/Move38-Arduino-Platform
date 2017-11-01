@@ -7,6 +7,7 @@
 
 
 #include "hardware.h"
+#include "blinkcore.h"
 
 #include "adc.h"
 

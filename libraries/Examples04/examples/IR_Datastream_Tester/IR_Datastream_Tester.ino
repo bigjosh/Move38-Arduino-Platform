@@ -1,8 +1,9 @@
 /*
 
-    IR teser
+    IR Datstream tester
     
-    Test for errors on IR link by sending a pattern and then checking for missed steps on the receiver.
+    High level test for errors in a continuous data stream on the IR link by sending a pattern and then checking for missed 
+    steps on the receiver.
     
     On startup, we are in SEND MODE. We broadcast the pattern on all faces. Each step of the blue led
     indicates one step of the pattern. 
@@ -34,16 +35,8 @@
 
 #include "blinklib.h"
 
-#include "ir.h"
-
-#include "utils.h"
-
-#include "util/delay.h"
-
-#include "debug.h"
-
 void setup() {
-
+    // This page intionally left blank
 }
 
 typedef enum { TX , RX, SYNC , ERROR } mode_t;
@@ -107,8 +100,8 @@ void loop() {
             
             // TODO: send all faces at once
             
-            irBroadcastData( count );
-            _delay_ms(20);
+            irBroadcastData(  count );
+            delay(20);                  // Slow down a bit so the spin is not just a blur
                 
             break;
 
@@ -122,13 +115,16 @@ void loop() {
                 
                 if (irIsReadyOnFace(x)) {
                     
-                    count = irGetData(x);             
+                    count = irGetData(x);   
+                    irGetErrorBits(x);     // Clear out any left over errors (only care about errros from when we synced)
+                              
                     rxFace = x;
                     mode = RX;
                     setColor( OFF );        // Clean off yellow before we start to spin. 
                     break;                                   
                 
                 } 
+
                 
             }                
             
@@ -166,33 +162,25 @@ void loop() {
                     
                     uint8_t errorBits = irGetErrorBits(rxFace);
                     
-                    if ( errorBits & ERRORBIT_DROPOUT) {
+                    if ( bitRead(errorBits , ERRORBIT_DROPOUT) ){
                         setFaceColor(1 , RED) ;
                     }                        
 
-                    if ( errorBits & ERRORBIT_NOISE) {
+                    if ( bitRead(errorBits , ERRORBIT_NOISE  ) ){
                         setFaceColor(2 , RED) ;
                     }
 
-                    if ( errorBits & ERRORBIT_OVERFLOW) {
+                    if ( bitRead(errorBits , ERRORBIT_OVERFLOW) ) {
                         setFaceColor(3 , RED) ;
                     }
 
-                    if ( errorBits & ERRORBIT_PARITY) {
+                    if ( bitRead(errorBits , ERRORBIT_PARITY  ) ) {
                         setFaceColor(4 , RED) ;
                     }
                     
                     mode = ERROR; 
                     
                 }                    
-                
-              
-
-                //count = irGetData(rxFace);
-                //setFaceColor( count % FACE_COUNT , GREEN );       // Turn off previous pixel
-                
-                
-
 
             }
         
@@ -206,4 +194,5 @@ void loop() {
     }
     
 }
+
 

@@ -35,6 +35,7 @@
 // TODO: Really nail down the blue booster 
 
 #include "hardware.h"
+#include "blinkcore.h"
 
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
@@ -47,6 +48,7 @@
 
 #include "callbacks.h"
 
+#include "timer.h"      // We piggyback actual timer callback in pixel since we are using that clock for PWM
 
 // Here are the raw compare register values for each pixel
 // These are precomputed from brightness values because we read them often from inside an ISR
@@ -87,6 +89,26 @@ static void setupPixelPins(void) {
 	SBI( BLUE_SINK_PORT , BLUE_SINK_BIT);   // Set the sink output high so blue LED will not come on
 	SBI( BLUE_SINK_DDR  , BLUE_SINK_BIT);
 	
+}
+
+
+// This will put all timers into sync mode, where they will stop dead
+// We can then run the enable() fucntions as we please to get them all set up
+// and then release them all at the same exact time
+// We do this to get timer0/timer1 and timer2 to be exactly out of phase
+// with each other so they can run without stepping on each other
+// This assumes that one of the timers will start with its coutner 1/2 way finished
+//..which timer2 does.
+
+static void holdTimers(void) {
+    SBI(GTCCR,TSM);         // Activate sync mode - both timers halted
+    SBI(GTCCR,PSRASY);      // Reset prescaller for timer2
+    SBI(GTCCR,PSRSYNC);     // Reset prescaller for timer0 and timer1
+}
+
+
+static void releaseTimers(void) {
+    CBI(GTCCR,TSM);            // Release all timers at the same moment
 }
 
 
@@ -134,27 +156,32 @@ static void pixelTimersOn(void) {
 
 	// When we get here, timer 0 is not running, timer pins are driving red and green LEDs and they are off.  
 
-    // We are using mode 3 here for FastPWM which defines the TOP (the value when the overflow interrupt happens) as 255
-    #define PIXEL_STEPS_PER_OVR    256      // USewd for timekeeping calculations below 
+    // We are using Timer0 mode 3 here for FastPWM which defines the TOP (the value when the overflow interrupt happens) as 255    
     
     TCCR0A =
         _BV( WGM00 ) | _BV( WGM01 ) |       // Set mode=3 (0b11)
         _BV( COM0A1) |                      // Clear OC0A on Compare Match, set OC0A at BOTTOM, (non-inverting mode) (clearing turns LED on)
         _BV( COM0B1)                        // Clear OC0B on Compare Match, set OC0B at BOTTOM, (non-inverting mode)
     ;
+
+    #if TIMER_TOP != 256
+        #Timer TOP is hardcoded as 256 in this mode, must match value uesed in calculations
+    #endif
     
 	// IMPORTANT:If you change the mode, you must update PIXEL_STEPS_PER_OVR above!!!!
     
-	
-	// TODO: Get two timers exactly in sync. Maybe preload TCNTs to account for the difference between start times?
-
-    // ** Next setup Timer2 for blue PWM. This is different because for the charge pump. We have to drive the pin HIGH to charge
-    // the capacitor, then the LED lights on the LOW.
+    // Next setup Timer2 for blue PWM. 
+    // When the output pin goes low, it pulls down on the charge pump cap
+    // which pulls down the blue RGB cathode to negative voltage, lighting the blue led
     
     TCCR2A =
-    _BV( COM2B1) |                        // Clear OC0B on Compare Match, set OC0B at BOTTOM, (non-inverting mode) (clearing turns off pump and on LED)
+    _BV( COM2B1) |                        // 1 0 = Clear OC0B on Compare Match (blue on), set OC0B at BOTTOM (blue off), (non-inverting mode)
     _BV( WGM01) | _BV( WGM00)             // Mode 3 - Fast PWM TOP=0xFF
     ;
+
+    #if TIMER_TOP != 256 
+        #Timer TOP is hardcoded as 256 in this mode, must match value used in calculations
+    #endif
 
     
     // Timer2 (B)                           // Charge pump is attached to OC2B
@@ -165,28 +192,35 @@ static void pixelTimersOn(void) {
         
     // Ok, everything is ready so turn on the timers!
     
-    
-    #define PIXEL_PRESCALLER        8       // Used for timekeeping calculations below
+        
+    holdTimers();           // Hold the timers so when we start them they will be exactly synced  
 
+    // If you change this prescaller, you must update the the TIMER_PRESCALLER
+    
     TCCR0B =                                // Turn on clk as soon as possible after setting COM bits to get the outputs into the right state
         _BV( CS01 );                        // clkIO/8 (From prescaler)- ~ This line also turns on the Timer0
 
+    #if TIMER_PRESCALER != 8
+        # Actual hardware prescaller for Timer1 must match value used in calculations 
+    #endif
+
     // IMPORTANT!
-    // If you change this prescaller, you must update the PIXEL_PRESCALLER above!
-
-
+    // If you change this prescaller, you must update the the TIMER_PRESCALLER
 
     // The two timers might be slightly unsynchronized by a cycle, but that should not matter since all the action happens at the end of the cycle anyway.
     
     TCCR2B =                                // Turn on clk as soon as possible after setting COM bits to get the outputs into the right state
         _BV( CS21 );                        // clkI/O/8 (From prescaler)- This line also turns on the Timer0
+                    
+
+    #if TIMER_PRESCALER != 8
+        # Actual hardware prescaller for Timer2 must match value used in calculations
+    #endif
+
                                             // NOTE: There is a datasheet error that calls this bit CA21 - it is actually defined as CS21
-        
-    // TODO: Maybe use Timer2 to drive the ISR since it has Count To Top mode available. We could reset Timer0 from there.
+    releaseTimers();                        // Timer0 and timer1 now in lockstep
         
 }
-
-
 
 
 static void setupTimers(void) {
@@ -239,39 +273,19 @@ static void activateAnode( uint8_t line ) {
     
 }
 
-static void deactivateAnode( uint8_t line ) {           
+// Deactivate all anodes. Faster to blindly do all of them than to figure out which is
+// is currently on and just do that one. 
+
+static void deactivateAnodes(void) {           
     	
-		// TODO: Must be  a faster way than switch. 
-		// Maybe a #PROGMEM table lookup?
-		
-        switch (line) {
+    // Each of these compiles to a single instruction        
+    CBI( PIXEL1_PORT , PIXEL1_BIT );
+    CBI( PIXEL2_PORT , PIXEL2_BIT );
+    CBI( PIXEL3_PORT , PIXEL3_BIT );
+    CBI( PIXEL4_PORT , PIXEL4_BIT );
+    CBI( PIXEL5_PORT , PIXEL5_BIT );
+    CBI( PIXEL6_PORT , PIXEL6_BIT );
             
-            case 0:
-            CBI( PIXEL1_PORT , PIXEL1_BIT );
-            break;
-            
-            case 1:
-            CBI( PIXEL2_PORT , PIXEL2_BIT );
-            break;
-            
-            case 2:
-            CBI( PIXEL3_PORT , PIXEL3_BIT );
-            break;
-            
-            case 3:
-            CBI( PIXEL4_PORT , PIXEL4_BIT );
-            break;
-            
-            case 4:
-            CBI( PIXEL5_PORT , PIXEL5_BIT );
-            break;
-
-            case 5:
-            CBI( PIXEL6_PORT , PIXEL6_BIT );
-            break;
-            
-        }
-
 }
 
 /*
@@ -293,29 +307,24 @@ void updateVccFlag(void) {                  // Set the flag based on ADC check o
 
 */
 
-// Callback that is called after each frame is displayed
-// Note that you could get multiple consecutive calls with the
-// Same state if the button quickly toggles back and forth quickly enough that
-// we miss one phase. This is particularly true if there is a keybounce exactly when
-// and ISR is running.
-
-// Confirmed that all the pre/postamble pushes and pops compile away if this is left blank
+// Callback that is called once per frame 
+// Called during a nice visual lull when there are two consecutive phases where RGB LEDs are off
+// so plenty of time to do any updates without visual tearing. 
 
 // Weak reference so it (almost) compiles away if not used.
 // (looks like GCC is not yet smart enough to see an empty C++ virtual invoke. Maybe some day!)
 
-void __attribute__((weak)) pixel_callback_onFrame(void) {
-}
+// Confirmed that all the pre/postamble pushes and pops compile away if this is left blank
 
 
-struct CALLBACK_PIXEL_FRAME : CALLBACK_BASE<CALLBACK_PIXEL_FRAME> {
+struct ISR_CALLBACK_TIMER : CALLBACK_BASE< ISR_CALLBACK_TIMER> {
     
-    static const uint8_t running_bit = CALLBACK_PIXEL_FRAME_RUNNING_BIT;
-    static const uint8_t pending_bit = CALLBACK_PIXEL_FRAME_PENDING_BIT;
+    static const uint8_t running_bit = CALLBACK_TIMER_RUNNING_BIT;
+    static const uint8_t pending_bit = CALLBACK_TIMER_PENDING_BIT;
     
     static inline void callback(void) {
         
-        pixel_callback_onFrame();
+        timer_callback();
         
     }
     
@@ -375,15 +384,17 @@ static void pixel_isr(void) {
     // THIS IS COMPLICATED
     // Because of the buffering of the OCR registers, we are always setting values that will be loaded
     // the next time the timer overflows. 
+        
+    ISR_CALLBACK_TIMER::invokeCallback();
     
-    sei();
+    sei();                      // We don't care if we get interrupted as long as we finish before the PWM counters start turning on LEDs again (the PWM always starts with LED off and then turns on when we hit the output compare)
     
     switch (phase) {
         
         
         case 0:   // In this phase, we step to the next pixel and start charging the pump. All PWMs are currently off. 
 
-            deactivateAnode( currentPixel );        
+            deactivateAnodes();        
                                     
             currentPixel++;
             
@@ -410,7 +421,17 @@ static void pixel_isr(void) {
             // TODO: Handle the case where battery is high enough to drive blue directly and skip the pump
             
             phase++;
-                          
+            
+            // Now we call the timer callback function
+            // This is a great place to do it because the pixels will be off for the next 2 phases
+            // while we charge the pump. This give the foreground some time to make updates that will
+            // all show up simultaneously when we turn on the 1st pixel. 
+            
+            // The frequency of this call is calculated in timer.h by F_TIMER
+            // The time between calls is calculated in timer.h by TIMER_CYCLES_PER_TICK
+            
+//            ISR_CALLBACK_TIMER::invokeCallback();
+                                      
             break;
              
         case 1:
@@ -456,57 +477,21 @@ static void pixel_isr(void) {
             break;
             
         case 4: // Right now the green LED is on. 
-                
+        
+            #if TIMER_PHASE_COUNT!= 5
+                #error If this switch does not have 5 cases, then need to update the TIMER_PHASE_COUNT in timer.h to make calculations colrrect
+            #endif
+                       
             OCR0B = 255;                                // Load OCR to turn off green at next overflow
             
-            #define PHASE_COUNT 5         // Used for timekeeping calculations
             phase=0;                            // Step to next pixel and start over
-            // IMPORTANT: If you change the number of phases, you must update PHASE_COUNT above!
-
-
-            // Here we double check our calculations so we will remeber if we ever change 
-            // any of the inputs to CYCLES_PER_FRAME
-            
-            #define CYCLES_PER_FRAME ( PIXEL_PRESCALLER * PIXEL_STEPS_PER_OVR * PHASE_COUNT  )
-            
-            #if CYCLES_PER_FRAME!=PIXEL_CYCLES_PER_FRAME
-                #error The PIXEL_CYCLES_PER_FRAME in pixel.h must match the actual values programmed into the timer
-            #endif
-
-            CALLBACK_PIXEL_FRAME::invokeCallback();
-
+                    
             break;
                         
     }        
-    
-    
-    /*    
-	
-    if ( 0 && vccAboveBlueFlag) {           // TODO: Driving blue directly for now to avoid using up timeslice!
-        /// TODO: TESTING BLUE HIGH VOLTAGE
         
-        // TODO: This takes too long! Do it in the background!
-        // TODO: We are capping the blue brightness here to make sure this does not exceed phase timeslot allowed just so we can get IR working.
-
-//        uint8_t d=  255-rawValueB[currentPixel];     // TODO: Currect code but too slow
-
-        uint8_t d= 64-(rawValueB[currentPixel]/4);     // TODO: Fix This!
-
-    
-        while (d--) {
-           //_delay_us(1);
-        }
-    
-		
-    
-        //_delay_us(200);
-    
- 
-        SBI(BLUE_SINK_PORT,BLUE_SINK_BIT);      // TODO: TESTING BLUE HIGH VOLTAGE
-	}
-	
-	*/
-    
+        
+        
     
 } 
 
@@ -520,7 +505,7 @@ static void pixelTimerOff(void) {
     // before driving all cathodes low
     
     
-    deactivateAnode( currentPixel );
+    deactivateAnodes( );
     SBI( BLUE_SINK_PORT , BLUE_SINK_BIT);                       // Set the blue sink low to avoid any current leaks
                                                                    
     TCCR2B = 0;                     // Timer/counter2 stopped.
@@ -548,8 +533,9 @@ static void pixelTimerOff(void) {
 
 ISR(TIMER0_OVF_vect)
 {       
+//    DEBUGA_1();
     pixel_isr();
-    
+//    DEBUGA_0();
     return;	
 }
 

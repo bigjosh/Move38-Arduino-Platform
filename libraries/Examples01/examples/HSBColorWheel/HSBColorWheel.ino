@@ -1,4 +1,4 @@
-#include "blink.h"
+#include "blinklib.h"
 
 // Spin around in goovy HSB color space
 // HSB stands for Hue, Saturation, and Brightness

@@ -14,17 +14,36 @@
 #include <avr/pgmspace.h>
 #include <limits.h>
 #include <stdint.h>
+#include <stddef.h>     // NULL
 
 #include <Arduino.h>
 
+#define DEBUG_MODE
+
+
 #include "blinklib.h"
+#include "chainfunction.h"
 
 #include "pixel.h"
 #include "timer.h"
 #include "button.h"
 #include "utils.h"
 
-//#include "debug.h"
+#include "debug.h"
+
+#include "irdata.h"
+
+#include "delay.h"
+
+#include "debug.h"
+
+// IR CONSTANTS
+
+#define STATE_BROADCAST_SPACING_MS  50           // How often do we broadcast our state to neighboring tiles?
+
+#define STATE_ABSENSE_TIMEOUT_MS 250             // If we don't get any state received on a face for this long, we set their state to 0
+
+// BUTTON CONSTANTS
 
 // Debounce button pressed this much
 // Empirically determined. At 50ms, I can click twice fast enough
@@ -40,6 +59,8 @@
 
 #define BUTTON_LONGPRESS_TIME_MS 2000       // How long you must hold button down to register a long press. 
 
+
+// PIXEL FUNCTIONS
 
 void setColor( Color newColor ) {
     
@@ -130,7 +151,9 @@ Color makeColorHSB( uint8_t hue, uint8_t saturation, uint8_t brightness ) {
     return( makeColorRGB( r >> 3 , g >> 3  , b >> 3 ) );
 }
 
+/*
 
+// Simpler delay based on millis() below. Not as precice, but so much simpler and way good enough. 
     
 // Note that we do not expose _delay_ms() to the user since then they would need
 // access to F_CPU and it would also limit them to only static delay times. 
@@ -140,9 +163,23 @@ Color makeColorHSB( uint8_t hue, uint8_t saturation, uint8_t brightness ) {
 // TODO: Use millis timer to do this
     
 void delay( unsigned long millis ) {
-    delay_ms( millis );
+    
+    // delay_ms() has a maximum value of millis it can handle, so we call 
+    // multiple times if necessary to build up the delay. 
+    // Not perfect, but likely good enough to get withing a ms on delays longer than 20 sec
+    
+    while (millis) {
+        
+        unsigned nextDelay = min( millis , max_delay_ms);
+        
+        delay_ms( nextDelay );
+        
+        millis -= nextDelay;
+                
+    }        
 }    
 
+*/
 
 // Read the unique serial number for this blink tile
 // There are 9 bytes in all, so n can be 0-8
@@ -157,9 +194,10 @@ byte getSerialNumberByte( byte n ) {
 }
 
 
+/** IR Functions **/
+
+
 // // These all can be updated by callback, so must be volatile.
-
-
 
 
 // Click Semantics
@@ -195,10 +233,13 @@ static volatile uint8_t maxCompletedClickCount=0;       // Remember the most com
 // Called once per tick by the timer to check the button position
 // and update the button state variables.
 
+// Note: this runs in Callback context in the timercallback
+
 static void updateButtonState(void) {
-        
-    bool buttonPositon = button_down();
     
+       
+    bool buttonPositon = button_down();
+           
     if ( buttonPositon == buttonState ) {
         
         if (buttonDebounceCountdown) {
@@ -282,6 +323,7 @@ static void updateButtonState(void) {
         buttonDebounceCountdown = TIMER_MS_TO_TICKS( BUTTON_DEBOUNCE_MS );
         
     }        
+                        
                         
     
 }
@@ -368,6 +410,11 @@ uint8_t buttonClickCount(void) {
     return t;
 }    
 
+void button_callback_onChange(void) {
+    // Empty since we do not need to do anything in the interrupt with the above timer sampling scheme. 
+    // Nice because bounces can come fast and furious.     
+}    
+
 
 // TODO: Need this?
 
@@ -383,6 +430,7 @@ volatile uint8_t verticalRetraceFlag=0;     // Turns to 1 when we are about to s
 // https://www.google.com/search?q=(2%5E31)*2.5ms&rlz=1C1CYCW_enUS687US687&oq=(2%5E31)*2.5ms
 
 static volatile uint32_t millisCounter=0;           // How many millisecends since most recent pixel_enable()?
+
 // Overflows after about 60 days
 // Note that resolution is limited by timer tick rate
 
@@ -402,16 +450,34 @@ unsigned long millis(void) {
     return( tempMillis );
 }
 
+// Delay for `ms` milliseconds
+
+void delay( unsigned long ms ) {
+    
+    unsigned long endtime = millis() + ms;
+    
+    while (millis() < endtime);
+    
+}    
+
 
 // TODO: This is accurate and correct, but so inefficient. 
 // We can do better. 
 
+// TODO: chance timer to 500us so increment is faster.
+// TODO: Change time to uint24 _t
+
+// Supported!!! https://gcc.gnu.org/wiki/avr-gcc#types
+
+// __uint24 timer24;
+
 static uint16_t cyclesCounter=0;                    // Accumulate cycles to keep millisCounter accurate
 
-
-#if TIMER_CYCLES_PER_TICK >  0xffff //UINT16_MAX
+#if TIMER_CYCLES_PER_TICK >  BLINKCORE_UINT16_MAX 
     #error Overflow on cyclesCounter
 #endif
+
+// Note this runs in callback context
 
 static void updateMillis(void) {
     
@@ -421,6 +487,8 @@ static void updateMillis(void) {
         
         millisCounter++;
         cyclesCounter-=CYCLES_PER_MS ;
+        
+        DEBUGB_PULSE(10);
         
     }    
                        
@@ -433,23 +501,67 @@ static void updateMillis(void) {
 // TODO: Reduce this rate by phasing the timer call?
 
 void timer_callback(void) {
+    updateIRComs(); 
     updateMillis();            
     updateButtonState();
+}
+
+Chainfunction *onLoopChain = NULL;
+
+// Call all the functions on the chain (if any)... 
+
+#warning  We are not calling the full onLoop() chain, only the first element. Need to get this function pointer link list working. 
+
+static void callOnLoopChain(void ) {
+
+    (onLoopChain->callback)();
+
+/*    
+    Chainfunction *c = onLoopChain;
+    
+    while (c) {
+        
+        c->callback();
+        
+        c=c->next;
+        
+    }        
+  */  
+    
 }    
 
-// This is the entry point where the platform will pass control to 
+// This is the entry point where the blinkcore platform will pass control to 
 // us after initial power-up is complete
 
 void run(void) {
+    
+    //while (1) DEBUGC_PULSE(20);
     
     setup();
     
     while (1) {
      
         loop();
+        
+        callOnLoopChain();
+        
+        // TODO: Sleep here
            
     }        
     
 }    
+
+
+// Add a function to be called after each pass though loop()
+
+// `cons` onto the linked list of functions
+
+void addOnLoop( Chainfunction *chainfunction ) {
+    
+    chainfunction->next = onLoopChain;
+    onLoopChain = chainfunction;
+    
+}    
+
 
 
