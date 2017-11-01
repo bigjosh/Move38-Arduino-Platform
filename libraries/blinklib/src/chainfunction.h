@@ -13,13 +13,13 @@
 
 typedef void *voidvoidfunction_ptr(void); 
 
-struct chainfunction_struct {
+typedef struct chainfunction_struct {
         
     void (*callback)(void);
     
-    struct chainfunction_struct *next;              // Sorry for this ugly syntax, function pointers in typedef structs compile, but just do not seem to work!
+    struct chainfunction_struct *next;              // Sorry for this ugly syntax, this is how we do it in old skool C! https://stackoverflow.com/questions/18582205/linkedlist-struct-typedef-in-c
         
-};
+} chainfunction_t ;
 
 #endif /* CHAINFUNCTION_H_ */
 

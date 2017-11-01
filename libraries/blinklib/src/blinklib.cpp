@@ -506,7 +506,7 @@ void timer_callback(void) {
     updateButtonState();
 }
 
-struct chainfunction_struct *onLoopChain = NULL;
+chainfunction_struct *onLoopChain = NULL;
 
 // Call all the functions on the chain (if any)... 
 
@@ -523,7 +523,7 @@ static void callOnLoopChain(void ) {
     //onLoopChain->callback();
     
     
-    struct chainfunction_struct *c = onLoopChain;
+    chainfunction_struct *c = onLoopChain;
     
     while (c) {
         
@@ -561,7 +561,7 @@ void run(void) {
 
 // `cons` onto the linked list of functions
 
-void addOnLoop( struct chainfunction_struct *chainfunction ) {
+void addOnLoop( chainfunction_struct *chainfunction ) {
     
     chainfunction->next = onLoopChain;
     onLoopChain = chainfunction;
