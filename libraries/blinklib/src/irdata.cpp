@@ -415,7 +415,7 @@ void irBroadcastData( uint8_t data ) {
             
     irBitmaskSendData( bitmask , data ); 
     
-    // Ok, but the time the above TX completes, whatever RX's that were in progress should be complete (each RX is a TX from the other side!)
+    // Ok, by the time the above TX completes, whatever RX's that were in progress should be complete (each RX is a TX from the other side!)
     // so should be clear to send to those now...
     
     irBitmaskSendData( (~bitmask) &  ALL_IR_BITS , data );    

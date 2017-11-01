@@ -304,6 +304,6 @@ void loop();
 
 // Add a function to be called after each pass though loop()
 
-void addOnLoop( Chainfunction *chainfunction );
+void addOnLoop( struct chainfunction_struct *chainfunction );
 
 #endif /* BLINKLIB_H_ */

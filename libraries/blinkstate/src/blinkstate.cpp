@@ -113,7 +113,9 @@ void blinkStateOnLoop(void) {
 
 // Make a record to add to the callback chain 
 
-Chainfunction blinkStateOnLoopChain( blinkStateOnLoopChain );
+static struct chainfunction_struct blinkStateOnLoopChain = {
+     .callback = blinkStateOnLoop, 
+};
 
 // Something tricky here:  I can not good place to automatically add
 // our onLoop() hook at compile time, and we
@@ -127,8 +129,6 @@ static uint8_t hookRegisteredFlag=0;        // Did we already register?
 
 static void registerHook(void) {
     if (!hookRegisteredFlag) {
-        
-        
         addOnLoop( &blinkStateOnLoopChain ); 
         hookRegisteredFlag=1;
     }        
@@ -153,7 +153,7 @@ byte getNeighborState( byte face ) {
     
     updateRecievedState( face ) ;       // Refresh
                
-    if ( expireTime[face] > millis() ) {        // Expire time in the futre?
+    if ( expireTime[face] > millis() ) {        // Expire time in the future?
                                                                       
         return lastValue[ face ]; 
         
