@@ -8,11 +8,15 @@
  */ 
 
 
+
+
 #ifndef DEBUG_H_
 
     #define DEBUG_H_
     
     #include "blinkcore.h"    
+    
+    #include "hardware.h"
 
     #include "utils.h"          // Grab SBI and CBI
 
@@ -21,54 +25,27 @@
     // This enables debug features like output on the debug port
     // and some extra sanity parameter checks.
 
-    // DebugA on pin #19 PE2
-    // DebugB on pin  #6 PE1
-    // DebugC on pin  #3 PE0
-
 
     #ifdef DEBUG_MODE
 
-        #define DEBUG_INIT()             SBI( DDRE  , 2); SBI(DDRE,1); SBI( DDRE , 0 )
+        #define DEBUG_INIT()             SBI( DEBUGA_DDR  , DEBUGA_PIN); SBI(DEBUGB_DDR, DEBUGB_PIN ); SBI( DEBUGC_DDR , DEBUGC_PIN )
 
 
 
-        #define DEBUGA_1()               SBI( PORTE , 2)
-        #define DEBUGA_0()               CBI( PORTE , 2)
+        #define DEBUGA_1()               SBI( DEBUGA_PORT, DEBUGA_PIN)
+        #define DEBUGA_0()               CBI( DEBUGA_PORT, DEBUGA_PIN)
         #define DEBUGA_PULSE(width_us)   do {DEBUGA_1();_delay_us(width_us-2);DEBUGA_0();} while(0)   // Generate a pulse. width must be >= 2us.
 
-        #define DEBUGB_1()               SBI( PORTE , 1)
-        #define DEBUGB_0()               CBI( PORTE , 1)
+        #define DEBUGB_1()               SBI( DEBUGB_PORT, DEBUGB_PIN)
+        #define DEBUGB_0()               CBI( DEBUGB_PORT, DEBUGB_PIN)
         #define DEBUGB_PULSE(width_us)   do {DEBUGB_1();_delay_us(width_us-2);DEBUGB_0();} while (0)   // Generate a pulse. width must be >= 2us.
 
-        #define DEBUGC_1()               SBI( PORTE , 0)
-        #define DEBUGC_0()               CBI( PORTE , 0)
+        #define DEBUGC_1()               SBI( DEBUGC_PORT, DEBUGC_PIN)
+        #define DEBUGC_0()               CBI( DEBUGC_PORT, DEBUGC_PIN)
         #define DEBUGC_PULSE(width_us)   do {DEBUGC_1();_delay_us(width_us-2);DEBUGC_0();} while(0)   // Generate a pulse. width must be >= 2us.
 
 
         #define DEBUG_ERROR(error)       debug_error(error)                 // output an error code
-
-        static void inline DEBUGA_BITS( uint8_t b ) {
-
-
-            for( int i=0b10000000; i; i>>=1 ) {
-
-
-                DEBUGA_PULSE(1);
-
-
-                    
-
-
-                if (b & i  ){
-                    DEBUGA_1();
-                   
-                }
-                _delay_us(20);
-                DEBUGA_0();
-
-            }
-
-        }
 
     #else
 

@@ -266,7 +266,7 @@ static void activateAnode( uint8_t line ) {
             break;           
 
         case 5:
-            SBI( PIXEL5_PORT  , PIXEL5_BIT );
+            SBI( PIXEL5_PORT , PIXEL5_BIT );
             break;
         
     }
