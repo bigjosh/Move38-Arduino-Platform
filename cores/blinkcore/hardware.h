@@ -16,7 +16,7 @@
 #include "utils.h"
 
 
-// TODO: Get rid of this when we donm'ty need it everywhere anymore
+// TODO: Get rid of this when we don't need it everywhere anymore
 #define DEBUG_MODE
 
 
@@ -26,29 +26,29 @@
 
 // Common Anodes - We drive these 1 to select Pixel.
 
-#define PIXEL1_PORT PORTB
-#define PIXEL1_DDR  DDRB
-#define PIXEL1_BIT  6
+#define PIXEL0_PORT PORTB
+#define PIXEL0_DDR  DDRB
+#define PIXEL0_BIT  6
 
-#define PIXEL2_PORT PORTD
-#define PIXEL2_DDR  DDRD
-#define PIXEL2_BIT  0
+#define PIXEL1_PORT PORTD
+#define PIXEL1_DDR  DDRD
+#define PIXEL1_BIT  0
 
-#define PIXEL3_PORT PORTB
-#define PIXEL3_DDR  DDRB
-#define PIXEL3_BIT  7
+#define PIXEL2_PORT PORTB
+#define PIXEL2_DDR  DDRB
+#define PIXEL2_BIT  7
+
+#define PIXEL3_PORT PORTD
+#define PIXEL3_DDR  DDRD
+#define PIXEL3_BIT  1
 
 #define PIXEL4_PORT PORTD
 #define PIXEL4_DDR  DDRD
-#define PIXEL4_BIT  1
+#define PIXEL4_BIT  4
 
 #define PIXEL5_PORT PORTD
 #define PIXEL5_DDR  DDRD
-#define PIXEL5_BIT  4
-
-#define PIXEL6_PORT PORTD
-#define PIXEL6_DDR  DDRD
-#define PIXEL6_BIT  2
+#define PIXEL5_BIT  2
 
 // RGB Sinks - We drive these cathodes low to light the selected color (note that BLUE has a charge pump on it)
 //This will eventually be driven by timers
