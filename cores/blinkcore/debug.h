@@ -48,18 +48,19 @@
         // Initialize the service port for a serial connection on pins T and R. 
         // Note that this disable the DEBUGA and DEBUGB logic outputs. 
         
-        void debug_init_serial(void);
-            
-        void DEBUG_TX(byte b);
-        void DEBUG_TX_NOW(byte b);            
-            
-        /*            
-        // Send a byte out the serial port. DebugSerialInit() must be called first. Blocks if TX already in progress.
-        #define DEBUG_TX(b)              do {while (!TBI(USCSR0A,UDRE0)); UDR0=b;} while(0);
-
-        // Send a byte out the serial port immedeatly (clobbers any in-progress TX). DebugSerialInit() must be called first. 
-        #define DEBUG_TX_NOW(b)          (UDR0=b)
-        */
+        void debug_serial_init(void);
+                
+        // Send a byte out the serial port. Blocks if a transmit already in progress. 
+        // Must call debug_iserial_init() first
+        
+        void debug_serial_tx(byte b);
+        
+         #ifdef DEBUG_SERIAL_PRESENT
+            #define DEBUG_TX_NOW(b) (UDR0=b)      // Send blindly, but instantly (1 instruction)  Could clobber, but you'd have to send pretty darn fast for that.
+         #else
+            #define DEBUG_TX_NOW(b)               // Do nothing if no serial port, but define as empty so code that has this still compiles
+        #endif
+        
         #define DEBUG_ERROR(error)       debug_error(error)                 // output an error code
 
     #else

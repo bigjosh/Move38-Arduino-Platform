@@ -3,11 +3,8 @@
  *
  * Defines the location of all the hardware 
  * This header matches all boards that *DO* have the pretty logo on the front (newer than 1/1/17). 
- * Less than 100 boards order than this, hopefully we can retire the V1 header and move this to hardware.h
+ * Less than 100 boards older than this, hopefully we can retire the legacy header and move this to core 
  *
- *
- * Created: 7/23/2017 9:50:54 PM
- *  Author: passp
  */ 
 
 
@@ -171,5 +168,7 @@
 #define DEBUGC_PORT PORTE
 #define DEBUGC_DDR  DDRE
 #define DEBUGC_PIN  2
+
+#define DEBUG_SERIAL_PRESENT        // Indicate that we do have a serial port on this board
 
 #endif /* HARDWARE_H_ */
