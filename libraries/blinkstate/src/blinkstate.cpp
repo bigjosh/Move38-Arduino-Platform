@@ -103,7 +103,7 @@ void blinkStateOnLoop(void) {
     
     // Check for anything going out...
     
-    if ( localState && (localStateNextSendTime <= millis()) ) {         // Anything to send (state 0=don't send)? Time for next broadcast? 
+    if ( (localState!=0) && (localStateNextSendTime <= millis()) ) {         // Anything to send (state 0=don't send)? Time for next broadcast? 
         
         broadcastState(); 
         
@@ -114,10 +114,11 @@ void blinkStateOnLoop(void) {
 // Make a record to add to the callback chain 
 
 static struct chainfunction_struct blinkStateOnLoopChain = {
-     .callback = blinkStateOnLoop, 
+     .callback = blinkStateOnLoop,
+     .next     = NULL                  // This is a waste because it gets overwritten, but no way to make this un-initialized in C
 };
 
-// Something tricky here:  I can not good place to automatically add
+// Something tricky here:  I can not find a good place to automatically add
 // our onLoop() hook at compile time, and we
 // don't want to follow idiomatic Arduino ".begin()" pattern, so we
 // hack it by adding here the first time anything that could use state
@@ -137,11 +138,7 @@ static void registerHook(void) {
 // Manually add our hooks
 
 void blinkStateBegin(void) {
-    
-    blinkStateOnLoopChain.callback = blinkStateOnLoop;
-    
-    addOnLoop( &blinkStateOnLoopChain );
-    hookRegisteredFlag=1;    
+    registerHook();
 }    
 
 // Returns the last received state of the indicated face, or

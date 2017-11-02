@@ -45,6 +45,21 @@
         #define DEBUGC_PULSE(width_us)   do {DEBUGC_1();_delay_us(width_us-2);DEBUGC_0();} while(0)   // Generate a pulse. width must be >= 2us.
 
 
+        // Initialize the service port for a serial connection on pins T and R. 
+        // Note that this disable the DEBUGA and DEBUGB logic outputs. 
+        
+        void debug_init_serial(void);
+            
+        void DEBUG_TX(byte b);
+        void DEBUG_TX_NOW(byte b);            
+            
+        /*            
+        // Send a byte out the serial port. DebugSerialInit() must be called first. Blocks if TX already in progress.
+        #define DEBUG_TX(b)              do {while (!TBI(USCSR0A,UDRE0)); UDR0=b;} while(0);
+
+        // Send a byte out the serial port immedeatly (clobbers any in-progress TX). DebugSerialInit() must be called first. 
+        #define DEBUG_TX_NOW(b)          (UDR0=b)
+        */
         #define DEBUG_ERROR(error)       debug_error(error)                 // output an error code
 
     #else

@@ -64,7 +64,8 @@ void setState( byte newState );
 #endif
 
 
-// Manually add our hooks
+// Manually add our hooks. Note that currently you never need to Call this - it is automtically ivoked the first time you call an blinkState function.
+// It is included to to not break code that references it, and in case we ever switch to requiring it. 
 
 void blinkStateBegin(void);
 

@@ -34,3 +34,36 @@ uint8_t analogReadDebugA(void) {
 	return( ADCH );
 	
 }
+
+// Initialize the serial on the service port. 
+
+void debug_init_serial(void) {
+    
+    SBI( UCSR0A , U2X0);        // 2X speed
+    SBI( UCSR0B , TXEN0 );      // Enable transmitter (disables DEBUGA)
+    SBI( UCSR0B , RXEN0);       // Enable receiver    (disables DEBUGB)
+    
+    #if F_CPU!=4000000  
+        #error Serial port calculation in debug.cpp must be updated if not 4Mhz CPU clock.
+    #endif
+    
+    UBRR0 = 0;                  // 500Kbd. This is as fast as we can go at 4Mhz, and happens to be 0% error and supported by the Arduino serial monitor. 
+                                // See datasheet table 25-7. 
+}    
+
+// Send a byte out the serial port. DebugSerialInit() must be called first. Blocks if TX already in progress.
+
+void DEBUG_TX(uint8_t b) {    
+    DEBUGC_1();
+    //while (!TBI(UCSR0A,UDRE0)); 
+    DEBUGC_0();
+    UDR0=b;
+}
+
+
+// Send a byte out the serial port immedeatly (clobbers any in-progress TX). DebugSerialInit() must be called first.
+
+void DEBUG_TX_NOW(uint8_t b) {
+    UDR0=b;
+}    
+

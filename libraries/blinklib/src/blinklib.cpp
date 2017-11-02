@@ -488,7 +488,7 @@ static void updateMillis(void) {
         millisCounter++;
         cyclesCounter-=CYCLES_PER_MS ;
         
-        DEBUGB_PULSE(10);
+        //DEBUGB_PULSE(10);
         
     }    
                        
@@ -510,22 +510,13 @@ chainfunction_struct *onLoopChain = NULL;
 
 // Call all the functions on the chain (if any)... 
 
-#warning  We are not calling the full onLoop() chain, only the first element. Need to get this function pointer link list working. 
 
 static void callOnLoopChain(void ) {
-
-    //if (onLoopChain)  onLoopChain->callback();
-    //else setColor(GREEN);
-    //while(1);
-    
-    
-    
-    //onLoopChain->callback();
-    
     
     chainfunction_struct *c = onLoopChain;
-    
+                    
     while (c) {
+        
         
         c->callback();
         
@@ -533,15 +524,24 @@ static void callOnLoopChain(void ) {
         
     } 
     
+    /*
+    
+    while (c) {
+        
+        c->callback();
+        
+        c= c->next;
+        
+    }
+    */
+    
 }    
 
 // This is the entry point where the blinkcore platform will pass control to 
 // us after initial power-up is complete
 
 void run(void) {
-    
-    //while (1) DEBUGC_PULSE(20);
-    
+        
     setup();
     
     while (1) {

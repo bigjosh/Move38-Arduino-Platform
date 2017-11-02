@@ -116,10 +116,11 @@ static uint8_t oddParity(uint8_t p) {
 
 static void gotBit(ir_rx_state_t *ptr, const bool bit ) {
     
-    
+    /*
     // DEBUGB is decoded bitstream. Wide pulse is 1-bit.
     if (bit)    DEBUGB_PULSE(40);
-    else DEBUGB_PULSE(20);
+    else DEBUGB_PULSE(20);    
+    */
     
     uint8_t buffer=ptr->buffer;
     
