@@ -7,7 +7,6 @@
  *
  *
  * Created: 7/23/2017 9:50:54 PM
- *  Author: passp
  */ 
 
 
@@ -17,10 +16,6 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include "utils.h"
-
-
-// TODO: Get rid of this when we don't need it everywhere anymore
-#define DEBUG_MODE
 
 
 /*** PIXELS ***/
@@ -148,28 +143,8 @@
 #define BUTTON_DOWN() (!TBI(BUTTON_PIN,BUTTON_BIT))           // PCINT23 - pulled low when button pressed
 
 
-/*** DEBUG PORTS ***/
+/*** SERCIVE PORT ***/
 
-// Enabled and used in DEBUG.H and DEBUG.CPP
-// These pins can be used to help with debugging and show up on...
-
-// DebugA on pin #19 PE2
-// DebugB on pin  #6 PE1
-// DebugC on pin  #3 PE0
-
-
-#define DEBUGA_PORT PORTE
-#define DEBUGA_DDR  DDRE
-#define DEBUGA_PIN  2
-
-#define DEBUGB_PORT PORTE
-#define DEBUGB_DDR  DDRE
-#define DEBUGB_PIN  1
-
-#define DEBUGC_PORT PORTE
-#define DEBUGC_DDR  DDRE
-#define DEBUGC_PIN  0
-
-// Do not define DEBUG_SERIAL_PRESENT, so those functions will compile away
+// Do not define SP_PRESENT, so those functions will compile away
 
 #endif /* HARDWARE_H_ */

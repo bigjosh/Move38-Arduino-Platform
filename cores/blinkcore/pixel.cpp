@@ -42,7 +42,6 @@
 #include <util/delay.h>         // Must come after F_CPU definition
 #include <util/atomic.h>
 
-#include "debug.h"
 #include "pixel.h"
 #include "utils.h"
 
@@ -379,8 +378,6 @@ static uint8_t phase=0;
                                     
 static void pixel_isr(void) {   
     
-    //DEBUGB_PULSE(20);
-                
     // THIS IS COMPLICATED
     // Because of the buffering of the OCR registers, we are always setting values that will be loaded
     // the next time the timer overflows. 
@@ -533,9 +530,7 @@ static void pixelTimerOff(void) {
 
 ISR(TIMER0_OVF_vect)
 {       
-//    DEBUGA_1();
     pixel_isr();
-//    DEBUGA_0();
     return;	
 }
 

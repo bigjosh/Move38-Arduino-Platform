@@ -15,11 +15,6 @@
 #include <avr/interrupt.h>
 #include "utils.h"
 
-
-// TODO: Get rid of this when we don't need it everywhere anymore
-#define DEBUG_MODE
-
-
 /*** PIXELS ***/
 
 // Note that we depend on PIXEL_COUNT from blinks.h
@@ -145,30 +140,24 @@
 #define BUTTON_DOWN() (!TBI(BUTTON_PIN,BUTTON_BIT))           // PCINT23 - pulled low when button pressed
 
 
-/*** DEBUG PORTS ***/
 
-// Enabled and used in DEBUG.H and DEBUG.CPP
-// These pins can be used to help with debugging and show up on...
+/*** SERVICE PORT ***/
 
-// DebugA on Service Port Pin "T"
-// DebugB on Service Port Pin "R"
-// DebugC on Service Port Pin "A"
+#define SP_PRESENT        // Indicate that we do have a service port on this board
 
-// Note that enabling serial communication will disable the debug pins function on that pin.
+// Aux pin hardware
 
+// Digital IO
 
-#define DEBUGA_PORT PORTD
-#define DEBUGA_DDR  DDRD
-#define DEBUGA_PIN  1
+#define SP_AUX_PORT PORTE
+#define SP_AUX_DDR  DDRE
+#define SP_AUX_PIN  0
 
-#define DEBUGB_PORT PORTD
-#define DEBUGB_DDR  DDRD
-#define DEBUGB_PIN  0
+// Serial port hardware
 
-#define DEBUGC_PORT PORTE
-#define DEBUGC_DDR  DDRE
-#define DEBUGC_PIN  2
+#define SP_SERIAL_CTRL_REG      UCSR0A
+#define SP_SERIAL_DATA_REG      UDR0
+#define SP_SERIAL_READY_BIT     RXC0
 
-#define DEBUG_SERIAL_PRESENT        // Indicate that we do have a serial port on this board
 
 #endif /* HARDWARE_H_ */

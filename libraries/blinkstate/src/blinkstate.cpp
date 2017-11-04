@@ -21,8 +21,6 @@
 
 #define DEBUG_MODE
 
-#include "debug.h"
-
 #include <stddef.h>
 
 #include "blinklib.h"
@@ -80,9 +78,7 @@ static unsigned long localStateNextSendTime;
 
 static void broadcastState(void) {
     
-    DEBUGA_1();
     irBroadcastData( localState );
-    DEBUGA_0();
     localStateNextSendTime = millis() + STATE_BROADCAST_RATE_MS;
     
 }

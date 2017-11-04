@@ -175,22 +175,6 @@
       <SubType>compile</SubType>
       <Link>callbacks.h</Link>
     </Compile>
-    <Compile Include="..\..\..\cores\blinkcore\debug.cpp">
-      <SubType>compile</SubType>
-      <Link>debug.cpp</Link>
-    </Compile>
-    <Compile Include="..\..\..\cores\blinkcore\debug.h">
-      <SubType>compile</SubType>
-      <Link>debug.h</Link>
-    </Compile>
-    <Compile Include="..\..\..\cores\blinkcore\delay.cpp">
-      <SubType>compile</SubType>
-      <Link>delay.cpp</Link>
-    </Compile>
-    <Compile Include="..\..\..\cores\blinkcore\delay.h">
-      <SubType>compile</SubType>
-      <Link>delay.h</Link>
-    </Compile>
     <Compile Include="..\..\..\cores\blinkcore\effects.cpp">
       <SubType>compile</SubType>
       <Link>effects.cpp</Link>
@@ -226,6 +210,14 @@
     <Compile Include="..\..\..\cores\blinkcore\power.h">
       <SubType>compile</SubType>
       <Link>power.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\cores\blinkcore\sp.cpp">
+      <SubType>compile</SubType>
+      <Link>sp.cpp</Link>
+    </Compile>
+    <Compile Include="..\..\..\cores\blinkcore\sp.h">
+      <SubType>compile</SubType>
+      <Link>sp.h</Link>
     </Compile>
     <Compile Include="..\..\..\cores\blinkcore\timer.cpp">
       <SubType>compile</SubType>

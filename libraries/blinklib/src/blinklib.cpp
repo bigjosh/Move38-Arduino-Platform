@@ -18,8 +18,6 @@
 
 #include <Arduino.h>
 
-#define DEBUG_MODE
-
 
 #include "blinklib.h"
 #include "chainfunction.h"
@@ -29,13 +27,7 @@
 #include "button.h"
 #include "utils.h"
 
-#include "debug.h"
-
 #include "irdata.h"
-
-#include "delay.h"
-
-#include "debug.h"
 
 // IR CONSTANTS
 
@@ -487,9 +479,7 @@ static void updateMillis(void) {
         
         millisCounter++;
         cyclesCounter-=CYCLES_PER_MS ;
-        
-        //DEBUGB_PULSE(10);
-        
+                
     }    
                        
     // Note that we might have some cycles left. They will accumulate in cyclescounter and eventually get folded into a full milli to

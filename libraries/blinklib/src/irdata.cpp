@@ -23,7 +23,6 @@
 
 #define DEBUG_MODE
 
-#include "debug.h"
 #include "blinklib.h"
 
 
@@ -180,7 +179,8 @@ static void reset(ir_rx_state_t  *ptr, uint8_t errorReasonBit ) {
     ptr->buffer=0;         // Start searching for next sync. 
     SBI( ptr->errorBits , errorReasonBit );
     
- 
+    /*
+     
     // Set scope to single trigger on DEBUGA channel to view reason for error. 
     if (errorReasonBit==ERRORBIT_DROPOUT) {
            DEBUGA_PULSE(100);
@@ -189,6 +189,8 @@ static void reset(ir_rx_state_t  *ptr, uint8_t errorReasonBit ) {
        } else {
            DEBUGA_PULSE(300);
     }    
+    
+    */
     
 }
 
@@ -201,10 +203,14 @@ static void reset(ir_rx_state_t  *ptr, uint8_t errorReasonBit ) {
  void updateIRComs(void) {
           
     uint8_t bits = ir_test_and_charge();
+
+    /*
     
     // DEBUGC is the sample clock. A long pulse means a trigger on led IR0 durring prior window
-    if ( TBI( bits , 0 ) ) DEBUGC_PULSE(50);
-    else DEBUGC_PULSE(10);		 
+    if ( TBI( bits , 0 ) ) SP_AUX_PULSE(50);
+    else SP_AUX_PULSE(10);		 
+    
+    */
       
     ir_rx_state_t *ptr = ir_rx_states + IRLED_COUNT -1;
     uint8_t bitwalker = 0b00100000;
