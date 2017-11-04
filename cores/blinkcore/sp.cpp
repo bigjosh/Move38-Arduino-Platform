@@ -64,7 +64,7 @@ void sp_serial_init(void) {
         
 }    
 
-// Send a byte out the serial port. DebugSerialInit() must be called first. Blocks if TX already in progress.
+// Send a byte out the serial port. DebugSerialInit() must be called first. Blocks unitl buffer free if TX already in progress.
 
 void sp_serial_tx(uint8_t b) {    
     
@@ -91,8 +91,4 @@ uint8_t sp_serial_rx(void) {
     return( SP_SERIAL_DATA_REG );
     
 }
-
-
-// Send a byte out the serial port immedeatly (clobbers any in-progress TX). DebugSerialInit() must be called first.
-
 

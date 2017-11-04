@@ -76,7 +76,7 @@ The serial port is implemented using the on-chip USART, so works completely in t
 
 The `sp_serial_tx()` function will first check so see if there is already a pending transmit in progress, and if so will wait for it to complete. The test adds a couple cycles before the send even if the coast is clear, and the call could block for a dozen cycles if there is a transmit in progress that just started. 
 
-if you are working on timing sensitive stuff, you can also use the `SP_SERIAL_TX_NOW()` function. This function does not do any checking- it immediate starts sending and takes only a single instruction to execute. It will clobber an send in progress, but this is not a scary as it sounds since you can just be sure to always leave at least a dozen instructions between sequential calls to give a byte time to drain out before sending the next one. 
+if you are working on timing sensitive stuff, you can also use the `SP_SERIAL_TX_NOW()` function. This function does not do any checking- it immediately (and blindly) writes the byte to the serial port, and takes only a single instruction to execute. If the buffer is not ready (there is already a byte waiting to be transferred into the shift register) then the new byte will be ignored. This is not a scary as it sounds since you can just be sure to always leave at least a dozen instructions between sequential calls to give a byte time to drain out before sending the next one. This will likely happen easily in practice since you will be doing other stuff between consecutive serial writes.
 
 ## Aux out
 

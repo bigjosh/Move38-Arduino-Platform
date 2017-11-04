@@ -49,7 +49,7 @@
         
     void sp_serial_tx(byte b);
         
-    #define DEBUG_SERIAL_TX_NOW(b) (SP_SERIAL_DATA_REG=b)      // Send blindly, but instantly (1 instruction)  Could clobber, but you'd have to send pretty darn fast for that.
+    #define DEBUG_SERIAL_TX_NOW(b) (SP_SERIAL_DATA_REG=b)      // Send blindly, but instantly (1 instruction). New byte ignored if there is already a pending one in the buffer (avoid this by leaving 12 clocks bewteen consecutive writes)
         
     // Is there a char ready to read?
 
