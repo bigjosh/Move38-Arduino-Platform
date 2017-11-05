@@ -6,6 +6,8 @@
 
 #include "hardware.h"
 
+#include "utils.h"
+
 
 // Returns the device's unique 8-byte serial number
 

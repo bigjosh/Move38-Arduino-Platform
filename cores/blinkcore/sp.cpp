@@ -67,7 +67,7 @@ void sp_serial_init(void) {
 // Send a byte out the serial port. DebugSerialInit() must be called first. Blocks unitl buffer free if TX already in progress.
 
 void sp_serial_tx(uint8_t b) {    
-    
+        
     while (!TBI(SP_SERIAL_CTRL_REG,UDRE0));         // Wait for buffer to be clear so we don't overwrite in progress
     
     SP_SERIAL_DATA_REG=b;                           // Send new byte
@@ -82,7 +82,7 @@ uint8_t sp_serial_rx_ready(void) {
     
 }    
 
-// Read byte from service port serial. Blocks if nothing recieved yet. 
+// Read byte from service port serial. Blocks if nothing received yet. 
 
 uint8_t sp_serial_rx(void) {
     

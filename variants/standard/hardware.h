@@ -13,7 +13,7 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include "utils.h"
+//#include "utils.h"
 
 /*** PIXELS ***/
 

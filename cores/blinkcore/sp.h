@@ -18,15 +18,7 @@
     #include "hardware.h"
 
     #include "utils.h"          // Grab SBI and CBI
-
-    #include <util/delay.h>     // Pull in _delay_us() for pulse functions
     
-    #ifndef SP_PRESENT                   // Is service port present on this variant?
-    
-        #error This board variant does not have a serivce port!
-    
-    #endif
-
     // Set the pin direction for the service port aux (A) pin
 
     #define SP_AUX_MODE_OUT()       SBI( SP_AUX_DDR , SP_AUX_PIN )

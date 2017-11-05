@@ -145,6 +145,25 @@
 
 /*** SERCIVE PORT ***/
 
-// Do not define SP_PRESENT, so those functions will compile away
+// Do not define SP_PRESENT
+
+ // There is no good way to have a board variant only include compatible libraries in Arduino IDE, so 
+ // we are stuck defining these even though they are wrong. If we do not, then ARDUINO still compiles
+ // the Serial class even if we do not include it and that causes errors when it pulls in the sp.x files. 
+
+// Aux pin hardware
+
+// Digital IO
+
+#define SP_AUX_PORT PORTE
+#define SP_AUX_DDR  DDRE
+#define SP_AUX_PIN  0
+
+// Serial port hardware
+
+#define SP_SERIAL_CTRL_REG      UCSR0A
+#define SP_SERIAL_DATA_REG      UDR0
+#define SP_SERIAL_READY_BIT     RXC0
+
 
 #endif /* HARDWARE_H_ */
