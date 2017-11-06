@@ -35,10 +35,12 @@
     
         virtual int available(void);
         virtual int read(void);
+        
+        virtual void readLine(char *buffer, byte bufferlen);
+        
         virtual size_t write(uint8_t);
         using Print::write; // pull in write(str) and write(buf, size) from Print
-        operator bool() { return true; }
-
+                
     };
 
 #endif

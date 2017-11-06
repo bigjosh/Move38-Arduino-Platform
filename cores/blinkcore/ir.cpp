@@ -358,6 +358,15 @@ ISR(TIMER1_CAPT_vect) {
 // on the last pass and it will get automatically swapped in after the final pulse.
 // We can then quickly test the compare bit to see if the margin is over. 
 
+// TODO:  Check cath and buffer first and don't send if in progress. Return aborted bits
+/*
+
+ uint8_t ir_LED_triggered_bits;
+
+ ir_LED_triggered_bits = (~IR_CATHODE_PIN) & IR_BITS;
+     
+  */
+
 void ir_tx_pulses(uint8_t count, uint16_t spacing_ticks , uint8_t bitmask) {
     
     sendpulses_remaining = count;    

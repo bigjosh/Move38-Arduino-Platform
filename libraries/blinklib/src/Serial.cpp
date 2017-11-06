@@ -72,4 +72,33 @@ size_t ServicePortSerial::write(uint8_t c)
   
 }
 
+// Read a string from the serial port
+// Ends at NL or CR
+// Returns len of string
+// Will add a terminating null if room.
 
+void ServicePortSerial::readLine(char *buffer, byte bufferlen)
+{
+    do {
+        
+        
+        
+        byte c=read();
+        
+        if (c=='\n') {
+            
+            *buffer=0x00;       // Null terminate
+            return;
+            
+        }            
+        
+        *(buffer++) = c;        
+        bufferlen--;
+        
+    } while (bufferlen);        
+    
+    // Return without adding a null since no room for it. 
+    
+}    
+    
+                

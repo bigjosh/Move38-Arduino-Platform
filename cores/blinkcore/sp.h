@@ -13,10 +13,10 @@
 
     #define SP_H_
     
+    #include "hardware.h"
+       
     #include "blinkcore.h"    
     
-    #include "hardware.h"
-
     #include "utils.h"          // Grab SBI and CBI
     
     // Set the pin direction for the service port aux (A) pin

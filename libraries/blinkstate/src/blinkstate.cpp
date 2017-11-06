@@ -18,6 +18,7 @@
 #include <avr/pgmspace.h>
 #include <limits.h>
 #include <stdint.h>
+#include <stdlib.h>         //rand()
 
 #define DEBUG_MODE
 
@@ -33,7 +34,7 @@
 
 #include "blinkstate.h"
 
-#define STATE_BROADCAST_RATE_MS  100             // Minimum number of milliseconds between broadcasting the same state again
+#define STATE_BROADCAST_RATE_MS  80-32           // Minimum number of milliseconds between broadcasting the same state again. The 32 is to offset the 32 steps of random jitter we add.
 
 #define STATE_EXPIRE_TIME_MS     250             // If we have not heard anything on this this face in this long, then assume no neighbor there
 
@@ -79,7 +80,7 @@ static unsigned long localStateNextSendTime;
 static void broadcastState(void) {
     
     irBroadcastData( localState );
-    localStateNextSendTime = millis() + STATE_BROADCAST_RATE_MS;
+    localStateNextSendTime = millis() + STATE_BROADCAST_RATE_MS + ( ( rand() & 15 ) * 2) ;
     
 }
 

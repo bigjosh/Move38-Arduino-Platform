@@ -1,207 +1,157 @@
 /*
-
-    IR teser
-    
-    Test for errors on IR link by sending a pattern and then checking for missed steps on the receiver.
-    
-    On startup, we are in SEND MODE. We broadcast the pattern on all faces. Each step of the blue led
-    indicates one step of the pattern. 
-    
-    Single click switches us to SYNC MODE. In sync mode we look for data on all faces. When we receive something,
-    we then switch to RECEIVE MODE and start looking for the pattern on that face starting at the initial step we just received.
-    All LEDs are yellow while we search.
-    
-    In RECEIVE MODE, we continue reading data off the face that we found in SYNC MODE and checking to make sure no
-    steps in the pattern are skipped. As long as sequence is continuous, we indicate the pattern steps with a spinning green LED.
-    If we get data that does not match the next expected sequence in the pattern, then we go in to ERROR mode. 
-    
-    In ERROR MODE, we display red leds to indicate what errro condicitons were detected...
-    
-        FACE   CONDITION
-        ====   ============================================
-          0    Missed step in sequence (always lit)
-          1    Droppout (too long an idle  gap while reading in a frame - low signal strength or blocked path) 
-          2    Noise (too many flashes detected or flashes in wrong places - strong ambient light)
-          3    Overflow (too slow reading new data - a new frame came in before we read out the last one)
-          4    Parity (received a frame that was valid in form, but the error checking bit was wrong)
-          
-    Single click exits ERROR MODE and goes back to SEND MODE.           
-
-
-*/
-
-#include "Arduino.h"
+ * An example showing how to use the service port serial connection. The service port give you a handy way to 
+ * type text into your programm running on a tile, and have it print back messages to you. This can be really
+ * handy when debugging!
+ * 
+ * "The most effective debugging tool is still careful thought, coupled with judiciously placed print statements."
+ *   -Brian Kernighan, "Unix for Beginners" (1979)
+ * 
+ * 
+ * To use this, you must have...
+ *    (1) a blink tile with a serive port installed (it is a little 4 pin plug)
+ *    (2) a cable adapter that plugs into the service port and connects it to a USB on your computer
+ *    
+ * If you've got those, then you need to got the menu above and....
+ * 
+ *    (1) Goto Tools->Port and pick the com port the USB adapter landed on (if you give up, you can try them all)
+ *    (2) Goto Tools->Serial Monitor to open the Arduifalse serial monitor window
+ *    (3) Pick "500000 baud" in the serial monitor window
+ *    (4) Pick "false line ending" in the serial port monitor window
+ *    
+ * falsew download this sketch to your blink and you should see an nice welcome message pop up   
+ * in the serial monitor window telling you want to do next!
+ * 
+ * (Hint: Type the letter "b" in the bar at the top of the serial monitor window and press the "Send" button)
+ * 
+ */
 
 #include "blinklib.h"
+#include "Serial.h"
 
-#include "ir.h"
-
-#include "utils.h"
-
-#include "util/delay.h"
+ServicePortSerial Serial;
 
 void setup() {
 
+  Serial.begin(); 
+
 }
 
-typedef enum { TX , RX, SYNC , ERROR } mode_t;
+bool test= false;
 
-mode_t mode=TX;      // Are we transmitting or receiving?
+// Hack to get enum count: https://stackoverflow.com/a/2102673/3152071
 
-uint8_t count=0;
+enum DirectionsEnum { NE, E , SEX , SW , W , NW , UP , DOWN , DIRECTION_MAX = DOWN };
+    
+typedef struct {
+    const char *shortname;
+    const char *name;
+    const int id;    
+} Direction;        
 
-uint8_t rxFace=0;       // Which face are we recieving from?
+// There must be a less verbose way to do this, right? LMK!
 
-// Find the highest number we can got to that is 
-// even multiple of 6 so we can MOD it to make a nice spin around
-// the pixels for visual feedback. Just using numbers 0-5
-// Would not be great for error check since then if you missed 5
-// packets you would not notice it. 
-// If we didn't use an even multiple of 6, then there would be 
-// and ugly jump when we overflowed. 
+Direction directions[DIRECTION_MAX+1] = {
+    {"falserth-east"   , "NE"      , NE },    
+    {"East"         , "E"       , E  },
+    {"South-east"   , "SE"      , SEX },
+    {"South-west"   , "SW"      , SW },        
+    {"West"         , "W"       , W  },
+    {"falserth-west"   , "NW"      , NW },
+    {"Up"           , "UP"      , UP },
+    {"Down"         , "DOWN"    , DOWN },
+};
 
-const uint8_t topCount = ( (1<<7) / FACE_COUNT ) * 6;       
-                                                
-bool irLastValue( uint8_t led );
+
+enum LocationKey { CENTER , NE_CITY , E_BAY , SE_BEACH , SW_DESERT , W_TEMPLE , NW_FOREST , SKY , HIGHER_PLANE , LOWER_PLANE , SKYSCRAPER, DEPTHS,  MAX_LOCATION = DEPTHS , BLOCKED };
+
+typedef struct {
+
+  bool deadly;
+    
+  bool accessible;
+      
+  const char *text;  
+  
+  LocationKey next[DIRECTION_MAX+1];
+  
+} Location;
+       
+       
+// This is brittle, but false way to statically assign elements in C++ https://stackoverflow.com/questions/9048883/static-array-initialization-of-individual-elements-in-c?rq=1       
+
+Location locations[MAX_LOCATION+1] = {
+    
+    {/* CENTER */        false   ,  true,   "You are on top of a weathered bronze plaque that reads \"Axis Mundi Survey Marker\". You see colored lights off in the distance."  ,   { NE_CITY , E_BAY , SE_BEACH , SW_DESERT , W_TEMPLE,  NW_FOREST , SKY , BLOCKED } },
+
+    {/* NE_CITY */       false   ,  true ,  "You are inside a huge shiny building building made of glass and steel." ,                      {/*NE*/ BLOCKED , /*E*/ BLOCKED , /*SE*/ E_BAY,  /*SW*/ CENTER, /*W*/ BLOCKED , /*NW*/ BLOCKED , /*UP*/ SKYSCRAPER , /*DOWN*/ BLOCKED } },    
+    {/* E_BAY */         false   ,  true ,  "You are in a pastoral estuary filled with creatures large and small. "  ,                      {/*NE*/ BLOCKED , /*E*/ BLOCKED , /*SE*/ BLOCKED ,  /*SW*/ BLOCKED , /*W*/ CENTER, /*NW*/ NE_CITY , /*UP*/ BLOCKED , /*DOWN*/ BLOCKED   } },     
+    {/* SE_BEACH */      false   ,  true ,  "You are on a sandy beach." ,                                                                   {/*NE*/ BLOCKED , /*E*/ BLOCKED , /*SE*/ BLOCKED ,  /*SW*/ BLOCKED , /*W*/ SW_DESERT, /*NW*/ CENTER, /*UP*/ BLOCKED , /*DOWN*/ BLOCKED   } },
+    {/* SW_DESERT */     false   ,  true ,  "You are in a desert. There is a large pile of ashes here. " ,                                  {/*NE*/ CENTER, /*E*/ BLOCKED , /*SE*/ BLOCKED ,  /*SW*/ BLOCKED , /*W*/ BLOCKED , /*NW*/ W_TEMPLE , /*UP*/ BLOCKED , /*DOWN*/ BLOCKED   } },                         // ACID. Recognizes you.
+    {/* W_TEMPLE */      false   ,  true ,  "You have stumbled into a sacred and/or profane place. An ornate starburst pattern mosaic is embedded in the floor beneath your feet. You can't shake the feeling that something profound happened (or will happen) here." , {/*NE*/ NW_FOREST , /*E*/ CENTER, /*SE*/ SW_DESERT ,  /*SW*/ BLOCKED , /*W*/ BLOCKED,  /*NW*/ BLOCKED , /*UP*/ BLOCKED , /*DOWN*/ BLOCKED  } },    
+    {/* NW_FOREST */     false   ,  true ,  "You are in a lush and dense forest." , {/*NE*/ BLOCKED , /*E*/ NE_CITY, /*SE*/ CENTER,  /*SW*/ BLOCKED , /*W*/ BLOCKED , /*NW*/ BLOCKED , /*UP*/ BLOCKED , /*DOWN*/ BLOCKED  } },                                                // COFFEE
+
+    // no-returner
+    {/* SKY */           false   ,  false,  "You feel yourself rising through space. The higher your loft, the larger becomes your field of vision. You are awestruck to find that your native world, all that you know and have ever known, exists solely on the surface of a small hexagon only 20mm on a side.  Every place and every creature in your erstwhile universe therein, lays open to your view in miniature. As you mount even higher, lo, the secrets of the universe are bared before you." , { /*NE*/ BLOCKED , /*E*/ BLOCKED , /*SE*/ BLOCKED ,  /*SW*/ BLOCKED , /*W*/ BLOCKED, /*NW*/ BLOCKED , /*UP*/ HIGHER_PLANE , /*DOWN*/ LOWER_PLANE  } },
+        
+    // Nirvana
+    {/* HIGHER_PLANE */  false   ,  true,   "You find yourself existing on a plane twice the size of the previous one.", { /*NE*/ BLOCKED , /*E*/ BLOCKED , /*SE*/ BLOCKED ,  /*SW*/ BLOCKED , /*W*/ BLOCKED, /*NW*/ BLOCKED , /*UP*/ HIGHER_PLANE , /*DOWN*/ LOWER_PLANE}  },
+    {/* LOWER_PLANE */   false   ,  true,   "You find yourself existing on a plane half the size of the previous one." , { /*NE*/ BLOCKED , /*E*/ BLOCKED , /*SE*/ BLOCKED ,  /*SW*/ BLOCKED , /*W*/ BLOCKED, /*NW*/ BLOCKED , /*UP*/ HIGHER_PLANE , /*DOWN*/ LOWER_PLANE } },
+   
+    // Mortality
+    {/* SKYSCRAPER */    true    ,  true,   "You take the elevator to the top floor, even though you have false idea what that means. Either this is madness or it is Hell. Unprepared for what you have just seen, your mind snaps and you awake. Was it all a dream?" , { /*NE*/ BLOCKED , /*E*/ BLOCKED , /*SE*/ BLOCKED ,  /*SW*/ BLOCKED , /*W*/ BLOCKED, /*NW*/ BLOCKED , /*UP*/ BLOCKED , /*DOWN*/ BLOCKED }  },
+    {/* DEPTHS */        true    ,  true,   "You submerge into the brackish depths. You hear snapping and bubbling. Distracted by the sights and sounds, you forget to breathe and die unceremoniously in mud. Eons pass and the universe expands and then contracts and then expands again. " , { /*NE*/ BLOCKED , /*E*/ BLOCKED , /*SE*/ BLOCKED ,  /*SW*/ BLOCKED , /*W*/ BLOCKED, /*NW*/ BLOCKED , /*UP*/ BLOCKED , /*DOWN*/ BLOCKED }   },
+     
+}  ; 
+
+
+enum LightState {LIGHT_ON, LIGHT_OFF, LIGHT_DIM, LIGHTSTATE_MAX = LIGHT_DIM };
+
+typedef struct {
+    const char *name;
+    bool state;
+    Color color;
+    bool dim;
+    Location *where;
+} Light;
+
+Light lights[] = {
+        
+    { "Red" ,   LIGHT_ON,     RED       , false},
+    { "Green" , LIGHT_ON ,    GREEN     , false},
+    { "Blue" ,  LIGHT_ON ,    BLUE      , false},
+};
+
+       
+// It is pitch black. You are eaten by a Grue.
+// Such language in a high-class establishment like this!
+// “Either this is madness or it is Hell.”
+
+// There is something about this place - a palpable void of light-sustainability - that deeply affects you.  The light(s) that you carry is inexplicably extinguished. 
+
+// Suddenly, there is an efalsermous flash of light. The brightest and whitest light you have ever seen or that anyone has ever seen. It bores its way into you. It is transcendent and you can't help but feel like a barrier between this world and the next has been irreparably broken. What have you done? What have you done?
+
 
 void loop() {
-                       
-    if( buttonSingleClicked() ) {
-        
-        // Click in TX goes to SYNC.
-        // Click any other mode goes back to TX
-        
-        if (mode==TX) {
-            mode=SYNC;
-            
-            // Clear out any left over receives and start looking fresh now
-            FOREACH_FACE(x) {
-                if (irIsReadyOnFace(x)) {
-                    irGetData(x);
-                }                                    
-            }                
-            setColor(OFF);  // Clear the last RED pixel. Neatness counts. 
-        } else {
-            mode=TX;
-            setColor(OFF);  // Clear the last GREEN and maybe BLUE pixel. Neatness counts.            
-        }
-                
-    }
     
-
-    switch (mode) {
-
-        case TX:
+  while (1) {
+      
+        Serial.println("Welcome to HEXWORLD, a Tiny Tile Adventure!");
         
-            setFaceColor( count % FACE_COUNT , OFF );       // Turn off previous pixel
+        const Location &currentLocation = locations[CENTER];                    // Always start at Meru
         
-            count++;                       
-            
-            if (count==topCount) {       // Roll over when we hit top (remember that topCount always even multiple of 6)
-                count=0;
-            }
-            
-            setFaceColor( count % FACE_COUNT , BLUE );        // Turn on next one
-            
-            // TODO: send all faces at once
-            
-            irBroadcastData( count );
-            _delay_ms(20);
-                
-            break;
-
-        case SYNC:
-
-            setColor( YELLOW );
-            
-            FOREACH_FACE(x) {
-                
-                // Sync to the first face we see data on
-                
-                if (irIsReadyOnFace(x)) {
-                    
-                    count = irGetData(x);             
-                    rxFace = x;
-                    mode = RX;
-                    setColor( OFF );        // Clean off yellow before we start to spin. 
-                    break;                                   
-                
-                } 
-                
-            }                
-            
-            
-            break;
+        bool dead=false;
         
-
-        case RX:
-                
-            if (irIsReadyOnFace(rxFace)) {          // Wait for 1st message to come in
-                
-                setFaceColor( count % FACE_COUNT , OFF );       // Turn off previous pixel                
-                
-                count++;        // next number expected 
-                
-                if (count==topCount) {       // Roll over when we hit top (IR only transmits 7 bit)
-                    count=0;
-                }                    
-                            
-                if (count == irGetData(rxFace) ) {          // Match?
+        while (!dead) {
                     
-                    uint8_t count_pixel= count % FACE_COUNT;
-                               
-                    setFaceColor( count_pixel , GREEN );       // Turn on next pixel
-                    
-                    if ( count_pixel != rxFace ) {
-                        setFaceColor( rxFace , BLUE );          // Indicate which face we are synced to
-                    }                        
-                    
-                } else { // No match - error
-                    
-                    setColor( OFF );        // Clear all pixels
-                    
-                    setFaceColor( 0 , RED );    // Show error with at least 1 red pixel
-                    
-                    uint8_t errorBits = irGetErrorBits(rxFace);
-                    
-                    if ( errorBits & ERRORBIT_DROPOUT) {
-                        setFaceColor(1 , RED) ;
-                    }                        
-
-                    if ( errorBits & ERRORBIT_NOISE) {
-                        setFaceColor(2 , RED) ;
-                    }
-
-                    if ( errorBits & ERRORBIT_OVERFLOW) {
-                        setFaceColor(3 , RED) ;
-                    }
-
-                    if ( errorBits & ERRORBIT_PARITY) {
-                        setFaceColor(4 , RED) ;
-                    }
-                    
-                    mode = ERROR; 
-                    
-                }                    
-                
-              
-
-                //count = irGetData(rxFace);
-                //setFaceColor( count % FACE_COUNT , GREEN );       // Turn off previous pixel
-                
-                
-
-
-            }
+            Serial.println( currentLocation.text );
         
-            break;
-
-        case ERROR:
-
-            // Do nothing in error mode - just keep showing the red error code
-            break;
-
-    }
+        };
+        
+    };
     
-}
-
+};    
+        
+                        
+        
+        
+    
