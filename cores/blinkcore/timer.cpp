@@ -9,8 +9,6 @@
 
 #include <util/delay.h>
 
-#include "debug.h"
-
 #include "power.h"
 
 #include "pixel.h"          // We depend on the pixel ISR to call us for timekeeping

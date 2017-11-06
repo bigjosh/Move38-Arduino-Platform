@@ -40,8 +40,6 @@
 
 #include "util/delay.h"
 
-#include "debug.h"
-
 void setup() {
 
 }

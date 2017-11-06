@@ -42,7 +42,6 @@
 #include <util/delay.h>         // Must come after F_CPU definition
 #include <util/atomic.h>
 
-#include "debug.h"
 #include "pixel.h"
 #include "utils.h"
 
@@ -67,12 +66,12 @@ static void setupPixelPins(void) {
 	// TODO: This could be slightly smaller code by loading DDRD with a full byte rather than bits
 	
 	// Setup all the anode driver lines to output. They will be low by default on bootup
+	SBI( PIXEL0_DDR , PIXEL0_BIT );
 	SBI( PIXEL1_DDR , PIXEL1_BIT );
 	SBI( PIXEL2_DDR , PIXEL2_BIT );
 	SBI( PIXEL3_DDR , PIXEL3_BIT );
 	SBI( PIXEL4_DDR , PIXEL4_BIT );
 	SBI( PIXEL5_DDR , PIXEL5_BIT );
-	SBI( PIXEL6_DDR , PIXEL6_BIT );
 	
 	// Set the R,G,B cathode sinks to HIGH so no current flows (this will turn on pull-up until next step sets direction bit)..
     
@@ -246,27 +245,27 @@ static void activateAnode( uint8_t line ) {
     switch (line) {
         
         case 0:
-            SBI( PIXEL1_PORT , PIXEL1_BIT );
+            SBI( PIXEL0_PORT , PIXEL0_BIT );
             break;
         
         case 1:
-            SBI( PIXEL2_PORT , PIXEL2_BIT );
+            SBI( PIXEL1_PORT , PIXEL1_BIT );
             break;
         
         case 2:
-            SBI( PIXEL3_PORT , PIXEL3_BIT );
+            SBI( PIXEL2_PORT , PIXEL2_BIT );
             break;
             
         case 3:
-            SBI( PIXEL4_PORT , PIXEL4_BIT );
+            SBI( PIXEL3_PORT , PIXEL3_BIT );
             break;
         
         case 4:
-            SBI( PIXEL5_PORT , PIXEL5_BIT );
+            SBI( PIXEL4_PORT , PIXEL4_BIT );
             break;           
 
         case 5:
-            SBI( PIXEL6_PORT  , PIXEL6_BIT );
+            SBI( PIXEL5_PORT , PIXEL5_BIT );
             break;
         
     }
@@ -279,12 +278,12 @@ static void activateAnode( uint8_t line ) {
 static void deactivateAnodes(void) {           
     	
     // Each of these compiles to a single instruction        
+    CBI( PIXEL0_PORT , PIXEL0_BIT );
     CBI( PIXEL1_PORT , PIXEL1_BIT );
     CBI( PIXEL2_PORT , PIXEL2_BIT );
     CBI( PIXEL3_PORT , PIXEL3_BIT );
     CBI( PIXEL4_PORT , PIXEL4_BIT );
     CBI( PIXEL5_PORT , PIXEL5_BIT );
-    CBI( PIXEL6_PORT , PIXEL6_BIT );
             
 }
 
@@ -379,8 +378,6 @@ static uint8_t phase=0;
                                     
 static void pixel_isr(void) {   
     
-    //DEBUGB_PULSE(20);
-                
     // THIS IS COMPLICATED
     // Because of the buffering of the OCR registers, we are always setting values that will be loaded
     // the next time the timer overflows. 
@@ -533,9 +530,7 @@ static void pixelTimerOff(void) {
 
 ISR(TIMER0_OVF_vect)
 {       
-//    DEBUGA_1();
     pixel_isr();
-//    DEBUGA_0();
     return;	
 }
 

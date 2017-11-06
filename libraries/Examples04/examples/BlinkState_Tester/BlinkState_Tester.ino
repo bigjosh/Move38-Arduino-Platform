@@ -24,18 +24,17 @@
 void setup() {
   // put your setup code here, to run once:
 
-  FOREACH_FACE(f) {
+  // Show a quick flash on ech face in sequence just to say hi
 
+  FOREACH_FACE(f) {
       setFaceColor( f , BLUE );
       delay(100);
       setFaceColor( f , OFF );
-      blinkStateBegin();
-
   }
 }
 
 Color colors[] = { dim(WHITE,5) , RED, GREEN, BLUE };    // States 0,1,2,3
-                                                // This will make us blink WHITE when we switch to state 0
+
 byte state=0;
 
 void loop() {
@@ -44,13 +43,13 @@ void loop() {
 
     state++;
 
-    if (state== COUNT_OF( colors )) {
+    if (state== COUNT_OF( colors )) {   // Wrap back to state 0 (no send) when we get to the end of the color list
       state=0;      
     }
 
     setColor( colors[ state ] );        // Feedback to user 
 
-    setState( state );                // Tell the world 
+    setState( state );                  // Tell the world 
 
 
   } else if (!buttonDown()) {             // As long as the button stays down, we will keep showing the new color for user feedback. 
@@ -58,11 +57,13 @@ void loop() {
     
     FOREACH_FACE(f) {
 
+      // For each face, show the state recieved from the neighboor on that face
+      // (since a face with no neighboor returns state=0 and 0=OFF, faces with no neighboors will be off)
+
       setFaceColor( f , colors[ getNeighborState(f) ] );
 
 
     }
 
   }
-    
 }

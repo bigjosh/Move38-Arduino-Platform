@@ -25,7 +25,6 @@
 #include <avr/interrupt.h>
 #include <util/delay.h>         // Must come after F_CPU definition
 
-#include "debug.h"
 #include "ir.h"
 #include "utils.h"
 
@@ -89,10 +88,7 @@ void ir_disable(void) {
 }        
 
 void ir_init(void) {
-    
-    DEBUG_INIT();     // TODO: Get rid of all debug stuff
-      
-    
+              
     IR_ANODE_DDR |= IR_BITS ;       // Set all ANODES to drive (and leave forever)
                                     // The PORT will be 0, so these will be driven low
                                     // until we actively send a pulse
@@ -262,7 +258,6 @@ static inline void chargeLEDs( uint8_t bitmask ) {
 // Fired LEDs are recharged. 
 
 uint8_t ir_test_and_charge( void ) {
-   //DEBUGB_1();
    
    // ===Time critcal section start===
    
@@ -297,10 +292,14 @@ uint8_t ir_test_and_charge( void ) {
     }
 
 
+    /*
+
     // only debug on IR0
     if ( ir_LED_triggered_bits & _BV(0) ) {        // IR1
-        //DEBUGC_PULSE(1);
+        SP_AUX_PULSE(1);
     }
+    
+    */
 
     
     return ir_LED_triggered_bits;                      

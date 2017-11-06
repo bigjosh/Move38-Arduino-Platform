@@ -12,7 +12,6 @@
 #include <avr/sleep.h>
 #include <avr/interrupt.h>
 
-#include "debug.h"
 #include "utils.h"
 #include "ir.h"
 #include "pixel.h"
@@ -49,9 +48,7 @@ static void mhz_init(void) {
 static void init(void) {
 
     mhz_init();				// switch to 4Mhz. TODO: Some day it would be nice to go back to 1Mhz for FCC, but lets just get things working now.
-    
-    DEBUG_INIT();			// Handy debug outputs on unused pins
-    
+        
     power_init();
     button_init();
     

@@ -1,10 +1,10 @@
 /*
  * hardware.h
  *
- * Defines the location of all the used hardware
+ * Defines the location of all the hardware 
+ * This header matches all boards that *DO* have the pretty logo on the front (newer than 1/1/17). 
+ * Less than 100 boards older than this, hopefully we can retire the legacy header and move this to core 
  *
- * Created: 7/23/2017 9:50:54 PM
- *  Author: passp
  */ 
 
 
@@ -13,12 +13,7 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include "utils.h"
-
-
-// TODO: Get rid of this when we donm'ty need it everywhere anymore
-#define DEBUG_MODE
-
+//#include "utils.h"
 
 /*** PIXELS ***/
 
@@ -26,29 +21,29 @@
 
 // Common Anodes - We drive these 1 to select Pixel.
 
-#define PIXEL1_PORT PORTB
-#define PIXEL1_DDR  DDRB
-#define PIXEL1_BIT  6
+#define PIXEL0_PORT PORTB
+#define PIXEL0_DDR  DDRB
+#define PIXEL0_BIT  6
 
-#define PIXEL2_PORT PORTD
-#define PIXEL2_DDR  DDRD
-#define PIXEL2_BIT  0
+#define PIXEL1_PORT PORTE
+#define PIXEL1_DDR  DDRE
+#define PIXEL1_BIT  0
 
-#define PIXEL3_PORT PORTB
-#define PIXEL3_DDR  DDRB
-#define PIXEL3_BIT  7
+#define PIXEL2_PORT PORTB
+#define PIXEL2_DDR  DDRB
+#define PIXEL2_BIT  7
+
+#define PIXEL3_PORT PORTE
+#define PIXEL3_DDR  DDRE
+#define PIXEL3_BIT  1
 
 #define PIXEL4_PORT PORTD
 #define PIXEL4_DDR  DDRD
-#define PIXEL4_BIT  1
+#define PIXEL4_BIT  4
 
 #define PIXEL5_PORT PORTD
 #define PIXEL5_DDR  DDRD
-#define PIXEL5_BIT  4
-
-#define PIXEL6_PORT PORTD
-#define PIXEL6_DDR  DDRD
-#define PIXEL6_BIT  2
+#define PIXEL5_BIT  2
 
 // RGB Sinks - We drive these cathodes low to light the selected color (note that BLUE has a charge pump on it)
 //This will eventually be driven by timers
@@ -146,6 +141,23 @@
 
 
 
+/*** SERVICE PORT ***/
+
+#define SP_PRESENT        // Indicate that we do have a service port on this board
+
+// Aux pin hardware
+
+// Digital IO
+
+#define SP_AUX_PORT PORTE
+#define SP_AUX_DDR  DDRE
+#define SP_AUX_PIN  0
+
+// Serial port hardware
+
+#define SP_SERIAL_CTRL_REG      UCSR0A
+#define SP_SERIAL_DATA_REG      UDR0
+#define SP_SERIAL_READY_BIT     RXC0
 
 
 #endif /* HARDWARE_H_ */

@@ -20,6 +20,8 @@ tile.program.tool=avrdude
 
 tile.build.core=blinkcore
 tile.build.board=AVR_Blink
+tile.build.variant=standard
+
 
 # Note that we actually boot up with DIV8 fuse programmed, so 
 # only running at 1Mhz. Then we switch the prescaller to /2 in init()
@@ -31,8 +33,33 @@ tile.build.f_cpu=4000000L
 
 tile.build.mcu=atmega168pb
 
-#tile.c.extra_flags=-Wextra -flto
-#tile.c.elf.extra_flags=-w -flto
-#tile.cpp.extra_flags=-Wextra -flto
-
 tile.ltoarcmd=avr-gcc-ar
+
+
+# --------------------------------------------------------------------
+# This is tmeporary to support the old tiles without logos. Soon there will be none of them. 
+
+legacytile.name=Legacy No-Logo Blinks Tile 
+legacytile.upload.maximum_size=15872
+legacytile.upload.maximum_data_size=1024
+
+# This line seems to have no effect?
+legacytile.upload.tool=nothing
+
+legacytile.program.tool=avrdude
+
+legacytile.build.core=blinkcore
+legacytile.build.board=AVR_Blink
+legacytile.build.variant=legacy
+
+# Note that we actually boot up with DIV8 fuse programmed, so 
+# only running at 1Mhz. Then we switch the prescaller to /2 in init()
+# so we are at 4Mhz by the time user code runs.
+# This is done becuase 8Mhz might need a higher voltage than our battery can
+# supply.
+
+legacytile.build.f_cpu=4000000L
+
+legacytile.build.mcu=atmega168pb
+
+legacytile.ltoarcmd=avr-gcc-ar

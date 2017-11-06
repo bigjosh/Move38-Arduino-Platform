@@ -13,24 +13,14 @@
 
 typedef void *voidvoidfunction_ptr(void); 
 
-// TODO: Any benefit in making this a template or abstract struct? I think it will end up being 2 functions pointers anyway?
-
-struct Chainfunction {
+typedef struct chainfunction_struct {
         
     void (*callback)(void);
     
-    Chainfunction *next;
+    struct chainfunction_struct *next;              // Sorry for this ugly syntax, this is how we do it in old skool C! https://stackoverflow.com/questions/18582205/linkedlist-struct-typedef-in-c
         
-    Chainfunction( void (*cb)(void) ) {
-     
-        callback = cb;   
-                
-    }        
-    
-};
-
+} chainfunction_t ;
 
 #endif /* CHAINFUNCTION_H_ */
 
- 
- 
+  

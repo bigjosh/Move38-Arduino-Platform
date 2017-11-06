@@ -168,6 +168,22 @@
       <SubType>compile</SubType>
       <Link>irdata.h</Link>
     </Compile>
+    <Compile Include="..\..\..\libraries\blinklib\src\Print.cpp">
+      <SubType>compile</SubType>
+      <Link>Print.cpp</Link>
+    </Compile>
+    <Compile Include="..\..\..\libraries\blinklib\src\Print.h">
+      <SubType>compile</SubType>
+      <Link>Print.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\libraries\blinklib\src\Serial.cpp">
+      <SubType>compile</SubType>
+      <Link>Serial.cpp</Link>
+    </Compile>
+    <Compile Include="..\..\..\libraries\blinklib\src\Serial.h">
+      <SubType>compile</SubType>
+      <Link>Serial.h</Link>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\blinkcore\blinkcore.cppproj">

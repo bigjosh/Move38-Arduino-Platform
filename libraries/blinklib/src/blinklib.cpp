@@ -18,8 +18,6 @@
 
 #include <Arduino.h>
 
-#define DEBUG_MODE
-
 
 #include "blinklib.h"
 #include "chainfunction.h"
@@ -29,13 +27,7 @@
 #include "button.h"
 #include "utils.h"
 
-#include "debug.h"
-
 #include "irdata.h"
-
-#include "delay.h"
-
-#include "debug.h"
 
 // IR CONSTANTS
 
@@ -487,9 +479,7 @@ static void updateMillis(void) {
         
         millisCounter++;
         cyclesCounter-=CYCLES_PER_MS ;
-        
-        DEBUGB_PULSE(10);
-        
+                
     }    
                        
     // Note that we might have some cycles left. They will accumulate in cyclescounter and eventually get folded into a full milli to
@@ -506,27 +496,34 @@ void timer_callback(void) {
     updateButtonState();
 }
 
-Chainfunction *onLoopChain = NULL;
+chainfunction_struct *onLoopChain = NULL;
 
 // Call all the functions on the chain (if any)... 
 
-#warning  We are not calling the full onLoop() chain, only the first element. Need to get this function pointer link list working. 
 
 static void callOnLoopChain(void ) {
-
-    (onLoopChain->callback)();
-
-/*    
-    Chainfunction *c = onLoopChain;
+    
+    chainfunction_struct *c = onLoopChain;
+                    
+    while (c) {
+        
+        
+        c->callback();
+        
+        c= c->next;
+        
+    } 
+    
+    /*
     
     while (c) {
         
         c->callback();
         
-        c=c->next;
+        c= c->next;
         
-    }        
-  */  
+    }
+    */
     
 }    
 
@@ -534,9 +531,7 @@ static void callOnLoopChain(void ) {
 // us after initial power-up is complete
 
 void run(void) {
-    
-    //while (1) DEBUGC_PULSE(20);
-    
+        
     setup();
     
     while (1) {
@@ -556,7 +551,7 @@ void run(void) {
 
 // `cons` onto the linked list of functions
 
-void addOnLoop( Chainfunction *chainfunction ) {
+void addOnLoop( chainfunction_struct *chainfunction ) {
     
     chainfunction->next = onLoopChain;
     onLoopChain = chainfunction;

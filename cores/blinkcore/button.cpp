@@ -18,7 +18,6 @@
 
 #include "button.h"
 #include "utils.h"
-#include "debug.h"
 
 // Callback that is called when the button state changes.
 // Note that you could get multiple consecutive calls with the
