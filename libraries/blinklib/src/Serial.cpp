@@ -49,8 +49,7 @@ int ServicePortSerial::available(void) {
 }    
 
 int ServicePortSerial::read(void)
-{
-    
+{    
   if (!sp_serial_rx_ready()) {
     return -1;
   } else {
@@ -58,10 +57,16 @@ int ServicePortSerial::read(void)
   }
 }
 
+byte ServicePortSerial::readWait(void)
+{
+    while (!sp_serial_rx_ready());
+    return sp_serial_rx();
+}
+
 // We don't implement flush because it would require adding a flag to remember if we ever sent. 
 // This is because the hardware only gives us a bit that tells us when a tx completes, not if 
-// no TX was ever started. Ardunio does this with the `_writeen` flag. 
-// If you can convince me that really need flush, LMK and it can be added. 
+// no TX was ever started. Ardunio does this with the `_writen` flag. 
+// If you can convince me that we really need flush, LMK and it can be added. 
 
 size_t ServicePortSerial::write(uint8_t c)
 {
@@ -71,34 +76,4 @@ size_t ServicePortSerial::write(uint8_t c)
   return(1);
   
 }
-
-// Read a string from the serial port
-// Ends at NL or CR
-// Returns len of string
-// Will add a terminating null if room.
-
-void ServicePortSerial::readLine(char *buffer, byte bufferlen)
-{
-    do {
-        
-        
-        
-        byte c=read();
-        
-        if (c=='\n') {
-            
-            *buffer=0x00;       // Null terminate
-            return;
-            
-        }            
-        
-        *(buffer++) = c;        
-        bufferlen--;
-        
-    } while (bufferlen);        
-    
-    // Return without adding a null since no room for it. 
-    
-}    
-    
-                
+     

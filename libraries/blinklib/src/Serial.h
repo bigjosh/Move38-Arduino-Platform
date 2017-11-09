@@ -34,9 +34,12 @@
         void end();
     
         virtual int available(void);
-        virtual int read(void);
         
-        virtual void readLine(char *buffer, byte bufferlen);
+        // Input buffer is only 1 byte so if an interrupts happens while data is streaming, you will loose any incoming data.
+        // Best to limit yourself interactions with plenty of time (or an ACK) between each incoming byte.        
+        
+        virtual int read(void);                 // Read a byte - returns byte read or -1 if no byte ready. 
+        virtual byte readWait(void);            // Blocking read (faster)
         
         virtual size_t write(uint8_t);
         using Print::write; // pull in write(str) and write(buf, size) from Print
