@@ -1,37 +1,23 @@
 /*
- * An example showing how to use the service port serial connection. The service port give you a handy way to 
- * type text into your program running on a tile, and have it print back messages to you. This can be really
- * handy when debugging!
+ * A tiny text adventure game running on (and integrated to) the Blinks hardware.
  * 
- * "The most effective debugging tool is still careful thought, coupled with judiciously placed print statements."
- *   -Brian Kernighan, "Unix for Beginners" (1979)
- *  
- * To use this, you must have...
- *    (1) a blink tile with a service port installed (it is a little 4 pin plug)
- *    (2) a cable adapter that plugs into the service port and connects it to a USB on your computer
- *    
- * If you've got those, then you need to got the menu above and....
+ * Walk around, grab lights, try to reach enlightenment. Don't cheat and look at the source!
  * 
- *    (1) Goto Tools->Port and pick the com port the USB adapter landed on (if you give up, you can try them all)
- *    (2) Goto Tools->Serial Monitor to open the Arduifalse serial monitor window
- *    (3) Pick "500000 baud" in the serial monitor window
- *    (4) Pick "false line ending" in the serial port monitor window
- *    
- * download this sketch to your blink and you should see an nice welcome message pop up   
- * in the serial monitor window telling you want to do next!
+ * Also nicely demonstrates...
+ * 1) how to fit a lot of static text into a program by storing it in flash. 
+ * 2) how make an interactive text interface over the service port serial link. 
  * 
- * (Hint: Type the letter "e" in the bar at the top of the serial monitor window and press the "Send" button)
- * 
+ * To play this game you'll need to connect a serial terminal to the Blinks service port. 
+ * More info on how to do that here...
+ * https://github.com/bigjosh/Move38-Arduino-Platform/blob/master/Service%20Port.MD
  */
-
 
 #include "blinklib.h"
 #include "Serial.h"
 
-// to use string literals without having to cast
-//#define FSTR(X) ((const __flash char[]) { X })
-
 ServicePortSerial Serial;
+
+// DWARF STUFF
 
 void setup() {
 
@@ -84,14 +70,12 @@ typedef struct {
   
 } Location;
 
-
-
 // Oh this flashstring stuff is so ugly, but no way to put a flash string into a static initializer in Arduiono. :/
 
-const char fs1[]    PROGMEM = "You are standing on top of a weathered bronze plaque that reads \"Axis Mundi Survey Marker\". You see colored lights off in the distance.";
+const char fs1[]    PROGMEM = "You are standing on top of a weathered bronze plaque that reads \"Axis Mundi Survey Marker\". ";
 const char fs2[]    PROGMEM = "You are inside a huge shiny building building made of glass and steel.";
 const char fs3[]    PROGMEM = "You are in a pastoral estuary filled with creatures large and small. ";
-const char fs4[]    PROGMEM = "You are on a sandy beach.";
+const char fs4[]    PROGMEM = "You are on a sandy beach. There is an insurmountable cultural barrier to the NW. ";
 const char fs5[]    PROGMEM = "You are in a desert. There is a large pile of ashes here.";
 const char fs6[]    PROGMEM = "You have stumbled into a sacred and/or profane place. An ornate starburst pattern mosaic is embedded in the floor beneath your feet. You can't shake the feeling that something profound happened (or will happen) here." ;
 const char fs7[]    PROGMEM = "You are in a lush and dense forest.";
@@ -109,11 +93,11 @@ Location locations[MAX_LOCATION+1] = {
     
     {/* CENTER */        false   ,  NO_PIXEL,   fs1 , { NE_CITY , E_BAY , SE_BEACH , SW_DESERT , W_TEMPLE,  NW_FOREST , SKY , BLOCKED } },
 
-    {/* NE_CITY */       false   ,  5       ,  fs2 , {/*NE*/ BLOCKED , /*E*/ BLOCKED , /*SE*/ E_BAY,  /*SW*/ CENTER, /*W*/ BLOCKED , /*NW*/ BLOCKED , /*UP*/ SKYSCRAPER , /*DOWN*/ BLOCKED } },    
+    {/* NE_CITY */       false   ,  5       ,  fs2 , {/*NE*/ BLOCKED , /*E*/ BLOCKED , /*SE*/ E_BAY,  /*SW*/ CENTER, /*W*/ NW_FOREST , /*NW*/ BLOCKED , /*UP*/ SKYSCRAPER , /*DOWN*/ BLOCKED } },    
     {/* E_BAY */         false   ,  0       ,  fs3 , {/*NE*/ BLOCKED , /*E*/ BLOCKED , /*SE*/ BLOCKED ,  /*SW*/ BLOCKED , /*W*/ CENTER, /*NW*/ NE_CITY , /*UP*/ BLOCKED , /*DOWN*/ BLOCKED   } },     
-    {/* SE_BEACH */      false   ,  1       ,  fs4 , {/*NE*/ BLOCKED , /*E*/ BLOCKED , /*SE*/ BLOCKED ,  /*SW*/ BLOCKED , /*W*/ SW_DESERT, /*NW*/ CENTER, /*UP*/ BLOCKED , /*DOWN*/ BLOCKED   } },
-    {/* SW_DESERT */     false   ,  2       ,  fs5 , {/*NE*/ CENTER, /*E*/ BLOCKED , /*SE*/ BLOCKED ,  /*SW*/ BLOCKED , /*W*/ BLOCKED , /*NW*/ W_TEMPLE , /*UP*/ BLOCKED , /*DOWN*/ BLOCKED   } },                         // ACID. Recognizes you.
-    {/* W_TEMPLE */      false   ,  3       ,  fs6 , {/*NE*/ NW_FOREST , /*E*/ CENTER, /*SE*/ SW_DESERT ,  /*SW*/ BLOCKED , /*W*/ BLOCKED,  /*NW*/ BLOCKED , /*UP*/ BLOCKED , /*DOWN*/ BLOCKED  } },    
+    {/* SE_BEACH */      false   ,  1       ,  fs4 , {/*NE*/ BLOCKED , /*E*/ BLOCKED , /*SE*/ BLOCKED ,  /*SW*/ BLOCKED , /*W*/ SW_DESERT, /*NW*/ BLOCKED , /*UP*/ BLOCKED , /*DOWN*/ BLOCKED   } },
+    {/* SW_DESERT */     false   ,  2       ,  fs5 , {/*NE*/ CENTER, /*E*/ SE_BEACH , /*SE*/ BLOCKED ,  /*SW*/ BLOCKED , /*W*/ BLOCKED , /*NW*/ W_TEMPLE , /*UP*/ BLOCKED , /*DOWN*/ BLOCKED   } },                         // ACID. Recognizes you.
+    {/* W_TEMPLE */      false   ,  3       ,  fs6 , {/*NE*/ NW_FOREST , /*E*/ CENTER, /*SE*/ SW_DESERT ,  /*SW*/ BLOCKED , /*W*/ BLOCKED,  /*NW*/ BLOCKED , /*UP*/ SKY , /*DOWN*/ BLOCKED  } },    
     {/* NW_FOREST */     false   ,  4       ,  fs7 , {/*NE*/ BLOCKED , /*E*/ NE_CITY, /*SE*/ CENTER,  /*SW*/ BLOCKED , /*W*/ BLOCKED , /*NW*/ BLOCKED , /*UP*/ BLOCKED , /*DOWN*/ BLOCKED  } },                                                // COFFEE
 
     // no-returner
@@ -128,8 +112,6 @@ Location locations[MAX_LOCATION+1] = {
     {/* DEPTHS */        true    ,  0       ,   fs12, { /*NE*/ BLOCKED , /*E*/ BLOCKED , /*SE*/ BLOCKED ,  /*SW*/ BLOCKED , /*W*/ BLOCKED, /*NW*/ BLOCKED , /*UP*/ BLOCKED , /*DOWN*/ BLOCKED }   },
      
 }  ; 
-
-
 
 
        
@@ -178,13 +160,11 @@ Location *currentLocation;
 
 bool dead;
 
-enum LightState {LIGHT_ON, LIGHT_OFF, LIGHT_DIM, LIGHTSTATE_MAX = LIGHT_DIM };
-
 typedef struct {
     const char *name;
     Color color;
     char key;
-    LightState state;    
+    bool onFlag;
     Location *where;
 } Light;
 
@@ -257,10 +237,37 @@ Light *pickAlight(void) {
     
     return(NULL);
     
-}                        
+}           
 
+int onLightCount(void) {
+ 
+    int o=0;
+    for(int i=0;i<LIGHTKEY_MAX;i++){
+        Light *l = &lights[i];
+        if ( l->onFlag ) {       // Is this light on?
+            o++;
+        }
+                
+    }
+    return o;
+}            
 
-void nextStep(void) {
+bool enlightementConditionMet(void) {
+    
+    for(int i=0;i<LIGHTKEY_MAX;i++){
+        Light *l = &lights[i];
+        if ( !(l->onFlag) || (l->where!=&locations[W_TEMPLE]) ) {       
+            return false;
+        }
+    }
+    
+    return true;         
+        
+}         
+
+// Returns true if death ensued. 
+
+bool nextStep(void) {
     
         // Show all the lights where they are
     
@@ -274,26 +281,57 @@ void nextStep(void) {
                 
                 if ( light->where->pixel == i ) {          // If this color is in this location...
                     
-                    if ( light->state == LIGHT_ON ) {
+                    if ( light->onFlag) {
                     
                         color |= lights[j].color;                           // Mix the color in
                         
-                    } else if (light->state == LIGHT_DIM ) {continue;
-                        
-                        color |= dim( lights[j].color, 16 );                           // Mix the dimmed color in                        
-                        
-                    }                                                
+                    } 
                     
-                }                    
-                
+                }
+                                
             }                
             
             setFaceColor( i , color );
         }            
             
         pl();
-        terminalPrint( currentLocation->text );      
+        terminalPrint( currentLocation->text );     
+        
+        // If we are in the center, check if any visible light(s) in the distance
+        if ( currentLocation == &locations[CENTER] ) {
+            
+            int onLights = onLightCount();
+            
+            if (onLights>=1) {
+                pf( "You see " );
+                if (onLights>1) {
+                    pf( "colored lights" );
+                } else {
+                    pf( "a colored light" );                    
+                }                           
+                plf( " in the distance." );
+            }  else {
+             
+                plf("It is pitch dark. You have been eaten by a Grue.");
+                
+                return true;
+            }                                           
+                           
+        }            
         pl();
+        
+        if (currentLocation->deadly) {          // Did we die on the last move?
+                                        
+            return(true);
+                                        
+        }
+        
+        if ( currentLocation==&locations[SW_DESERT] && lights[LIGHTKEY_RED].where==currentLocation && lights[LIGHTKEY_RED].onFlag) {
+            
+            plf("You die. Alone. Roasted like a pumpkin seed.");
+            return(true); 
+                        
+        }            
         
         plf("M-Move");
         plf("T-Take/Toss light");
@@ -311,7 +349,7 @@ void nextStep(void) {
                     pl(d->name);
                 }
                 
-                plf("Which way do you want to move?");
+                plf("Where to Sir? Ou desirez-vous aller?");
                 
                 char directionCommand = getCommand();
 
@@ -319,16 +357,38 @@ void nextStep(void) {
                     
                     Direction *d = &directions[i];
                     
-                    if (d->key == directionCommand) {
-                        
+                    if (d->key == directionCommand) {                                               
+                                                
                         LocationKey next = currentLocation->next[i];
                         
                         if ( next != BLOCKED ) {
                             
+                            if (next == SKY) { 
+                                
+                                if (!enlightementConditionMet()) {          // Saint peter
+                                    
+                                    plf("As you start to rise, you hit your hit on the metphoric ceiling. You have died of ignorance.");
+                                    return(1);
+                                    
+                                }                                             
+                                
+                                for(int d=10; d>0; d--) {
+                                    
+                                    for( int b=0; b<32; b++ ) {
+                                        
+                                        setColor( dim( WHITE , b ) );
+                                        delay(35-b); 
+                                        
+                                    }                                        
+                                    
+                                }                                    
+                                
+                            }                                                       
+                            
                             // Ok, we are walking here!
                             
                             currentLocation = &locations[next];
-                            
+                                                        
                             // If we are holding a light then bring it with us
                             
                             if (lightInHand) {
@@ -339,29 +399,30 @@ void nextStep(void) {
                                     
                                     /// Taking as lite light to the center turns it off
                                     
-                                    if (lightInHand->state != LIGHT_OFF) {
+                                    if (lightInHand->onFlag) {
                                     
-                                        lightInHand->state = LIGHT_OFF;
+                                        lightInHand->onFlag =false;
                                     
                                         plf( "There is something about this place - a palpable void of light-sustainability - that deeply affects you.  The light that you carry is inexplicably extinguished.");
+                                        
                                     }                                    
                                 }                                    
                                 
                             }                                
                             
-                            return;
+                            return false;
                             
                         } else {
                             
                             plf("Sorry, you can't get thar from hear.");
-                            return;
+                            return false;
                             
                         }                                                        
                     }  // For i in directions
                                     
                 }                
                 
-                plf("If you want to go that way, you will have to go without me.");
+                plf("Oh, we are only the local service.");
                                
             }
         
@@ -381,7 +442,7 @@ void nextStep(void) {
                             // Already carrying one light
                             
                             plf("Do I look like a light sherpa?");
-                            return;
+                            return false;
                             
                         } else {                            
                             
@@ -396,21 +457,21 @@ void nextStep(void) {
                                     pf("You are now carring the ");
                                     p( whichLight->name );
                                     plf( " light.");                                    
-                                    return;
+                                    return false;
                                     
                                 } else {
                                     
                                     pf("There is no ");
                                     p( whichLight->name );
                                     plf( " light here.");                                    
-                                    return;
+                                    return false;
                                     
                                 }                                    
                                                                                                                 
                             }  else {               
                             
                                 plf( "You've been looking at lights too long.");
-                                return;                             
+                                return false;                             
                                 
                             }                                
                         }                                                 
@@ -430,21 +491,21 @@ void nextStep(void) {
                                 pf("You dropped the ");
                                 p( whichLight->name );
                                 plf( " light.");
-                                return;
+                                return false;
                                     
                             } else {
                                     
                                 pf("You are not even carring the ");
                                 p( whichLight->name );
                                 plf( " light.");
-                                return;
+                                return false;
                                     
                             }
                                 
                         }  else {
                                 
                             plf( "That's not a light, bud.");
-                            return;
+                            return false;
                                 
                         }
                     
@@ -456,8 +517,61 @@ void nextStep(void) {
               
               break;                     
         
-        case 'U':
-            plf("Which light do you want to use?");
+        case 'U': {
+            
+                plf("Which light do you want to use?");
+
+                Light *whichLight = pickAlight();
+                        
+                if (whichLight) {
+                            
+                    if (lightInHand==whichLight) {
+                        
+                        plf("O-On");
+                        plf("F-Off");
+                        
+                        pf("What to do with the ");
+                        p( whichLight->name );
+                        plf( " light?");
+                        
+                        char d = getCommand();
+                        
+                        if (d == 'O' ) {
+                            
+                            whichLight->onFlag=true;
+                            pf("The ");
+                            p( whichLight->name );
+                            plf( " light on, master.");
+                            
+                        } else if ( d=='F' ) {
+                                                        
+                            whichLight->onFlag=false;
+                            p( whichLight->name );
+                            plf( " light offed.");
+                                                           
+                        } else {
+                            
+                            plf("You can't do that with this light, pervert.");
+                            
+                        }                            
+                                
+                    } else {
+                                
+                        pf("You are not even carring the ");
+                        p( whichLight->name );
+                        plf( " light.");
+                        return false;
+                                
+                    }
+                            
+                }  else {
+                            
+                    plf( "That's not a light, bud.");
+                    return false;
+                            
+                }
+            
+            }            
             break;
         
         default:
@@ -466,9 +580,11 @@ void nextStep(void) {
         
     };
     
+    return false;
+    
 }    
 
-const char *oneLife(void) {
+void oneLife(void) {
 
     plf("------");
     plf("Welcome to HEXWORLD, a Tiny Tile Adventure!");
@@ -476,26 +592,27 @@ const char *oneLife(void) {
     //put everything back the way it should be on the 1st day
         
     currentLocation = &locations[CENTER];                    // Always start at Meru
-    lights[ LIGHTKEY_RED ].state=LIGHT_ON;
+    
+    lights[ LIGHTKEY_RED ].onFlag=true;
     lights[ LIGHTKEY_RED ].where=&locations[SE_BEACH];
     
-    lights[ LIGHTKEY_GREEN ].state=LIGHT_ON;
+    lights[ LIGHTKEY_GREEN ].onFlag=true;
     lights[ LIGHTKEY_GREEN ].where=&locations[NE_CITY];
     
-    lights[ LIGHTKEY_BLUE ].state=LIGHT_ON;
+    lights[ LIGHTKEY_BLUE ].onFlag=true;
     lights[ LIGHTKEY_BLUE ].where=&locations[NW_FOREST];
+    
+    lightInHand = NULL;
     
     
     dead = false;
         
     while (!dead) {
         
-        nextStep();
+        dead = nextStep();
                         
     };
-        
-    return "Enlightenment";
-    
+            
 }            
     
 
@@ -508,10 +625,5 @@ void loop() {
       
     };
     
-};    
-        
-                        
-        
-        
-    
+}; 
 

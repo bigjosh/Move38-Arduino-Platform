@@ -1,26 +1,10 @@
 /*
- * An example showing how to use the service port serial connection. The service port give you a handy way to 
- * type text into your program running on a tile, and have it print back messages to you. This can be really
- * handy when debugging!
- * 
- * "The most effective debugging tool is still careful thought, coupled with judiciously placed print statements."
- *   -Brian Kernighan, "Unix for Beginners" (1979)
- *  
- * To use this, you must have...
- *    (1) a blink tile with a service port installed (it is a little 4 pin plug)
- *    (2) a cable adapter that plugs into the service port and connects it to a USB on your computer
- *    
- * If you've got those, then you need to got the menu above and....
- * 
- *    (1) Goto Tools->Port and pick the com port the USB adapter landed on (if you give up, you can try them all)
- *    (2) Goto Tools->Serial Monitor to open the Arduifalse serial monitor window
- *    (3) Pick "500000 baud" in the serial monitor window
- *    (4) Pick "false line ending" in the serial port monitor window
- *    
- * download this sketch to your blink and you should see an nice welcome message pop up   
- * in the serial monitor window telling you want to do next!
- * 
- * (Hint: Type the letter "e" in the bar at the top of the serial monitor window and press the "Send" button)
+ * A tiny text adventure game running on (and integrated to) the Blinks hardware.
+ * To play this game you'll need to connect a serial terminal to the Blinks service port. 
+ * More info on how to do that here...
+ *
+ *
+ * Walk around, grab lights, try to reach enlightenment. Don't cheat and look at the source!
  * 
  */
 
