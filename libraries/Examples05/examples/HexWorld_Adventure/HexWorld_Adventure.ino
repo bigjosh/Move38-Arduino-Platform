@@ -1,28 +1,21 @@
 /*
  * A tiny text adventure game running on (and integrated to) the Blinks hardware.
- * To play this game you'll need to connect a serial terminal to the Blinks service port. 
- * More info on how to do that here...
- *
- *
+ * 
  * Walk around, grab lights, try to reach enlightenment. Don't cheat and look at the source!
  * 
+ * Also nicely demonstrates...
+ * 1) how to fit a lot of static text into a program by storing it in flash. 
+ * 2) how make an interactive text interface over the service port serial link. 
+ * 
+ * To play this game you'll need to connect a serial terminal to the Blinks service port. 
+ * More info on how to do that here...
+ * https://github.com/bigjosh/Move38-Arduino-Platform/blob/master/Service%20Port.MD
  */
-
 
 #include "blinklib.h"
 #include "Serial.h"
 
 ServicePortSerial Serial;
-
-// DWARF STUFF
-
-void setup() {
-
-  Serial.begin(); 
-
-}
-
-bool test= false;
 
 // Hack to get enum count: https://stackoverflow.com/a/2102673/3152071
 
@@ -114,11 +107,41 @@ Location locations[MAX_LOCATION+1] = {
        
 // It is pitch black. You are eaten by a Grue.
 // Such language in a high-class establishment like this!
-// ìEither this is madness or it is Hell.î
+// ‚ÄúEither this is madness or it is Hell.‚Äù
 
 // There is something about this place - a palpable void of light-sustainability - that deeply affects you.  The light(s) that you carry is inexplicably extinguished. 
 
 // Suddenly, there is an enormous flash of light. The brightest and whitest light you have ever seen or that anyone has ever seen. It bores its way into you. It is transcendent and you can't help but feel like a barrier between this world and the next has been irreparably broken. What have you done? What have you done?
+ 
+
+// Global state info
+// (Wish we had closures here!)
+// (...And anonymous functions!)
+
+Location *currentLocation;
+
+bool dead;
+
+struct Light {
+    const char *name;
+    Color color;
+    char key;
+    bool onFlag;
+    Location *where;
+};
+
+enum LightKey { LIGHTKEY_RED , LIGHTKEY_GREEN, LIGHTKEY_BLUE, LIGHTKEY_MAX=LIGHTKEY_BLUE};
+
+Light lights[LIGHTKEY_MAX+1] = {    
+    { "Red"  ,  RED   , 'R' , true ,  &locations[SE_BEACH] },
+    { "Green",  GREEN , 'G' , true ,  &locations[NE_CITY]  },
+    { "Blue" ,  BLUE  , 'B' , true ,  &locations[NW_FOREST]},
+};
+
+
+// Note: Due to Arduino IDE bug, the first function definition in this 
+// file *must* always come after all the type defitions. Sorry...
+// https://arduino.stackexchange.com/a/46522/7859
 
 
 // Print a string from flash memory to the terminal
@@ -147,31 +170,7 @@ void terminalPrint( const char *s ) {
     
     Serial.println();
         
-}      
-
-// Global state info
-// (Wish we had closures here!)
-// (...And anonymous functions!)
-
-Location *currentLocation;
-
-bool dead;
-
-typedef struct {
-    const char *name;
-    Color color;
-    char key;
-    bool onFlag;
-    Location *where;
-} Light;
-
-enum LightKey { LIGHTKEY_RED , LIGHTKEY_GREEN, LIGHTKEY_BLUE, LIGHTKEY_MAX=LIGHTKEY_BLUE};
-
-Light lights[LIGHTKEY_MAX+1] = {    
-    { "Red"  ,  RED   , 'R' },
-    { "Green",  GREEN , 'G' },
-    { "Blue" ,  BLUE  , 'B' },
-};
+}     
 
 Light *lightInHand=NULL;      // Light we are currently holding (NULL=none)
 
@@ -206,7 +205,6 @@ char getCommand(void) {
 
 #define pf(x)    Serial.print(F(x))
 #define plf(x)   Serial.println(F(x))
-
 
 Light *pickAlight(void) {
     
@@ -613,6 +611,15 @@ void oneLife(void) {
 }            
     
 
+// DWARF STUFF
+
+void setup() {
+
+  Serial.begin(); 
+
+}
+
+
 void loop() {
     
     
@@ -622,9 +629,5 @@ void loop() {
       
     };
     
-};    
-        
-                        
-        
-        
-    
+}; 
+

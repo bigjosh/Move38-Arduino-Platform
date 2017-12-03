@@ -76,7 +76,7 @@ static uint8_t oddParity(uint8_t p) {
      
      uint8_t bitstream;               // The tail of the last sample window states. 
      
-     uint8_t buffer;                  // Buffer for RX in progress. Bits step up until high bit set.           
+     uint8_t inputBuffer;                  // Buffer for RX in progress. Bits step up until high bit set.           
 
     // Visible to outside world     
      volatile uint8_t lastValue;      // Last successfully decoded RX value. 1 in high bit means valid and unread. 0= empty. 
@@ -121,7 +121,7 @@ static void gotBit(ir_rx_state_t *ptr, const bool bit ) {
     else DEBUGB_PULSE(20);    
     */
     
-    uint8_t buffer=ptr->buffer;
+    uint8_t buffer=ptr->inputBuffer;
     
     if (buffer) {           // There must be at least a leading 1-bit from the sync pulse or else we are not sync'ed
         
@@ -156,7 +156,7 @@ static void gotBit(ir_rx_state_t *ptr, const bool bit ) {
             
         }            
         
-        ptr->buffer=buffer;
+        ptr->inputBuffer=buffer;
         
     }        
     
@@ -167,7 +167,7 @@ static void gotBit(ir_rx_state_t *ptr, const bool bit ) {
 
 static void sync(ir_rx_state_t  *ptr) {
     
-    ptr->buffer=0b00000001;         // This will walk up to the 8th bit to single a full deserialization
+    ptr->inputBuffer=0b00000001;         // This will walk up to the 8th bit to single a full deserialization
     
 }    
 
@@ -176,7 +176,7 @@ static void sync(ir_rx_state_t  *ptr) {
 
 static void reset(ir_rx_state_t  *ptr, uint8_t errorReasonBit ) {
     
-    ptr->buffer=0;         // Start searching for next sync. 
+    ptr->inputBuffer=0;         // Start searching for next sync. 
     SBI( ptr->errorBits , errorReasonBit );
     
     /*
@@ -258,7 +258,7 @@ static void reset(ir_rx_state_t  *ptr, uint8_t errorReasonBit ) {
             
             // Only bother checking for errors if we are currently actually receiving a frame
     
-            if (ptr->buffer) {
+            if (ptr->inputBuffer) {
                 if ( (bitstream & 0b00011111) == 0b00000000 ) {   // Too long since last trigger
                     reset(ptr , ERRORBIT_DROPOUT );
                     } else if ( (bitstream & 0b00011111) == 0b00010101 ) {   // Not a valid pattern. Noise.
@@ -408,7 +408,7 @@ void irBroadcastData( uint8_t data ) {
     
     while (bitwalker) {
         
-        if (ptr->buffer) {
+        if (ptr->inputBuffer) {
             bitmask |= bitwalker;
         }            
         

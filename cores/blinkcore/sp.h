@@ -13,10 +13,10 @@
 
     #define SP_H_
     
+    #include "hardware.h"
+       
     #include "blinkcore.h"    
     
-    #include "hardware.h"
-
     #include "utils.h"          // Grab SBI and CBI
     
     // Set the pin direction for the service port aux (A) pin
@@ -48,9 +48,11 @@
     uint8_t sp_serial_rx_ready(void);
 
     // Read byte from service port serial. Blocks if nothing received yet.
+    // Input buffer is only 1 byte so if an interrupts happens while data is streaming, you will loose any incoming data. 
+    // Best to limit yourself interactions with plenty of time (or an ACK) between each incoming byte.
 
-    uint8_t sp_serial_rx(void);        
-                
+    uint8_t sp_serial_rx(void); 
+                               
     // Read the analog voltage on service port pin A
     // Returns 0-255 for voltage between 0 and Vcc
     // Handy to connect a potentiometer here and use to tune params
