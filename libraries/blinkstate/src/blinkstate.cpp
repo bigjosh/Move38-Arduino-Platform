@@ -38,18 +38,37 @@
 
 #define STATE_EXPIRE_TIME_MS     250             // If we have not heard anything on this this face in this long, then assume no neighbor there
 
+#define STATE_DEBOUNCE_THRESHOLD 5               // Need to verify state this many times before accepting it as our new state
 
 // TODO: The compiler hates these arrays. Maybe use struct so it can do indirect offsets?
 
 static byte lastValue[FACE_COUNT];               // Last received value
+static byte lastDebouncedValue[FACE_COUNT];      // Last debounced value
 static unsigned long expireTime[FACE_COUNT];     // time when last received state will expire
-
+static byte debounceCounter[FACE_COUNT] = {0,0,0,0,0,0};  // number of times we have seen a given state in a row (i.e. 1, 1, 1, 0, 1, 1 has seen '1' 2x in a row)
 
 static void updateRecievedState( uint8_t face ) {
 
     if ( irIsReadyOnFace(face) ) {
 
-        lastValue[face] = irGetData(face);
+        byte faceData = irGetData(face);
+
+        if( faceData == lastValue[ face ] ) {
+          if(debounceCounter[ face ] < 255) {
+            debounceCounter[ face ]++;
+          }
+        }
+        else {
+          debounceCounter[ face ] = 0;
+        }
+
+        lastValue[ face ] = faceData;
+
+        if(debounceCounter[ face ] > STATE_DEBOUNCE_THRESHOLD) {
+
+          lastDebouncedValue[ face ] = faceData;
+
+        }
 
         // We could cache this calculation, but for now this is simpler.
 
@@ -149,7 +168,7 @@ byte getNeighborState( byte face ) {
 
     if ( expireTime[face] > millis() ) {        // Expire time in the future?
 
-        return lastValue[ face ];
+        return lastDebouncedValue[ face ];
 
     }  else {
 
