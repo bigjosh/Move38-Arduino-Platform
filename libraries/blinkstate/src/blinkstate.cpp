@@ -38,7 +38,7 @@
 
 #define STATE_EXPIRE_TIME_MS     250             // If we have not heard anything on this this face in this long, then assume no neighbor there
 
-#define STATE_DEBOUNCE_THRESHOLD 5               // Need to verify state this many times before accepting it as our new state
+#define STATE_DEBOUNCE_THRESHOLD 2               // Need to verify state this many times before accepting it as our new state
 
 // TODO: The compiler hates these arrays. Maybe use struct so it can do indirect offsets?
 
