@@ -11,13 +11,14 @@
 
 */
 
+//#define <stdint.h>      // UINT32_MAX
+
+
 #include <avr/pgmspace.h>
 #include <limits.h>
-#include <stdint.h>
 #include <stddef.h>     // NULL
 
 #include <Arduino.h>
-
 
 #include "blinklib.h"
 #include "chainfunction.h"
@@ -26,7 +27,9 @@
 #include "timer.h"
 #include "button.h"
 #include "utils.h"
+#include "power.h"
 
+#include "ir.h"
 #include "irdata.h"
 
 // IR CONSTANTS
@@ -51,6 +54,7 @@
 
 #define BUTTON_LONGPRESS_TIME_MS 2000       // How long you must hold button down to register a long press. 
 
+#define BUTTON_SLEEP_TIMEOUT_SECONDS (2*60)   // If no button press in this long then goto sleep
 
 // PIXEL FUNCTIONS
 
@@ -221,6 +225,11 @@ static volatile bool longPressFlag=0;                   // Has the button been l
 
 static volatile uint8_t maxCompletedClickCount=0;       // Remember the most completed clicks to support the clickCount() function
 
+#define BUTTON_SLEEP_TIMEOUT_MS ( BUTTON_SLEEP_TIMEOUT_SECONDS * (unsigned long) MILLIS_PER_SECOND)
+
+static volatile unsigned long buttonSleepTimout=BUTTON_SLEEP_TIMEOUT_MS;
+                                                        // we sleep when millis() >= buttonSleepTimeout 
+                                                        // Here we assume that millis() starts at 0 on power up
 
 // Called once per tick by the timer to check the button position
 // and update the button state variables.
@@ -304,6 +313,8 @@ static void updateButtonState(void) {
                 
                 clickWindowCountdown = TIMER_MS_TO_TICKS( BUTTON_CLICK_TIMEOUT_MS );
                 longPressCountdown   = TIMER_MS_TO_TICKS( BUTTON_LONGPRESS_TIME_MS ); 
+                
+                buttonSleepTimout = millis() + BUTTON_SLEEP_TIMEOUT_MS;        // Button pressed, so restart the sleep countdown
                 
             } else {
                 buttonLiftedFlag=1;                
@@ -421,7 +432,7 @@ volatile uint8_t verticalRetraceFlag=0;     // Turns to 1 when we are about to s
 // Will overflow after about 62 days...
 // https://www.google.com/search?q=(2%5E31)*2.5ms&rlz=1C1CYCW_enUS687US687&oq=(2%5E31)*2.5ms
 
-static volatile uint32_t millisCounter=0;           // How many millisecends since most recent pixel_enable()?
+static volatile uint32_t millisCounter=0;           // How many milliseconds since startup?
 
 // Overflows after about 60 days
 // Note that resolution is limited by timer tick rate
@@ -482,9 +493,36 @@ static void updateMillis(void) {
                 
     }    
                        
-    // Note that we might have some cycles left. They will accumulate in cyclescounter and eventually get folded into a full milli to
+    // Note that we might have some cycles left. They will accumulate in cycles counter and eventually get folded into a full milli to
     // avoid errors building up.
-                           
+    
+}    
+
+// Turn off everything and goto to sleep
+
+void sleep(void) {
+    
+    pixel_disable();        // Turn off pixels so battery drain
+    ir_disable();           // TODO: Wake on pixel
+    button_ISR_on();        // Enable the button interrupt so it can wake us
+    
+    power_sleep();          // Go into low power sleep. Only a button change interrupt can wake us
+    
+    button_ISR_off();       // Disable it before we reboot
+    
+    power_soft_reset();     // Do a soft reset, which is just like a power up except the WDT flag is set
+                            // We clear that flag in power_init(); 
+    
+}    
+
+// Time to sleep? (No button presses recently?)
+
+void checkSleepTimeout(void) {
+    
+    if ( millis() >= buttonSleepTimout) {
+        sleep(); 
+    }        
+    
 }    
 
 // This is called by timer2 about every 512us
@@ -494,6 +532,7 @@ void timer_callback(void) {
     updateIRComs(); 
     updateMillis();            
     updateButtonState();
+    checkSleepTimeout();
 }
 
 chainfunction_struct *onLoopChain = NULL;
@@ -531,7 +570,7 @@ static void callOnLoopChain(void ) {
 // us after initial power-up is complete
 
 void run(void) {
-        
+
     setup();
     
     while (1) {
