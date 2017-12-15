@@ -43,6 +43,10 @@
         
     #define DEBUG_SERIAL_TX_NOW(b) (SP_SERIAL_DATA_REG=b)      // Send blindly, but instantly (1 instruction). New byte ignored if there is already a pending one in the buffer (avoid this by leaving 12 clocks bewteen consecutive writes)
         
+    // Wait for all pending transmitts to complete
+
+    void sp_serial_flush(void);
+        
     // Is there a char ready to read?
 
     uint8_t sp_serial_rx_ready(void);
