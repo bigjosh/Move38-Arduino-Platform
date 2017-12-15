@@ -67,7 +67,6 @@ static void init(void) {
 }    
 
 
-
 // This empty run() lets us at least compile when no higher API is present.
 /*
 void __attribute__((weak)) run(void) {    
@@ -77,6 +76,7 @@ void __attribute__((weak)) run(void) {
     
 int main(void)
 {
+    
 	init();
 	
     while (1) {
