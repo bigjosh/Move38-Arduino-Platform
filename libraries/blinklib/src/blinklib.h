@@ -40,7 +40,7 @@ typedef uint8_t byte;
 // debounce time before a new detection will occur. 
 
 bool buttonPressed(void);
-bool buttonLifted(void);
+bool buttonReleased(void);
 
 // Was the button single, double , or multi clicked since we last checked?
 // Note that there is a delay after the button is first pressed 

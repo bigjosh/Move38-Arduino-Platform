@@ -208,7 +208,7 @@ byte getSerialNumberByte( byte n ) {
 static volatile bool buttonState=0;                     // Current debounced state
 
 static volatile bool buttonPressedFlag=0;               // Has the button been pressed since the last time we checked it?
-static volatile bool buttonLiftedFlag=0;                // Has the button been lifted since the last time we checked it?
+static volatile bool buttonReleasedFlag=0;                // Has the button been lifted since the last time we checked it?
 
 static uint8_t buttonDebounceCountdown=0;               // How long until we are done bouncing. Only touched in the callback
 
@@ -317,7 +317,7 @@ static void updateButtonState(void) {
                 buttonSleepTimout = millis() + BUTTON_SLEEP_TIMEOUT_MS;        // Button pressed, so restart the sleep countdown
                 
             } else {
-                buttonLiftedFlag=1;                
+                buttonReleasedFlag=1;                
             }                                            
         }
         
@@ -372,10 +372,10 @@ bool buttonPressed(void) {
 }            
           
 
-bool buttonLifted(void) {
+bool buttonReleased(void) {
     // This test does not need to be atomic. No race
     // because we only clear here, and only set in ISR
-    return testAndClearFlag ( buttonLiftedFlag );
+    return testAndClearFlag ( buttonReleasedFlag );
 }    
     
 
