@@ -76,4 +76,11 @@ size_t ServicePortSerial::write(uint8_t c)
   return(1);
   
 }
+
+// Block until all pending transmits complete
+
+void ServicePortSerial::flush(void)
+{
+    sp_serial_flush();   
+}    
      

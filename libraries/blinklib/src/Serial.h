@@ -42,7 +42,10 @@
         virtual byte readWait(void);            // Blocking read (faster)
         
         virtual size_t write(uint8_t);
-        using Print::write; // pull in write(str) and write(buf, size) from Print
+        void flush(void);                       // Block until all pending transmits complete
+        
+        using Print::write;                     // pull in write(str) and write(buf, size) from Print
+        
                 
     };
 
