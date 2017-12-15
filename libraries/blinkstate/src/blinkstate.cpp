@@ -1,19 +1,19 @@
 /*
  *
- *   This library presents a higher level abstraction of state and communications and sits on top of the blinklib IR functions. 
+ *   This library presents a higher level abstraction of state and communications and sits on top of the blinklib IR functions.
  *
  * In this view, each tile has a "state" that is represented by a number between 1 and 127.
  * This state value is continuously broadcast on all of its faces.
- * Each tile also remembers the most recently received state value from he neighbor on each of its faces. 
- * 
- * This library takes over the blinklib IR read functions since it needs to consume the events they produce. 
- * 
+ * Each tile also remembers the most recently received state value from he neighbor on each of its faces.
+ *
+ * This library takes over the blinklib IR read functions since it needs to consume the events they produce.
+ *
  * Note that the beacon transmissions only occur when the loop() function returns, so it is important
- * that sketches using this model return from loop() frequently. This is modeled on the idomatic Arduino 
+ * that sketches using this model return from loop() frequently. This is modeled on the idomatic Arduino
  * way of handling periodic callbacks...
  * https://github.com/arduino/Arduino/blob/master/hardware/arduino/avr/cores/arduino/main.cpp#L47
- * 
- */     
+ *
+ */
 
 #include <avr/pgmspace.h>
 #include <limits.h>
@@ -38,38 +38,57 @@
 
 #define STATE_EXPIRE_TIME_MS     250             // If we have not heard anything on this this face in this long, then assume no neighbor there
 
+#define STATE_DEBOUNCE_THRESHOLD 3               // Need to verify state this many times before accepting it as our new state
 
 // TODO: The compiler hates these arrays. Maybe use struct so it can do indirect offsets?
 
 static byte lastValue[FACE_COUNT];               // Last received value
+static byte lastDebouncedValue[FACE_COUNT];      // Last debounced value
 static unsigned long expireTime[FACE_COUNT];     // time when last received state will expire
-
+static byte debounceCounter[FACE_COUNT] = {0,0,0,0,0,0};  // number of times we have seen a given state in a row (i.e. 1, 1, 1, 0, 1, 1 has seen '1' 2x in a row)
 
 static void updateRecievedState( uint8_t face ) {
 
     if ( irIsReadyOnFace(face) ) {
-            
-        lastValue[face] = irGetData(face);       
-            
+
+        byte faceData = irGetData(face);
+
+        if( faceData == lastValue[ face ] ) {
+          if(debounceCounter[ face ] < 255) {
+            debounceCounter[ face ]++;
+          }
+        }
+        else {
+          debounceCounter[ face ] = 0;
+        }
+
+        lastValue[ face ] = faceData;
+
+        if(debounceCounter[ face ] >= STATE_DEBOUNCE_THRESHOLD) {
+
+          lastDebouncedValue[ face ] = faceData;
+
+        }
+
         // We could cache this calculation, but for now this is simpler.
-            
+
         expireTime[face] = millis() + STATE_EXPIRE_TIME_MS;
-            
-    } 
-    
-}    
+
+    }
+
+}
 
 
 // check and see if any states recently updated....
 
 static void updateRecievedStates(void) {
-    
+
     FOREACH_FACE(x) {
-        
+
         updateRecievedState( x );
-        
+
     }
-    
+
 }
 
 static byte localState=0;
@@ -78,10 +97,10 @@ static unsigned long localStateNextSendTime;
 // Broadcast our local state
 
 static void broadcastState(void) {
-    
+
     irBroadcastData( localState );
     localStateNextSendTime = millis() + STATE_BROADCAST_RATE_MS + ( ( rand() & 15 ) * 2) ;
-    
+
 }
 
 
@@ -90,25 +109,25 @@ static void broadcastState(void) {
 // even if they have been gone longer than the time out, and the refresh broadcasts will not
 // go out often enough.
 
-// TODO: All these calls to millis() and subsequent calculations are expensive. Cache stuff and reuse. 
+// TODO: All these calls to millis() and subsequent calculations are expensive. Cache stuff and reuse.
 
 void blinkStateOnLoop(void) {
 
     // Check for anything coming in...
     updateRecievedStates();
-    
-    
+
+
     // Check for anything going out...
-    
-    if ( (localState!=0) && (localStateNextSendTime <= millis()) ) {         // Anything to send (state 0=don't send)? Time for next broadcast? 
-        
-        broadcastState(); 
-        
-    }         
-    
+
+    if ( (localState!=0) && (localStateNextSendTime <= millis()) ) {         // Anything to send (state 0=don't send)? Time for next broadcast?
+
+        broadcastState();
+
+    }
+
 }
 
-// Make a record to add to the callback chain 
+// Make a record to add to the callback chain
 
 static struct chainfunction_struct blinkStateOnLoopChain = {
      .callback = blinkStateOnLoop,
@@ -127,16 +146,16 @@ static uint8_t hookRegisteredFlag=0;        // Did we already register?
 
 static void registerHook(void) {
     if (!hookRegisteredFlag) {
-        addOnLoop( &blinkStateOnLoopChain ); 
+        addOnLoop( &blinkStateOnLoopChain );
         hookRegisteredFlag=1;
-    }        
-}    
+    }
+}
 
 // Manually add our hooks
 
 void blinkStateBegin(void) {
     registerHook();
-}    
+}
 
 
 
@@ -144,24 +163,24 @@ void blinkStateBegin(void) {
 // 0 if no messages received recently on indicated face
 
 byte getNeighborState( byte face ) {
-    
+
     registerHook();     // Check everytime. Maybe a begin() better?
-    
+
     updateRecievedState( face ) ;       // Refresh
-               
+
     if ( expireTime[face] > millis() ) {        // Expire time in the future?
-                                                                      
-        return lastValue[ face ]; 
-        
+
+        return lastDebouncedValue[ face ];
+
     }  else {
-                
+
         // Face expired
         return 0;
-        
-    }        
-        
-    
-}    
+
+    }
+
+
+}
 
 
 
@@ -178,14 +197,22 @@ byte getNeighborState( byte face ) {
 void setState( byte newState ) {
 
     registerHook();     // Check everytime. Maybe a begin() better?
-    
-    if ( newState != localState ) {     // Ignore redundant setting to same state (
-    
-        localState = newState;
-    
-        broadcastState();            // Grease the wheels and send immmedeately if needed rather than waiting for next onLoop()
-    
-    }    
-    
-}    
 
+    if ( newState != localState ) {     // Ignore redundant setting to same state (
+
+        localState = newState;
+
+        broadcastState();            // Grease the wheels and send immmedeately if needed rather than waiting for next onLoop()
+
+    }
+
+}
+
+// Get our state. This way we don't have to keep track of it somewhere exclusive
+// simply giving access to the local state which is already stored
+
+byte getState(void) {
+
+  return localState;
+
+}
