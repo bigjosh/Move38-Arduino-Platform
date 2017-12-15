@@ -54,5 +54,9 @@ bool power_sleepWithTimeout( power_sleepTimeoutType timeout );
 
 // Get everything set up for proper sleeping
 void power_init(void);
+
+// Execute a soft reset - almost like power up
+
+void power_soft_reset(void);
     
 #endif /* POWER_H_ */

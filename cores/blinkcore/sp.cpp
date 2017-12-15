@@ -74,6 +74,16 @@ void sp_serial_tx(uint8_t b) {
     
 }
 
+// Wait for most recently transmitted byte to complete
+
+void sp_serial_flush(void) {
+    
+    while (!TBI(SP_SERIAL_CTRL_REG,TXC0));         // Wait until the entire frame in the Transmit Shift Register has been shifted out and there are
+                                                   // no new data currently present in the transmit buffer
+        
+}    
+
+
 // Is there a char ready to read?
 
 uint8_t sp_serial_rx_ready(void) {

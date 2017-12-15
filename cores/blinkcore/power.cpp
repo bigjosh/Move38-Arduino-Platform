@@ -81,9 +81,15 @@ bool power_sleepWithTimeout( power_sleepTimeoutType timeout ) {
 
 void power_init(void) {
 
+    wdt_reset();        // reset the countdown!
+    MCUSR &= ~_BV(WDRF);// You can not turn off the WDT unless this bit is cleared! (NOTE THIS IS MISNAMED IN THE DATASHEET AS WDRT!)
+    wdt_disable();      // In case we just rebooted becuase of a power_reset(), this makes sure we will not timeout and 
+                        // and reboot again. This is necessary because on WDT reset the WDT flag is set, which automatically re-enables
+                        // the watchdog timer. 
+
     // Could save a byte here by combining these two to a single assign
     
-    // I know datasheet repeatedly states you should only set Sleep Enable just before sleeping to avoid
+    // I know data sheet repeatedly states you should only set Sleep Enable just before sleeping to avoid
     // "accidentally" sleeping, but the only way to sleep is to execute the "sleep" instruction
     // so if you are somehow executing that instruction at a time when you don't mean to sleep, then you
     // have bigger problems to worry about.
@@ -93,4 +99,14 @@ void power_init(void) {
     sleep_enable();
 
     
+}    
+
+// Execute a soft reset - almost like power up
+// Based on http://www.atmel.com/webdoc/avrlibcreferencemanual/FAQ_1faq_softreset.html
+// Assumes that WDRF is cleared in the startup code, which apparently it is. 
+
+void power_soft_reset(void) {
+    cli(); 
+    wdt_enable(WDTO_1S);      // This *must* be long enough that after the reset power_init() will be called before we reset again. 
+    while (1);
 }    

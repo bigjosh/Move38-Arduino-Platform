@@ -33,6 +33,8 @@ void timer_callback(void);
 
 #define MILLIS_PER_SECOND 1000
 
+#define SECONDS_PER_MINUTE  60
+
 #define CYCLES_PER_MS (F_CPU/MILLIS_PER_SECOND)
 
 #define TIMER_MS_TO_TICKS(ms)  ( ( CYCLES_PER_MS * ms)   / TIMER_CYCLES_PER_TICK )  // Slightly contorted to preserve precision
