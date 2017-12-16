@@ -16,12 +16,13 @@
 typedef bool boolean;
 typedef uint8_t byte;
 
+#define SERIAL_NUMBER_LEN 9
 
 typedef struct {
-    uint8_t bytes[9] ;
+    uint8_t bytes[SERIAL_NUMBER_LEN] ;
 } utils_serialno_t;
 
-// Returns the device's unique 8-byte serial number
+// Returns the device's unique 9-byte serial number
 
 utils_serialno_t const *utils_serialno(void);
 
