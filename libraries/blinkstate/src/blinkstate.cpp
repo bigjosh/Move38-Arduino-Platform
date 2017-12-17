@@ -34,9 +34,11 @@
 
 #include "blinkstate.h"
 
-#define STATE_BROADCAST_RATE_MS  80-32           // Minimum number of milliseconds between broadcasting the same state again. The 32 is to offset the 32 steps of random jitter we add.
+#define STATE_BROADCAST_RATE_MS  100            // Minimum number of milliseconds between broadcasting the same state again. 
 
-#define STATE_EXPIRE_TIME_MS     250             // If we have not heard anything on this this face in this long, then assume no neighbor there
+#define STATE_BROADCAST_JITTER   40             // We randomly add this jitter to each broadcast
+
+#define STATE_EXPIRE_TIME_MS     500             // If we have not heard anything on this this face in this long, then assume no neighbor there
 
 #define STATE_DEBOUNCE_THRESHOLD 3               // Need to verify state this many times before accepting it as our new state
 
@@ -70,6 +72,7 @@ static void updateRecievedState( uint8_t face ) {
 
         }
 
+        
         // We could cache this calculation, but for now this is simpler.
 
         expireTime[face] = millis() + STATE_EXPIRE_TIME_MS;
@@ -99,7 +102,12 @@ static unsigned long localStateNextSendTime;
 static void broadcastState(void) {
 
     irBroadcastData( localState );
-    localStateNextSendTime = millis() + STATE_BROADCAST_RATE_MS + ( ( rand() & 15 ) * 2) ;
+        
+    localStateNextSendTime = millis() + STATE_BROADCAST_RATE_MS;
+    
+    if (rand() & 1) {           // 50% chance
+        localStateNextSendTime += STATE_BROADCAST_JITTER;
+    }        
 
 }
 
