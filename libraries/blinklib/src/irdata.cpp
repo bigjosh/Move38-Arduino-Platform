@@ -198,7 +198,7 @@ static void reset(ir_rx_state_t  *ptr, uint8_t errorReasonBit ) {
 // Called once per timer tick
 // Check all LEDs, decode any changes
  
- // NOte this runs in callback context in timercallback. 
+ // Note this runs in callback context in timercallback. 
  
  void updateIRComs(void) {
           

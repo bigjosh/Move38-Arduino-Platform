@@ -36,15 +36,15 @@
     <EraseKey />
     <AsfFrameworkConfig>
       <framework-data xmlns="">
-  <options />
-  <configurations />
-  <files />
-  <documentation help="" />
-  <offline-documentation help="" />
-  <dependencies>
-    <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.35.1" />
-  </dependencies>
-</framework-data>
+        <options />
+        <configurations />
+        <files />
+        <documentation help="" />
+        <offline-documentation help="" />
+        <dependencies>
+          <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.35.1" />
+        </dependencies>
+      </framework-data>
     </AsfFrameworkConfig>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
@@ -252,10 +252,6 @@
     <Compile Include="..\..\..\cores\blinkcore\WMath.cpp">
       <SubType>compile</SubType>
       <Link>WMath.cpp</Link>
-    </Compile>
-    <Compile Include="..\..\..\variants\legacy\hardware.h">
-      <SubType>compile</SubType>
-      <Link>hardware.h</Link>
     </Compile>
     <Compile Include="..\..\..\variants\standard\hardware.h">
       <SubType>compile</SubType>

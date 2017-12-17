@@ -109,8 +109,8 @@ void ir_init(void) {
 // This clobbers whatever charge was on the selected LEDs, so only call after you have checked it.
 
 // Must be atomic so that...
-// 1) the IR ISR doesnt show up and see our wierd registers, and 
-// 2) The flashes don't get interrupted and streched out long enough to cause 2 triggers
+// 1) the IR ISR doesn't show up and see our weird registers, and 
+// 2) The flashes don't get interrupted and stretched out long enough to cause 2 triggers
 
 // TODO: Queue TX so they only happen after a successful RX or idle time. Unnecessary since TX time so short?
 
@@ -129,13 +129,13 @@ static inline void ir_tx_pulse_internal( uint8_t bitmask ) {
         // ANODE always driven. PORT low when we are waiting to RX pulses or charging. PORT driven high when transmitting a pulse. 
         // CATHODE is input when waiting for RX pulses, so DDR not driven and PORT low. CATHODE is driven high when charging and driven low when sending a pulse. 
         
-        // See ir.MD in this repo for more explainations
+        // See ir.MD in this repo for more explanations
                              
         uint8_t cathode_ddr_save = IR_CATHODE_DDR;          // We don't want to mess with the upper bits not used for IR LEDs
     
         PCMSK1 &= ~bitmask;                                 // stop Triggering interrupts on these cathode pins because they are going to change when we pulse
 
-        // TODO: Current blinklib does not use IR interrupts, so We could get rid of this bu would only save a couple instructions/cycles
+        // TODO: Current blinklib does not use IR interrupts, so we could get rid of this but would only save a couple instructions/cycles
         
         // Now we don't have to worry about...
         // (1) a received pulse on this LED interfering with our transmit and 
@@ -182,7 +182,7 @@ static inline void ir_tx_pulse_internal( uint8_t bitmask ) {
     
         // TODO: These need to be asm because it sticks a load here.
         
-        // Set cathode high for any bitmasked pins that were high wehn we started
+        // Set cathode high for any bit masked pins that were high when we started
                
         IR_CATHODE_PIN =  savedCathodeBits;
         
