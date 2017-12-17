@@ -246,8 +246,6 @@ bool buttonDown(void);
 bool buttonPressed(void);
 
 
-
-
 /* 
 
     IR communications functions

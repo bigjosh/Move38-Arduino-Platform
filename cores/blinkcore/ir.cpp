@@ -346,19 +346,19 @@ ISR(TIMER1_CAPT_vect) {
 
 // Send a series of pulses with spacing_ticks clock ticks between each pulse (or as quickly as possible if spacing too short)
 // If count=0 then 256 pulses will be sent. 
-// If spaceing_ticks==0, then the time between pulses will be 65536 ticks
+// If spacing_ticks==0, then the time between pulses will be 65536 ticks
 
 // Assumes timer1 stopped on entry, leaves timer1 stopped on exit
 // Assumes timer1 overflow flag cleared on entry, leaves clear on exit
 
-// TODO: Add a version that doesn't block and let's you specify a margin at the end before the next TX
+// TODO: Add a version that doesn't block and lets you specify a margin at the end before the next TX
 // can start? Use overflow bit to see if past. Easy?
 
 // TODO: Use fast PWM mode so OCR1 is buffered. We can then load the margin value
 // on the last pass and it will get automatically swapped in after the final pulse.
 // We can then quickly test the compare bit to see if the margin is over. 
 
-// TODO:  Check cath and buffer first and don't send if in progress. Return aborted bits
+// TODO:  Check cathode and buffer first and don't send if in progress. Return aborted bits
 /*
 
  uint8_t ir_LED_triggered_bits;
