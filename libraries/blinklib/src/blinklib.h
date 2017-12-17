@@ -135,7 +135,6 @@ uint8_t irGetErrorBits( uint8_t face );
 
 typedef unsigned Color;
 
-
 // Number of brightness levels in each channel of a color
 #define BRIGHTNESS_LEVELS 32
 
@@ -144,7 +143,7 @@ typedef unsigned Color;
 #define GET_B(color) ((color    )&31)
 
 // R,G,B are all in the domain 0-31
-// Here we expose the interal color representation, but it is worth it
+// Here we expose the internal color representation, but it is worth it
 // to get the performance and size benefits of static compilation 
 // Shame no way to do this right in C/C++
 
@@ -186,14 +185,17 @@ inline Color dim( Color color, byte brightness) {
 
 Color makeColorHSB( byte hue, byte saturation, byte brightness );
     
-// Change the tile to the specified color 
+// Change the tile to the specified color
+// NOTE: all color changes are double buffered
+// and the display is updated when loop() returns
 
 void setColor( Color newColor);
 
 // Set the pixel on the specified face (0-5) to the specified color
+// NOTE: all color changes are double buffered
+// and the display is updated when loop() returns
 
 void setFaceColor(  byte face, Color newColor );
-
 
 /* 
 

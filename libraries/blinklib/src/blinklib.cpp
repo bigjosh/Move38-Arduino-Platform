@@ -58,24 +58,39 @@
 
 // PIXEL FUNCTIONS
 
-void setColor( Color newColor ) {
-    
-    // Adjust the 0-31 scale from the blinks color model to the internal 0-255 scale
-    // TODO: Should internal model be only 5 bits also?  Would save space in the gamma lookup table. I bet if we get the gamma values right that you can't see more than 5 bits anyway. 
-    
-    pixel_SetAllRGB( (( newColor >> 10 ) & 31 ) << 3 , (( newColor >> 5 ) & 31 ) << 3 , (( newColor  ) & 31  ) << 3 );
-    
-}    
-
+// Remeber that thge underlying pixel_* setting functions are double buffered and so
+// require a call to pixel_displayBuffer() to aactually show all the updates. We do this
+// this call everytime loop() returns to ensure a coherent update, and also make sure that
+// sure that the final result of any loop() interation will always hit the display for at least 
+// one frame to eliminate aliasing and tearing.
 
 void setFaceColor( byte face , Color newColor ) {
     
-    // Adjust the 0-31 scale from the blinks color model to the internal 0-255 scale
-    // TODO: Should internal model be only 5 bits also?  Would save space in the gamma lookup table. I bet if we get the gamma values right that you can't see more than 5 bits anyway.
+    pixelColor_t newPixelColor;
+
+    // TODO: OMG, this is the most inefficient conversion from a unit16 back to (the same) unit16 ever!
+    // But to share a type between the core and blinklib level though pixel.h would require all blinklib
+    // users to get the whole pixel.h namespace. There has to be a good way around this. Maybe
+    // break out the pixelColor type into its own core .H file? seems wrong. Hmmm.... 
     
-    pixel_setRGB( face , (( newColor >> 10 ) & 31 ) << 3 , (( newColor >> 5 ) & 31 ) << 3 , (( newColor  ) & 31  ) << 3 );
+    newPixelColor.r = GET_R( newColor );
+    newPixelColor.g = GET_G( newColor );
+    newPixelColor.b = GET_B( newColor );
+    
+    pixel_bufferedSetPixel( face , newPixelColor );
+        
+}
+
+// Convenience function to set all pixels to the same color. 
+
+void setColor( Color newColor ) {
+    
+    FOREACH_FACE(f) {
+        setFaceColor( f , newColor );
+    }
     
 }
+
 
 // makeColorRGB defined as a macro for now so we get compile time calcuation for static colors.
 
@@ -508,11 +523,10 @@ void sleep(void) {
     
     power_sleep();          // Go into low power sleep. Only a button change interrupt can wake us
     
-    button_ISR_off();       // Disable it before we reboot
-    
-    power_soft_reset();     // Do a soft reset, which is just like a power up except the WDT flag is set
-                            // We clear that flag in power_init(); 
-    
+    button_ISR_off();       // Set everything back to thew way it was before we slept
+    ir_enable();
+    pixel_enable();
+       
 }    
 
 // Time to sleep? (No button presses recently?)
@@ -576,6 +590,9 @@ void run(void) {
     while (1) {
      
         loop();
+        
+        pixel_displayBufferedPixels();      // show all display updates that happened in last loop()
+                                            // Also currently blocks until new frame actually starts
         
         callOnLoopChain();
         

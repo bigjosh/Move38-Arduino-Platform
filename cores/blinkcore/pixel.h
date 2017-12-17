@@ -23,7 +23,7 @@ void pixel_init(void);
 
 // Enable pixels after a call to pixel_init or pixel_disable
 // Pixels will return to the color they had before being disabled.
-
+// Call pixel_setPixels() first to set initial values of pixels before 1st call to pixel_enable()
 void pixel_enable(void);
 
 // Turn of all pixels and the timer that drives them.
@@ -33,22 +33,24 @@ void pixel_disable(void);
         
 /** Display interface ***/
 
-// Set a single pixel's RGB value
-// p is the pixel number. 0 < p < PIXEL_COUNT
-// r,g,b are brightness values. 0=off, 255=full brightness
+// Each pixel has 32 brightness levels for each of the three colors (red,green,blue)
+// These brightness levels are normalized to be visually linear with 0=off and 31=max brightness
 
-// Note that there will likely be fewer than 256 actual visible values, but the mapping will be linear and smooth
+typedef struct {
+    uint8_t r:5;
+    uint8_t g:5;
+    uint8_t b:5;
+} pixelColor_t;
 
-// TODO: Balance, normalize, power optimize, and gamma correct these functions
-// Need some exponential compression at the top here
-// Maybe look up tables to make all calculations be one step at the cost of memory?
+// Update the pixel buffer. 
 
-void pixel_setRGB( uint8_t face, uint8_t r, uint8_t g, uint8_t b );
+void pixel_bufferedSetPixel( uint8_t pixel, pixelColor_t newColor );
 
-void pixel_SetAllRGB( uint8_t r, uint8_t g, uint8_t b  );
+// Display the buffered pixels. Blocks until next frame starts. 
+
+void pixel_displayBufferedPixels(void);
 
 /** Callback interface **/
-
 
 // This is the number of cycles between calls of the pixel_callback
 // It is determined by the programming of the timer that drives
