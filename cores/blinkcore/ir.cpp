@@ -30,6 +30,9 @@
 
 #include "callbacks.h"
 
+#warning DEBUG
+#include "sp.h"
+
 // A bit cycle is one timer tick, currently 512us
 
 //TODO: Optimize these to be exact minimum for the distance in the real physical object    
@@ -88,7 +91,8 @@ void ir_disable(void) {
 }        
 
 void ir_init(void) {
-              
+    
+
     IR_ANODE_DDR |= IR_BITS ;       // Set all ANODES to drive (and leave forever)
                                     // The PORT will be 0, so these will be driven low
                                     // until we actively send a pulse
@@ -310,39 +314,37 @@ uint8_t ir_test_and_charge( void ) {
 /*
 
     We need a way to send pulses with precise spacing between them, otherwise
-    and interrupt could happen between pulses and spread them out enough 
+    an interrupt could happen between pulses and spread them out enough 
     that they are no longer recognized. 
     
     We will use Timer1 dedicated to this task for now. We will run in CTC mode
     and send our pulses on each TOP. This way we will never have to modify the 
     counter while the timer is running- possibly loosing counts. 
     
-    We will use ICR1 to define the top. This leaves the OCRs free for maybe other things?
+    We will use ICR1 to define the top. 
     
     Mode 12: CTC TOP=ICR1 WGM13, WGM12
     
 */
 
-static volatile uint8_t sendpulses_remaining;
-static uint8_t sendpulses_biutmask;
+static volatile uint16_t sendpulse_bitmask;      // Which IR LEDs to send on 
+static volatile uint16_t sendpulse_spaces;       // Time to delay until next pulse. 0=pulse sent
 
 // Currently clocks at 23us @ 4Mhz
 
 ISR(TIMER1_CAPT_vect) {
-       
-    ir_tx_pulse_internal( sendpulses_biutmask );
+    
+    if (sendpulse_spaces) {
+        
+        sendpulse_spaces--;
+        
+        if (sendpulse_spaces==0) {
+               
+            ir_tx_pulse_internal( sendpulse_bitmask );     // Flash
             
-     sendpulses_remaining--;    
-    
-    if (!sendpulses_remaining) {
-        // stop timer when no more pulses to send
-        TCCR1B = 0;             // Sets prescaler to 0 which stops the timer. 
-    }        
-    
-    // if timer not stopped, then we will automatically fire again next time we hit the TOP            
-}    
-
-
+        }            
+    }            
+}        
 
 // Send a series of pulses with spacing_ticks clock ticks between each pulse (or as quickly as possible if spacing too short)
 // If count=0 then 256 pulses will be sent. 
@@ -367,12 +369,18 @@ ISR(TIMER1_CAPT_vect) {
      
   */
 
-void ir_tx_pulses(uint8_t count, uint16_t spacing_ticks , uint8_t bitmask) {
+// Sends starting a pulse train.
+// Each pulse will have an integer number of delays between it and the previous pulse.
+// Each of those delay windows is spacing_ticks wide. 
+// This sets things up and sends the initial pulse. 
+// Then continue to call ir_tx_sendpulse() to send subsequent pulses
+// Call ir_tx_end() after last pulse to turn off the ISR (optional but saves CPU and power)
+
+void ir_tx_start(uint16_t spacing_ticks , uint8_t bitmask ) {
     
-    sendpulses_remaining = count;    
-    sendpulses_biutmask=bitmask;
-    
-    ICR1 = spacing_ticks;               // We will fire ISR when we hit this, and also roll back to 0. 
+    sendpulse_bitmask = bitmask &  ALL_IR_BITS; // Protect the non-IR LED bits from invalid input
+
+    ICR1 = spacing_ticks;               // We will fire ISR when we hit this, and also roll back to 0.
     
     TCNT1 = spacing_ticks-1;            // Grease the wheels. This will make the 1st pulse go out as soon as we turn on the timer
     
@@ -381,18 +389,37 @@ void ir_tx_pulses(uint8_t count, uint16_t spacing_ticks , uint8_t bitmask) {
     
     
     TIMSK1 |= _BV(ICIE1);                // Enable the ISR when we hit ICR1
+                                         // TODO: Do this only once at startup
     
-    
+    sendpulse_spaces=1;                  // Will send as soon as called (immediately after next line). 
     
     // Start clock in mode 12 with /1 prescaller (one timer tick per clock tick)
     TCCR1B = _BV( WGM12) | _BV( WGM13) | _BV( CS10);            // clk/1
     
-    // TODO: Use the ISR bit to signal when done ebucase it is in an IO register
+    // ISR will trigger immediately and send the 1st pulse
     
-    while (sendpulses_remaining);       // Wait to complete
-    
-    CBI( TIMSK1 , ICIE1 );                // Be a good citizen and disable ISR when done. We share this timer with delay_ms().
-    
-    // Note that the timer was already stopped in the last call of the ISR.    
-            
 }
+
+// leadingSpaces is the number of spaces to wait between the previous pulse and this pulse.
+// 0 doesn't really make any sense
+
+// TODO: single buffer this in case sender has a hiccup or is too slow to keep up?
+
+void ir_tx_sendpulse( uint8_t leadingSpaces ) {
+    
+    while (sendpulse_spaces);           // Wait for previous pulse to get sent
+    sendpulse_spaces=leadingSpaces;     // Get ready so next ISR trigger will end a pulse after specified number of spaces
+    
+}    
+
+// Turn off the pulse sending ISR
+// TODO: This should return any bit that had to be terminated because of collision
+
+void ir_tx_end(void) {
+    while (sendpulse_spaces);       // Wait for previous pulse to get sent (complete)
+    
+    // stop timer (not more ISR) 
+    TCCR1B = 0;             // Sets prescaler to 0 which stops the timer.
+    
+}        
+
