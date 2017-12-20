@@ -67,6 +67,7 @@ static uint8_t oddParity(uint8_t p) {
 
 
 // You really want sizeof( ir_rx_state_t) to be  a power of 2. It makes the emitted pointer calculations much smaller and faster.
+// TODO: Do we need all these volatiles? Probably not...
 
  typedef struct {
      
@@ -74,7 +75,7 @@ static uint8_t oddParity(uint8_t p) {
      
      // I think access to the  first element is slightly faster, so most frequently used should go here
      
-    uint8_t windowsSinceLastFlash;          // How many times windows since last trigger? Reset to 0 when we see a trigger
+    uint8_t volatile windowsSinceLastFlash;          // How many times windows since last trigger? Reset to 0 when we see a trigger
           
     uint8_t inputBuffer;                    // Buffer for RX in progress. Data bits step up until high bit set.           
                                             // High bit will always be set for real data because the start bit is 1
@@ -94,36 +95,132 @@ static uint8_t oddParity(uint8_t p) {
  // We keep these in together in a a struct to get faster access via
  // Data Indirect with Displacement opcodes
 
- static ir_rx_state_t ir_rx_states[IRLED_COUNT];
+ static volatile ir_rx_state_t ir_rx_states[IRLED_COUNT];
 
 // Called once per timer tick
 // Check all LEDs, decode any changes
  
  // Note this runs in callback context in timercallback. 
  
+ volatile uint8_t specialWindowCounter=0;
+ 
+ 
+ void updateIRComs0(void) {
+     
+     SP_PIN_R_SET_1();
+     
+     // Grab which IR LEDs triggered in the last time window
+     
+     uint8_t bits = ir_test_and_charge();
+     
+     ir_rx_state_t volatile *ptr = ir_rx_states;
+
+     uint8_t bit = bits & 0b00000001;
+         
+    if (bit) {      // This LED triggered in the last time window
+
+        uint8_t thisWindowsSinceLastFlash = ptr->windowsSinceLastFlash;
+
+        SP_SERIAL_TX_NOW(  thisWindowsSinceLastFlash + 'A' );
+
+        ptr->windowsSinceLastFlash = 0;     // We just got a flash, so start counting over.
+                 
+        if (thisWindowsSinceLastFlash<=3) {     // We got a valid bit
+                 
+            uint8_t inputBuffer = ptr->inputBuffer;     // Compiler should do this optimization for us, but it don't
+                 
+            inputBuffer <<= 1;      // Make room for new bit (fills with a 0)
+                 
+            if (thisWindowsSinceLastFlash<=1) {     // Saw a 1 bit
+                     
+                inputBuffer |= 0b00000001;          // Save newly received 1 bit
+                     
+            }
+                 
+                 
+            // Here we look for a 1 followed by a 0 in the top two bits. We need this
+            // because there can potentially be a leading 1 in the bit stream if the
+            // first pulse of the 0 start bit happens to come right after an ambient
+            // trigger - this could look like a 1. This can only happen at the first pulse
+            // because after that we are pulsing often enough that there will never be
+            // an ambient trigger.
+            // So we use the pattern '10' as a start because if there is a leading '1'
+            // then there will be '11' at the beginning and the 1st '1' will not have a '0'
+            // after it.
+            // TODO: Explain this better with pictures.
+                 
+                 
+            if ( (inputBuffer & 0b11000000) == 0b10000000 ) {
+                     
+                // TODO: parity check would go here, but not for now.
+                     
+                // TODO: check for overrun in lastValue and either flag error or increase buffer size
+                     
+                ptr->lastValue = inputBuffer;           // Save the received byte (clobbers old if not read yet)
+                     
+                //SP_SERIAL_TX_NOW( inputBuffer & 0b00111111 );
+                     
+                //SP_PIN_R_SET_1();
+                     
+                inputBuffer =0;                    // Clear out the input buffer to look for next start bit
+                     
+            }
+                 
+            ptr->inputBuffer = inputBuffer;
+                 
+        }  else {
+                 
+        // Received an invalid bit
+                 
+            ptr->inputBuffer = 0;                       // Start looking for start bit again.
+                 
+        }
+             
+    } else {
+             
+        ptr->windowsSinceLastFlash++;           // Keep count of how many windows since last flash
+                 
+        SP_SERIAL_TX_NOW( ptr->windowsSinceLastFlash + 'a' );
+                 
+    }
+     
+    SP_PIN_R_SET_0();
+     
+ }
+ 
  void updateIRComs(void) {
+     
      
      // Grab which IR LEDs triggered in the last time window
                
     uint8_t bits = ir_test_and_charge();
     
-    // Loop though and process each IR LED (which is one bit in `bits`)
-    
-    uint8_t bitwalker = _BV( IRLED_COUNT ); 
-    ir_rx_state_t *ptr = ir_rx_states + IRLED_COUNT -1;    
+    // Loop though and process each IR LED (which corresponds to one bit in `bits`)
+    // Start at IR5 and work out way down to IR0. 
+    // Going down is faster than up because we can test bitwalker == 0 for free
+
+#warning only checking IR0!
+/*    
+    uint8_t bitwalker = _BV( IRLED_COUNT -1 ); 
+    ir_rx_state_t volatile *ptr = ir_rx_states + IRLED_COUNT -1;    
+*/
+    uint8_t bitwalker = _BV( 0 );
+    ir_rx_state_t volatile *ptr = ir_rx_states;
 
     // Loop though each of the IR LED and see if anything happened on each...
 
-    while (bitwalker) {
+    do {
                 
         uint8_t bit = bits & bitwalker;
                         
         if (bit) {      // This LED triggered in the last time window
-                        
-            uint8_t thisWindowsSinceLastFlash = ptr->windowsSinceLastFlash;
-                        
-            ptr->windowsSinceLastFlash = 0;     // We just got a flash, so start counting over.
             
+            SP_PIN_R_SET_1();          
+
+            uint8_t thisWindowsSinceLastFlash = ptr->windowsSinceLastFlash;
+                                
+             ptr->windowsSinceLastFlash = 0;     // We just got a flash, so start counting over.
+                
             if (thisWindowsSinceLastFlash<=3) {     // We got a valid bit
                                                                                 
                 uint8_t inputBuffer = ptr->inputBuffer;     // Compiler should do this optimization for us, but it don't 
@@ -134,8 +231,12 @@ static uint8_t oddParity(uint8_t p) {
                     
                     inputBuffer |= 0b00000001;          // Save newly received 1 bit 
                     
-                }
-                
+                    SP_SERIAL_TX_NOW(  '1' );
+
+                } else {
+                    SP_SERIAL_TX_NOW(  '0' );                    
+                }                    
+                    
                                
                 // Here we look for a 1 followed by a 0 in the top two bits. We need this 
                 // because there can potentially be a leading 1 in the bit stream if the 
@@ -159,7 +260,7 @@ static uint8_t oddParity(uint8_t p) {
                     
                     //SP_SERIAL_TX_NOW( inputBuffer & 0b00111111 );
                     
-                    SP_PIN_R_SET_1();
+                    //SP_PIN_R_SET_1();
                     
                     inputBuffer =0;                    // Clear out the input buffer to look for next start bit
                     
@@ -172,31 +273,30 @@ static uint8_t oddParity(uint8_t p) {
                 // Received an invalid bit
                 
                 ptr->inputBuffer = 0;                       // Start looking for start bit again. 
+
+                SP_SERIAL_TX_NOW(  'X' );
                                                     
             }                
                 
         } else {
-            
+                        
             ptr->windowsSinceLastFlash++;           // Keep count of how many windows since last flash
             
-            // Note there here were do not check for overflow. We assume that an LED will
-            // spontaneously fire form ambient light in fewer than 255 time windows
+            //SP_SERIAL_TX_NOW( ptr->windowsSinceLastFlash + 'a' );
+                       
+            // Note there here were do not check for overflow on windowsSinceLastFlash. 
+            // We assume that an LED will spontaneously fire form ambient light in fewer 
+            // than 255 time windows
             
         }                       
                          
-        if (bitwalker==1) {     // Reading IR0
-            
-            SP_SERIAL_TX_NOW(  ptr->windowsSinceLastFlash + '0' );
-            
-        }
-                         
-                         
+                                                  
         ptr--;                    
         bitwalker >>=1;
         
         SP_PIN_A_SET_0();
         
-    }        
+    } while (bitwalker);     
     
      SP_PIN_R_SET_0();
          
@@ -212,7 +312,7 @@ bool irIsReadyOnFace( uint8_t led ) {
 
 uint8_t irGetData( uint8_t led ) {
         
-    ir_rx_state_t *ptr = ir_rx_states + led;        // This turns out to generate much more efficient code than array access. ptr saves 25 bytes. :/   Even so, the emitted ptr dereference code is awful.
+    ir_rx_state_t volatile *ptr = ir_rx_states + led;        // This turns out to generate much more efficient code than array access. ptr saves 25 bytes. :/   Even so, the emitted ptr dereference code is awful.
     
     while (! ptr->lastValue );      // Wait for high be to be set to indicate value waiting. 
         
