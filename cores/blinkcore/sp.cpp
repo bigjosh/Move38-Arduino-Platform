@@ -42,6 +42,7 @@ uint8_t sp_aux_analogRead(void) {
 
 
 // Initialize the serial on the service port. 
+// Overrides digital mode for service port pins T and R respectively. 
 
 void sp_serial_init(void) {
     
@@ -52,8 +53,10 @@ void sp_serial_init(void) {
     // This feels like it belongs in hardware.c, maybe in an inline fucntion?
         
     SBI( SP_SERIAL_CTRL_REG , U2X0);        // 2X speed
-    SBI( UCSR0B , TXEN0 );                  // Enable transmitter (disables DEBUGA)
-    SBI( UCSR0B , RXEN0);                   // Enable receiver    (disables DEBUGB)
+    
+    SBI( UCSR0B , TXEN0 );                  // Enable transmitter (disables digital mode on T pin)
+    
+    SBI( UCSR0B , RXEN0);                   // Enable receiver    (disables digital mode on R pin)
     
     #if F_CPU!=4000000  
         #error Serial port calculation in debug.cpp must be updated if not 4Mhz CPU clock.
@@ -62,7 +65,20 @@ void sp_serial_init(void) {
     UBRR0 = 0;                  // 500Kbd. This is as fast as we can go at 4Mhz, and happens to be 0% error and supported by the Arduino serial monitor. 
                                 // See datasheet table 25-7. 
         
-}    
+}   
+
+// Free up service port pin R for digital IO again
+
+void sp_serial_disable_rx(void) {
+    CBI( UCSR0B , RXEN0 );                  // Enable transmitter (disables digital mode on T pin)    
+}     
+
+// Free up service port pin T for digital IO again
+
+void sp_serial_disable_tx(void) {
+    CBI( UCSR0B , TXEN0 );                  // Enable transmitter (disables digital mode on T pin)
+}
+
 
 // Send a byte out the serial port. DebugSerialInit() must be called first. Blocks unitl buffer free if TX already in progress.
 
