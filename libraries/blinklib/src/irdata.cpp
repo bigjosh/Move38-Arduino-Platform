@@ -15,22 +15,21 @@
     IR_MASK by default allows interrupts on all faces. 
     TODO: When noise causes a face to wake us from sleep too much, we can turn off the mask bit for a while.
     
-    MORE TO COME HERE NEED PICTURES. 
+    MORE TO COME HERE - NEED PICTURES. 
 
 
 */
 
-
-#define DEBUG_MODE
-
 #include "blinklib.h"
-
 
 #include "ir.h"
 #include "utils.h"
 #include "timer.h"          // get US_TO_CYCLES()
 
 #include "irdata.h"
+
+#warning debug
+#include "sp.h"
 
 #include <util/delay.h>         // Must come after F_CPU definition
 
@@ -47,7 +46,13 @@
 
  //#define IR_SPACE_TIME_US (IR_WINDOW_US + (( ((unsigned long) IR_WINDOW_US * IR_CLOCK_SPREAD_PCT) ) / 100UL ) - TX_PULSE_OVERHEAD )  // Used for sending flashes. Must be longer than one IR timer tick including if this clock is slow and RX is fast. 
  
-  #define IR_SPACE_TIME_US (600)  // Used for sending flashes. Must be longer than one IR timer tick including if this clock is slow and RX is fast. 
+#define IR_SPACE_TIME_US (600)  // Used for sending flashes. Must be longer than one IR timer tick including if this clock is slow and RX is fast. 
+
+#define TICKS_PER_SECOND (F_CPU)
+
+#define IR_SPACE_TIME_TICKS US_TO_CYCLES( IR_SPACE_TIME_US )
+
+/*
 
 // from http://www.microchip.com/forums/m587239.aspx
 
@@ -58,7 +63,7 @@ static uint8_t oddParity(uint8_t p) {
       return p & 1;
 }
 
-
+*/
 
 
 // You really want sizeof( ir_rx_state_t) to be  a power of 2. It makes the emitted pointer calculations much smaller and faster.
@@ -89,8 +94,7 @@ static uint8_t oddParity(uint8_t p) {
  // We keep these in together in a a struct to get faster access via
  // Data Indirect with Displacement opcodes
 
- ir_rx_state_t ir_rx_states[IRLED_COUNT];
-
+ static ir_rx_state_t ir_rx_states[IRLED_COUNT];
 
 // Called once per timer tick
 // Check all LEDs, decode any changes
@@ -98,38 +102,31 @@ static uint8_t oddParity(uint8_t p) {
  // Note this runs in callback context in timercallback. 
  
  void updateIRComs(void) {
-          
+     
+     // Grab which IR LEDs triggered in the last time window
+               
     uint8_t bits = ir_test_and_charge();
-
-    /*
     
-    // DEBUGC is the sample clock. A long pulse means a trigger on led IR0 durring prior window
-    if ( TBI( bits , 0 ) ) SP_AUX_PULSE(50);
-    else SP_AUX_PULSE(10);		 
+    // Loop though and process each IR LED (which is one bit in `bits`)
     
-    */
-      
-    ir_rx_state_t *ptr = ir_rx_states + IRLED_COUNT -1;
-    uint8_t bitwalker = 0b00100000;
+    uint8_t bitwalker = _BV( IRLED_COUNT ); 
+    ir_rx_state_t *ptr = ir_rx_states + IRLED_COUNT -1;    
 
-
-    //    #warning only processing IR0    
-    //uint8_t bitwalker = 0b00000001;
-    //ir_rx_state_t *ptr = ir_rx_states;;
+    // Loop though each of the IR LED and see if anything happened on each...
 
     while (bitwalker) {
-        
+                
         uint8_t bit = bits & bitwalker;
-        
+                        
         if (bit) {      // This LED triggered in the last time window
-            
+                        
             uint8_t thisWindowsSinceLastFlash = ptr->windowsSinceLastFlash;
-            
+                        
             ptr->windowsSinceLastFlash = 0;     // We just got a flash, so start counting over.
             
             if (thisWindowsSinceLastFlash<=3) {     // We got a valid bit
-                                                
-                uint8_t inputBuffer = ptr->inputBuffer;     // Compiler should do this optrimization for us, but it don't 
+                                                                                
+                uint8_t inputBuffer = ptr->inputBuffer;     // Compiler should do this optimization for us, but it don't 
                 
                 inputBuffer <<= 1;      // Make room for new bit (fills with a 0)
                             
@@ -138,14 +135,31 @@ static uint8_t oddParity(uint8_t p) {
                     inputBuffer |= 0b00000001;          // Save newly received 1 bit 
                     
                 }
-                                
-                if ( inputBuffer & 0b10000000 ) {       // Do we already have a full 7-bit (plus start bit) byte in the buffer?
+                
+                               
+                // Here we look for a 1 followed by a 0 in the top two bits. We need this 
+                // because there can potentially be a leading 1 in the bit stream if the 
+                // first pulse of the 0 start bit happens to come right after an ambient 
+                // trigger - this could look like a 1. This can only happen at the first pulse 
+                // because after that we are pulsing often enough that there will never be
+                // an ambient trigger. 
+                // So we use the pattern '10' as a start because if there is a leading '1'
+                // then there will be '11' at the beginning and the 1st '1' will not have a '0'
+                // after it. 
+                // TODO: Explain this better with pictures. 
+                
+                                                
+                if ( (inputBuffer & 0b11000000) == 0b10000000 ) {       
                     
                     // TODO: parity check would go here, but not for now. 
                     
                     // TODO: check for overrun in lastValue and either flag error or increase buffer size
                     
                     ptr->lastValue = inputBuffer;           // Save the received byte (clobbers old if not read yet)
+                    
+                    //SP_SERIAL_TX_NOW( inputBuffer & 0b00111111 );
+                    
+                    SP_PIN_R_SET_1();
                     
                     inputBuffer =0;                    // Clear out the input buffer to look for next start bit
                     
@@ -161,11 +175,30 @@ static uint8_t oddParity(uint8_t p) {
                                                     
             }                
                 
-        }                
+        } else {
+            
+            ptr->windowsSinceLastFlash++;           // Keep count of how many windows since last flash
+            
+            // Note there here were do not check for overflow. We assume that an LED will
+            // spontaneously fire form ambient light in fewer than 255 time windows
+            
+        }                       
+                         
+        if (bitwalker==1) {     // Reading IR0
+            
+            SP_SERIAL_TX_NOW(  ptr->windowsSinceLastFlash + '0' );
+            
+        }
+                         
                          
         ptr--;                    
         bitwalker >>=1;
+        
+        SP_PIN_A_SET_0();
+        
     }        
+    
+     SP_PIN_R_SET_0();
          
 }     
  
@@ -189,34 +222,12 @@ uint8_t irGetData( uint8_t led ) {
     
     ptr->lastValue=0;       // Clear to indicate we read the value. Doesn't need to be atomic.
 
-    return d & 0b01111111;      // Don't show our internal flag. 
+    return d & 0b00111111;      // Don't show our internal start bit 
     
 }
 
 
-
-static void txbit( uint8_t ledBitmask, uint8_t bit ) {
-    
-    // 1 blinks for a 0-bit
-    
-    if (bit) {
-    
-        ir_tx_pulses( 2 , US_TO_CYCLES( IR_SPACE_TIME_US ), ledBitmask );
-        
-    } else {
-
-        ir_tx_pulses( 1 , US_TO_CYCLES( IR_SPACE_TIME_US ) , ledBitmask );
-        
-    }                    
-    
-    // Two spaces at the end of each bit
-
-    _delay_us(IR_SPACE_TIME_US*2);
-
-    
-    
-}
-
+/*
 // Internal send to all faces with a 1 in the bitmask. 
 
 static void irBitmaskSendData( uint8_t ledBitmask , uint8_t data ) {
@@ -296,5 +307,38 @@ void irBroadcastData( uint8_t data ) {
     // so should be clear to send to those now...
     
     irBitmaskSendData( (~bitmask) &  ALL_IR_BITS , data );    
+    
+}
+
+*/
+
+void irSendDataX(uint8_t data, uint8_t bitmask) {
+    
+    uint8_t bitwalker = 0b00100000;
+    
+    // Start things up, send initial pulse
+    ir_tx_start( IR_SPACE_TIME_TICKS , bitmask );
+    
+    // Send the start bits
+    ir_tx_sendpulse( 1 );           // Start Bit
+    ir_tx_sendpulse( 3 );           // Guard 0 bit to ensure real start bit is detected and not extraious leading pulse.
+    
+    do {
+        
+        if (data & bitwalker) {
+            ir_tx_sendpulse( 1 ) ;
+            } else {
+            ir_tx_sendpulse( 3 ) ;
+        }
+        
+        bitwalker>>=1;
+        
+    } while (bitwalker);
+    
+    // Send stop bit
+    
+    ir_tx_sendpulse( 3 );
+    
+    ir_tx_end();
     
 }

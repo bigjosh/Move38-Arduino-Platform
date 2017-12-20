@@ -32,6 +32,9 @@
 #include "ir.h"
 #include "irdata.h"
 
+#warning debug
+#include "sp.h"
+
 // IR CONSTANTS
 
 #define STATE_BROADCAST_SPACING_MS  50           // How often do we broadcast our state to neighboring tiles?
@@ -583,8 +586,17 @@ static void callOnLoopChain(void ) {
 // This is the entry point where the blinkcore platform will pass control to 
 // us after initial power-up is complete
 
-void run(void) {
+    #include <util\delay.h>
 
+
+void run(void) {
+    
+
+    SP_PIN_A_MODE_OUT();
+    SP_PIN_T_MODE_OUT();
+    SP_PIN_R_MODE_OUT(); 
+    sp_serial_init();
+    
     setup();
     
     while (1) {

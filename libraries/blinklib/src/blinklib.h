@@ -271,6 +271,8 @@ bool irIsReadyOnFace( uint8_t face );
 
 uint8_t irGetData( uint8_t led );
 
+#warning harmonize this
+void irSendDataX(uint8_t data, uint8_t bitmask);
 
 #define ERRORBIT_PARITY       2    // There was an RX parity error
 #define ERRORBIT_OVERFLOW     3    // A received byte in lastValue was overwritten with a new value
@@ -282,7 +284,6 @@ uint8_t irGetData( uint8_t led );
 // Clears the bits on read
 
 uint8_t irGetErrorBits( uint8_t face );
-
 
 
 /*
