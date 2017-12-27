@@ -252,9 +252,6 @@ bool buttonPressed(void);
 
 */
 
-
-
-
 // Send data on a single face. Data is 7-bits wide, top bit is ignored. 
 
 void irSendData( uint8_t face , uint8_t data );
@@ -267,24 +264,12 @@ void irBroadcastData( uint8_t data );
 
 bool irIsReadyOnFace( uint8_t face );
 
-// Read the most recently received data. Value 0-127. Blocks if no data ready.
+// Read the most recently received data. Value 0-64. Blocks if no data ready.
 
-uint8_t irGetData( uint8_t led );
+uint8_t irGetData( uint8_t face );
 
 #warning harmonize this
 void irSendDataX(uint8_t data, uint8_t bitmask);
-
-#define ERRORBIT_PARITY       2    // There was an RX parity error
-#define ERRORBIT_OVERFLOW     3    // A received byte in lastValue was overwritten with a new value
-#define ERRORBIT_NOISE        4    // We saw unexpected extra pulses inside data
-#define ERRORBIT_DROPOUT      5    // We saw too few pulses, or two big a space between pulses
-#define ERRORBIT_DUMMY        6
-
-// Read the error state of the indicated LED
-// Clears the bits on read
-
-uint8_t irGetErrorBits( uint8_t face );
-
 
 /*
 

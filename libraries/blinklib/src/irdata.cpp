@@ -107,7 +107,7 @@ static uint8_t oddParity(uint8_t p) {
  
  void updateIRComs0(void) {
      
-     SP_PIN_R_SET_1();
+     //SP_PIN_R_SET_1();
      
      // Grab which IR LEDs triggered in the last time window
      
@@ -118,10 +118,10 @@ static uint8_t oddParity(uint8_t p) {
      uint8_t bit = bits & 0b00000001;
          
     if (bit) {      // This LED triggered in the last time window
-
+        
         uint8_t thisWindowsSinceLastFlash = ptr->windowsSinceLastFlash;
 
-        SP_SERIAL_TX_NOW(  thisWindowsSinceLastFlash + 'A' );
+        //SP_SERIAL_TX_NOW(  thisWindowsSinceLastFlash + 'A' );
 
         ptr->windowsSinceLastFlash = 0;     // We just got a flash, so start counting over.
                  
@@ -180,17 +180,16 @@ static uint8_t oddParity(uint8_t p) {
              
         ptr->windowsSinceLastFlash++;           // Keep count of how many windows since last flash
                  
-        SP_SERIAL_TX_NOW( ptr->windowsSinceLastFlash + 'a' );
+        //SP_SERIAL_TX_NOW( ptr->windowsSinceLastFlash + 'a' );
                  
     }
      
-    SP_PIN_R_SET_0();
+    //SP_PIN_R_SET_0();
      
  }
  
  void updateIRComs(void) {
-     
-     
+             
      // Grab which IR LEDs triggered in the last time window
                
     uint8_t bits = ir_test_and_charge();
@@ -199,23 +198,31 @@ static uint8_t oddParity(uint8_t p) {
     // Start at IR5 and work out way down to IR0. 
     // Going down is faster than up because we can test bitwalker == 0 for free
 
-#warning only checking IR0!
-/*    
+    
     uint8_t bitwalker = _BV( IRLED_COUNT -1 ); 
     ir_rx_state_t volatile *ptr = ir_rx_states + IRLED_COUNT -1;    
-*/
+
+/*
+    #warning only checking IR0!    
     uint8_t bitwalker = _BV( 0 );
     ir_rx_state_t volatile *ptr = ir_rx_states;
-
+*/
     // Loop though each of the IR LED and see if anything happened on each...
 
     do {
                 
         uint8_t bit = bits & bitwalker;
+        
+        if (bitwalker== _BV(0) ) {      // Only care about IR0
                         
+            if( bit) {
+                SP_PIN_A_SET_1();       // A very short pulse for a 0 bit. 
+            }                
+            
+        }
+                                
         if (bit) {      // This LED triggered in the last time window
             
-            SP_PIN_R_SET_1();          
 
             uint8_t thisWindowsSinceLastFlash = ptr->windowsSinceLastFlash;
                                 
@@ -231,10 +238,10 @@ static uint8_t oddParity(uint8_t p) {
                     
                     inputBuffer |= 0b00000001;          // Save newly received 1 bit 
                     
-                    SP_SERIAL_TX_NOW(  '1' );
+                    //SP_SERIAL_TX_NOW(  '1' );
 
                 } else {
-                    SP_SERIAL_TX_NOW(  '0' );                    
+                    //SP_SERIAL_TX_NOW(  '0' );                    
                 }                    
                     
                                
@@ -260,7 +267,7 @@ static uint8_t oddParity(uint8_t p) {
                     
                     //SP_SERIAL_TX_NOW( inputBuffer & 0b00111111 );
                     
-                    //SP_PIN_R_SET_1();
+                    SP_PIN_R_SET_1();
                     
                     inputBuffer =0;                    // Clear out the input buffer to look for next start bit
                     
@@ -274,7 +281,7 @@ static uint8_t oddParity(uint8_t p) {
                 
                 ptr->inputBuffer = 0;                       // Start looking for start bit again. 
 
-                SP_SERIAL_TX_NOW(  'X' );
+                //SP_SERIAL_TX_NOW(  'X' );
                                                     
             }                
                 
@@ -294,9 +301,10 @@ static uint8_t oddParity(uint8_t p) {
         ptr--;                    
         bitwalker >>=1;
         
-        SP_PIN_A_SET_0();
         
     } while (bitwalker);     
+
+     SP_PIN_A_SET_0();
     
      SP_PIN_R_SET_0();
          
@@ -412,7 +420,7 @@ void irBroadcastData( uint8_t data ) {
 
 */
 
-void irSendDataX(uint8_t data, uint8_t bitmask) {
+void irSendData(uint8_t data, uint8_t bitmask) {
     
     uint8_t bitwalker = 0b00100000;
     
