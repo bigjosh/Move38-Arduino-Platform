@@ -55,9 +55,9 @@
 
 #define BUTTON_CLICK_TIMEOUT_MS 330
 
-#define BUTTON_LONGPRESS_TIME_MS 2000       // How long you must hold button down to register a long press. 
+#define BUTTON_LONGPRESS_TIME_MS 2000           // How long you must hold button down to register a long press. 
 
-#define BUTTON_SLEEP_TIMEOUT_SECONDS (2*60)   // If no button press in this long then goto sleep
+#define BUTTON_SLEEP_TIMEOUT_SECONDS (10*60)   // If no button press in this long then goto sleep
 
 // PIXEL FUNCTIONS
 
