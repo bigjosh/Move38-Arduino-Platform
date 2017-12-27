@@ -41,7 +41,8 @@
 #define IR_CHARGE_TIME_US 2        // How long to charge the LED though the pull-up
 
 // Currently chosen empirically to work with some tile cases Jon made 7/28/17
-#define IR_PULSE_TIME_US 20         // Used for sending flashes
+
+#define IR_PULSE_TIME_US 10         // Used for sending flashes
 
 
 #if ALL_IR_BITS != IR_BITS
