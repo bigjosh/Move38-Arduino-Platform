@@ -269,6 +269,23 @@ bool irIsReadyOnFace( uint8_t face );
 uint8_t irGetData( uint8_t face );
 
 
+/* Power functions */
+
+// The blink will automatically sleep if the button has not been pressed in 
+// more than 10 minutes. The sleep is preemptive - the tile stops in the middle of whatever it
+// happens to be doing. 
+
+// The tile wakes from sleep when the button is pressed. Upon waking, it picks up from exactly
+// where it left off. It is up to the programmer to check to see if the blink has slept and then 
+// woken and react accordingly if desired. 
+
+
+// Returns 1 if we have slept and woken since last time we checked
+// Best to check as last test at the end of loop() so you can
+// avoid intermediate display upon waking.
+
+uint8_t hasWoken(void);
+
 /*
 
     These hook functions are filled in by the sketch

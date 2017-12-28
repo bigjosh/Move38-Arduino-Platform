@@ -513,6 +513,25 @@ static void updateMillis(void) {
     
 }    
 
+// Have we woken since last time we checked?
+
+volatile uint8_t wokeFlag=0;
+
+// Returns 1 if we have slept and woken since last time we checked
+// Best to check as last test at the end of loop() so you can 
+// avoid intermediate display upon waking. 
+
+uint8_t hasWoken(void) {
+    
+    if (wokeFlag) {
+        wokeFlag=0;
+        return 1;        
+    }        
+    
+    return 0; 
+        
+}    
+
 // Turn off everything and goto to sleep
 
 void sleep(void) {
@@ -526,6 +545,8 @@ void sleep(void) {
     button_ISR_off();       // Set everything back to thew way it was before we slept
     ir_enable();
     pixel_enable();
+    
+    wokeFlag = 1; 
        
 }    
 
