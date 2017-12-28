@@ -32,9 +32,6 @@
 #include "ir.h"
 #include "irdata.h"
 
-#warning debug
-#include "sp.h"
-
 // IR CONSTANTS
 
 #define STATE_BROADCAST_SPACING_MS  50           // How often do we broadcast our state to neighboring tiles?
@@ -591,13 +588,13 @@ static void callOnLoopChain(void ) {
 
 void run(void) {
     
-
+/*
     SP_PIN_A_MODE_OUT();
     SP_PIN_T_MODE_OUT();
     SP_PIN_R_MODE_OUT(); 
     sp_serial_init();
     sp_serial_disable_rx();
-    
+*/  
     setup();
     
     while (1) {

@@ -268,8 +268,6 @@ bool irIsReadyOnFace( uint8_t face );
 
 uint8_t irGetData( uint8_t face );
 
-#warning harmonize this
-void irSendDataX(uint8_t data, uint8_t bitmask);
 
 /*
 

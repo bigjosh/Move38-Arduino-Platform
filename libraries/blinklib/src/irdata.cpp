@@ -6,16 +6,33 @@
     THEORY OF OPERATION
     ===================
     
-    All communication is currently 8 bits wide, 7 data bits followed by 1 parity bid (odd). MSB sent first. 
+    The IR LEDs detect pulses of light.
     
-    Internally, we use an 8-bit buffer and always lead with a 1-bit, so the fully loaded value "0" has the high bit set. 
-    This lets us tell the difference between "nothing" and the loaded value "0". It also lets us walk that leading 1-bit up the byte so that when
-    it finally hits the MSB we know that the shifting is complete. This saves a counter. 
+    A bit is represented by the space between two pulses of light. A short space is a '1' and a long space is a '0'.
+    
+    A transmission is sent as a series of 8 bits. 
+            
+    We always send a preamble of "10" before the data bits. This allows the receiver to detect the 
+    incoming byte. This sequence is special because (1) the only way a '1' can end up in the top bit
+    of the buffer is if we have received enough consecutive valid bits, and (2) the following '0'
+    guards against the case where we send an opening '1' bit but it just happens to come right after the 
+    receiver had spontaneously fired. In this case, we might see these two fires (the spontaneous one 
+    and the intentional start of the preamble one) as a valid '1' bit. The extra '0' ensure that only the second 
+    intentional '1' bit will have a '0' after it and the phantom '1' will be pushed off the top of the buffer. 
+    
+    There are 6 data bits after the preamble. MSB sent first. 
+    
+    There must be an idle gap after the end of each transmission.  
         
-    IR_MASK by default allows interrupts on all faces. 
+    Internally, we use an 8-bit buffer to store incoming bits. We check to see if the top two
+    bit of the buffer match the '10' preamble sequence to know if we have received a good transmission.
+    
+    If we ever go too long between pulses, we reset the incoming buffer to '0' to avoid
+    detecting a phantom message. 
+    
     TODO: When noise causes a face to wake us from sleep too much, we can turn off the mask bit for a while.
     
-    MORE TO COME HERE - NEED PICTURES. 
+    TODO: MORE TO COME HERE - NEED PICTURES. 
 
 
 */
@@ -27,9 +44,6 @@
 #include "timer.h"          // get US_TO_CYCLES()
 
 #include "irdata.h"
-
-#warning debug
-#include "sp.h"
 
 #include <util/delay.h>         // Must come after F_CPU definition
 
@@ -211,19 +225,10 @@ static uint8_t oddParity(uint8_t p) {
 
     do {
                 
-        uint8_t bit = bits & bitwalker;
-        
-        if (bitwalker== _BV(0) ) {      // Only care about IR0
-                        
-            if( bit) {
-                SP_PIN_A_SET_1();       // A very short pulse for a 0 bit. 
-            }                
-            
-        }
+        uint8_t bit = bits & bitwalker;        
                                 
         if (bit) {      // This LED triggered in the last time window
             
-
             uint8_t thisWindowsSinceLastFlash = ptr->windowsSinceLastFlash;
                                 
              ptr->windowsSinceLastFlash = 0;     // We just got a flash, so start counting over.
@@ -238,12 +243,7 @@ static uint8_t oddParity(uint8_t p) {
                     
                     inputBuffer |= 0b00000001;          // Save newly received 1 bit 
                     
-                    //SP_SERIAL_TX_NOW(  '1' );
-
-                } else {
-                    //SP_SERIAL_TX_NOW(  '0' );                    
-                }                    
-                    
+                }                     
                                
                 // Here we look for a 1 followed by a 0 in the top two bits. We need this 
                 // because there can potentially be a leading 1 in the bit stream if the 
@@ -259,16 +259,10 @@ static uint8_t oddParity(uint8_t p) {
                                                 
                 if ( (inputBuffer & 0b11000000) == 0b10000000 ) {       
                     
-                    // TODO: parity check would go here, but not for now. 
-                    
                     // TODO: check for overrun in lastValue and either flag error or increase buffer size
                     
                     ptr->lastValue = inputBuffer;           // Save the received byte (clobbers old if not read yet)
-                    
-                    //SP_SERIAL_TX_NOW( inputBuffer & 0b00111111 );
-                    
-                    SP_PIN_R_SET_1();
-                    
+                                        
                     inputBuffer =0;                    // Clear out the input buffer to look for next start bit
                     
                 } 
@@ -277,20 +271,16 @@ static uint8_t oddParity(uint8_t p) {
                 
             }  else {
                 
-                // Received an invalid bit
+                // Received an invalid bit (too long between last two detected flashes)
                 
                 ptr->inputBuffer = 0;                       // Start looking for start bit again. 
-
-                //SP_SERIAL_TX_NOW(  'X' );
                                                     
             }                
                 
         } else {
                         
             ptr->windowsSinceLastFlash++;           // Keep count of how many windows since last flash
-            
-            //SP_SERIAL_TX_NOW( ptr->windowsSinceLastFlash + 'a' );
-                       
+                                   
             // Note there here were do not check for overflow on windowsSinceLastFlash. 
             // We assume that an LED will spontaneously fire form ambient light in fewer 
             // than 255 time windows
@@ -303,10 +293,6 @@ static uint8_t oddParity(uint8_t p) {
         
         
     } while (bitwalker);     
-
-     SP_PIN_A_SET_0();
-    
-     SP_PIN_R_SET_0();
          
 }     
  
@@ -330,95 +316,9 @@ uint8_t irGetData( uint8_t led ) {
     
     ptr->lastValue=0;       // Clear to indicate we read the value. Doesn't need to be atomic.
 
-    return d & 0b00111111;      // Don't show our internal start bit 
+    return d & 0b00111111;      // Don't show our internal preamble bits
     
 }
-
-
-/*
-// Internal send to all faces with a 1 in the bitmask. 
-
-static void irBitmaskSendData( uint8_t ledBitmask , uint8_t data ) {
-    
-    // Note that we do not need to mask out the top bit of data because the bitwalker does it automatically. 
-    
-    // TODO: Check for RX in progress here?
-
-    // RESET link
-    
-    // Three consecutive pulses will reset RX state
-    // We need to send 4 to ensure the RX sees at least 3
-    
-    ir_tx_pulses( 4 , US_TO_CYCLES( IR_SYNC_TIME_US ) , ledBitmask );
-    
-    // >2 spaces at the end of sync to load at least 1 zero into the bitstream
-
-
-    // TODO: Maybe do a timer based delay that does
-    // not accumulate additional time when interrupted?
-    
-    _delay_us(IR_SPACE_TIME_US*2);
-    
-    uint8_t bitwalker=0b01000000;                       // Send 7 bits of data
-    bool parityBit = 0;
-
-    do {
-        
-        bool bit = data & bitwalker;
-
-        txbit(  ledBitmask , bit );
-        
-        // TODO: Faster parity calculation
-        parityBit ^= bit;
-        
-        bitwalker >>=1;
-        
-    } while (bitwalker);
-    
-    txbit( ledBitmask, parityBit );	           // parity bit, 1=odd number of 1's in data    
-}    
-
-void irSendData( uint8_t face , uint8_t data ) {
-    
-    irBitmaskSendData( _BV( face ) , data );
-    
-}
-
-void irBroadcastData( uint8_t data ) {
-    
-    
-    // Find all the IR LEDs that do not currently have an RX in progress...
-    
-    uint8_t bitmask=0;
-    
-    uint8_t bitwalker = _BV( IRLED_COUNT-1 ); 
-    
-    ir_rx_state_t *ptr = ir_rx_states + IRLED_COUNT - 1;      
-    
-    while (bitwalker) {
-        
-        if (ptr->inputBuffer) {
-            bitmask |= bitwalker;
-        }            
-        
-        ptr--;
-        
-        bitwalker >>=1;
-        
-    }        
-        
-    // Send our first transmission only to those that do not have RX in progress
-            
-    irBitmaskSendData( bitmask , data ); 
-    
-    // Ok, by the time the above TX completes, whatever RX's that were in progress should be complete (each RX is a TX from the other side!)
-    // so should be clear to send to those now...
-    
-    irBitmaskSendData( (~bitmask) &  ALL_IR_BITS , data );    
-    
-}
-
-*/
 
 void irSendData(uint8_t data, uint8_t bitmask) {
     

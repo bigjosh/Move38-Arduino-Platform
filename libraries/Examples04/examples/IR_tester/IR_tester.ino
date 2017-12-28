@@ -17,7 +17,7 @@
  * of 6 messages in a row then this will not be detected.
  *
  * Also note that since the error detection depends on comparing upper bits with the 
- * inverse of the lower bit, an mulitbit error that the same bit in each zone would not 
+ * inverse of the lower bit, an mulit-bit error that the same bit in each zone would not 
  * be detected, but IO think this is very very unlikely IRL. 
  *
  */
