@@ -350,3 +350,11 @@ void irSendData(uint8_t data, uint8_t bitmask) {
     ir_tx_end();
     
 }
+
+// Send data on all faces
+
+void irBroadcastData( uint8_t data ) {
+    
+    irSendData( data , IR_ALL_BITS );
+    
+}    

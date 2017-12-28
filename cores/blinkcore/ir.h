@@ -12,7 +12,7 @@
 
 #define IRLED_COUNT FACE_COUNT
 
-#define ALL_IR_BITS (0b00111111)        // All six IR LEDs
+#define IR_ALL_BITS (0b00111111)        // All six IR LEDs
 
 // Setup pins, interrupts
 

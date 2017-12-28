@@ -45,9 +45,9 @@
 #define IR_PULSE_TIME_US 10         // Used for sending flashes
 
 
-#if ALL_IR_BITS != IR_BITS
+#if IR_ALL_BITS != IR_BITS
 
-    #error Code assumes ALL_IR_BITS  and IR_BITS are equivalant. If not, you need to map them manually. 
+    #error Code assumes IR_ALL_BITS  and IR_BITS are equivalant. If not, you need to map them manually. 
 
 #endif
 
@@ -379,7 +379,7 @@ ISR(TIMER1_CAPT_vect) {
 
 void ir_tx_start(uint16_t spacing_ticks , uint8_t bitmask ) {
     
-    sendpulse_bitmask = bitmask &  ALL_IR_BITS; // Protect the non-IR LED bits from invalid input
+    sendpulse_bitmask = bitmask &  IR_ALL_BITS; // Protect the non-IR LED bits from invalid input
 
     ICR1 = spacing_ticks;               // We will fire ISR when we hit this, and also roll back to 0.
     
