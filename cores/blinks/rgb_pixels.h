@@ -1,7 +1,7 @@
 /*
- * ir_comms.h
+ * rgb_pixels.h
  *
- * All the functions for communication and waking on the 6 IR LEDs on the tile edges.
+ * All the functions for manipulating RGB LEDs visible on the face of the tile
  *
  */ 
 
