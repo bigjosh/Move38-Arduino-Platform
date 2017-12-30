@@ -3,7 +3,7 @@
  *
  * This defines a high-level interface to the blinks tile hardware.
  *
- */ 
+ */
 
 #ifndef BLINKLIB_H_
 #define BLINKLIB_H_
@@ -20,9 +20,9 @@
 typedef uint8_t byte;
 
 
-/* 
+/*
 
-	This set of functions let you test for changes in the environment. 
+	This set of functions let you test for changes in the environment.
 
 */
 
@@ -34,18 +34,18 @@ typedef uint8_t byte;
 //bool neighborChanged();
 
 // Was the button pressed or lifted since the last time we checked?
-// Note that these register the change the instant the button state changes 
+// Note that these register the change the instant the button state changes
 // without any delay, so good for latency sensitive cases.
-// It is debounced, so the button must have been in the previous state a minimum 
-// debounce time before a new detection will occur. 
+// It is debounced, so the button must have been in the previous state a minimum
+// debounce time before a new detection will occur.
 
 bool buttonPressed(void);
-bool buttonLifted(void);
+bool buttonReleased(void);
 
 // Was the button single, double , or multi clicked since we last checked?
-// Note that there is a delay after the button is first pressed 
-// before a click is registered because we have to wait to 
-// see if another button press is coming. 
+// Note that there is a delay after the button is first pressed
+// before a click is registered because we have to wait to
+// see if another button press is coming.
 // A multiclick is 3 or more clicks
 
 // Remember that these click events fire a short time after the button is lifted on the final click
@@ -58,39 +58,39 @@ bool buttonDoubleClicked();
 bool buttonMultiClicked();
 
 
-// The number of clicks in the longest consecutive valid click cycle since the last time called. 
+// The number of clicks in the longest consecutive valid click cycle since the last time called.
 byte buttonClickCount(void);
 
 // Remember that a long press fires while the button is still down
 bool buttonLongPressed(void);
-    
+
 /*
 
 	This set of functions lets you read the current state of the environment.
 
 */
 
-// Returns true if the button currently pressed down 
+// Returns true if the button currently pressed down
 // (Debounced)
 
 bool buttonDown();
 
 
 
-/* 
+/*
     IR communications functions
 */
 
 
-// Send data on a single face. Data is 7-bits wide, top bit is ignored. 
+// Send data on a single face. Data is 7-bits wide, top bit is ignored.
 
 void irSendData( uint8_t face , uint8_t data );
 
-// Broadcast data on all faces. Data is 7-bits wide, top bit is ignored. 
+// Broadcast data on all faces. Data is 7-bits wide, top bit is ignored.
 
 void irBroadcastData( uint8_t data );
 
-// Is there a received data ready to be read on the indicated face? Returns 0 if none. 
+// Is there a received data ready to be read on the indicated face? Returns 0 if none.
 
 bool irIsReadyOnFace( uint8_t face );
 
@@ -114,24 +114,24 @@ uint8_t irGetErrorBits( uint8_t face );
 
 /*
 
-	This set of functions lets you control the colors on the face RGB LEDs 
+	This set of functions lets you control the colors on the face RGB LEDs
 
 */
 
 // Set our state to newState. This state is repeatedly broadcast to any
-// neighboring tiles. 
-// Note that setting our state to 0 make us stop broadcasting and effectively 
-// disappear from the view of neighboring tiles. 
+// neighboring tiles.
+// Note that setting our state to 0 make us stop broadcasting and effectively
+// disappear from the view of neighboring tiles.
 
 // TODO: State view not implemented yet. You can use irBroadcastData() instead.
-    
+
 // void setState( byte newState );
 
 // Color type holds 4 bits for each R,G,B. Top bit is currently unused.
 
 // TODO: Do we need 5 bits of resolution for each color?
 // TODO: Use top bit(s) for something useful like automatic
-//       blink or twinkle or something like that. 
+//       blink or twinkle or something like that.
 
 typedef unsigned Color;
 
@@ -150,6 +150,7 @@ typedef unsigned Color;
 #define MAKECOLOR_RGB(r,g,b) ((r&31)<<10|(g&31)<<5|(b&31))
 
 #define RED         MAKECOLOR_RGB(31, 0, 0)
+#define ORANGE      MAKECOLOR_RGB(31,15, 0)
 #define YELLOW      MAKECOLOR_RGB(31,31, 0)
 #define GREEN       MAKECOLOR_RGB( 0,31, 0)
 #define CYAN        MAKECOLOR_RGB( 0,31,31)
@@ -163,7 +164,7 @@ typedef unsigned Color;
 
 // We inline this so we can get compile time simplification for static colors
 
-// Make a new color from RGB values. Each value can be 0-31. 
+// Make a new color from RGB values. Each value can be 0-31.
 
 inline Color makeColorRGB( byte red, byte green, byte blue ) {
     return MAKECOLOR_RGB( red , green , blue );
@@ -203,7 +204,7 @@ void setFaceColor(  byte face, Color newColor );
 
 */
 
-// Delay the specified number of milliseconds (1,000 millisecond = 1 second) 
+// Delay the specified number of milliseconds (1,000 millisecond = 1 second)
 
 void delay( unsigned long millis );
 
@@ -211,13 +212,13 @@ void delay( unsigned long millis );
 // Note that this can increase by more than 1 between calls, so always use greater than
 // and less than rather than equals for comparisons
 
-// Overflows after about 50 days 
+// Overflows after about 50 days
 
 // Note that our clock is only accurate to about +/-10%
 
 unsigned long millis(void);
 
-/* 
+/*
 
     Utility functions
 
@@ -229,7 +230,7 @@ unsigned long millis(void);
 byte getSerialNumberByte( byte n );
 
 
-/* 
+/*
 
     Button functions
 
@@ -241,7 +242,7 @@ byte getSerialNumberByte( byte n );
 bool buttonDown(void);
 
 // Returns true if the button has been pressed since
-// the last time it was called. 
+// the last time it was called.
 
 bool buttonPressed(void);
 
@@ -293,7 +294,7 @@ uint8_t hasWoken(void);
 */
 
 
-// Called when this sketch is first loaded and then 
+// Called when this sketch is first loaded and then
 // every time the tile wakes from sleep
 
 void setup(void);
