@@ -19,31 +19,43 @@
     
     #include "utils.h"          // Grab SBI and CBI
     
-    // Set the pin direction for the service port aux (A) pin
+    // Set the pin direction for the service port pins
+    // Note that you can not use the R pin in output mode with the serial adapter board 
+    // because the level conversion transistor will pull the R pin down. 
 
-    #define SP_AUX_MODE_OUT()       SBI( SP_AUX_DDR , SP_AUX_PIN )
-    #define SP_AUX_MODE_IN()        CBI( SP_AUX_DDR , SP_AUX_PIN )
-
-    // Set the level on the service port aux (A) pin. 
+    #define SP_PIN_A_MODE_OUT()       SBI( SP_A_DDR , SP_A_BIT )
+    #define SP_PIN_A_MODE_IN()        CBI( SP_A_DDR , SP_A_BIT )
+    #define SP_PIN_R_MODE_OUT()       SBI( SP_R_DDR , SP_R_BIT )
+    #define SP_PIN_R_MODE_IN()        CBI( SP_R_DDR , SP_R_BIT )
+    #define SP_PIN_T_MODE_OUT()       SBI( SP_T_DDR , SP_T_BIT )
+    #define SP_PIN_T_MODE_IN()        CBI( SP_T_DDR , SP_T_BIT )
+    
+    // Set the level on the service port pins. 
     // These execute in a single instruction
     // You must set the aux pin to output mode first or else 
     // driving 1 will just enable the pullup. 
 
-    #define SP_AUX_1()               SBI( SP_AUX_PORT, SP_AUX_PIN)
-    #define SP_AUX_0()               CBI( SP_AUX_PORT, SP_AUX_PIN)
+    #define SP_PIN_A_SET_1()               SBI( SP_A_PORT, SP_A_BIT)
+    #define SP_PIN_A_SET_0()               CBI( SP_A_PORT, SP_A_BIT)
+    #define SP_PIN_R_SET_1()               SBI( SP_R_PORT, SP_R_BIT)
+    #define SP_PIN_R_SET_0()               CBI( SP_R_PORT, SP_R_BIT)
+    #define SP_PIN_T_SET_1()               SBI( SP_T_PORT, SP_T_BIT)
+    #define SP_PIN_T_SET_0()               CBI( SP_T_PORT, SP_T_BIT)
         
-    // Initialize the service port for a serial connection on pins T and R. 
         
+    // Initialize the serial on the service port.
+    // Overrides digital mode for service port pins T and R respectively.
+    
     void sp_serial_init(void);
-                
+        
     // Send a byte out the serial port. Blocks if a transmit already in progress. 
     // Must call sp_serial_init() first
         
     void sp_serial_tx(byte b);
         
-    #define DEBUG_SERIAL_TX_NOW(b) (SP_SERIAL_DATA_REG=b)      // Send blindly, but instantly (1 instruction). New byte ignored if there is already a pending one in the buffer (avoid this by leaving 12 clocks bewteen consecutive writes)
+    #define SP_SERIAL_TX_NOW(b) (SP_SERIAL_DATA_REG=b)      // Send blindly, but instantly (1 instruction). New byte ignored if there is already a pending one in the buffer (avoid this by leaving 12 clocks between consecutive writes)
         
-    // Wait for all pending transmitts to complete
+    // Wait for all pending transmits to complete
 
     void sp_serial_flush(void);
         
@@ -56,14 +68,21 @@
     // Best to limit yourself interactions with plenty of time (or an ACK) between each incoming byte.
 
     uint8_t sp_serial_rx(void); 
+    
+    
+    // Free up service port pin R for digital IO again after sp_serial_init() called
+    void sp_serial_disable_rx(void);
+    
+    // Free up service port pin T for digital IO again after sp_serial_init() called
+    void sp_serial_disable_tx(void);
+    
                                
     // Read the analog voltage on service port pin A
     // Returns 0-255 for voltage between 0 and Vcc
     // Handy to connect a potentiometer here and use to tune params
     // like rightness or speed
         
-    // You should call SP_AUX_MODE_IN() first or else this will be very boring
-    // You also probably want to call SP_AUX_0() first or else the pull-up on this pin will be active
+    // Call  SP_PIN_A_SET_1()  to enable the pullup (assumes you have not called SP_PIN_A_MODE_OUT() )
 
     uint8_t sp_aux_analogRead(void);
         

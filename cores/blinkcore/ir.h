@@ -12,7 +12,7 @@
 
 #define IRLED_COUNT FACE_COUNT
 
-#define ALL_IR_BITS (0b00111111)        // All six IR LEDs
+#define IR_ALL_BITS (0b00111111)        // All six IR LEDs
 
 // Setup pins, interrupts
 
@@ -28,18 +28,27 @@ void ir_enable(void);
 
 void ir_disable(void);
 
-// TODO: Queue TX so they only happen after a successful RX or idle time. Unnecessary since TX time so short?
+// Sends starting a pulse train.
+// Each pulse will have an integer number of delays between it and the previous pulse.
+// Each of those delay windows is spacing_ticks wide.
+// This sets things up and sends the initial pulse.
+// Then continue to call ir_tx_sendpulse() to send subsequent pulses
+// Call ir_tx_end() after last pulse to turn off the ISR (optional but saves CPU and power)
 
-// Send a series of pulses with spacing_ticks clock ticks between each pulse (or as quickly as possible if spacing too short)
-// If count=0 then 256 pulses will be sent.
-// If spaceing_ticks==0, then the time between pulses will be 65536 ticks
+void ir_tx_start(uint16_t spacing_ticks , uint8_t bitmask );
 
-// bit 0= led IR0 , bit 1= led IR1...
+// Send next pulse int this pulse train. 
+// leadingSpaces is the number of spaces to wait between the previous pulse and this pulse.
+// 0 doesn't really make any sense
+// Note that you must called ir_tx_sendpuse fast enough that the buffer doesn't run dry
 
-// This clobbers whatever charge was on the selected LEDs, so only call after you have checked it.
-// TODO: Fix this. Save previous charge state
+void ir_tx_sendpulse( uint8_t leadingSpaces );
 
-void ir_tx_pulses(uint8_t count, uint16_t spacing_ticks , uint8_t bitmask);
+// Turn off the pulse sending ISR
+// Blocks until final pulse transmitted
+// TODO: This should return any bit that had to be terminated because of collision
+
+void ir_tx_end(void);
 
 // Measure the IR LEDs to to see if they have been triggered.
 // Returns a 1 in each bit for each LED that was fired.

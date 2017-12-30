@@ -22,6 +22,15 @@
     #error You must #include blinkcore.h before blinkstate.h
 #endif
 
+/*
+
+// Has this neighbor changed since the last time we called 
+// neighboorChanged() or getNeighboorState() on it?
+
+boolean neighboorChanged( byte face);
+
+*/
+
 // Returns the last received state of the indicated face, or
 // 0 if no messages received recently on indicated face
 

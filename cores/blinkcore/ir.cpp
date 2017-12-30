@@ -30,6 +30,9 @@
 
 #include "callbacks.h"
 
+#warning DEBUG
+#include "sp.h"
+
 // A bit cycle is one timer tick, currently 512us
 
 //TODO: Optimize these to be exact minimum for the distance in the real physical object    
@@ -38,12 +41,13 @@
 #define IR_CHARGE_TIME_US 2        // How long to charge the LED though the pull-up
 
 // Currently chosen empirically to work with some tile cases Jon made 7/28/17
-#define IR_PULSE_TIME_US 20         // Used for sending flashes
+
+#define IR_PULSE_TIME_US 10         // Used for sending flashes
 
 
-#if ALL_IR_BITS != IR_BITS
+#if IR_ALL_BITS != IR_BITS
 
-    #error Code assumes ALL_IR_BITS  and IR_BITS are equivalant. If not, you need to map them manually. 
+    #error Code assumes IR_ALL_BITS  and IR_BITS are equivalant. If not, you need to map them manually. 
 
 #endif
 
@@ -88,7 +92,8 @@ void ir_disable(void) {
 }        
 
 void ir_init(void) {
-              
+    
+
     IR_ANODE_DDR |= IR_BITS ;       // Set all ANODES to drive (and leave forever)
                                     // The PORT will be 0, so these will be driven low
                                     // until we actively send a pulse
@@ -109,8 +114,8 @@ void ir_init(void) {
 // This clobbers whatever charge was on the selected LEDs, so only call after you have checked it.
 
 // Must be atomic so that...
-// 1) the IR ISR doesnt show up and see our wierd registers, and 
-// 2) The flashes don't get interrupted and streched out long enough to cause 2 triggers
+// 1) the IR ISR doesn't show up and see our weird registers, and 
+// 2) The flashes don't get interrupted and stretched out long enough to cause 2 triggers
 
 // TODO: Queue TX so they only happen after a successful RX or idle time. Unnecessary since TX time so short?
 
@@ -129,13 +134,13 @@ static inline void ir_tx_pulse_internal( uint8_t bitmask ) {
         // ANODE always driven. PORT low when we are waiting to RX pulses or charging. PORT driven high when transmitting a pulse. 
         // CATHODE is input when waiting for RX pulses, so DDR not driven and PORT low. CATHODE is driven high when charging and driven low when sending a pulse. 
         
-        // See ir.MD in this repo for more explainations
+        // See ir.MD in this repo for more explanations
                              
         uint8_t cathode_ddr_save = IR_CATHODE_DDR;          // We don't want to mess with the upper bits not used for IR LEDs
     
         PCMSK1 &= ~bitmask;                                 // stop Triggering interrupts on these cathode pins because they are going to change when we pulse
 
-        // TODO: Current blinklib does not use IR interrupts, so We could get rid of this bu would only save a couple instructions/cycles
+        // TODO: Current blinklib does not use IR interrupts, so we could get rid of this but would only save a couple instructions/cycles
         
         // Now we don't have to worry about...
         // (1) a received pulse on this LED interfering with our transmit and 
@@ -182,7 +187,7 @@ static inline void ir_tx_pulse_internal( uint8_t bitmask ) {
     
         // TODO: These need to be asm because it sticks a load here.
         
-        // Set cathode high for any bitmasked pins that were high wehn we started
+        // Set cathode high for any bit masked pins that were high when we started
                
         IR_CATHODE_PIN =  savedCathodeBits;
         
@@ -310,55 +315,53 @@ uint8_t ir_test_and_charge( void ) {
 /*
 
     We need a way to send pulses with precise spacing between them, otherwise
-    and interrupt could happen between pulses and spread them out enough 
+    an interrupt could happen between pulses and spread them out enough 
     that they are no longer recognized. 
     
     We will use Timer1 dedicated to this task for now. We will run in CTC mode
     and send our pulses on each TOP. This way we will never have to modify the 
     counter while the timer is running- possibly loosing counts. 
     
-    We will use ICR1 to define the top. This leaves the OCRs free for maybe other things?
+    We will use ICR1 to define the top. 
     
     Mode 12: CTC TOP=ICR1 WGM13, WGM12
     
 */
 
-static volatile uint8_t sendpulses_remaining;
-static uint8_t sendpulses_biutmask;
+static volatile uint16_t sendpulse_bitmask;      // Which IR LEDs to send on 
+static volatile uint16_t sendpulse_spaces;       // Time to delay until next pulse. 0=pulse sent
 
 // Currently clocks at 23us @ 4Mhz
 
 ISR(TIMER1_CAPT_vect) {
-       
-    ir_tx_pulse_internal( sendpulses_biutmask );
+    
+    if (sendpulse_spaces) {
+        
+        sendpulse_spaces--;
+        
+        if (sendpulse_spaces==0) {
+               
+            ir_tx_pulse_internal( sendpulse_bitmask );     // Flash
             
-     sendpulses_remaining--;    
-    
-    if (!sendpulses_remaining) {
-        // stop timer when no more pulses to send
-        TCCR1B = 0;             // Sets prescaler to 0 which stops the timer. 
-    }        
-    
-    // if timer not stopped, then we will automatically fire again next time we hit the TOP            
-}    
-
-
+        }            
+    }            
+}        
 
 // Send a series of pulses with spacing_ticks clock ticks between each pulse (or as quickly as possible if spacing too short)
 // If count=0 then 256 pulses will be sent. 
-// If spaceing_ticks==0, then the time between pulses will be 65536 ticks
+// If spacing_ticks==0, then the time between pulses will be 65536 ticks
 
 // Assumes timer1 stopped on entry, leaves timer1 stopped on exit
 // Assumes timer1 overflow flag cleared on entry, leaves clear on exit
 
-// TODO: Add a version that doesn't block and let's you specify a margin at the end before the next TX
+// TODO: Add a version that doesn't block and lets you specify a margin at the end before the next TX
 // can start? Use overflow bit to see if past. Easy?
 
 // TODO: Use fast PWM mode so OCR1 is buffered. We can then load the margin value
 // on the last pass and it will get automatically swapped in after the final pulse.
 // We can then quickly test the compare bit to see if the margin is over. 
 
-// TODO:  Check cath and buffer first and don't send if in progress. Return aborted bits
+// TODO:  Check cathode and buffer first and don't send if in progress. Return aborted bits
 /*
 
  uint8_t ir_LED_triggered_bits;
@@ -367,12 +370,18 @@ ISR(TIMER1_CAPT_vect) {
      
   */
 
-void ir_tx_pulses(uint8_t count, uint16_t spacing_ticks , uint8_t bitmask) {
+// Sends starting a pulse train.
+// Each pulse will have an integer number of delays between it and the previous pulse.
+// Each of those delay windows is spacing_ticks wide. 
+// This sets things up and sends the initial pulse. 
+// Then continue to call ir_tx_sendpulse() to send subsequent pulses
+// Call ir_tx_end() after last pulse to turn off the ISR (optional but saves CPU and power)
+
+void ir_tx_start(uint16_t spacing_ticks , uint8_t bitmask ) {
     
-    sendpulses_remaining = count;    
-    sendpulses_biutmask=bitmask;
-    
-    ICR1 = spacing_ticks;               // We will fire ISR when we hit this, and also roll back to 0. 
+    sendpulse_bitmask = bitmask &  IR_ALL_BITS; // Protect the non-IR LED bits from invalid input
+
+    ICR1 = spacing_ticks;               // We will fire ISR when we hit this, and also roll back to 0.
     
     TCNT1 = spacing_ticks-1;            // Grease the wheels. This will make the 1st pulse go out as soon as we turn on the timer
     
@@ -381,18 +390,37 @@ void ir_tx_pulses(uint8_t count, uint16_t spacing_ticks , uint8_t bitmask) {
     
     
     TIMSK1 |= _BV(ICIE1);                // Enable the ISR when we hit ICR1
+                                         // TODO: Do this only once at startup
     
-    
+    sendpulse_spaces=1;                  // Will send as soon as called (immediately after next line). 
     
     // Start clock in mode 12 with /1 prescaller (one timer tick per clock tick)
     TCCR1B = _BV( WGM12) | _BV( WGM13) | _BV( CS10);            // clk/1
     
-    // TODO: Use the ISR bit to signal when done ebucase it is in an IO register
+    // ISR will trigger immediately and send the 1st pulse
     
-    while (sendpulses_remaining);       // Wait to complete
-    
-    CBI( TIMSK1 , ICIE1 );                // Be a good citizen and disable ISR when done. We share this timer with delay_ms().
-    
-    // Note that the timer was already stopped in the last call of the ISR.    
-            
 }
+
+// leadingSpaces is the number of spaces to wait between the previous pulse and this pulse.
+// 0 doesn't really make any sense
+
+// TODO: single buffer this in case sender has a hiccup or is too slow to keep up?
+
+void ir_tx_sendpulse( uint8_t leadingSpaces ) {
+    
+    while (sendpulse_spaces);           // Wait for previous pulse to get sent
+    sendpulse_spaces=leadingSpaces;     // Get ready so next ISR trigger will end a pulse after specified number of spaces
+    
+}    
+
+// Turn off the pulse sending ISR
+// TODO: This should return any bit that had to be terminated because of collision
+
+void ir_tx_end(void) {
+    while (sendpulse_spaces);       // Wait for previous pulse to get sent (complete)
+    
+    // stop timer (not more ISR) 
+    TCCR1B = 0;             // Sets prescaler to 0 which stops the timer.
+    
+}        
+

@@ -21,9 +21,11 @@
 #include "power.h"
 #include "callbacks.h"
  
-// Change clock prescaller to run at 4Mhz. 
+// Change clock prescaler to run at 8Mhz. 
 // By default the CLKDIV fuse boots us at 8Mhz osc /8 so 1Mhz clock
-// Change the prescaller to get some more speed but still run at low battery voltage
+// Change the prescaler to get some more speed but still run at low battery voltage
+// We could go to 8MHz, but then we would not be able to run the battery down lower than 2.4V...
+// https://electronics.stackexchange.com/questions/336718/what-is-the-minimum-voltage-required-to-operate-an-avr-mcu-at-8mhz-clock-speed/336719
 
 /*
 
@@ -42,7 +44,6 @@ static void mhz_init(void) {
         #error F_CPU must match the clock prescaller bits set in mhz_init()
     #endif    
 }    
-
 
 
 static void init(void) {
@@ -67,7 +68,6 @@ static void init(void) {
 }    
 
 
-
 // This empty run() lets us at least compile when no higher API is present.
 /*
 void __attribute__((weak)) run(void) {    
@@ -77,6 +77,7 @@ void __attribute__((weak)) run(void) {
     
 int main(void)
 {
+    
 	init();
 	
     while (1) {

@@ -34,42 +34,23 @@
 
 #include "blinkstate.h"
 
-#define STATE_BROADCAST_RATE_MS  80-32           // Minimum number of milliseconds between broadcasting the same state again. The 32 is to offset the 32 steps of random jitter we add.
+#define STATE_BROADCAST_RATE_MS  100            // Minimum number of milliseconds between broadcasting the same state again. 
 
-#define STATE_EXPIRE_TIME_MS     250             // If we have not heard anything on this this face in this long, then assume no neighbor there
+#define STATE_BROADCAST_JITTER   40             // We randomly add this jitter to each broadcast
 
-#define STATE_DEBOUNCE_THRESHOLD 3               // Need to verify state this many times before accepting it as our new state
+#define STATE_EXPIRE_TIME_MS     300            // If we have not heard anything on this this face in this long, then assume no neighbor there
 
 // TODO: The compiler hates these arrays. Maybe use struct so it can do indirect offsets?
 
 static byte lastValue[FACE_COUNT];               // Last received value
-static byte lastDebouncedValue[FACE_COUNT];      // Last debounced value
 static unsigned long expireTime[FACE_COUNT];     // time when last received state will expire
-static byte debounceCounter[FACE_COUNT] = {0,0,0,0,0,0};  // number of times we have seen a given state in a row (i.e. 1, 1, 1, 0, 1, 1 has seen '1' 2x in a row)
 
 static void updateRecievedState( uint8_t face ) {
 
     if ( irIsReadyOnFace(face) ) {
 
-        byte faceData = irGetData(face);
-
-        if( faceData == lastValue[ face ] ) {
-          if(debounceCounter[ face ] < 255) {
-            debounceCounter[ face ]++;
-          }
-        }
-        else {
-          debounceCounter[ face ] = 0;
-        }
-
-        lastValue[ face ] = faceData;
-
-        if(debounceCounter[ face ] >= STATE_DEBOUNCE_THRESHOLD) {
-
-          lastDebouncedValue[ face ] = faceData;
-
-        }
-
+        lastValue[ face ] = irGetData(face);
+        
         // We could cache this calculation, but for now this is simpler.
 
         expireTime[face] = millis() + STATE_EXPIRE_TIME_MS;
@@ -99,7 +80,12 @@ static unsigned long localStateNextSendTime;
 static void broadcastState(void) {
 
     irBroadcastData( localState );
-    localStateNextSendTime = millis() + STATE_BROADCAST_RATE_MS + ( ( rand() & 15 ) * 2) ;
+        
+    localStateNextSendTime = millis() + STATE_BROADCAST_RATE_MS;
+    
+    if (rand() & 1) {           // 50% chance
+        localStateNextSendTime += STATE_BROADCAST_JITTER;
+    }        
 
 }
 
@@ -115,8 +101,7 @@ void blinkStateOnLoop(void) {
 
     // Check for anything coming in...
     updateRecievedStates();
-
-
+    
     // Check for anything going out...
 
     if ( (localState!=0) && (localStateNextSendTime <= millis()) ) {         // Anything to send (state 0=don't send)? Time for next broadcast?
@@ -157,6 +142,8 @@ void blinkStateBegin(void) {
     registerHook();
 }
 
+
+
 // Returns the last received state of the indicated face, or
 // 0 if no messages received recently on indicated face
 
@@ -168,7 +155,7 @@ byte getNeighborState( byte face ) {
 
     if ( expireTime[face] > millis() ) {        // Expire time in the future?
 
-        return lastDebouncedValue[ face ];
+        return lastValue[ face ];
 
     }  else {
 

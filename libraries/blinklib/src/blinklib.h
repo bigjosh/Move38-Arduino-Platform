@@ -135,7 +135,6 @@ uint8_t irGetErrorBits( uint8_t face );
 
 typedef unsigned Color;
 
-
 // Number of brightness levels in each channel of a color
 #define BRIGHTNESS_LEVELS 32
 
@@ -144,8 +143,8 @@ typedef unsigned Color;
 #define GET_B(color) ((color    )&31)
 
 // R,G,B are all in the domain 0-31
-// Here we expose the interal color representation, but it is worth it
-// to get the performance and size benefits of static compilation
+// Here we expose the internal color representation, but it is worth it
+// to get the performance and size benefits of static compilation 
 // Shame no way to do this right in C/C++
 
 #define MAKECOLOR_RGB(r,g,b) ((r&31)<<10|(g&31)<<5|(b&31))
@@ -186,17 +185,20 @@ inline Color dim( Color color, byte brightness) {
 // Make a new color in the HSB colorspace. All values are 0-255.
 
 Color makeColorHSB( byte hue, byte saturation, byte brightness );
-
+    
 // Change the tile to the specified color
+// NOTE: all color changes are double buffered
+// and the display is updated when loop() returns
 
 void setColor( Color newColor);
 
 // Set the pixel on the specified face (0-5) to the specified color
+// NOTE: all color changes are double buffered
+// and the display is updated when loop() returns
 
 void setFaceColor(  byte face, Color newColor );
 
-
-/*
+/* 
 
     Timing functions
 
@@ -245,46 +247,45 @@ bool buttonDown(void);
 bool buttonPressed(void);
 
 
-
-
-/*
+/* 
 
     IR communications functions
 
 */
 
-
-
-
-// Send data on a single face. Data is 7-bits wide, top bit is ignored.
+// Send data on a single face. Data is 6-bits wide (0-63 value).
 
 void irSendData( uint8_t face , uint8_t data );
 
-// Broadcast data on all faces. Data is 7-bits wide, top bit is ignored.
+// Broadcast data on all faces. Data is 6-bits wide (0-63 value).
 
 void irBroadcastData( uint8_t data );
 
-// Is there a received data ready to be read on the indicated face? Returns 0 if none.
+// Is there a received data ready to be read on the indicated face? Returns 0 if none. 
 
 bool irIsReadyOnFace( uint8_t face );
 
-// Read the most recently received data. Value 0-127. Blocks if no data ready.
+// Read the most recently received data. Blocks if no data ready. Data is 6-bits wide (0-63 value).
 
-uint8_t irGetData( uint8_t led );
-
-
-#define ERRORBIT_PARITY       2    // There was an RX parity error
-#define ERRORBIT_OVERFLOW     3    // A received byte in lastValue was overwritten with a new value
-#define ERRORBIT_NOISE        4    // We saw unexpected extra pulses inside data
-#define ERRORBIT_DROPOUT      5    // We saw too few pulses, or two big a space between pulses
-#define ERRORBIT_DUMMY        6
-
-// Read the error state of the indicated LED
-// Clears the bits on read
-
-uint8_t irGetErrorBits( uint8_t face );
+uint8_t irGetData( uint8_t face );
 
 
+/* Power functions */
+
+// The blink will automatically sleep if the button has not been pressed in 
+// more than 10 minutes. The sleep is preemptive - the tile stops in the middle of whatever it
+// happens to be doing. 
+
+// The tile wakes from sleep when the button is pressed. Upon waking, it picks up from exactly
+// where it left off. It is up to the programmer to check to see if the blink has slept and then 
+// woken and react accordingly if desired. 
+
+
+// Returns 1 if we have slept and woken since last time we checked
+// Best to check as last test at the end of loop() so you can
+// avoid intermediate display upon waking.
+
+uint8_t hasWoken(void);
 
 /*
 

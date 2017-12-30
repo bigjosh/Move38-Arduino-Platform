@@ -41,6 +41,7 @@
 #include <avr/pgmspace.h>
 #include <util/delay.h>         // Must come after F_CPU definition
 #include <util/atomic.h>
+#include <string.h>             // memcpy()
 
 #include "pixel.h"
 #include "utils.h"
@@ -55,10 +56,26 @@
 // since we are direct driving them. No danger here since the pins are limited to 20mA, but they do get so
 // bright that is gives me a headache. 
 
-static uint8_t rawValueR[PIXEL_COUNT];
-static uint8_t rawValueG[PIXEL_COUNT];
-static uint8_t rawValueB[PIXEL_COUNT];
+typedef struct  {
+    uint8_t rawValueR;
+    uint8_t rawValueG;
+    uint8_t rawValueB;
+} rawpixel_t;
 
+// We need these struct gymnastics because C fixed array typedefs do not work 
+// as you (I?) think they would...
+// https://stackoverflow.com/questions/4523497/typedef-fixed-length-array
+
+typedef struct {
+    rawpixel_t rawpixels[PIXEL_COUNT];
+} rawpixelset_t;    
+
+// Double buffer the raw pixels so we can switch quickly and atomically
+
+static rawpixelset_t rawpixelsetbuffer[2];
+
+static rawpixelset_t *displayedRawPixelSet=&rawpixelsetbuffer[0];        // Currently being displayed
+static rawpixelset_t *bufferedRawPixelSet =&rawpixelsetbuffer[1];        // Benignly Updateable 
 
 static void setupPixelPins(void) {
 
@@ -330,8 +347,7 @@ struct ISR_CALLBACK_TIMER : CALLBACK_BASE< ISR_CALLBACK_TIMER> {
 };
 
                                      
-static uint8_t currentPixel;      // Which pixel are we on now?
-
+static uint8_t currentPixelIndex;      // Which pixel are we on now?
 
 // Each pixel has 5 phases -
 // 0=Charging blue pump. All anodes are low. 
@@ -348,6 +364,11 @@ static uint8_t currentPixel;      // Which pixel are we on now?
 
 static uint8_t phase=0;
 
+// To swap the display buffer, you set this and then wait until it is unset by the 
+// background display ISR
+// This makes display updates atomic, and swaps always happen between frames to avoid tearing and aliasing
+
+static volatile uint8_t pendingRawPixelBufferSwap =0;
 
 // Need to compute timekeeping based off the pixel interrupt
 
@@ -375,6 +396,7 @@ static uint8_t phase=0;
 // this gives us plenty of time to get the new values into the buffers for next
 // pass, so none of this is timing critical as long as we finish in time for next
 // pass 
+
                                     
 static void pixel_isr(void) {   
     
@@ -386,28 +408,20 @@ static void pixel_isr(void) {
     
     sei();                      // We don't care if we get interrupted as long as we finish before the PWM counters start turning on LEDs again (the PWM always starts with LED off and then turns on when we hit the output compare)
     
+    rawpixel_t *currentPixel = &(displayedRawPixelSet->rawpixels[currentPixelIndex]);      // TODO: cache this and eliminate currentPixel since buffer only changes at end of frame
+        
     switch (phase) {
         
         
         case 0:   // In this phase, we step to the next pixel and start charging the pump. All PWMs are currently off. 
 
             deactivateAnodes();        
-                                    
-            currentPixel++;
-            
-            if (currentPixel==PIXEL_COUNT) {
-                currentPixel=0;
-                               
-                // TODO: Should we locally buffer values to avoid tearing when something changes mid frame or mid pixel?
-                // TODO: Hold values in array of structs for more efficient pointer access, and easier to buffer
-                                
-            }
-                  
+                                                      
             // It is safe to turn on the blue sink because all anodes are off (low)        
             
             // Only bother to turn on the sink if there is actually blue to display
                         
-             if (rawValueB[currentPixel] != 255 ) {          // Is blue on?
+             if ( currentPixel->rawValueB != 255 ) {          // Is blue on?
                  CBI( BLUE_SINK_PORT , BLUE_SINK_BIT );      // If the blue LED is on at all, then activate the boost. This will start charging the boost capacitor.
                  
                  // Ok, we are now charging the pump
@@ -442,13 +456,13 @@ static void pixel_isr(void) {
         
             // Now the sink is off, we are save to activate the anode.
         
-            activateAnode( currentPixel );
+            activateAnode( currentPixelIndex );
         
             // Ok, now we are ready for all the PWMing to happen on this pixel in the following phases
         
             // We will do blue first since we just charged the pump...
         
-            OCR2B=rawValueB[currentPixel];             // Load OCR to turn on blue at next overflow
+            OCR2B=currentPixel->rawValueB;             // Load OCR to turn on blue at next overflow
         
             phase++;
         
@@ -459,7 +473,7 @@ static void pixel_isr(void) {
                                    
             
             OCR2B = 255;                                // Load OCR to turn off blue at next overflow
-            OCR0A = rawValueR[currentPixel];            // Load OCR to turn on red at next overflow
+            OCR0A = currentPixel->rawValueR;    // Load OCR to turn on red at next overflow
 
             phase++;           
             break;
@@ -468,7 +482,7 @@ static void pixel_isr(void) {
                 
             
             OCR0A = 255;                                // Load OCR to turn off red at next overflow
-            OCR0B = rawValueG[currentPixel];            // Load OCR to turn on green at next overflow
+            OCR0B = currentPixel->rawValueG;    // Load OCR to turn on green at next overflow
             
             phase++;
             break;
@@ -479,10 +493,30 @@ static void pixel_isr(void) {
                 #error If this switch does not have 5 cases, then need to update the TIMER_PHASE_COUNT in timer.h to make calculations colrrect
             #endif
                        
-            OCR0B = 255;                                // Load OCR to turn off green at next overflow
+            OCR0B = 255;                        // Load OCR to turn off green at next overflow
             
             phase=0;                            // Step to next pixel and start over
+            
+            currentPixelIndex++;
+            
+            if (currentPixelIndex==PIXEL_COUNT) {
+                currentPixelIndex=0;
+                
+                if (pendingRawPixelBufferSwap) {
                     
+                    rawpixelset_t *temp;
+                    
+                    // Quickly swap the display and buffer sets                    
+                    temp = displayedRawPixelSet;
+                    displayedRawPixelSet = bufferedRawPixelSet;
+                    bufferedRawPixelSet = temp;
+                    
+                    pendingRawPixelBufferSwap=0;
+                    
+                }                    
+                                    
+            }
+                                            
             break;
                         
     }        
@@ -556,12 +590,7 @@ void pixel_disable(void) {
 // Pixels will return to the color they had before being disabled.
 
 void pixel_enable(void) {
-    
-    
-    pixel_SetAllRGB( 0 , 0 , 0 );             // Start with all pixels off.         
-                                              // We need this because ISR refreshes OCRs from local copies of each pixel's color
-    
-    
+            
     pixelTimersOn();
     
     // Technically the correct thing to do here would be to turn the previous pixel back on,
@@ -593,31 +622,36 @@ static const uint8_t PROGMEM gamma8[] = {
 	115,117,119,120,122,124,126,127,129,131,133,135,137,138,140,142,
 	144,146,148,150,152,154,156,158,160,162,164,167,169,171,173,175,
 	177,180,182,184,186,189,191,193,196,198,200,203,205,208,210,213,
-	215,218,220,223,225,228,231,233,236,239,241,244,247,249,252,255 };
+	215,218,220,223,225,228,231,233,236,239,241,244,247,249,252,255 
+};
 
-// Set a single pixel's RGB value
-// Normalized and balanced
-// 0=off, 255=full brightness
-// Note that there will likely be fewer than 256 actual visible values, but the mapping will be linear and smooth
 
-// TODO: Balance, normalize, power optimize, and gamma correct these functions
-// Need some exponential compression at the top here
-// Maybe look up tables to make all calculations be one step at the cost of memory?
+// Update the pixel buffer.
 
-void pixel_setRGB( uint8_t p, uint8_t r, uint8_t g, uint8_t b ) {
-	
-	// These are just guesstimates that seem to look ok.
-	
-	rawValueR[p] = 255- (pgm_read_byte(&gamma8[r])/3);
-	rawValueG[p] = 255- (pgm_read_byte(&gamma8[g])/2);
-	rawValueB[p] = 255 -(pgm_read_byte(&gamma8[b])/2);
-	
-}
+void pixel_bufferedSetPixel( uint8_t pixel, pixelColor_t newColor) {
 
-void pixel_SetAllRGB( uint8_t r, uint8_t g, uint8_t b  ) {
+    // TODO: OMG, this could be so much more efficient by reducing the size of the gamma table 
+    // to 32 entries per color and having direct mapping to raw values. 
+    // We will do that when we normalize the colors. 
+
+    rawpixel_t *rawpixel = &(bufferedRawPixelSet->rawpixels[pixel]);
     
-    FOREACH_FACE(i) {
-        pixel_setRGB( i , r , g, b );
-    }       
+    rawpixel->rawValueR= 255-  (pgm_read_byte(&gamma8[newColor.r*8])  /3);
+    rawpixel->rawValueG= 255-  (pgm_read_byte(&gamma8[newColor.g*8])  /3);
+    rawpixel->rawValueB= 255-  (pgm_read_byte(&gamma8[newColor.b*8])  /3);
     
+}    
+
+// Display the buffered pixels by swapping the buffer. Blocks until next frame starts.
+
+void pixel_displayBufferedPixels(void) {
+    
+    pendingRawPixelBufferSwap = 1;      // Signal to background that we want to swap buffers
+    
+    while (pendingRawPixelBufferSwap);  // wait for that to actually happen
+    
+    // Insure continuity by making sure that after the swap the (now) buffer starts 
+    // off with the same values that the old buffer ended with 
+    memcpy( bufferedRawPixelSet , displayedRawPixelSet , sizeof( rawpixelset_t  ) );  
+        
 }    
