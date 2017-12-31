@@ -604,7 +604,7 @@ static void callOnLoopChain(void ) {
 // This is the entry point where the blinkcore platform will pass control to
 // us after initial power-up is complete
 
-#include <util\delay.h>
+#include <util/delay.h>
 
 
 void run(void) {

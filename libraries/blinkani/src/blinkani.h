@@ -14,6 +14,12 @@
  * Note that the display animations only occur when the loop() function returns, so it is important
  * that sketches using this model return from loop() frequently. (i.e. don't use delay)
  *
+ * ROADMAP
+ * 1. display manager simply forces latest command to be the display mode
+ * 2. queue manager for timeline like animation, adding display actions to a stack
+ *    1. push, pop, clear
+ *    2. setColor() always clears the stack
+ *
  */
 
 #ifndef BLINKANI_H_
@@ -23,10 +29,15 @@
     #error You must #include blinkcore.h before blinkani.h
 #endif
 
-// By default we power up in state 0.
-
 // send the color you want to blink, the rate at which it should blink at, and how many times it should blink
-void blink( Color newColor, uint16_t period, uint8_t occurances);
+void blink( uint16_t period, uint8_t occurances, Color newColor);
+
+// send the color you want to fade to, the duration of the fade
+void fadeTo( Color newColor, uint16_t duration);
+
+Color getColor();
+
+Color getFaceColor(byte face);
 
 /*
 
@@ -34,24 +45,9 @@ void blink( Color newColor, uint16_t period, uint8_t occurances);
 
 */
 
-
-// Called when this sketch is first loaded and then
-// every time the tile wakes from sleep
-
-void setup(void);
-
-// Called repeatedly just after the display pixels
-// on the tile face are updated
-
-void loop();
-
-// Add a function to be called after each pass though loop()
-
-void addOnLoop( chainfunction_struct *chainfunction );
-
 // Manually add our hooks. Note that currently you never need to Call this - it is automtically invoked the first time you call an blinkani function.
 // It is included to to not break code that references it, and in case we ever switch to requiring it.
 
-void blinkAnimationBegin(void);
+void blinkAniBegin(void);
 
 #endif /* BLINKANI_H_ */
