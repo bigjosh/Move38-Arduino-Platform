@@ -49,4 +49,9 @@ void loop();
 
 void addOnLoop( chainfunction_struct *chainfunction );
 
+// Manually add our hooks. Note that currently you never need to Call this - it is automtically invoked the first time you call an blinkani function.
+// It is included to to not break code that references it, and in case we ever switch to requiring it.
+
+void blinkAnimationBegin(void);
+
 #endif /* BLINKANI_H_ */
