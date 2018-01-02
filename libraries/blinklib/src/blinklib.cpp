@@ -468,6 +468,8 @@ unsigned long millis(void) {
     return( tempMillis );
 }
 
+/*
+
 // Delay for `ms` milliseconds
 
 void delay( unsigned long ms ) {
@@ -477,7 +479,7 @@ void delay( unsigned long ms ) {
     while (millis() < endtime);
 
 }
-
+*/
 
 // TODO: This is accurate and correct, but so inefficient.
 // We can do better.
@@ -515,7 +517,7 @@ static void updateMillis(void) {
 
 // Have we woken since last time we checked?
 
-volatile uint8_t wokeFlag=0;
+static volatile uint8_t wokeFlag=0;
 
 // Returns 1 if we have slept and woken since last time we checked
 // Best to check as last test at the end of loop() so you can
@@ -570,10 +572,9 @@ void timer_callback(void) {
     checkSleepTimeout();
 }
 
-chainfunction_struct *onLoopChain = NULL;
+static chainfunction_struct *onLoopChain = NULL;
 
 // Call all the functions on the chain (if any)...
-
 
 static void callOnLoopChain(void ) {
 
@@ -588,24 +589,10 @@ static void callOnLoopChain(void ) {
 
     }
 
-    /*
-
-    while (c) {
-
-        c->callback();
-
-        c= c->next;
-
-    }
-    */
-
 }
 
 // This is the entry point where the blinkcore platform will pass control to
 // us after initial power-up is complete
-
-#include <util/delay.h>
-
 
 void run(void) {
 
@@ -634,7 +621,6 @@ void run(void) {
 }
 
 // Add a function to be called after each pass though loop()
-
 // `cons` onto the linked list of functions
 
 void addOnLoop( chainfunction_struct *chainfunction ) {
