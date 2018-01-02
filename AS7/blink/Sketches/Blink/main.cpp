@@ -69,7 +69,9 @@ uint32_t rxModeErrorCount;
 
 uint8_t seq =0;                         // Counts 0-5 and then resets back to 0
     
-enum { TX , SYNC , RX } mode = TX;
+enum Mode_t { TX , SYNC , RX };
+    
+Mode_t mode = TX;
    
 void loop() {
     
