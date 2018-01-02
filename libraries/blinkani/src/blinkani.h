@@ -25,9 +25,10 @@
 #ifndef BLINKANI_H_
 #define BLINKANI_H_
 
-#ifndef BLINKCORE_H_
-    #error You must #include blinkcore.h before blinkani.h
+#ifndef BLINKLIB_H_
+    #error You must #include blinklib.h before blinkani.h
 #endif
+
 
 // send the color you want to blink, the rate at which it should blink at, and how many times it should blink
 void blink( uint16_t period, uint8_t occurances, Color newColor);

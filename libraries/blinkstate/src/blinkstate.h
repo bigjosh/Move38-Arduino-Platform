@@ -18,8 +18,8 @@
 #ifndef BLINKSTATE_H_
 #define BLINKSTATE_H_
 
-#ifndef BLINKCORE_H_
-    #error You must #include blinkcore.h before blinkstate.h
+#ifndef BLINKLIB_H_
+    #error You must #include blinklib.h before blinkstate.h
 #endif
 
 /*
