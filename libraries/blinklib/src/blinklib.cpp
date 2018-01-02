@@ -52,7 +52,7 @@
 
 #define BUTTON_CLICK_TIMEOUT_MS 330
 
-#define BUTTON_LONGPRESS_TIME_MS 2000          // How long you must hold button down to register a long press. 
+#define BUTTON_LONGPRESS_TIME_MS 2000          // How long you must hold button down to register a long press.
 
 #define BUTTON_SLEEP_TIMEOUT_SECONDS (10*60)   // If no button press in this long then goto sleep
 
@@ -61,34 +61,34 @@
 // Remeber that thge underlying pixel_* setting functions are double buffered and so
 // require a call to pixel_displayBuffer() to aactually show all the updates. We do this
 // this call everytime loop() returns to ensure a coherent update, and also make sure that
-// sure that the final result of any loop() interation will always hit the display for at least 
+// sure that the final result of any loop() interation will always hit the display for at least
 // one frame to eliminate aliasing and tearing.
 
 void setFaceColor( byte face , Color newColor ) {
-    
+
     pixelColor_t newPixelColor;
 
     // TODO: OMG, this is the most inefficient conversion from a unit16 back to (the same) unit16 ever!
     // But to share a type between the core and blinklib level though pixel.h would require all blinklib
     // users to get the whole pixel.h namespace. There has to be a good way around this. Maybe
-    // break out the pixelColor type into its own core .H file? seems wrong. Hmmm.... 
-    
+    // break out the pixelColor type into its own core .H file? seems wrong. Hmmm....
+
     newPixelColor.r = GET_R( newColor );
     newPixelColor.g = GET_G( newColor );
     newPixelColor.b = GET_B( newColor );
-    
+
     pixel_bufferedSetPixel( face , newPixelColor );
-        
+
 }
 
-// Convenience function to set all pixels to the same color. 
+// Convenience function to set all pixels to the same color.
 
 void setColor( Color newColor ) {
-    
+
     FOREACH_FACE(f) {
         setFaceColor( f , newColor );
     }
-    
+
 }
 
 
@@ -518,37 +518,37 @@ static void updateMillis(void) {
 volatile uint8_t wokeFlag=0;
 
 // Returns 1 if we have slept and woken since last time we checked
-// Best to check as last test at the end of loop() so you can 
-// avoid intermediate display upon waking. 
+// Best to check as last test at the end of loop() so you can
+// avoid intermediate display upon waking.
 
 uint8_t hasWoken(void) {
-    
+
     if (wokeFlag) {
         wokeFlag=0;
-        return 1;        
-    }        
-    
-    return 0; 
-        
-}    
+        return 1;
+    }
+
+    return 0;
+
+}
 
 // Turn off everything and goto to sleep
 
 void sleep(void) {
-    
+
     pixel_disable();        // Turn off pixels so battery drain
     ir_disable();           // TODO: Wake on pixel
     button_ISR_on();        // Enable the button interrupt so it can wake us
-    
+
     power_sleep();          // Go into low power sleep. Only a button change interrupt can wake us
-    
+
     button_ISR_off();       // Set everything back to thew way it was before we slept
     ir_enable();
     pixel_enable();
-    
-    wokeFlag = 1; 
-       
-}    
+
+    wokeFlag = 1;
+
+}
 
 // Time to sleep? (No button presses recently?)
 
@@ -604,34 +604,34 @@ static void callOnLoopChain(void ) {
 // This is the entry point where the blinkcore platform will pass control to
 // us after initial power-up is complete
 
-    #include <util\delay.h>
+#include <util/delay.h>
 
 
 void run(void) {
-    
+
 /*
     SP_PIN_A_MODE_OUT();
     SP_PIN_T_MODE_OUT();
-    SP_PIN_R_MODE_OUT(); 
+    SP_PIN_R_MODE_OUT();
     sp_serial_init();
     sp_serial_disable_rx();
-*/  
+*/
     setup();
-    
+
     while (1) {
-     
+
         loop();
-        
+
         pixel_displayBufferedPixels();      // show all display updates that happened in last loop()
                                             // Also currently blocks until new frame actually starts
-        
+
         callOnLoopChain();
-        
+
         // TODO: Sleep here
-           
-    }        
-    
-}   
+
+    }
+
+}
 
 // Add a function to be called after each pass though loop()
 
