@@ -32,89 +32,127 @@
 
 #include "blinkani.h"
 
-struct Effect {
-  virtual void nextStep();
-  virtual bool isComplete();
+// Here we simulate an interface in C
+// It is ugly, but works and is time & space efficient 
+
+
+// The data for each effect is held in a union so that we only need a single memory footprint
+// for the largest effect.
+
+struct null_data_t {
+    // Intentionally blank for uniformity
 };
 
-// this effect is running when no effect is running
-struct nullEffect : Effect {
+struct blink_data_t {
+    uint32_t timeOfNextStep_ms;
+    bool isDisplayOn;
+    uint16_t period_ms;
+    uint8_t remainingOccurances;
+    Color color;       
+};    
 
-  nullEffect() {
-  }
 
-  void nextStep() {
+static struct Effect_t {
+    
+    // Every effect has a nextStep() and an isComplete() function
 
-  }
+    void (*nextStep)();               // Called once per loop to update the display.
 
-  bool isComplete() {
+    bool (*isComplete)();             // Called to check if the current effect is finished running
+    
+    union {
+        
+        null_data_t     null_data;
+        blink_data_t    blink_data;
+        
+    } data;        
+    
+    
+} currentEffect;    
+
+
+/*
+    Null Effect - Place holder, does nothing. 
+    
+*/    
+
+static void null_nextStep() {
+}
+
+static bool null_isComplete() {
     return true;
-  }
-};
+}    
 
-// the first and simplest effect
-struct blinkEffect : Effect {
+void nullEffect(void) {    
+    currentEffect.nextStep    = null_nextStep;
+    currentEffect.isComplete  = null_isComplete;
+}    
 
-  uint32_t _timeOfNextStep_ms;
-  bool _isDisplayOn;
-  uint16_t _period_ms;
-  uint8_t _remainingOccurances;
-  Color _blinkColor;
+/* 
 
-  blinkEffect(uint16_t period_ms, uint8_t occurances, Color newColor) {
-    _period_ms = period_ms;
-    _remainingOccurances = occurances;
-    _blinkColor = newColor;
-    // init time
-    _timeOfNextStep_ms = 0;
-    _isDisplayOn = false;
-  }
+    Blink Effect - Blink a specified number of times with a specified speed
 
-  void nextStep() {
+*/
 
+static void blink_nextStep() {
+    
+    blink_data_t data = currentEffect.data.blink_data;
+    
     uint32_t now = millis();
 
-    if(now >= _timeOfNextStep_ms) {
+    if(now >= data.timeOfNextStep_ms) {
 
-      if(_isDisplayOn) {
+        if( data.isDisplayOn) {
 
-        setColor(OFF);
+            setColor(OFF);
 
-        if(_remainingOccurances > 0) {
-          _remainingOccurances--;
+            if( data.remainingOccurances > 0) {
+                data.remainingOccurances--;
+            }
         }
-      }
-      else {
-        setColor(_blinkColor);
-      }
+        else {
+            setColor( data.color );
+        }
 
-      _isDisplayOn = !_isDisplayOn;
+        data.isDisplayOn = !data.isDisplayOn;
 
-      // update our next step time
-      _timeOfNextStep_ms = now + _period_ms;
-    }
-  }
+        // update our next step time
+        data.timeOfNextStep_ms = now + data.period_ms;
+    }    
+    
+}
 
-  bool isComplete() {
-    return _remainingOccurances > 0;
-  }
-};
+static bool blink_isComplete() {
+    blink_data_t data = currentEffect.data.blink_data;
+    return data.remainingOccurances == 0;
+}
 
-static Effect currentEffect = nullEffect();
+void blink(uint16_t period_ms, uint8_t occurances, Color newColor) {
+    
+    blink_data_t data = currentEffect.data.blink_data;
+   
+    data.color = newColor;
+    data.remainingOccurances=occurances;
+    
+    data.isDisplayOn = true;        // Start with on phase
+    
+    data.period_ms = period_ms;
+    
+    data.timeOfNextStep_ms =0;     // Start immediately
+    
+    currentEffect.nextStep    = blink_nextStep;
+    currentEffect.isComplete  = blink_isComplete;
+    
+}
 
-// Called one per loop() to check for new data and repeat broadcast if it is time
-// Note that if this is not called frequently then neighbors can appear to still be there
-// even if they have been gone longer than the time out, and the refresh broadcasts will not
-// go out often enough.
-
-// TODO: All these calls to millis() and subsequent calculations are expensive. Cache stuff and reuse.
 
 void blinkAniOnLoop(void) {
-
+    
   // This is the loop that gets called after every loop
   if(!currentEffect.isComplete()) {
     currentEffect.nextStep();
   }
+  
 }
 
 // Make a record to add to the callback chain
@@ -132,32 +170,26 @@ static struct chainfunction_struct blinkAniOnLoopChain = {
 
 // TODO: This is a good place for a GPIO register bit. Then we could inline the test to a single instruction.,
 
-static uint8_t hookRegisteredFlag=0;        // Did we already register?
-
 static void registerHook(void) {
-    if (!hookRegisteredFlag) {
-        addOnLoop( &blinkAniOnLoopChain );
-        hookRegisteredFlag=1;
-    }
+    addOnLoop( &blinkAniOnLoopChain );
 }
 
 // Manually add our hooks
 
-void blinkAniBegin(void) {
+void blinkAniBegin(void) {    
+
+    nullEffect();       // Start with the null effect (we need to populate the callbacks with something )
+        
     registerHook();
 }
 
-// send the color you want to blink, the rate at which it should blink at, and how many times it should blink
-void blink(uint16_t period_ms, uint8_t occurances, Color newColor) {
-  currentEffect = blinkEffect(period_ms, occurances, newColor);
-}
 
 // send the color you want to fade to, the duration of the fade
 void fadeTo( Color newColor, uint16_t duration) {
 
 }
 
-//
+/*
 Color getFaceColor(byte face) {
     //
 }
@@ -167,3 +199,4 @@ Color getColor() {
     // if the color is the same on all faces return the color, otherwise return OFF???
     // TODO: Think this through
 }
+*/
