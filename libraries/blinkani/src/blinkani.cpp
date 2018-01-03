@@ -88,63 +88,69 @@ void nullEffect(void) {
     currentEffect.isComplete  = null_isComplete;
 }    
 
+
 /* 
 
     Blink Effect - Blink a specified number of times with a specified speed
 
 */
 
-static void blink_nextStep() {
+static void blink_nextStep() {      
     
-    blink_data_t data = currentEffect.data.blink_data;
+    // Using pointer to data compiles to same code as direct access, so
+    // lets use the pointer since it is easier to read.  
+    // You will likely want to copy this pattern to access the data for other effects    
+    
+    blink_data_t *data = &currentEffect.data.blink_data;
     
     uint32_t now = millis();
-
-    if(now >= data.timeOfNextStep_ms) {
-
-        if( data.isDisplayOn) {
+    
+    if(now >= data->timeOfNextStep_ms) {
+        
+        if( data->isDisplayOn) {
 
             setColor(OFF);
 
-            if( data.remainingOccurances > 0) {
-                data.remainingOccurances--;
+            if( data->remainingOccurances > 0) {
+                data->remainingOccurances--;
             }
         }
         else {
-            setColor( data.color );
+            setColor( data->color );
         }
 
-        data.isDisplayOn = !data.isDisplayOn;
+        data->isDisplayOn = !data->isDisplayOn;
 
         // update our next step time
-        data.timeOfNextStep_ms = now + data.period_ms;
+        data->timeOfNextStep_ms = now + data->period_ms;
     }    
     
 }
 
 static bool blink_isComplete() {
-    blink_data_t data = currentEffect.data.blink_data;
-    return data.remainingOccurances == 0;
+    
+    blink_data_t *data = &currentEffect.data.blink_data;
+       
+    return data->remainingOccurances == 0;
 }
+
+
 
 void blink(uint16_t period_ms, uint8_t occurances, Color newColor) {
     
-    blink_data_t data = currentEffect.data.blink_data;
+    blink_data_t *data = &currentEffect.data.blink_data;
    
-    data.color = newColor;
-    data.remainingOccurances=occurances;
+    data->color = newColor;
+    data->remainingOccurances=occurances;    
+    data->isDisplayOn = false;        // Start with on phase
     
-    data.isDisplayOn = true;        // Start with on phase
+    data->period_ms = period_ms;
     
-    data.period_ms = period_ms;
-    
-    data.timeOfNextStep_ms =0;     // Start immediately
+    data->timeOfNextStep_ms =0;     // Start immediately
     
     currentEffect.nextStep    = blink_nextStep;
     currentEffect.isComplete  = blink_isComplete;
-    
 }
-
 
 void blinkAniOnLoop(void) {
     
@@ -153,6 +159,7 @@ void blinkAniOnLoop(void) {
     currentEffect.nextStep();
   }
   
+    
 }
 
 // Make a record to add to the callback chain
