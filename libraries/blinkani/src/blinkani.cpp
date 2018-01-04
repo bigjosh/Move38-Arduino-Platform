@@ -194,9 +194,6 @@ void blink( Color onColor , uint16_t onDurration_ms) {
 
 struct StrobeEffect_t : Effect_t {
     
-    // Since we immediately display the `on` phase, we only need to 
-    // remember what to do in the off phase
-
     Color m_onColor;
     uint16_t m_onDurration;
     
@@ -263,6 +260,92 @@ void strobe( uint16_t occurances, Color onColor,  uint16_t period_ms ) {
     strobe( occurances , onColor , durration , OFF , durration );
     
 }    
+
+
+/* 
+
+    Rotate Effect - Rotate a color around the faces
+
+*/
+
+struct RotateEffect_t : Effect_t {
+
+    Color m_onColor;
+    
+    Color m_offColor;
+    
+    uint8_t faceStep;
+    
+    
+    uint32_t nextStepTime;
+    uint16_t stepDelayTime_ms;
+    
+                
+    void nextStep() {
+        
+        uint32_t now = millis(); 
+        
+        if (now >= nextStepTime) {
+            
+            setFaceColor( faceStep , m_offColor );
+            
+            faceStep++;
+            
+            if (faceStep < FACE_COUNT) {
+
+                setFaceColor( faceStep , m_onColor );
+                
+            }
+            
+            nextStepTime = now + stepDelayTime_ms;
+            
+        }                            
+                
+    }
+
+    bool isComplete() {
+        
+        return faceStep > FACE_COUNT;
+        
+    }    
+    
+    
+    void start( Color onColor, Color offColor , uint16_t stepTime_ms) {
+        
+        m_onColor = onColor;                
+        m_offColor = offColor;
+        
+        stepDelayTime_ms = stepTime_ms;
+        
+        faceStep=0;    // Start at the beginning
+        
+        setFaceColor( 0 , onColor ); 
+        
+        uint32_t now = millis(); 
+        
+        nextStepTime = now + stepTime_ms;        
+        
+        addEffect( this );
+    }
+    
+};    
+
+// All effects have a statically defined instance like this to allocate the memory at compile time
+
+static RotateEffect_t rotateEffect; 
+
+// rotate a dot around the faces
+void rotate( Color onColor, Color offColor , uint16_t stepTime_ms ) {
+    clearEffects();
+    rotateEffect.start(onColor,  offColor , stepTime_ms );
+}    
+
+// rotate a dot around the faces with a black background
+void rotate( Color onColor, uint16_t stepTime_ms ) {
+    clearEffects();
+    rotateEffect.start(onColor,  OFF , stepTime_ms );
+}
+
 
 bool effectCompleted() {
     

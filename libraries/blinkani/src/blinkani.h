@@ -52,6 +52,13 @@ void strobe( uint16_t occurances, Color onColor,  uint16_t onDurration_ms, Color
 void strobe( uint16_t occurances, Color onColor,  uint16_t period_ms );
 
 
+// rotate a dot around the faces
+void rotate( Color onColor, Color offColor , uint16_t stepTime_ms );
+
+// rotate a dot around the faces with a black background
+void rotate( Color onColor, uint16_t stepTime_ms );
+
+
 // send the color you want to fade to, the duration of the fade
 void fadeTo( Color newColor, uint16_t duration);
 

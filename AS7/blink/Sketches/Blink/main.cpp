@@ -23,7 +23,7 @@ void loop() {
     
     if ( buttonSingleClicked() ) {
         
-        blink( MAGENTA , 500  );        
+       rotate( makeColorHSB(0,0,64) , 200 );
         
     }   
     
