@@ -29,9 +29,28 @@
     #error You must #include blinklib.h before blinkani.h
 #endif
 
+// Call to initialize the blinkani subsystem before starting any effects
 
-// send the color you want to blink, the rate at which it should blink at, and how many times it should blink
-void blink( uint16_t period, uint8_t occurances, Color newColor);
+void blinkAniBegin(void);
+
+
+// Show a color for specified time
+void flash( Color c , uint16_t durration_ms );
+
+// Show two colors in a row
+void blink(Color onColor, uint16_t onDurration_ms, Color offColor , uint16_t offDurration);
+
+// black & instant off
+
+void blink( Color onColor , uint16_t onDurration_ms);
+
+
+// blink specified number of times
+void strobe( uint16_t occurances, Color onColor,  uint16_t onDurration_ms, Color offColor , uint16_t offDurration );
+
+// black off, 50% duty cycle. 
+void strobe( uint16_t occurances, Color onColor,  uint16_t period_ms );
+
 
 // send the color you want to fade to, the duration of the fade
 void fadeTo( Color newColor, uint16_t duration);
@@ -40,15 +59,7 @@ Color getColor();
 
 Color getFaceColor(byte face);
 
-/*
+bool effectCompleted();
 
-    These hook functions are filled in by the sketch
-
-*/
-
-// Manually add our hooks. Note that currently you never need to Call this - it is automtically invoked the first time you call an blinkani function.
-// It is included to to not break code that references it, and in case we ever switch to requiring it.
-
-void blinkAniBegin(void);
 
 #endif /* BLINKANI_H_ */

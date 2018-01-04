@@ -9,17 +9,39 @@
 #include "blinklib.h"
 #include "blinkani.h"
 
+#include "Serial.h"
+
+ServicePortSerial sp;
+
 void setup() {
     
     setColor( BLUE );        
     blinkAniBegin();
+    
+    sp.begin();
+    sp.println("setup");
            
 }
 
+bool newEventFlag=false;
+
 void loop() {
     
-    if (buttonPressed()) {
-        blink( 200 , 3 , RED );        
+    if ( buttonSingleClicked() ) {
+        sp.println("pressed");
+        
+        //blink(1000 , RED, 1000 , GREEN );
+        
+        blink( MAGENTA , 500  );        
+        newEventFlag=true;
+        
     }   
+    
+    if (buttonDoubleClicked() ) {
+        
+        strobe( 5 , GREEN , 200 );
+    }        
+    
+    
     
 }    

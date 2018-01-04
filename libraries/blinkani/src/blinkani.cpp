@@ -36,130 +36,255 @@
 // It is ugly, but works and is time & space efficient 
 
 
-// The data for each effect is held in a union so that we only need a single memory footprint
-// for the largest effect.
-
-struct null_data_t {
-    // Intentionally blank for uniformity
-};
-
-struct blink_data_t {
-    uint32_t timeOfNextStep_ms;
-    bool isDisplayOn;
-    uint16_t period_ms;
-    uint8_t remainingOccurances;
-    Color color;       
-};    
-
-
-static struct Effect_t {
+struct Effect_t {
     
     // Every effect has a nextStep() and an isComplete() function
 
-    void (*nextStep)();               // Called once per loop to update the display.
-
-    bool (*isComplete)();             // Called to check if the current effect is finished running
+    virtual void nextStep();               // Called once per loop to update the display.
+                                      
+    virtual bool isComplete();             // Called to check if the current effect is finished running
     
-    union {
-        
-        null_data_t     null_data;
-        blink_data_t    blink_data;
-        
-    } data;        
+    Effect_t *prevEffect;                  // A pointer back to the previous effect that called this one    
+                                           // NULL at top of chain
+};
+
+// Pointer to the linked list of active effects. HEAD is currently running effect. 
+// NULL= no active effects.
+ 
+static Effect_t *currentEffect=NULL;
+
+// Make a new effect the current one
+// the previous running effect is pushed and will resume when this new effect completes.
+// Use this when composing an effect out of lower level effects.
+
+ static void addEffect( Effect_t *effect ) {
+
+    // Save currently running effect      
+     
+     effect->prevEffect = currentEffect;
+     
+     // Set the new effect as currently running one
+     
+     currentEffect = effect;
+     
+ }   
+ 
+ // Terminates any existing running effects. 
+ // Use this to initially start an effect. 
+ 
+ static void clearEffects() {
+     
+     currentEffect = NULL;
+     
+ }     
+ 
+ /* 
+
+    Flash Effect - Show the specified color for the specified period of time.
+
+*/
+
+struct FlashEffect_t : Effect_t {
     
+    uint32_t endTime;
     
-} currentEffect;    
+    void nextStep() {        
+        // Nothing here, we know where are done when time runs out
+    }
 
-
-/*
-    Null Effect - Place holder, does nothing. 
+    bool isComplete() {
+        uint32_t now = millis();
+        return endTime <= now;
+    }    
     
-*/    
+    void start( Color c , uint16_t duration_ms) {        
+        uint32_t now = millis();        
+        setColor( c );
+        endTime = now + duration_ms;
+        addEffect( this ); 
+    }
+    
+};
 
-static void null_nextStep() {
-}
+static FlashEffect_t flashEffect;
 
-static bool null_isComplete() {
-    return true;
-}    
+// public API call 
 
-void nullEffect(void) {    
-    currentEffect.nextStep    = null_nextStep;
-    currentEffect.isComplete  = null_isComplete;
+void flash( Color c , uint16_t durration_ms ){
+    
+   clearEffects();
+   flashEffect.start( c , durration_ms );
+    
 }    
 
 
 /* 
 
-    Blink Effect - Blink a specified number of times with a specified speed
+    Blink Effect - Biphasic Blink 
 
 */
 
-static void blink_nextStep() {      
+struct BlinkEffect_t : Effect_t {
     
-    // Using pointer to data compiles to same code as direct access, so
-    // lets use the pointer since it is easier to read.  
-    // You will likely want to copy this pattern to access the data for other effects    
+    // Since we immediately display the `on` phase, we only need to 
+    // remember what to do in the off phase
     
-    blink_data_t *data = &currentEffect.data.blink_data;
+    Color m_offColor;
+    uint16_t m_offDurration;
     
-    uint32_t now = millis();
-    
-    if(now >= data->timeOfNextStep_ms) {
+    bool m_completeFlag;
         
-        if( data->isDisplayOn) {
+    void nextStep() {
+        
+        // We pushed a flash for the on state in start(), so we will not get
+        // here until that has completed and we are ready for the off state.
+                
+        flashEffect.start( m_offColor , m_offDurration );
+        
+        m_completeFlag = true;      // As soon as the 2nd flash that we started is finished, then we are too. 
+        
+    }
 
-            setColor(OFF);
-
-            if( data->remainingOccurances > 0) {
-                data->remainingOccurances--;
-            }
-        }
-        else {
-            setColor( data->color );
-        }
-
-        data->isDisplayOn = !data->isDisplayOn;
-
-        // update our next step time
-        data->timeOfNextStep_ms = now + data->period_ms;
+    bool isComplete() {
+        return m_completeFlag;        
     }    
     
+    void start(Color onColor,  uint16_t onDurration_ms, Color offColor , uint16_t offDurration) {
+        
+        // Set us up to display the off phase when the on phase is complete
+        // Note that we add this *before* we start the flash so that we will get called
+        // when flash completes.
+                
+        m_offColor = offColor;
+        m_offDurration = offDurration;    
+        m_completeFlag = false;
+        
+        addEffect( this );
+        
+        // show the on phase now
+                
+        flashEffect.start( onColor , onDurration_ms );
+    }
+    
+};    
+
+// All effects have a statically defined instance like this to allocate the memory at compile time
+
+static BlinkEffect_t blinkEffect; 
+
+void blink(Color onColor, uint16_t onDurration_ms, Color offColor , uint16_t offDurration) {
+    
+    clearEffects();
+    
+    blinkEffect.start( onColor,  onDurration_ms, offColor , offDurration);
+    
 }
 
-static bool blink_isComplete() {
+// black & instant off
+
+void blink( Color onColor , uint16_t onDurration_ms) {
+    blink( onColor ,  onDurration_ms , OFF , 0 );
+}    
+
+/* 
+
+    Strobe Effect - A series of Blinks
+
+*/
+
+struct StrobeEffect_t : Effect_t {
     
-    blink_data_t *data = &currentEffect.data.blink_data;
-       
-    return data->remainingOccurances == 0;
-}
+    // Since we immediately display the `on` phase, we only need to 
+    // remember what to do in the off phase
+
+    Color m_onColor;
+    uint16_t m_onDurration;
+    
+    Color m_offColor;
+    uint16_t m_offDurration;
+    
+    uint16_t occurancesLeft;
+        
+    void nextStep() {
+        
+        // We pushed a flash for the on state in start(), so we will not get
+        // here until that has completed and we are ready for the off state.
+
+        
+        if (occurancesLeft) {
+                blinkEffect.start( m_onColor , m_onDurration , m_offColor,  m_offDurration  );            
+                occurancesLeft--;                
+        }            
+                        
+    }
+
+    bool isComplete() {
+        return occurancesLeft==0;        
+    }    
+    
+    void start( uint16_t occurances, Color onColor, uint16_t onDurration_ms, Color offColor , uint16_t offDurration) {
+        
+        // Set us up to display the off phase when the on phase is complete
+        // Note that we add this *before* we start the flash so that we will get called
+        // when flash completes.
+
+        m_onColor = onColor;
+        m_onDurration = offDurration;
+                
+        m_offColor = offColor;
+        m_offDurration = offDurration;   
+        
+        occurancesLeft = occurances; 
+        
+        addEffect( this );
+        
+        // Get the first blink started
+        nextStep(); 
+    }
+    
+};    
+
+// All effects have a statically defined instance like this to allocate the memory at compile time
+
+static StrobeEffect_t strobeEffect; 
 
 
+// blink specified number of times
+void strobe( uint16_t occurances, Color onColor, uint16_t onDurration_ms,   Color offColor , uint16_t offDurration ) {
+    clearEffects();
+    strobeEffect.start( occurances, onColor,  onDurration_ms, offColor , offDurration  );
+}    
 
-void blink(uint16_t period_ms, uint8_t occurances, Color newColor) {
+// black off, 50% duty cycle.
+void strobe( uint16_t occurances, Color onColor,  uint16_t period_ms ) {
     
-    blink_data_t *data = &currentEffect.data.blink_data;
-   
-    data->color = newColor;
-    data->remainingOccurances=occurances;    
-    data->isDisplayOn = false;        // Start with on phase
+    uint16_t durration = period_ms/2;       // 50% duty cycle 
     
-    data->period_ms = period_ms;
+    strobe( occurances , onColor , durration , OFF , durration );
     
-    data->timeOfNextStep_ms =0;     // Start immediately
+}    
+
+bool effectCompleted() {
     
-    currentEffect.nextStep    = blink_nextStep;
-    currentEffect.isComplete  = blink_isComplete;
-}
+    return currentEffect == NULL;
+    
+}    
 
 void blinkAniOnLoop(void) {
     
   // This is the loop that gets called after every loop
-  if(!currentEffect.isComplete()) {
-    currentEffect.nextStep();
-  }
-  
+   
+  // Tail any already completed effects...
+  // Requires that at least one effect always be running (currently the idleEffect at the top)
     
+  while ( currentEffect && currentEffect->isComplete()) {
+      currentEffect = currentEffect->prevEffect;
+  }      
+       
+  if (currentEffect) {
+    (currentEffect->nextStep)();
+  }    
+        
 }
 
 // Make a record to add to the callback chain
@@ -184,9 +309,7 @@ static void registerHook(void) {
 // Manually add our hooks
 
 void blinkAniBegin(void) {    
-
-    nullEffect();       // Start with the null effect (we need to populate the callbacks with something )
-        
+    clearEffects();       
     registerHook();
 }
 
