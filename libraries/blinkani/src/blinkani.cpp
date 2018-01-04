@@ -287,16 +287,24 @@ struct RotateEffect_t : Effect_t {
         
         if (now >= nextStepTime) {
             
-            setFaceColor( faceStep , m_offColor );
+            if (faceStep==FACE_COUNT) {     // We are done, turn off last pixel
+                
+                setFaceColor( 5 , m_offColor );
+                
+            } else {                
             
-            faceStep++;
-            
-            if (faceStep < FACE_COUNT) {
-
                 setFaceColor( faceStep , m_onColor );
+            
+                // Clear previous pixel
+            
+                if (faceStep>0) {
+                    setFaceColor( faceStep-1 , m_offColor );
+                }                    
                 
             }
-            
+                        
+            faceStep++;
+                        
             nextStepTime = now + stepDelayTime_ms;
             
         }                            
@@ -319,12 +327,9 @@ struct RotateEffect_t : Effect_t {
         
         faceStep=0;    // Start at the beginning
         
-        setFaceColor( 0 , onColor ); 
-        
-        uint32_t now = millis(); 
-        
-        nextStepTime = now + stepTime_ms;        
-        
+        nextStepTime =0;        
+        nextStep();   // prime the pump
+                
         addEffect( this );
     }
     
@@ -346,6 +351,65 @@ void rotate( Color onColor, uint16_t stepTime_ms ) {
     rotateEffect.start(onColor,  OFF , stepTime_ms );
 }
 
+
+/* 
+
+    Spin Effect - A series of rotations
+
+*/
+
+struct SpinEffect_t : Effect_t {
+    
+    Color m_onColor;    
+    Color m_offColor;
+    
+    uint16_t m_stepDelay;
+    
+    uint16_t occurancesLeft;
+        
+    void nextStep() {
+        
+        if (occurancesLeft) {
+                rotateEffect.start( m_onColor , m_offColor,  m_stepDelay );            
+                occurancesLeft--;                
+        }            
+                        
+    }
+
+    bool isComplete() {
+        return occurancesLeft==0;        
+    }    
+    
+    void start( uint16_t occurances, Color onColor, Color offColor , uint16_t stepDelay ) {
+        
+        // Set us up to display the off phase when the on phase is complete
+        // Note that we add this *before* we start the flash so that we will get called
+        // when flash completes.
+
+        m_onColor = onColor;                
+        m_offColor = offColor;
+        
+        m_stepDelay = stepDelay;
+        
+        occurancesLeft = occurances; 
+        
+        addEffect( this );
+        
+        // Get the first rotate started
+        nextStep(); 
+    }
+    
+};    
+
+// All effects have a statically defined instance like this to allocate the memory at compile time
+
+static SpinEffect_t spinEffect; 
+
+// rotate specified number of times
+void spin( uint16_t occurances, Color onColor, Color offColor , uint16_t stepTime_ms ) {
+    clearEffects();
+    spinEffect.start( occurances, onColor,  offColor , stepTime_ms );
+}  
 
 bool effectCompleted() {
     

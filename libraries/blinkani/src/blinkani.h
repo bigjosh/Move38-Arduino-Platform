@@ -58,6 +58,9 @@ void rotate( Color onColor, Color offColor , uint16_t stepTime_ms );
 // rotate a dot around the faces with a black background
 void rotate( Color onColor, uint16_t stepTime_ms );
 
+// rotate specified number of times
+void spin( uint16_t occurances, Color onColor, Color offColor , uint16_t stepTime_ms );
+
 
 // send the color you want to fade to, the duration of the fade
 void fadeTo( Color newColor, uint16_t duration);

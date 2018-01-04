@@ -23,7 +23,7 @@ void loop() {
     
     if ( buttonSingleClicked() ) {
         
-       rotate( makeColorHSB(0,0,64) , 200 );
+       spin( 3 , BLUE , OFF , 200 );
         
     }   
     
