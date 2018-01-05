@@ -23,7 +23,11 @@ void loop() {
     
     if ( buttonSingleClicked() ) {
         
-       spin( 3 , BLUE , OFF , 200 );
+         
+       //setFaceColor( 0 ,  BLUE  );       
+        
+       spin( 3 , makeColorHSB(0,0,64) , OFF , 200 );
+       //spin( 10 , makeColorRGB( 0 , 0 , 31 ) , OFF , 400 );       
         
     }   
     
