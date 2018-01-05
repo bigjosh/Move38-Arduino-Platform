@@ -422,12 +422,38 @@ static void pixel_isr(void) {
             // Only bother to turn on the sink if there is actually blue to display
                         
              if ( currentPixel->rawValueB != 255 ) {          // Is blue on?
-                 CBI( BLUE_SINK_PORT , BLUE_SINK_BIT );      // If the blue LED is on at all, then activate the boost. This will start charging the boost capacitor.
+                 
+                // If the blue LED is on at all, then activate the boost. This will start charging the boost capacitor.
+                
+                 SBI( LED_B_DDR , LED_B_BIT );                // Drive BLUE LED output pin - which is high when the LED is not being PWMed. 
+                                                              // We blindly set here becuase we might have cleared it if previous pixel had blue off
+                                                              
+                 CBI( BLUE_SINK_PORT , BLUE_SINK_BIT );       // Allow capacitor charge though the diode
                  
                  // Ok, we are now charging the pump
                  
+                 // Now we connect the timer to the output pin. After the charge phase is done, the PWM will kick in and 
+                 // drive the pin low, which will activate the LED though the pump. 
                  
-             }
+                TCCR2A =
+                    _BV( COM2B1) |                        // 1 0 = Clear OC0B on Compare Match (blue on), set OC0B at BOTTOM (blue off), (non-inverting mode) 
+                    _BV( WGM01) | _BV( WGM00)             // Mode 3 - Fast PWM TOP=0xFF
+                ;                 
+                                  
+             } else {           // blue off in current pixel
+
+                 CBI( LED_B_DDR , LED_B_BIT );               // Float the BLUE LED output pin so no current can flow though any residual charge on the boost capacity
+                 SBI( BLUE_SINK_PORT , BLUE_SINK_BIT );      // Make boost high so no current can flow though the BLUE LED down though the diode. 
+                 
+                 // Now we disconnect the timer from the output pin. We do this so there is no path for current to take though the blue LED.
+                 // If we do not do this, there can be a tiny bit of residual charge left in the capacitor after a BLUE LED is lit and that can make the next 
+                 // LED glow dimly as that charge lets a tiny amount of current flow though the LED. 
+                 
+                 TCCR2A =                                    // No compare match mode, so output will revert to normal GPIO pin which is left low, so no output and no pull-up.    
+                 _BV( WGM01) | _BV( WGM00)                   // Mode 3 - Fast PWM TOP=0xFF
+                 ;                 
+                 
+             }                 
              
             // TODO: Handle the case where battery is high enough to drive blue directly and skip the pump
             
@@ -452,9 +478,9 @@ static void pixel_isr(void) {
             // turning off the sink and turning on the PWM
 
             SBI( BLUE_SINK_PORT , BLUE_SINK_BIT);   // Turn off blue sink (make it high)
-                                                    // Might already be off, but faster to blinkly turn off again rather than test
+                                                    // Might already be off, but faster to blindly turn off again rather than test
         
-            // Now the sink is off, we are save to activate the anode.
+            // Now the sink is off, we are safe to activate the anode.
         
             activateAnode( currentPixelIndex );
         
@@ -472,7 +498,7 @@ static void pixel_isr(void) {
         case 2: // Right now, the blue led is on. Lets get ready for the red one next.             
                                    
             
-            OCR2B = 255;                                // Load OCR to turn off blue at next overflow
+            OCR2B = 255;                        // Load OCR to turn off blue at next overflow
             OCR0A = currentPixel->rawValueR;    // Load OCR to turn on red at next overflow
 
             phase++;           
@@ -481,7 +507,7 @@ static void pixel_isr(void) {
         case 3: // Right now, the red LED is on. Get ready for green
                 
             
-            OCR0A = 255;                                // Load OCR to turn off red at next overflow
+            OCR0A = 255;                        // Load OCR to turn off red at next overflow
             OCR0B = currentPixel->rawValueG;    // Load OCR to turn on green at next overflow
             
             phase++;
@@ -602,7 +628,7 @@ void pixel_enable(void) {
 }
        
 
-// Gamma table curtsy of adafruit...
+// Gamma table courtesy of adafruit...
 // https://learn.adafruit.com/led-tricks-gamma-correction/the-quick-fix
 // TODO: Compress this down, we probably only need like 4 bits of resolution.
 
