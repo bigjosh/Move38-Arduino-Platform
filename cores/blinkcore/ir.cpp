@@ -30,9 +30,6 @@
 
 #include "callbacks.h"
 
-#warning DEBUG
-#include "sp.h"
-
 // A bit cycle is one timer tick, currently 512us
 
 //TODO: Optimize these to be exact minimum for the distance in the real physical object    
@@ -73,7 +70,7 @@ void ir_enable(void) {
     // This must come before the charge or we could miss a change that happened between the charge and the enable and that would
     // loose the LED out of the cycle forever
     
-    #warning IR interrupts totally disabled for now. We will need them for wake
+    // TODO: IR interrupts totally disabled for now. We will need them for wake on data.
 
     //SBI( PCICR , IR_PCI );      // Enable the pin group to actual generate interrupts    
     
