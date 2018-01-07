@@ -16,10 +16,16 @@
 // These values are based on how we actually program the timer registers in timer_enable()
 // There are checked with assertion there, so don't change these without changing the actual registers first
 
+// User supplied callback. Called every 512us with interrupts off. Should complete work as
+// quickly as possible!!!
+// Actually called form pixel.cpp since we also use the pixel timer for time keeping
+
+void timer_callback_cli(void);
+
 // User supplied callback. Called every 512us with interrupts on. Should complete work in <<256us.
 // Actually called form pixel.cpp since we also use the pixel timer for time keeping
 
-void timer_callback(void);
+void timer_callback_sei(void);
 
 #define TIMER_PRESCALER 8       // How much we divide the F_CPU by to get the timer0 frequency
 

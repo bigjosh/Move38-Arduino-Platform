@@ -565,7 +565,7 @@ void checkSleepTimeout(void) {
 // This is called by timer2 about every 512us
 // TODO: Reduce this rate by phasing the timer call?
 
-void timer_callback(void) {
+void timer_callback_sei(void) {
     updateIRComs();
     updateMillis();
     updateButtonState();
