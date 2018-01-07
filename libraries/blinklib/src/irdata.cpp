@@ -47,9 +47,9 @@
 
 #include <util/delay.h>         // Must come after F_CPU definition
 
-// A bit cycle is one timer tick, currently 512us
+// A bit cycle is one 2x timer tick, currently 256us
 
-#define IR_WINDOW_US 512            // How long is each timing window? Based on timer programming and clock speed. 
+#define IR_WINDOW_US 256            // How long is each timing window? Based on timer programming and clock speed. 
  
 #define IR_CLOCK_SPREAD_PCT  10     // Max clock spread between TX and RX clocks in percent
 
@@ -60,7 +60,7 @@
 
  //#define IR_SPACE_TIME_US (IR_WINDOW_US + (( ((unsigned long) IR_WINDOW_US * IR_CLOCK_SPREAD_PCT) ) / 100UL ) - TX_PULSE_OVERHEAD )  // Used for sending flashes. Must be longer than one IR timer tick including if this clock is slow and RX is fast. 
  
-#define IR_SPACE_TIME_US (600)  // Used for sending flashes. 
+#define IR_SPACE_TIME_US (300)  // Used for sending flashes. 
                                 // Must be longer than one IR timer tick including if this clock is slow and RX is fast
                                 // Must be shorter than two IR timer ticks including if the sending pulse is delayed by maximum interrupt latency.
 
@@ -125,9 +125,18 @@ static uint8_t oddParity(uint8_t p) {
  
  volatile uint8_t most_recent_ir_test; 
  
- void timer_callback_cli(void) {
+ #include "sp.h"
+ 
+ void timer_256us_callback_cli(void) {
+     
+     SP_PIN_A_MODE_OUT();
+     SP_PIN_A_SET_1();
+     
     // Interrupts are off, so get it done as quickly as possible
     most_recent_ir_test = ir_test_and_charge_cli();    
+    
+     SP_PIN_A_SET_0();
+    
  }     
  
  void updateIRComs(void) {

@@ -34,7 +34,8 @@ void loop() {
     if (buttonDoubleClicked() ) {
         
         strobe( 5 , GREEN , 200 );
-    }        
-       
+    }    
+    
+    irBroadcastData( 0b101010 );                
     
 }    

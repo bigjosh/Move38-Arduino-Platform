@@ -562,15 +562,20 @@ void checkSleepTimeout(void) {
 
 }
 
-// This is called by timer2 about every 512us
-// TODO: Reduce this rate by phasing the timer call?
+// This is called by about every 512us with interrupts on. 
 
-void timer_callback_sei(void) {
-    updateIRComs();
+void timer_512us_callback_sei(void) {
     updateMillis();
     updateButtonState();
     checkSleepTimeout();
 }
+
+// This is called by about every 256us with interrupts on. 
+
+void timer_256us_callback_sei(void) {
+    updateIRComs();
+}
+
 
 static chainfunction_struct *onLoopChain = NULL;
 

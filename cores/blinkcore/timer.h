@@ -16,16 +16,32 @@
 // These values are based on how we actually program the timer registers in timer_enable()
 // There are checked with assertion there, so don't change these without changing the actual registers first
 
-// User supplied callback. Called every 512us with interrupts off. Should complete work as
+
+// There are two timer callback speeds - every 256us and every 512us.
+// The 256us timer callback is broken into two parts. One is called with interrupts off
+// and should complete any atomic operations very quickly and return. Then the interrupts
+// on callback is called and can take longer but must comeplete before the next firing. 
+
+// User supplied callback. Called every 256us with interrupts off. Should complete work as
 // quickly as possible!!!
+// Actually called from pixel.cpp since we also use the pixel timer for time keeping
+
+void timer_256us_callback_cli(void);
+
+
+// User supplied callback. Called every 256us with interrupts on. Should complete work in <<256us.
 // Actually called form pixel.cpp since we also use the pixel timer for time keeping
 
-void timer_callback_cli(void);
+void timer_256us_callback_sei(void);
+
+
 
 // User supplied callback. Called every 512us with interrupts on. Should complete work in <<256us.
 // Actually called form pixel.cpp since we also use the pixel timer for time keeping
 
-void timer_callback_sei(void);
+void timer_512us_callback_sei(void);
+
+
 
 #define TIMER_PRESCALER 8       // How much we divide the F_CPU by to get the timer0 frequency
 
