@@ -404,6 +404,9 @@ static void pixel_isr(void) {
     // Because of the buffering of the OCR registers, we are always setting values that will be loaded
     // the next time the timer overflows. 
         
+        
+    // Call the callback first, while interrupts are still disabled.
+    
     ISR_CALLBACK_TIMER::invokeCallback();
     
     sei();                      // We don't care if we get interrupted as long as we finish before the PWM counters start turning on LEDs again (the PWM always starts with LED off and then turns on when we hit the output compare)
@@ -458,17 +461,7 @@ static void pixel_isr(void) {
             // TODO: Handle the case where battery is high enough to drive blue directly and skip the pump
             
             phase++;
-            
-            // Now we call the timer callback function
-            // This is a great place to do it because the pixels will be off for the next 2 phases
-            // while we charge the pump. This give the foreground some time to make updates that will
-            // all show up simultaneously when we turn on the 1st pixel. 
-            
-            // The frequency of this call is calculated in timer.h by F_TIMER
-            // The time between calls is calculated in timer.h by TIMER_CYCLES_PER_TICK
-            
-//            ISR_CALLBACK_TIMER::invokeCallback();
-                                      
+                                                  
             break;
              
         case 1:
@@ -546,9 +539,6 @@ static void pixel_isr(void) {
             break;
                         
     }        
-        
-        
-        
     
 } 
 
