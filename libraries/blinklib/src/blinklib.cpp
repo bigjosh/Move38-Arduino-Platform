@@ -162,35 +162,22 @@ Color makeColorHSB( uint8_t hue, uint8_t saturation, uint8_t brightness ) {
     return( makeColorRGB( r >> 3 , g >> 3  , b >> 3 ) );
 }
 
-/*
 
-// Simpler delay based on millis() below. Not as precice, but so much simpler and way good enough.
+// return a random number between 0 and limit inclusive.
+// TODO: Use entropy from the button or decaying IR LEDs
+// https://stackoverflow.com/a/2999130/3152071
 
-// Note that we do not expose _delay_ms() to the user since then they would need
-// access to F_CPU and it would also limit them to only static delay times.
-// By abstracting to a function, we can dynamically adjust F_CPU and
-// also potentially sleep during the delay to save power rather than just burning cycles.
+uint16_t rand( uint16_t limit ) {
 
-// TODO: Use millis timer to do this
+    uint16_t divisor = RAND_MAX/(limit+1);
+    uint16_t retval;
 
-void delay( unsigned long millis ) {
+    do { 
+        retval = rand() / divisor;
+    } while (retval > limit);
 
-    // delay_ms() has a maximum value of millis it can handle, so we call
-    // multiple times if necessary to build up the delay.
-    // Not perfect, but likely good enough to get withing a ms on delays longer than 20 sec
-
-    while (millis) {
-
-        unsigned nextDelay = min( millis , max_delay_ms);
-
-        delay_ms( nextDelay );
-
-        millis -= nextDelay;
-
-    }
-}
-
-*/
+    return retval;
+}    
 
 // Read the unique serial number for this blink tile
 // There are 9 bytes in all, so n can be 0-8
