@@ -257,7 +257,9 @@ uint8_t irGetData( uint8_t led ) {
     
 }
 
-void irSendData(uint8_t data, uint8_t bitmask) {
+// Simultaneously send data on all faces that have a `1` in bitmask
+
+void irSendDataBitmask(uint8_t data, uint8_t bitmask) {
     
     uint8_t bitwalker = 0b00100000;
     
@@ -288,10 +290,18 @@ void irSendData(uint8_t data, uint8_t bitmask) {
     
 }
 
+// Send data on specified face
+// I put destination (face) first to mirror the stdio.h functions like fprintf(). 
+
+void irSendData(  uint8_t face , uint8_t data  ) {
+    irSendDataBitmask( data , 1 << face );
+}
+
+
 // Send data on all faces
 
 void irBroadcastData( uint8_t data ) {
     
-    irSendData( data , IR_ALL_BITS );
+    irSendDataBitmask( data , IR_ALL_BITS );
     
 }    
