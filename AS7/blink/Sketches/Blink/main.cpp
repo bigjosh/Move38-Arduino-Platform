@@ -32,9 +32,9 @@ static state_t state = READY;
                                // face is the source. 
 
 
-static int sourceFace=NO_FACE;        // The face we got the spark from.
+static int sourceFace=NO_FACE; // The face we got the spark from.
                                // Only valid in EXPLODING, COOLDOWN, and INFECT
-                               // NO_FACE if we did not get thge spark from anywhere (was cause by button press)
+                               // NO_FACE if we did not get the spark from anywhere (was cause by button press)
 
 static int targetFace=NO_FACE;        // The face we are sending the spark to.
                                // Only valid in INFECT
@@ -48,39 +48,36 @@ static const uint16_t explosionDurration_ms = 400;
 static const uint16_t cooldownDurration_ms = 100;
 
 // How long we wait for a neighbor to ack our spark before giving up
-static const uint16_t infectTimeout_ms = 400;
+static const uint16_t infectTimeout_ms = 200;
 
 // Keep track of last time we saw a message on this face so 
 // we know if there is a neighbor there. 
 static uint32_t neighboorExpireTime[FACE_COUNT];
 
 // Assume no neighbor if we don't see a message on a face for this long
-static const uint16_t expireDurration_ms = 500;     // TODO: LOWER THIS
+static const uint16_t expireDurration_ms = 100;     
 
 // Keep track of next time we will send on this face. 
 // Reset to 0 anytime we get a message so we end up token passing across the link
 static uint32_t neighboorSendTime[FACE_COUNT];      // inits to 0 on startup, so we will immediately send on all faces
 
 // How often do we send a probe message on a face where we haven't seen anything in a while?
-static const uint16_t sendprobeDurration_ms = 1000;
+static const uint16_t sendprobeDurration_ms = 200;
 
 // The color we show on an occupied face in READY state 
 static Color readyFaceColor;
 
 #include "Serial.h"
 
-ServicePortSerial sp;
-
 void setup() {
   // put your setup code here, to run once:
   readyFaceColor = makeColorHSB( 25, 255, 128);     // A nice smoldering orange  
-  sp.begin();
 }
 
 // Returns a face that (1) has not yet expired, and (2) is not `exclude`
 // Returns NO_FACE is no faces meet the criteria
 
-static byte pickSparkTarget( uint16_t now, byte exclude ) {
+static byte pickSparkTarget( uint32_t now, byte exclude ) {
     
     // First tally up all the potential target faces
                 
@@ -88,10 +85,14 @@ static byte pickSparkTarget( uint16_t now, byte exclude ) {
     byte potentialTargetCount=0;
                 
     FOREACH_FACE(f) {
+        
         if ( (neighboorExpireTime[f] > now) && (f!=exclude) ) {
+
+
             potentialTargetList[ potentialTargetCount ] = f;
             potentialTargetCount++;
         }
+        
     }
     
     if ( potentialTargetCount==0) {
@@ -109,6 +110,7 @@ static byte pickSparkTarget( uint16_t now, byte exclude ) {
     
 
 void loop() {
+        
     // put your main code here, to run repeatedly:
     uint32_t now = millis();
   
@@ -127,26 +129,27 @@ void loop() {
             neighboorSendTime[f] = 0;
                 
             byte receivedMessage = irGetData(f);    
-            
-            sp.print( receivedMessage );
-            sp.print( " on "  );
-            sp.println( f );
-        
+                   
             if (receivedMessage==INFECT) {      // We just got a spark!
+                
                 detonateFlag=true;
                 sourceFace=f;
+                
             } else if (receivedMessage == EXPLODING && state==INFECT && f==targetFace) {
+                
                 // They got our INFECT message!
                 state=READY;            
+                
             }                        
         }                          
     }      
-    
+        
     // if button pressed, firecracker
     if (buttonSingleClicked()) {
         detonateFlag=true;
-        sourceFace = NO_FACE;           // Manually initiated, so no source
+        sourceFace = NO_FACE;           // Manually initiated, so no source                
     }
+              
   
     if (detonateFlag) {
         state=EXPLODING;
@@ -166,7 +169,7 @@ void loop() {
         }
           
     }
-
+       
     // Note that we do not explicitly check for READY since in this state
     // we don't really do anything (the original background that we already drew shows)
     
@@ -216,7 +219,7 @@ void loop() {
         if (now < nextStateTime ) {
             
             // Show the spark flying away
-            setFaceColor( targetFace , RED );            
+            setFaceColor( targetFace , BLUE );            
             
         } else {
             
@@ -232,25 +235,17 @@ void loop() {
     FOREACH_FACE(f) {
         
         if ( neighboorSendTime[f] <= now ) {        // Time to send on this face?
-        
-            if (state==INFECT) {
+                    
+            if (state==INFECT && f != targetFace ) {
                 
-                if (f == targetFace ) {
-                    
-                    irSendData( f , INFECT ); 
-                    
-                } else {
-                    
-                    // This is a bit of a hack. We can't send our current state because then
-                    // we would infect everyone. So we send READY because it is benign.
-                    irSendData( f , READY );
-                    
-                }
-                
+                // This is a bit of a hack. We can't send our current state because then
+                // we would infect everyone. So we send READY because it is benign.
+                irSendData( f , READY );
+                                    
             } else {        // In any state but INFECT
                 
                 irSendData( f , state );
-                
+                                
             }
             
             // Here we set a timeout to keep periodically probing on this face, but
@@ -262,7 +257,7 @@ void loop() {
                         
         }                            
     }            
-    
+        
 }
 
 

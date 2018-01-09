@@ -206,6 +206,17 @@ uint16_t rand( uint16_t limit ) {
     return retval;
 }    
 
+// Returns the number of millis since last call
+// Handy for profiling.
+
+uint32_t timeDelta(void) {
+    static uint32_t lastcall=0;
+    uint32_t now = millis();    
+    uint32_t delta = now - lastcall;    
+    lastcall = now;
+    return delta;
+}    
+
 // Read the unique serial number for this blink tile
 // There are 9 bytes in all, so n can be 0-8
 
