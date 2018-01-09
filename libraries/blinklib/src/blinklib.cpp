@@ -11,11 +11,14 @@
 
 */
 
-//#define <stdint.h>      // UINT32_MAX
+// We need this little nugget to get UINT16_T as per...
+// https://stackoverflow.com/a/3233069/3152071
+// ...and it must come before Arduino.h which also pulls in stdint.h
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 
 #include <avr/pgmspace.h>
-#include <limits.h>
 #include <stddef.h>     // NULL
 
 #include <Arduino.h>
@@ -162,18 +165,42 @@ Color makeColorHSB( uint8_t hue, uint8_t saturation, uint8_t brightness ) {
     return( makeColorRGB( r >> 3 , g >> 3  , b >> 3 ) );
 }
 
+// OMG, the Ardiuno rand() function is just a mod! We at least want a uniform distibution.
+
+// Here we implement the SimpleRNG pseudo-random number generator based on this code...
+// https://www.johndcook.com/SimpleRNG.cpp
+
+#define GETNEXTRANDUINT_MAX UINT16_MAX
+
+static uint16_t GetNextRandUint(void) {
+    
+    // These values are not magical, just the default values Marsaglia used.
+    // Any unit should work.
+    
+    // We make them local static so that we only consume the storage if the random()
+    // functions are actually ever called. 
+    
+    static uint32_t u = 521288629UL;
+    static uint32_t v = 362436069UL;
+    
+    v = 36969*(v & 65535) + (v >> 16);
+    u = 18000*(u & 65535) + (u >> 16);
+    
+    return (v << 16) + u;
+    
+}    
 
 // return a random number between 0 and limit inclusive.
 // TODO: Use entropy from the button or decaying IR LEDs
 // https://stackoverflow.com/a/2999130/3152071
 
 uint16_t rand( uint16_t limit ) {
-
-    uint16_t divisor = RAND_MAX/(limit+1);
+       
+    uint16_t divisor = GETNEXTRANDUINT_MAX/(limit+1);
     uint16_t retval;
 
     do { 
-        retval = rand() / divisor;
+        retval = GetNextRandUint() / divisor;
     } while (retval > limit);
 
     return retval;
