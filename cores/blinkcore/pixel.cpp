@@ -79,7 +79,7 @@ static rawpixelset_t *bufferedRawPixelSet =&rawpixelsetbuffer[1];        // Beni
 
 static void setupPixelPins(void) {
 
-	// TODO: Compare power usage for driving LOW with making input. Maybe slight savings becuase we don't have to drain capacitance each time? Probably not noticable...
+	// TODO: Compare power usage for driving LOW with making input. Maybe slight savings because we don't have to drain capacitance each time? Probably not noticable...
 	// TODO: This could be slightly smaller code by loading DDRD with a full byte rather than bits
 	
 	// Setup all the anode driver lines to output. They will be low by default on bootup
@@ -201,6 +201,11 @@ static void pixelTimersOn(void) {
 
     
     // Timer2 (B)                           // Charge pump is attached to OC2B
+    
+    OCR2A = 128;                            // Fire a match interrupt half way though the cycle. 
+                                            // This lets us sample the IR LEDs at double the overflow rate.
+                                            // It is also nice because in the match ISR we *only* do IR stuff.
+    
     OCR2B = 255;                            // Initial value for BLUE (off)
     TCNT2=    0;                            // This is BOTTOM, so when we force a compare the output should be SET (set is LED off, charge pump charging) 
     
@@ -221,7 +226,7 @@ static void pixelTimersOn(void) {
     #endif
 
     // IMPORTANT!
-    // If you change this prescaller, you must update the the TIMER_PRESCALLER
+    // If you change this prescaler, you must update the the TIMER_PRESCALLER
 
     // The two timers might be slightly unsynchronized by a cycle, but that should not matter since all the action happens at the end of the cycle anyway.
     
@@ -241,7 +246,9 @@ static void pixelTimersOn(void) {
 
 static void setupTimers(void) {
     
-	TIMSK0 = _BV( TOIE0 );                  // The corresponding interrupt is executed if an overflow in Timer/Counter0 occurs
+	TIMSK0 = _BV( TOIE0 ) ;                  // The corresponding interrupt is executed if an overflow in Timer/Counter0 occurs
+    
+    TIMSK2 = _BV( OCIE2A );                  // Generate an interrupt when OCR2A matches, which happens excatly out of phase with the overflow. 
 
 }
 
@@ -323,29 +330,6 @@ void updateVccFlag(void) {                  // Set the flag based on ADC check o
 
 */
 
-// Callback that is called once per frame 
-// Called during a nice visual lull when there are two consecutive phases where RGB LEDs are off
-// so plenty of time to do any updates without visual tearing. 
-
-// Weak reference so it (almost) compiles away if not used.
-// (looks like GCC is not yet smart enough to see an empty C++ virtual invoke. Maybe some day!)
-
-// Confirmed that all the pre/postamble pushes and pops compile away if this is left blank
-
-
-struct ISR_CALLBACK_TIMER : CALLBACK_BASE< ISR_CALLBACK_TIMER> {
-    
-    static const uint8_t running_bit = CALLBACK_TIMER_RUNNING_BIT;
-    static const uint8_t pending_bit = CALLBACK_TIMER_PENDING_BIT;
-    
-    static inline void callback(void) {
-        
-        timer_callback();
-        
-    }
-    
-};
-
                                      
 static uint8_t currentPixelIndex;      // Which pixel are we on now?
 
@@ -403,14 +387,7 @@ static void pixel_isr(void) {
     // THIS IS COMPLICATED
     // Because of the buffering of the OCR registers, we are always setting values that will be loaded
     // the next time the timer overflows. 
-        
-        
-    // Call the callback first, while interrupts are still disabled.
-    
-    ISR_CALLBACK_TIMER::invokeCallback();
-    
-    sei();                      // We don't care if we get interrupted as long as we finish before the PWM counters start turning on LEDs again (the PWM always starts with LED off and then turns on when we hit the output compare)
-    
+                    
     rawpixel_t *currentPixel = &(displayedRawPixelSet->rawpixels[currentPixelIndex]);      // TODO: cache this and eliminate currentPixel since buffer only changes at end of frame
         
     switch (phase) {
@@ -538,8 +515,8 @@ static void pixel_isr(void) {
                                             
             break;
                         
-    }        
-    
+    }   
+        
 } 
 
 // Stop the timer that drives pixel PWM and refresh
@@ -580,9 +557,49 @@ static void pixelTimerOff(void) {
 
 ISR(TIMER0_OVF_vect)
 {       
+    timer_256us_callback_cli();       // Do any timing critical double-time stuff with interrupts off 
+                                   // Currently used to sample & charge (but not decode) the IR LEDs
+                                
+    // We want to turn interrupts back on as quickly as possible here
+    // to limit the amount of jitter we add to the space gaps between outgoing
+    // IR pulses
+                                
+    sei();                      // Exhale. We want interrupt on as quickly as possible so we 
+                                // don't mess up IR transmit timing. 
+                                                                
+    // Deal with the PWM stuff. There is a deadline here since we must get the new values
+    // loaded into the double-buffered registers before the next overflow.
+                                
     pixel_isr();
+    
+    timer_256us_callback_sei();    // Do the doubletime callback
+    timer_512us_callback_sei();       // Do everything else non-timing sensitive. 
     return;	
 }
+
+
+ISR(TIMER2_COMPA_vect)          // Called when OCR2a matches, which we have set up to happen 
+                                // exactly out of phase with the TIMER0_OVR to effectively double
+                                // Double the rate we call some callbacks (currently used for IR) 
+{
+    timer_256us_callback_cli();    // Do any timing critical stuff with interrupts off
+    
+    // Currently used to sample & charge (but not decode) the IR LEDs
+    
+    // We want to turn interrupts back on as quickly as possible here
+    // to limit the amount of jitter we add to the space gaps between outgoing
+    // IR pulses
+    
+    sei();                      // Exhale. We want interrupt on as quickly as possible so we
+    // don't mess up IR transmit timing.
+    
+    // Deal with the PWM stuff. There is a deadline here since we must get the new values
+    // loaded into the double-buffered registers before the next overflow.
+        
+    timer_256us_callback_sei();       // Do everything else non-timing sensitive.
+    return;
+}
+
 
 
 // Turn of all pixels and the timer that drives them.

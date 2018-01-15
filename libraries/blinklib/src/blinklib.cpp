@@ -11,11 +11,14 @@
 
 */
 
-//#define <stdint.h>      // UINT32_MAX
+// We need this little nugget to get UINT16_T as per...
+// https://stackoverflow.com/a/3233069/3152071
+// ...and it must come before Arduino.h which also pulls in stdint.h
 
+#define __STDC_LIMIT_MACROS
+#include <stdint.h>
 
 #include <avr/pgmspace.h>
-#include <limits.h>
 #include <stddef.h>     // NULL
 
 #include <Arduino.h>
@@ -162,35 +165,57 @@ Color makeColorHSB( uint8_t hue, uint8_t saturation, uint8_t brightness ) {
     return( makeColorRGB( r >> 3 , g >> 3  , b >> 3 ) );
 }
 
-/*
+// OMG, the Ardiuno rand() function is just a mod! We at least want a uniform distibution.
 
-// Simpler delay based on millis() below. Not as precice, but so much simpler and way good enough.
+// Here we implement the SimpleRNG pseudo-random number generator based on this code...
+// https://www.johndcook.com/SimpleRNG.cpp
 
-// Note that we do not expose _delay_ms() to the user since then they would need
-// access to F_CPU and it would also limit them to only static delay times.
-// By abstracting to a function, we can dynamically adjust F_CPU and
-// also potentially sleep during the delay to save power rather than just burning cycles.
+#define GETNEXTRANDUINT_MAX UINT16_MAX
 
-// TODO: Use millis timer to do this
+static uint16_t GetNextRandUint(void) {
+    
+    // These values are not magical, just the default values Marsaglia used.
+    // Any unit should work.
+    
+    // We make them local static so that we only consume the storage if the random()
+    // functions are actually ever called. 
+    
+    static uint32_t u = 521288629UL;
+    static uint32_t v = 362436069UL;
+    
+    v = 36969*(v & 65535) + (v >> 16);
+    u = 18000*(u & 65535) + (u >> 16);
+    
+    return (v << 16) + u;
+    
+}    
 
-void delay( unsigned long millis ) {
+// return a random number between 0 and limit inclusive.
+// TODO: Use entropy from the button or decaying IR LEDs
+// https://stackoverflow.com/a/2999130/3152071
 
-    // delay_ms() has a maximum value of millis it can handle, so we call
-    // multiple times if necessary to build up the delay.
-    // Not perfect, but likely good enough to get withing a ms on delays longer than 20 sec
+uint16_t rand( uint16_t limit ) {
+       
+    uint16_t divisor = GETNEXTRANDUINT_MAX/(limit+1);
+    uint16_t retval;
 
-    while (millis) {
+    do { 
+        retval = GetNextRandUint() / divisor;
+    } while (retval > limit);
 
-        unsigned nextDelay = min( millis , max_delay_ms);
+    return retval;
+}    
 
-        delay_ms( nextDelay );
+// Returns the number of millis since last call
+// Handy for profiling.
 
-        millis -= nextDelay;
-
-    }
-}
-
-*/
+uint32_t timeDelta(void) {
+    static uint32_t lastcall=0;
+    uint32_t now = millis();    
+    uint32_t delta = now - lastcall;    
+    lastcall = now;
+    return delta;
+}    
 
 // Read the unique serial number for this blink tile
 // There are 9 bytes in all, so n can be 0-8
@@ -562,15 +587,20 @@ void checkSleepTimeout(void) {
 
 }
 
-// This is called by timer2 about every 512us
-// TODO: Reduce this rate by phasing the timer call?
+// This is called by about every 512us with interrupts on. 
 
-void timer_callback(void) {
-    updateIRComs();
+void timer_512us_callback_sei(void) {
     updateMillis();
     updateButtonState();
     checkSleepTimeout();
 }
+
+// This is called by about every 256us with interrupts on. 
+
+void timer_256us_callback_sei(void) {
+    updateIRComs();
+}
+
 
 static chainfunction_struct *onLoopChain = NULL;
 

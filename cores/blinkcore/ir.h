@@ -51,10 +51,11 @@ void ir_tx_sendpulse( uint8_t leadingSpaces );
 void ir_tx_end(void);
 
 // Measure the IR LEDs to to see if they have been triggered.
+// Must be called when interrupts are off.
 // Returns a 1 in each bit for each LED that was fired.
 // Fired LEDs are recharged.
 
-uint8_t ir_test_and_charge( void );
+uint8_t ir_test_and_charge_cli( void );
 
 
 // Called anytime on of the IR LEDs triggers, which could

@@ -82,11 +82,17 @@ bool buttonDown();
 */
 
 
-// Send data on a single face. Data is 7-bits wide, top bit is ignored.
+// Send data on a single face. 
+// Data is 6-bits wide, top bits are ignored.
 
-void irSendData( uint8_t face , uint8_t data );
+void irSendData( uint8_t face , uint8_t data   );
 
-// Broadcast data on all faces. Data is 7-bits wide, top bit is ignored.
+// Simultaneously send data on all faces that have a `1` in bitmask
+// Data is 6-bits wide, top bits are ignored.
+void irSendDataBitmask(uint8_t data, uint8_t bitmask);   
+    
+// Broadcast data on all faces. 
+// Data is 6-bits wide, top bits are ignored.
 
 void irBroadcastData( uint8_t data );
 
@@ -224,10 +230,20 @@ unsigned long millis(void);
 
 */
 
+
+// Return a random number between 0 and limit inclusive.
+
+uint16_t rand( uint16_t limit );
+
 // Read the unique serial number for this blink tile
 // There are 9 bytes in all, so n can be 0-8
 
 byte getSerialNumberByte( byte n );
+
+// Returns the number of millis since last call
+// Handy for profiling.
+
+uint32_t timeDelta(void);
 
 
 /*
@@ -255,7 +271,7 @@ bool buttonPressed(void);
 
 // Send data on a single face. Data is 6-bits wide (0-63 value).
 
-void irSendData( uint8_t face , uint8_t data );
+void irSendDataBitmask( uint8_t face , uint8_t data );
 
 // Broadcast data on all faces. Data is 6-bits wide (0-63 value).
 
