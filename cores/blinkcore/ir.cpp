@@ -30,9 +30,6 @@
 
 #include "callbacks.h"
 
-#warning DEBUG
-#include "sp.h"
-
 // A bit cycle is one timer tick, currently 512us
 
 //TODO: Optimize these to be exact minimum for the distance in the real physical object    
@@ -73,7 +70,7 @@ void ir_enable(void) {
     // This must come before the charge or we could miss a change that happened between the charge and the enable and that would
     // loose the LED out of the cycle forever
     
-    #warning IR interrupts totally disabled for now. We will need them for wake
+    // TODO: IR interrupts totally disabled for now. We will need them for wake on data.
 
     //SBI( PCICR , IR_PCI );      // Enable the pin group to actual generate interrupts    
     
@@ -259,10 +256,11 @@ static inline void chargeLEDs( uint8_t bitmask ) {
 }    
 
 // Measure the IR LEDs to to see if they have been triggered.
+// Must be called when interrupts are off. 
 // Returns a 1 in each bit for each LED that was fired.
 // Fired LEDs are recharged. 
 
-uint8_t ir_test_and_charge( void ) {
+uint8_t ir_test_and_charge_cli( void ) {
    
    // ===Time critcal section start===
    
@@ -273,40 +271,23 @@ uint8_t ir_test_and_charge( void ) {
    
    uint8_t ir_LED_triggered_bits;
 
-    DO_ATOMICALLY {   
-        
-       ir_LED_triggered_bits = (~IR_CATHODE_PIN) & IR_BITS;      // A 1 means that LED triggered
+    ir_LED_triggered_bits = (~IR_CATHODE_PIN) & IR_BITS;      // A 1 means that LED triggered
 
    
-       // If a pulse comes in after we sample but before we finish charging and enabling pin change, then we will miss it
-       // so best to keep this short and straight
+    // If a pulse comes in after we sample but before we finish charging and enabling pin change, then we will miss it
+    // so best to keep this short and straight
    
-       // Note that protocol should make sure that real data pulses should have a header pulse that
-       // gets this receiver in sync so we only are recharging in the idle time after a pulse.
-       // real data pulses should come less than 1ms after the header pulse, and should always be less than 1ms apart.
-       // Recharge the ones that have fired
+    // Note that protocol should make sure that real data pulses should have a header pulse that
+    // gets this receiver in sync so we only are recharging in the idle time after a pulse.
+    // real data pulses should come less than 1ms after the header pulse, and should always be less than 1ms apart.
+    // Recharge the ones that have fired
 
-       chargeLEDs( ir_LED_triggered_bits );
+    chargeLEDs( ir_LED_triggered_bits );
 
-       // TODO: Some LEDs seem to fire right after IR0 is charged when connected to programmer?
+    // TODO: Some LEDs seem to fire right after IR0 is charged when connected to programmer?
 
-       // ===Time critcal section end===
-   
-       // This is more efficient than a loop on led_count since AVR only has one pointer register
-       // and bit operations are fast
-    }
-
-
-    /*
-
-    // only debug on IR0
-    if ( ir_LED_triggered_bits & _BV(0) ) {        // IR1
-        SP_AUX_PULSE(1);
-    }
-    
-    */
-
-    
+    // ===Time critcal section end===
+      
     return ir_LED_triggered_bits;                      
 
 }

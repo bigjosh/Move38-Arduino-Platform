@@ -47,9 +47,9 @@
 
 #include <util/delay.h>         // Must come after F_CPU definition
 
-// A bit cycle is one timer tick, currently 512us
+// A bit cycle is one 2x timer tick, currently 256us
 
-#define IR_WINDOW_US 512            // How long is each timing window? Based on timer programming and clock speed. 
+#define IR_WINDOW_US 256            // How long is each timing window? Based on timer programming and clock speed. 
  
 #define IR_CLOCK_SPREAD_PCT  10     // Max clock spread between TX and RX clocks in percent
 
@@ -60,7 +60,9 @@
 
  //#define IR_SPACE_TIME_US (IR_WINDOW_US + (( ((unsigned long) IR_WINDOW_US * IR_CLOCK_SPREAD_PCT) ) / 100UL ) - TX_PULSE_OVERHEAD )  // Used for sending flashes. Must be longer than one IR timer tick including if this clock is slow and RX is fast. 
  
-#define IR_SPACE_TIME_US (600)  // Used for sending flashes. Must be longer than one IR timer tick including if this clock is slow and RX is fast. 
+#define IR_SPACE_TIME_US (300)  // Used for sending flashes. 
+                                // Must be longer than one IR timer tick including if this clock is slow and RX is fast
+                                // Must be shorter than two IR timer ticks including if the sending pulse is delayed by maximum interrupt latency.
 
 #define TICKS_PER_SECOND (F_CPU)
 
@@ -118,95 +120,30 @@ static uint8_t oddParity(uint8_t p) {
  
  volatile uint8_t specialWindowCounter=0;
  
+ // Temp storage to stash the IR bits while interrupts are off.
+ // We will later process and decode once interrupts are back on. 
  
- void updateIRComs0(void) {
+ volatile uint8_t most_recent_ir_test; 
+ 
+ #include "sp.h"
+ 
+ void timer_256us_callback_cli(void) {
      
-     //SP_PIN_R_SET_1();
+     SP_PIN_A_MODE_OUT();
+     SP_PIN_A_SET_1();
      
-     // Grab which IR LEDs triggered in the last time window
-     
-     uint8_t bits = ir_test_and_charge();
-     
-     ir_rx_state_t volatile *ptr = ir_rx_states;
-
-     uint8_t bit = bits & 0b00000001;
-         
-    if (bit) {      // This LED triggered in the last time window
-        
-        uint8_t thisWindowsSinceLastFlash = ptr->windowsSinceLastFlash;
-
-        //SP_SERIAL_TX_NOW(  thisWindowsSinceLastFlash + 'A' );
-
-        ptr->windowsSinceLastFlash = 0;     // We just got a flash, so start counting over.
-                 
-        if (thisWindowsSinceLastFlash<=3) {     // We got a valid bit
-                 
-            uint8_t inputBuffer = ptr->inputBuffer;     // Compiler should do this optimization for us, but it don't
-                 
-            inputBuffer <<= 1;      // Make room for new bit (fills with a 0)
-                 
-            if (thisWindowsSinceLastFlash<=1) {     // Saw a 1 bit
-                     
-                inputBuffer |= 0b00000001;          // Save newly received 1 bit
-                     
-            }
-                 
-                 
-            // Here we look for a 1 followed by a 0 in the top two bits. We need this
-            // because there can potentially be a leading 1 in the bit stream if the
-            // first pulse of the 0 start bit happens to come right after an ambient
-            // trigger - this could look like a 1. This can only happen at the first pulse
-            // because after that we are pulsing often enough that there will never be
-            // an ambient trigger.
-            // So we use the pattern '10' as a start because if there is a leading '1'
-            // then there will be '11' at the beginning and the 1st '1' will not have a '0'
-            // after it.
-            // TODO: Explain this better with pictures.
-                 
-                 
-            if ( (inputBuffer & 0b11000000) == 0b10000000 ) {
-                     
-                // TODO: parity check would go here, but not for now.
-                     
-                // TODO: check for overrun in lastValue and either flag error or increase buffer size
-                     
-                ptr->lastValue = inputBuffer;           // Save the received byte (clobbers old if not read yet)
-                     
-                //SP_SERIAL_TX_NOW( inputBuffer & 0b00111111 );
-                     
-                //SP_PIN_R_SET_1();
-                     
-                inputBuffer =0;                    // Clear out the input buffer to look for next start bit
-                     
-            }
-                 
-            ptr->inputBuffer = inputBuffer;
-                 
-        }  else {
-                 
-        // Received an invalid bit
-                 
-            ptr->inputBuffer = 0;                       // Start looking for start bit again.
-                 
-        }
-             
-    } else {
-             
-        ptr->windowsSinceLastFlash++;           // Keep count of how many windows since last flash
-                 
-        //SP_SERIAL_TX_NOW( ptr->windowsSinceLastFlash + 'a' );
-                 
-    }
-     
-    //SP_PIN_R_SET_0();
-     
- }
+    // Interrupts are off, so get it done as quickly as possible
+    most_recent_ir_test = ir_test_and_charge_cli();    
+    
+     SP_PIN_A_SET_0();
+    
+ }     
  
  void updateIRComs(void) {
              
      // Grab which IR LEDs triggered in the last time window
-               
-    uint8_t bits = ir_test_and_charge();
+       
+    uint8_t bits = most_recent_ir_test;               
     
     // Loop though and process each IR LED (which corresponds to one bit in `bits`)
     // Start at IR5 and work out way down to IR0. 
@@ -320,7 +257,9 @@ uint8_t irGetData( uint8_t led ) {
     
 }
 
-void irSendData(uint8_t data, uint8_t bitmask) {
+// Simultaneously send data on all faces that have a `1` in bitmask
+
+void irSendDataBitmask(uint8_t data, uint8_t bitmask) {
     
     uint8_t bitwalker = 0b00100000;
     
@@ -351,10 +290,18 @@ void irSendData(uint8_t data, uint8_t bitmask) {
     
 }
 
+// Send data on specified face
+// I put destination (face) first to mirror the stdio.h functions like fprintf(). 
+
+void irSendData(  uint8_t face , uint8_t data  ) {
+    irSendDataBitmask( data , 1 << face );
+}
+
+
 // Send data on all faces
 
 void irBroadcastData( uint8_t data ) {
     
-    irSendData( data , IR_ALL_BITS );
+    irSendDataBitmask( data , IR_ALL_BITS );
     
 }    
