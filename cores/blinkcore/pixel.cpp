@@ -252,13 +252,21 @@ static void setupTimers(void) {
 
 }
 
-
 void pixel_init(void) {
+    
+    // First initialize the buffers
+    for( uint8_t i = 0 ; i < COUNT_OF( rawpixelsetbuffer ) ; i++ ) {
+        rawpixelset_t *rawpixelset = &rawpixelsetbuffer[ i ];
+        for( uint8_t j =0; j < COUNT_OF( rawpixelset->rawpixels ); j++ ) {
+            rawpixelset->rawpixels[j].rawValueR = 255;
+            rawpixelset->rawpixels[j].rawValueG = 255;
+            rawpixelset->rawpixels[j].rawValueB = 255;
+        }                
+    }    
+            
 	setupPixelPins();
 	setupTimers();
 }
-
-
 
 // Note that LINE is 0-5 whereas the pixels are labeled p1-p6 on the board. 
 
@@ -634,6 +642,29 @@ void pixel_enable(void) {
     
 }
        
+
+// Update the pixel buffer with raw PWM register values.
+// Larger pwm values map to shorter PWM cycles (255=off) so for red and green
+// there is an inverse but very non linear relation between raw value and brightness.
+// For blue is is more complicated because of the charge pump. The peak brightness is somewhere
+// in the middle.
+
+// Values set here will be shown on the next hardware reload in the ISR - no buffering
+// except for the hardware buffering.
+
+// This is mostly useful for utilities to find the pwm -> brightness mapping to be used
+// in the gamma lookup table below.
+
+void pixel_rawSetPixel( uint8_t pixel, uint8_t r_pwm , uint8_t g_pwm , uint8_t b_pwm ) {
+
+    rawpixel_t *rawpixel = &(displayedRawPixelSet->rawpixels[pixel]);
+    
+    rawpixel->rawValueR= r_pwm;
+    rawpixel->rawValueG= g_pwm;
+    rawpixel->rawValueB= b_pwm;
+    
+}
+
 
 // Gamma table courtesy of adafruit...
 // https://learn.adafruit.com/led-tricks-gamma-correction/the-quick-fix
