@@ -46,16 +46,17 @@ uint8_t sp_aux_analogRead(void) {
 
 void sp_serial_init(void) {
     
-    //Initialize the AUX pin as digitalOut    
+    //Initialize the AUX pin as digitalOut
     //SBI( SP_AUX_DDR , SP_AUX_PIN );
     
     // Initialize SP serial port for 500K baud, n-8-1
-    // This feels like it belongs in hardware.c, maybe in an inline fucntion?
+    // This feels like it belongs in hardware.c, maybe in an inline function?
         
     SBI( SP_SERIAL_CTRL_REG , U2X0);        // 2X speed
     
     SBI( UCSR0B , TXEN0 );                  // Enable transmitter (disables digital mode on T pin)
     
+    SP_PIN_R_SET_1();                       // Enable pull-up on RX pin so we can use an open-collector to drive it 
     SBI( UCSR0B , RXEN0);                   // Enable receiver    (disables digital mode on R pin)
     
     #if F_CPU!=4000000  

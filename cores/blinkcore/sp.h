@@ -33,7 +33,7 @@
     // Set the level on the service port pins. 
     // These execute in a single instruction
     // You must set the aux pin to output mode first or else 
-    // driving 1 will just enable the pullup. 
+    // driving 1 will just enable the pullup if pin is in input mode (which is the default at reset)
 
     #define SP_PIN_A_SET_1()               SBI( SP_A_PORT, SP_A_BIT)
     #define SP_PIN_A_SET_0()               CBI( SP_A_PORT, SP_A_BIT)
@@ -45,6 +45,7 @@
         
     // Initialize the serial on the service port.
     // Overrides digital mode for service port pins T and R respectively.
+    // Also enables the pull-up on the RX pin so it can be connected to an open-collector output
     
     void sp_serial_init(void);
         
@@ -69,7 +70,7 @@
 
     uint8_t sp_serial_rx(void); 
     
-    
+        
     // Free up service port pin R for digital IO again after sp_serial_init() called
     void sp_serial_disable_rx(void);
     
@@ -80,10 +81,9 @@
     // Read the analog voltage on service port pin A
     // Returns 0-255 for voltage between 0 and Vcc
     // Handy to connect a potentiometer here and use to tune params
-    // like rightness or speed
+    // like brightness or speed
+    // Make sure SP_PIN_A is in input mode (default on power up) or this will be very boring
         
-    // Call  SP_PIN_A_SET_1()  to enable the pullup (assumes you have not called SP_PIN_A_MODE_OUT() )
-
     uint8_t sp_aux_analogRead(void);
         
 #endif /* DEBUG_H_ */
