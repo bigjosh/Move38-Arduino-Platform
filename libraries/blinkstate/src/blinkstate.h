@@ -22,40 +22,55 @@
     #error You must #include blinklib.h before blinkstate.h
 #endif
 
+
+// Manually add our hooks. 
+// Must be called before using any other blinkstate functions
+// TODO: Now that blinkstate is the primary game-level API, maybe make this the default?
+
+void blinkStateBegin(void);
+
+// Returns the last received state on the indicated face
+// returns 0 if no neighboor ever seen on this face since power-up
+// so best to only use after checking if face is not expired first.
+
+
+byte getNeighborState( byte face );
+
+// 0 if messages have been recently received on the indicated face
+// (currently configured to 100ms timeout in `expireDurration_ms` )
+
+byte isNeighborExpired( byte face , uint32_t now );
+
+
+// Set our broadcasted state on all faces to newState.
+// This state is repeatedly broadcast to any neighboring tiles.
+
+// By default we power up in state 0.
+
+void setState( byte newState );
+
+// Set our broadcasted state on indicated face to newState.
+// This state is repeatedly broadcast to the partner tile on the indicated face.
+
+// By default we power up in state 0.
+
+void setState( byte newState , byte face );
+
+// Get our state. This way we don't have to keep track of it somewhere exclusive
+// simply giving access to the local state which is already stored
+
+byte getState(byte face);
+
 /*
 
-// Has this neighbor changed since the last time we called 
+// Has this neighbor changed since the last time we called
 // neighboorChanged() or getNeighboorState() on it?
 
 boolean neighboorChanged( byte face);
 
 */
 
-// Returns the last received state of the indicated face, or
-// 0 if no messages received recently on indicated face
 
-byte getNeighborState( byte face );
-
-// Returns true if we have recently received a valid message from a neighbor
-// on the indicated face
-
-// Set our state to newState. This state is repeatedly broadcast to any
-// neighboring tiles.
-
-// Note that setting our state to 0 make us stop broadcasting and effectively
-// disappear from the view of neighboring tiles.
-
-// By default we power up in state 0.
-
-void setState( byte newState );
-
-byte getState(void);
-
-// The blinkstate file needs to be able to call the blinklib IR functions, but we need to cover them
-// for anyone else. We could have two copies of blnkistate.h (one for blinkstate's exclusive use)
-// but then they could get out of sync and that is ugly.
-// An clean way would be to use __BASE_FILE__..... but Arduino doesn't give us that.
-// Instead we use this canary which is #defined in blinkstate.cpp
 
 #ifndef BLINKSTATE_CANNARY
 
@@ -73,11 +88,6 @@ byte getState(void);
 
 #endif
 
-
-// Manually add our hooks. Note that currently you never need to Call this - it is automtically ivoked the first time you call an blinkState function.
-// It is included to to not break code that references it, and in case we ever switch to requiring it.
-
-void blinkStateBegin(void);
 
 
 #endif /* BLINKSTATE_H_ */

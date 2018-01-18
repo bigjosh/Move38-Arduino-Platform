@@ -98,7 +98,7 @@ static uint8_t oddParity(uint8_t p) {
                                            
 
     // Visible to outside world     
-     volatile uint8_t lastValue;            // Last successfully decoded RX value. 1 in high bit means valid and unread. 0= empty. 
+     volatile uint8_t inValue;            // Last successfully decoded RX value. 1 in high bit means valid and unread. 0= empty. 
 
     
     uint8_t dummy;                          // TODO: parity bit? for now just keep struct a power of 2
@@ -191,7 +191,7 @@ static uint8_t oddParity(uint8_t p) {
                     
                     // TODO: check for overrun in lastValue and either flag error or increase buffer size
                     
-                    ptr->lastValue = inputBuffer;           // Save the received byte (clobbers old if not read yet)
+                    ptr->inValue = inputBuffer;           // Save the received byte (clobbers old if not read yet)
                                         
                     inputBuffer =0;                    // Clear out the input buffer to look for next start bit
                     
@@ -229,7 +229,7 @@ static uint8_t oddParity(uint8_t p) {
 // Is there a received data ready to be read on this face?
 
 bool irIsReadyOnFace( uint8_t led ) {
-    return( ir_rx_states[led].lastValue != 0 );    
+    return( ir_rx_states[led].inValue != 0 );    
 }    
 
 // Read the most recently received data. Blocks if no data ready
@@ -238,13 +238,13 @@ uint8_t irGetData( uint8_t led ) {
         
     ir_rx_state_t volatile *ptr = ir_rx_states + led;        // This turns out to generate much more efficient code than array access. ptr saves 25 bytes. :/   Even so, the emitted ptr dereference code is awful.
     
-    while (! ptr->lastValue );      // Wait for high be to be set to indicate value waiting. 
+    while (! ptr->inValue );      // Wait for high be to be set to indicate value waiting. 
         
     // No need to atomic here since these accesses are lockstep, so the data can not be updated until we clear the ready bit        
     
-    uint8_t d = ptr->lastValue;
+    uint8_t d = ptr->inValue;
     
-    ptr->lastValue=0;       // Clear to indicate we read the value. Doesn't need to be atomic.
+    ptr->inValue=0;       // Clear to indicate we read the value. Doesn't need to be atomic.
 
     return d & 0b00111111;      // Don't show our internal preamble bits
     
