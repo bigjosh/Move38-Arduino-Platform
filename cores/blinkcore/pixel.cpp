@@ -510,9 +510,6 @@ static void pixel_isr(void) {
             break;
             
         case 3: // Right now, the red LED is on. Get ready for green
-
-            // Float the BLUE LED pin. THis actually leaves us with the pull-up, which should be ok?
-            //CBI( LED_B_DDR , LED_B_BIT );
                                     
             OCR0A = 255;                        // Load OCR to turn off red at next overflow
             OCR0B = currentPixel->rawValueG;    // Load OCR to turn on green at next overflow
