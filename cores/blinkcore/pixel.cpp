@@ -417,22 +417,28 @@ static void pixel_isr(void) {
         
         case 0:   // In this phase, we step to the next pixel and start charging the pump. All PWMs are currently off. 
         
-            deactivateAnodes();        
+            deactivateAnodes();  
+            
+            // Connect the timer to the output pin. 
+            // It might have been disconnected on the the pixel if that pixel did not have any blue in it. 
+            
+            TCCR2A =
+              _BV( COM2B1) |                        // 1 0 = Clear OC0B on Compare Match (blue on), set OC0B at BOTTOM (blue off), (non-inverting mode)
+              _BV( WGM01) | _BV( WGM00);             // Mode 3 - Fast PWM TOP=0xFF                  
+              
+            // Right now the timer is at 255, so putting out a steady 1  which is currenly
+            // just enabling the pull-up since the pin is still input until next step...
                                                       
             // It is safe to turn on the blue sink because all anodes are off (low)        
+
+            SBI( LED_B_DDR , LED_B_BIT );                // Drive BLUE LED output pin - which is high when the LED is not being PWMed.
+
             
             SBI( BLUE_SINK_DDR , BLUE_SINK_BIT );        // Enable output on sink pin. Since this pin port is always 0, this will drive it low.
                                                          // Allows capacitor charge though the diode
-            
-            SBI( LED_B_DDR , LED_B_BIT );                // Drive BLUE LED output pin - which is high when the LED is not being PWMed.
-            
-            
+                                    
             // Ok, now the pump capacitor is charging.  No LEDs are on.
-            
-                        
-            //OCR2B=currentPixel->rawValueB;             // Load OCR to turn on blue at next overflow
-             
-             
+                                    
             // TODO: Handle the case where battery is high enough to drive blue directly and skip the pump
             
             phase++;          
@@ -440,12 +446,7 @@ static void pixel_isr(void) {
              
         case 1:
         
-            //SP_PIN_A_SET_0();
-        
-            // OK, CAP has been charging. Nothing is on, not anodes are activated. 
-        
-            // TODO: Test using PWM to charge the cap rather than to drain it?
-            // TODO: Can we get rid of this phase by just loading OCR2B above when blue is on?
+            // OK, CAP has been charging. Nothing is on, no anodes are activated. 
         
             // Here we rest after charging the pump.
             // This is necessary since there is no way to ensure timing between
@@ -460,55 +461,31 @@ static void pixel_isr(void) {
             // BLUE LED pin or else some current could flow through the cap into the pin even when it
             // is high. This give a very dim blue on a pixel that should be off. 
                                                                             
-            if ( currentPixel->rawValueB != 255 ) {          // Is blue?
+            if ( currentPixel->rawValueB == 255 ) {          // Is blue off for this pixel?
                 
-                // Now we connect the timer to the output pin.  Since OCR2B is 255, this will
-                // drive the pin high and charge the cap though the sink.
-                
-                // With one side high from the LED pin and one side low from the sink pin, the cap will charge.
-                
-                // After the charge phase is done, the PWM will kick in and
-                // drive the pin low, which will activate the LED though the pump.
-                
-                // OCR2B is already set at 255, so we know the output pin will be high the whole time
-                
-                
-                /*                
-                TCCR2A =
-                _BV( COM2B1) |                        // 1 0 = Clear OC0B on Compare Match (blue on), set OC0B at BOTTOM (blue off), (non-inverting mode)
-                _BV( WGM01) | _BV( WGM00)             // Mode 3 - Fast PWM TOP=0xFF
-                ;
-                  
-                */              
-                // OK, the BLUE LED pin is now high but pin could be in input mode, so only the pullup
-                // is active. Next we fully drive it high...
+                // Float the BLUE LED drive pin.
+                // This cuts off a path for current though the pump cap 
+                // in cases where the blue LED is completely off. Other wise it would
+                // glow dimly as it discharges though the cap. 
                                 
-                                
-                // The BLUE LED pin is still driven output here from the charge phase above. 
-                
-                //OCR2B=currentPixel->rawValueB;               // Load OCR to turn on blue at next overflow
-                
-            } else {
-                
                 CBI( LED_B_DDR , LED_B_BIT ); 
                 
-                /*
-                // Right now the BLUE LED pin is input, but the timer is output 1 so the pull-up is on. 
-                // TODO: Hopefully that is not enough current to matter. 
-
-
-                TCCR2A =                                    // No compare match mode, so output will revert to normal GPIO pin which is left low.
-                _BV( WGM01) | _BV( WGM00)                   // Mode 3 - Fast PWM TOP=0xFF
-                ;
+                // Note that this actually still leaves the pull-up connected to the pin
+                // since the timer is setting the output to 1, so a tiny tiny little bit does
+                // leak though.
                 
-                             
-                */
+                // To turn off the pull-up, we must completely disconnect the timer to stop
+                // it from pushing a 1. 
+                // Note that we always leave the bit in PORT at 0, so this will completely 
+                // float the pin. 
+                
+                TCCR2A =
+                    _BV( WGM01) | _BV( WGM00);             // Mode 3 - Fast PWM TOP=0xFF
+                
             } 
-                
-        
+                        
             // Now the sink is off, we are safe to activate the anode.
-            
-        
+                    
             activateAnode( currentPixelIndex );
         
             // Ok, now we are ready for all the PWMing to happen on this pixel in the following phases
@@ -533,21 +510,6 @@ static void pixel_isr(void) {
             break;
             
         case 3: // Right now, the red LED is on. Get ready for green
-
-            // Float the BLUE LED pin if it was on from the blue led being on   
-            /*     
-            TCCR2A =                                    // No compare match mode, so output will revert to normal GPIO pin which is left low.
-                _BV( WGM01) | _BV( WGM00);               // Mode 3 - Fast PWM TOP=0xFF
-            
-            
-            // And float that pin. If we did not disconnect the blue timer above first, then this
-            // would slam low and discharge the cap. 
-            
-            CBI( LED_B_DDR , LED_G_BIT );
-            */
-
-            // Float the BLUE LED pin. THis actually leaves us with the pull-up, which should be ok?
-            CBI( LED_B_DDR , LED_B_BIT );
                                     
             OCR0A = 255;                        // Load OCR to turn off red at next overflow
             OCR0B = currentPixel->rawValueG;    // Load OCR to turn on green at next overflow
