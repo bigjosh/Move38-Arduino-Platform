@@ -124,18 +124,11 @@ static uint8_t oddParity(uint8_t p) {
  // We will later process and decode once interrupts are back on. 
  
  volatile uint8_t most_recent_ir_test; 
- 
- #include "sp.h"
- 
+  
  void timer_256us_callback_cli(void) {
-     
-     SP_PIN_A_MODE_OUT();
-     SP_PIN_A_SET_1();
-     
+         
     // Interrupts are off, so get it done as quickly as possible
     most_recent_ir_test = ir_test_and_charge_cli();    
-    
-     SP_PIN_A_SET_0();
     
  }     
  

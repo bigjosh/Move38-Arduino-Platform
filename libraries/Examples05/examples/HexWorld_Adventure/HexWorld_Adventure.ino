@@ -144,6 +144,13 @@ Light lights[LIGHTKEY_MAX+1] = {
 // https://arduino.stackexchange.com/a/46522/7859
 
 
+void pause( uint16_t wait_ms ) {
+  
+  uint32_t doneTime = millis() + wait_ms; 
+  while (millis()<doneTime);
+  
+}
+
 // Print a string from flash memory to the terminal
 // in old skool 40 cols format.
 
@@ -164,7 +171,7 @@ void terminalPrint( const char *s ) {
             col=0;
         }            
         
-        delay(20);       // Get that old modem cadence
+        pause(20);       // Get that old modem cadence
         
     };  
     
@@ -372,7 +379,7 @@ bool nextStep(void) {
                                     for( int b=0; b<32; b++ ) {
                                         
                                         setColor( dim( WHITE , b ) );
-                                        delay(35-b); 
+                                        pause(35-b); 
                                         
                                     }                                        
                                     

@@ -65,4 +65,18 @@ void pixel_displayBufferedPixels(void);
 
 void pixel_callback_onFrame(void) __attribute__((weak));
 
+// Update the pixel buffer with raw PWM register values.
+// Larger pwm values map to shorter PWM cycles (255=off) so for red and green
+// there is an inverse but very non linear relation between raw value and brightness.
+// For blue is is more complicated because of the charge pump. The peak brightness is somewhere
+// in the middle.
+
+// Values set here will be shown on the next hardware reload in the ISR - no buffering
+// except for the hardware buffering.
+
+// This is mostly useful for utilities to find the pwm -> brightness mapping to be used
+// in the gamma lookup table below.
+
+void pixel_bufferedSetPixelRaw( uint8_t pixel, uint8_t r_pwm , uint8_t g_pwm , uint8_t b_pwm );
+
 #endif /* RGB_PIXELS_H_ */
