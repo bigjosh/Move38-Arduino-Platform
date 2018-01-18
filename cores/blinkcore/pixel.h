@@ -77,6 +77,6 @@ void pixel_callback_onFrame(void) __attribute__((weak));
 // This is mostly useful for utilities to find the pwm -> brightness mapping to be used
 // in the gamma lookup table below.
 
-void pixel_rawSetPixel( uint8_t pixel, uint8_t r_pwm , uint8_t g_pwm , uint8_t b_pwm );
+void pixel_bufferedSetPixelRaw( uint8_t pixel, uint8_t r_pwm , uint8_t g_pwm , uint8_t b_pwm );
 
 #endif /* RGB_PIXELS_H_ */
