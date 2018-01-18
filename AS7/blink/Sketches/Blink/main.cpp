@@ -12,6 +12,8 @@
     Pixels P0, P2, and P4 display the current values for R,G, and B respectively.
     Pixels P1, P3, and P5 display the mix of the two adjacent colors. 
     
+    // TODO: Make several animation patterns so you can check the linearity of the steps.
+    
 */
 
 #include <ctype.h>      // toupper()
@@ -52,7 +54,7 @@ void loop() {
     sp.print( ":");
     sp.println( colors[currentColor].pwmValue );
     sp.println( "Switch to [R]ed, [G]reen, [B]lue - Turn dial to adjust");
-            
+        
     while (1) {
         
         // Display the current values
@@ -62,14 +64,14 @@ void loop() {
         pixel_bufferedSetPixelRaw( 2 , 255                  , colors[1].pwmValue, 255 );
         pixel_bufferedSetPixelRaw( 3 , 255                  , colors[1].pwmValue, colors[2].pwmValue  );
         pixel_bufferedSetPixelRaw( 4 , 255                  , 255               , colors[2].pwmValue  );
-        pixel_bufferedSetPixelRaw( 5 , 255 , 255               , 255 );
-        //pixel_bufferedSetPixelRaw( 5 , colors[0].pwmValue   , 255               , colors[2].pwmValue  );
+        pixel_bufferedSetPixelRaw( 5 , colors[0].pwmValue   , 255               , colors[2].pwmValue  );
+        
         pixel_displayBufferedPixels();
 
         uint8_t pwmValue = colors[currentColor].pwmValue;
-        
-        
+                
         sp.flush();                             // Make sure we are done transmitting before reading analog pin
+        
         uint8_t dial = sp_aux_analogRead();     // Get dial setting
         
         if (dial != pwmValue ) {
