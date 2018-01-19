@@ -714,9 +714,9 @@ void pixel_bufferedSetPixel( uint8_t pixel, pixelColor_t newColor) {
 
     rawpixel_t *rawpixel = &(bufferedRawPixelSet->rawpixels[pixel]);
     
-    rawpixel->rawValueR= 255-  (pgm_read_byte(&gamma8[newColor.r]) );
-    rawpixel->rawValueG= 255-  (pgm_read_byte(&gamma8[newColor.g]) );
-    rawpixel->rawValueB= 255-  (pgm_read_byte(&gamma8[newColor.b]) );
+    rawpixel->rawValueR= pgm_read_byte(&gamma8[newColor.r]);
+    rawpixel->rawValueG= pgm_read_byte(&gamma8[newColor.g]);
+    rawpixel->rawValueB= pgm_read_byte(&gamma8[newColor.b]);
     
 }    
 
