@@ -153,20 +153,21 @@ typedef unsigned Color;
 // to get the performance and size benefits of static compilation 
 // Shame no way to do this right in C/C++
 
+#define MAX_BRIGHTNESS 31
+
 #define MAKECOLOR_RGB(r,g,b) ((r&31)<<10|(g&31)<<5|(b&31))
 
-#define RED         MAKECOLOR_RGB(31, 0, 0)
-#define ORANGE      MAKECOLOR_RGB(31,15, 0)
-#define YELLOW      MAKECOLOR_RGB(31,31, 0)
-#define GREEN       MAKECOLOR_RGB( 0,31, 0)
-#define CYAN        MAKECOLOR_RGB( 0,31,31)
-#define BLUE        MAKECOLOR_RGB( 0, 0,31)
-#define MAGENTA     MAKECOLOR_RGB(31, 0,31)
+#define RED         MAKECOLOR_RGB(MAX_BRIGHTNESS    , 0                 , 0)
+#define ORANGE      MAKECOLOR_RGB(MAX_BRIGHTNESS    ,MAX_BRIGHTNESS/2   , 0)
+#define YELLOW      MAKECOLOR_RGB(MAX_BRIGHTNESS    ,MAX_BRIGHTNESS     , 0)
+#define GREEN       MAKECOLOR_RGB( 0                ,MAX_BRIGHTNESS     , 0)
+#define CYAN        MAKECOLOR_RGB( 0                ,MAX_BRIGHTNESS     ,MAX_BRIGHTNESS)
+#define BLUE        MAKECOLOR_RGB( 0                , 0                 ,MAX_BRIGHTNESS)
+#define MAGENTA     MAKECOLOR_RGB(MAX_BRIGHTNESS    , 0                 ,MAX_BRIGHTNESS)
 
+#define WHITE       MAKECOLOR_RGB(MAX_BRIGHTNESS    ,MAX_BRIGHTNESS     ,MAX_BRIGHTNESS)
 
-#define WHITE       MAKECOLOR_RGB(31,31,31)
-
-#define OFF     MAKECOLOR_RGB( 0, 0, 0)
+#define OFF         MAKECOLOR_RGB( 0                , 0                 , 0)
 
 // We inline this so we can get compile time simplification for static colors
 
@@ -182,9 +183,9 @@ inline Color makeColorRGB( byte red, byte green, byte blue ) {
 
 inline Color dim( Color color, byte brightness) {
     return makeColorRGB(
-        (GET_R(color)*brightness)/31,
-        (GET_G(color)*brightness)/31,
-        (GET_B(color)*brightness)/31
+        (GET_R(color)*brightness)/MAX_BRIGHTNESS,
+        (GET_G(color)*brightness)/MAX_BRIGHTNESS,
+        (GET_B(color)*brightness)/MAX_BRIGHTNESS
     );
 }
 
@@ -210,10 +211,6 @@ void setFaceColor(  byte face, Color newColor );
 
 */
 
-// Delay the specified number of milliseconds (1,000 millisecond = 1 second)
-
-void delay( unsigned long millis );
-
 // Number of milliseconds since we started (since last time setup called).
 // Note that this can increase by more than 1 between calls, so always use greater than
 // and less than rather than equals for comparisons
@@ -223,6 +220,8 @@ void delay( unsigned long millis );
 // Note that our clock is only accurate to about +/-10%
 
 unsigned long millis(void);
+
+#define NEVER ( (uint32_t)-1 )          // UINT32_MAX would be correct here, but generates a Symbol Not Found. 
 
 /*
 
