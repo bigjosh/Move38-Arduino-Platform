@@ -157,11 +157,10 @@ void blinkStateBegin(void) {
 
 
 // Returns the last received state on the indicated face
-// returns 0 if no neighboor ever seen on this face since power-up
+// Remember that getNeighborState() starts at 0 on powerup.
+// so returns 0 if no neighbor ever seen on this face since power-up
 // so best to only use after checking if face is not expired first.
-
-
-// 0 if no messages received recently on indicated face
+// Note the a face expiring has no effect on the getNeighborState()
 
 byte getNeighborState( byte face ) {
     
@@ -169,14 +168,45 @@ byte getNeighborState( byte face ) {
 
 }
 
+// Did the neighborState value on this face change since the 
+// last time we checked?
+// Remember that getNeighborState starts at 0 on powerup. 
+// Note the a face expiring has no effect on the getNeighborState()
+
+byte neighborStateChanged( byte face ) {
+    static byte prevState[FACE_COUNT];
+    
+    byte curState = getNeighborState(face);
+    
+    if ( curState == prevState[face] ) {
+        return false;
+    }
+    prevState[face] = curState;
+    
+    return true; 
+    
+}    
+
 // 0 if no messages recently received on the indicated face
 // (currently configured to 100ms timeout in `expireDurration_ms` )
 
-byte isNeighborExpired( byte face , uint32_t now ) {
+static byte isNeighborExpired( byte face , uint32_t now ) {
     
     return expireTime[face] < now;
         
 }    
+
+
+// 0 if no messages recently received on the indicated face
+// (currently configured to 100ms timeout in `expireDurration_ms` )
+
+byte isNeighborExpired( byte face ) {
+    
+    uint32_t now=millis(); 
+    
+    return isNeighborExpired( face , now );
+    
+}
 
 
 // Set our broadcasted state on all faces to newState. 
