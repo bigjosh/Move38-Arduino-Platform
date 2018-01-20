@@ -417,17 +417,23 @@ static void pixel_isr(void) {
         case 0:   // In this phase, we step to the next pixel and start charging the pump. All PWMs are currently off. 
         
             deactivateAnodes();  
+<<<<<<< HEAD
             
+=======
+>>>>>>> e22e817ce4744eead54a9e3b0ad33d50e5da7887
                                     
             // Connect the timer to the output pin. 
             // It might have been disconnected on the the pixel if that pixel did not have any blue in it. 
 
             if ( currentPixel->rawValueB != 255 ) {          // Is blue on for this pixel?
                 
+<<<<<<< HEAD
                 
                     SP_PIN_A_MODE_OUT();
                     SP_PIN_A_SET_1();
                 
+=======
+>>>>>>> e22e817ce4744eead54a9e3b0ad33d50e5da7887
                 SBI( BLUE_SINK_DDR , BLUE_SINK_BIT );        // Enable output on sink pin. Since this pin port is always 0, this will drive it low.
                                                              // Allows capacitor charge though the diode when the blue output pin goes high during PWM                            
                                                              // in next phase
@@ -463,6 +469,7 @@ static void pixel_isr(void) {
             break;
         case 2:
         
+<<<<<<< HEAD
                 SP_PIN_A_SET_0();
         
             // When we get here, the boost cap has just been charged by PWM. The anode is still off
@@ -471,6 +478,23 @@ static void pixel_isr(void) {
             // Turn off the sink so the only current flowing though the blue LED is 
             // though the blue booth cap. 
             
+=======
+            // In this phase we charge up the cap for a period determined by the match value that 
+            // just got loaded into the blue PWM match register. 
+            
+            OCR2B = 255;        // Turn off the blue PWM. This will make it stay low
+                                // When it first transitions to low, it will pull down the 
+                                // cap and make the driving voltage on the cathode of the BLUE LED
+
+        case 2:
+        
+            // When we get here, the boost cap has just been charged by PWM. The anode is still off
+            // so no current flowing though the blue LED. 
+            
+            // Turn off the sink so the only current flowing though the blue LED is 
+            // though the blue booth cap. 
+            
+>>>>>>> e22e817ce4744eead54a9e3b0ad33d50e5da7887
             CBI( BLUE_SINK_DDR , BLUE_SINK_BIT);    // Turn off blue sink (make it input)
                                                     // Might already be off, but faster to blindly turn off again rather than test
 
