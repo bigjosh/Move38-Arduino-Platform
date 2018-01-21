@@ -404,9 +404,6 @@ static volatile uint8_t pendingRawPixelBufferSwap =0;
 // pass, so none of this is timing critical as long as we finish in time for next
 // pass 
                
-               #warning sp                  
-#include "sp.h"                                 
-                                    
 static void pixel_isr(void) {   
     
     // THIS IS COMPLICATED
@@ -426,10 +423,6 @@ static void pixel_isr(void) {
             // It might have been disconnected on the the pixel if that pixel did not have any blue in it. 
             
             if ( currentPixel->rawValueB != 255 ) {          // Is blue on for this pixel?
-                
-                SP_PIN_A_MODE_OUT();
-                SP_PIN_A_SET_1();
-              
                 
                 // Connect the timer to the PWM pin
                 // Otherwise it floats to prevent current from leaking though the cap
@@ -498,9 +491,9 @@ static void pixel_isr(void) {
             break;
                                     
             
-        case 2: // Right now, the blue led is on. Lets get ready for the red one next.             
-                        SP_PIN_A_SET_0();
-
+        case 2: 
+        
+            // Right now, the blue led is on. Lets get ready for the red one next.             
             // TODO: Leave blue on until last phase for more brightness?     
                            
                 
