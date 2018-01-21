@@ -8,34 +8,35 @@ void setup() {
 
 }
 
+Color colors[] = { BLUE , RED , YELLOW , GREEN , CYAN , MAGENTA };
+
+byte color = 0; 
+
+int brightness = 1; 
+
+int direction = 1;
+
 void loop() {
 
-  Color colors[] = { RED , YELLOW , GREEN , CYAN , BLUE , MAGENTA };
+  //setColor( dim( BLUE , 1 ) ) ; return;
 
-  for( byte i=0; i< COUNT_OF(colors); i++) {
+   setColor( dim( colors[color] , brightness ) );
 
-    Color c = colors[i];
-
-    byte brightness=0;
+   if (brightness== MAX_BRIGHTNESS) {     // Got to the top, turn around
+   
+      direction = -1; 
       
-    // Ramp up...
-    while (brightness<BRIGHTNESS_LEVELS) {
+   } else if (brightness==0) {              // Got to the bottom, turn around and step to next color
 
-      setColor( dim( c , brightness ) );
-      brightness++;
-      
-      delay(10);      
-    }
+      direction = 1;
 
-    // Ramp down...
-    while (brightness>0) {
-  
-      brightness--;
-      setColor( dim( c , brightness ) );
-      
-      delay(10);       
-    }
+      color++;
 
-  }
+      if (color==COUNT_OF( colors )) {
+        color=0;
+      }
+   }
 
+   brightness += direction; 
+   
 }
