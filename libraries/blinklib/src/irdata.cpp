@@ -159,6 +159,12 @@ static uint8_t oddParity(uint8_t p) {
                                 
         if (bit) {      // This LED triggered in the last time window
             
+            #warning debug code 
+            #include "sp.h"
+            if (bitwalker==0x01) {
+                SP_PIN_A_SET_1();
+            }                
+            
             uint8_t thisWindowsSinceLastFlash = ptr->windowsSinceLastFlash;
                                 
              ptr->windowsSinceLastFlash = 0;     // We just got a flash, so start counting over.
@@ -189,11 +195,16 @@ static uint8_t oddParity(uint8_t p) {
                                                 
                 if ( (inputBuffer & 0b11000000) == 0b10000000 ) {       
                     
+                    SP_PIN_T_SET_1();
+                                        
                     // TODO: check for overrun in lastValue and either flag error or increase buffer size
                     
                     ptr->inValue = inputBuffer;           // Save the received byte (clobbers old if not read yet)
                                         
                     inputBuffer =0;                    // Clear out the input buffer to look for next start bit
+                    
+                    SP_PIN_T_SET_0();
+
                     
                 } 
                 
@@ -205,7 +216,10 @@ static uint8_t oddParity(uint8_t p) {
                 
                 ptr->inputBuffer = 0;                       // Start looking for start bit again. 
                                                     
-            }                
+            }            
+            
+            SP_PIN_A_SET_0();
+    
                 
         } else {
                         
@@ -261,7 +275,7 @@ void irSendDataBitmask(uint8_t data, uint8_t bitmask) {
     
     // Send the start bits
     ir_tx_sendpulse( 1 );           // Start Bit
-    ir_tx_sendpulse( 3 );           // Guard 0 bit to ensure real start bit is detected and not extraious leading pulse.
+    ir_tx_sendpulse( 3 );           // Guard 0 bit to ensure real start bit is detected and not extraneous leading pulse.
     
     do {
         
@@ -275,9 +289,7 @@ void irSendDataBitmask(uint8_t data, uint8_t bitmask) {
         
     } while (bitwalker);
     
-    // Send stop bit
-    
-    ir_tx_sendpulse( 3 );
+    // TODO: Send a stop bit or some parity bit for error checking? Necessary? 
     
     ir_tx_end();
     
