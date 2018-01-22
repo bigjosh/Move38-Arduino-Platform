@@ -158,13 +158,7 @@ static uint8_t oddParity(uint8_t p) {
         uint8_t bit = bits & bitwalker;        
                                 
         if (bit) {      // This LED triggered in the last time window
-            
-            #warning debug code 
-            #include "sp.h"
-            if (bitwalker==0x01) {
-                SP_PIN_R_SET_1();
-            }                
-            
+                        
             uint8_t thisWindowsSinceLastFlash = ptr->windowsSinceLastFlash;
                                 
              ptr->windowsSinceLastFlash = 0;     // We just got a flash, so start counting over.
@@ -177,13 +171,7 @@ static uint8_t oddParity(uint8_t p) {
                             
                 if (thisWindowsSinceLastFlash<=1) {     // Saw a 1 bit
                     
-                    #warning
-                    if (bitwalker==0x01) {
-                        SP_PIN_R_SET_0();
-                    }                        
-                    
                     inputBuffer |= 0b00000001;          // Save newly received 1 bit 
-                    SP_PIN_R_SET_1();
                     
                 }                     
                                
@@ -219,9 +207,7 @@ static uint8_t oddParity(uint8_t p) {
                 ptr->inputBuffer = 0;                       // Start looking for start bit again. 
                                                     
             }            
-            
-            SP_PIN_R_SET_0();
-                    
+                                
         } else {
                         
             ptr->windowsSinceLastFlash++;           // Keep count of how many windows since last flash
