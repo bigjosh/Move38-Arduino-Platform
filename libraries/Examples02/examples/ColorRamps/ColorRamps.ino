@@ -8,7 +8,7 @@ void setup() {
 
 }
 
-Color colors[] = { BLUE , RED , YELLOW , GREEN , CYAN , MAGENTA };
+Color colors[] = { BLUE , MAGENTA,  RED , YELLOW , GREEN , CYAN  };
 
 byte color = 0; 
 

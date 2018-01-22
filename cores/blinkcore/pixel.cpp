@@ -720,7 +720,17 @@ void pixel_bufferedSetPixelRaw( uint8_t pixel, uint8_t r_pwm , uint8_t g_pwm , u
 // https://learn.adafruit.com/led-tricks-gamma-correction/the-quick-fix
 // Compressed down to 32 entries, normalized for our raw values that start at 255 off. 
 
-static const uint8_t PROGMEM gamma8[32] = {
+// TODO: Possible that green and red are similar enough that we can combine them into one table and save some flash space
+
+static const uint8_t PROGMEM gamma8R[32] = {
+    255,254,253,251,250,248,245,242,238,234,230,224,218,211,204,195,186,176,165,153,140,126,111,95,78,59,40,19,13,9,3,1
+};
+
+static const uint8_t PROGMEM gamma8G[32] = {
+    255,254,253,251,250,248,245,242,238,234,230,224,218,211,204,195,186,176,165,153,140,126,111,95,78,59,40,19,13,9,3,1
+};
+
+static const uint8_t PROGMEM gamma8B[32] = {
     255,254,253,251,250,248,245,242,238,234,230,224,218,211,204,195,186,176,165,153,140,126,111,95,78,59,40,19,13,9,3,1
 };
 
@@ -735,9 +745,9 @@ void pixel_bufferedSetPixel( uint8_t pixel, pixelColor_t newColor) {
 
     rawpixel_t *rawpixel = &(bufferedRawPixelSet->rawpixels[pixel]);
     
-    rawpixel->rawValueR= pgm_read_byte(&gamma8[newColor.r]);
-    rawpixel->rawValueG= pgm_read_byte(&gamma8[newColor.g]);
-    rawpixel->rawValueB= pgm_read_byte(&gamma8[newColor.b]);
+    rawpixel->rawValueR= pgm_read_byte(&gamma8R[newColor.r]);
+    rawpixel->rawValueG= pgm_read_byte(&gamma8G[newColor.g]);
+    rawpixel->rawValueB= pgm_read_byte(&gamma8B[newColor.b]);
     
 }    
 
