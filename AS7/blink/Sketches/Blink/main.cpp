@@ -49,12 +49,17 @@ static const uint16_t igniteDurration_ms = 200;
 static const uint16_t burnDuration_ms = 400;
 
 
-// The color we show on an occupied face in READY state 
-static Color readyFaceColor = RED; //MAKECOLOR_RGB( 10, 8 , 0 );
+// Show on an occupied face in READY state 
+static Color readyFaceColor = MAKECOLOR_RGB( 10,  8 , 0 );
+
+// Show on the face that we are sending the spark to 
+static Color sparkFaceColor = MAKECOLOR_RGB( 20 , 0 , 0 );
+
+// Show on random faces as we ignite and burn
+static Color sparkleColor   = MAKECOLOR_RGB( 20 , 20 , 20 );
 
 void setup() {
-  // put your setup code here, to run once:
-  //readyFaceColor = makeColorHSB( 25, 255, 20);     // A nice smoldering orange  
+  blinkStateBegin();
 }
 
 // Returns a face that (1) has not yet expired, and (2) is not `exclude`
@@ -92,48 +97,7 @@ static byte pickSparkTarget( byte exclude ) {
 }    
     
 
-Color colors[] = {  GREEN, RED , BLUE };
-
-uint8_t colorIndex=0;
-
-uint8_t pixelIndex =0; 
-
-uint32_t nextTime=0;
-
 void loop() {
-
-    if (millis()> nextTime) {
-                
-        if (pixelIndex==FACE_COUNT) {
-            
-            setColor( colors[colorIndex] );
-            
-            colorIndex++;
-            
-            if (colorIndex==COUNT_OF( colors )) {
-                colorIndex=0;
-            }
-            
-            pixelIndex=0;
-            
-        } else {
-            
-            setColor( OFF);
-            setFaceColor( pixelIndex , colors[colorIndex] );
-            
-            pixelIndex++;            
-            
-        }                                        
-        
-        nextTime = millis() + 200; 
-        
-    }        
-
-    
-}
-
-
-void loop2() {
         
     // put your main code here, to run repeatedly:
     uint32_t now = millis();
@@ -143,13 +107,15 @@ void loop2() {
                                       // and we don't care which
   
     // First get some situational awareness
+    
   
     FOREACH_FACE(f) {
         
+        
         if (neighborStateChanged(f)) {
-                        
+
             byte receivedMessage = getNeighborState(f);    
-                   
+            
             if (receivedMessage==BURN) {      // We just got a spark!
                 
                 detonateFlag=true;
@@ -182,8 +148,7 @@ void loop2() {
         state=IGNITE;
         nextStateTime=now+igniteDurration_ms;
     }      
-    
-  
+      
     if ( nextStateTime < now ) {        // Time for next timed state transition?
         
         // These are the only states that can timeout
@@ -199,7 +164,7 @@ void loop2() {
             state=BURN;
             nextStateTime=now+burnDuration_ms;
             
-        } else if (state==BURN) {              // Technically don't need this if since this is the only possible case, but here for clarity.             
+        } else if (state==BURN) {              // Technically don't need this `if` since this is the only possible case, but here for clarity.             
             
             state=READY;
             nextStateTime=NEVER;                 
@@ -217,7 +182,7 @@ void loop2() {
         if (!isNeighborExpired(f)) {
             setFaceColor(f, readyFaceColor );
         } else {
-            setFaceColor(f, RED );
+            setFaceColor(f, OFF );
         }
           
     }
@@ -227,7 +192,7 @@ void loop2() {
     
     if (state == IGNITE || state == BURN ) {         
         // Blink a random face white
-        setFaceColor( rand( FACE_COUNT -1 ) , BLUE );            
+        setFaceColor( rand( FACE_COUNT -1 ) , sparkleColor );            
     }        
     
     // Finally we set out outputs
@@ -235,12 +200,10 @@ void loop2() {
     // We send out current state on all faces EXCEPT for the special
     // case when we are INFECTing, in which case we want to only send that 
     // on the target face and look READY to everyone else. 
-    
-    setState( state ); 
-    
+        
     if (state==BURN) {
         
-        // Burn state is special since we only sent the burn to the target neighbor
+        // Burn state is special since we only send the burn to the target neighbor
         // or else all our neighbors would catch on fire
 
 
@@ -251,22 +214,22 @@ void loop2() {
         if (targetFace != NO_FACE ) {
                    
             // Show the spark flying away
-            setFaceColor( targetFace , BLUE );            
+            setFaceColor( targetFace , sparkFaceColor );            
                                        
             // We do explicitly send BURN to the target we are aiming to infect.
             setState( state , targetFace );
             
-        } else {
-            
-            // If we are READY then everyone will see
-            // If we are IGNITE, then the neighbor who sent us the spark will see that it worked
-            
-            setState( state ); 
-            
-        }            
+        }  
         
-    }        
+    } else {
             
+        // For any other state besides BURN, we can just send our real state to everyone
+        // Note that when we send IGNITE, the person who sent us burn will see it and
+        // know that we ignited and will stop sending BURN out anymore. 
+            
+        setState( state );
+    }        
+                                       
 }
 
 
