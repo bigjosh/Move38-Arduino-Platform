@@ -416,6 +416,7 @@ static void pixel_isr(void) {
         
         
         case 0:   // In this phase, we step to the next pixel and start charging the pump. All PWMs are currently off. 
+        case 3:   // In this phase, we step to the next pixel and start charging the pump. All PWMs are currently off.
         
             deactivateAnodes();  
             
@@ -444,6 +445,8 @@ static void pixel_isr(void) {
                 SBI( BLUE_SINK_DDR , BLUE_SINK_BIT );        // Enable output on sink pin. Since this pin port is always 0, this will drive it low.
                                                              // Allows capacitor charge though the diode
                                     
+                //activateAnode( currentPixelIndex );          // This will et a bit of blue leak though when battery is strong
+                                    
                 // Ok, now the pump capacitor is charging.  No LEDs are on.
                                     
                 // TODO: Handle the case where battery is high enough to drive blue directly and skip the pump
@@ -454,6 +457,7 @@ static void pixel_isr(void) {
             break;     
              
         case 1:
+        case 4:   
         
             // OK, if blue is on then CAP has been charging. 
             // Nothing is on yet, no anodes are activated. 
@@ -475,7 +479,7 @@ static void pixel_isr(void) {
                         
             // Now the sink is off, we are safe to activate the anode.
             // Remember that the PWM pin is still high and connected if there is blue in this pixel.
-            // A little current will flow now though the capactor, but that ok. 
+            // A little current will flow now though the capacitor, but that ok. 
             // when the PWM goes low, then the boost will kick in and make the BLUE really light
                     
             activateAnode( currentPixelIndex );
@@ -491,19 +495,24 @@ static void pixel_isr(void) {
             break;
                                     
             
-        case 2: 
+        case 5:
+            OCR0A = currentPixel->rawValueR;    // Load OCR to turn on red at next overflow
+            // NO BREAK
+         
+        case 2:
         
             // Right now, the blue led is on. Lets get ready for the red one next.             
             // TODO: Leave blue on until last phase for more brightness?     
                            
                 
             OCR2B = 255;                        // Load OCR to turn off blue at next overflow
-            OCR0A = currentPixel->rawValueR;    // Load OCR to turn on red at next overflow
 
             phase++;           
             break;
             
-        case 3: // Right now, the red LED is on. Get ready for green
+            
+            
+        case 6: // Right now, the red LED is on. Get ready for green
         
             // We are now done with BLUE, so we need to disconnect it to avoid 
             // dimly lighting the next LED. 
@@ -538,7 +547,7 @@ static void pixel_isr(void) {
             phase++;
             break;
             
-        case 4: // Right now the green LED is on. 
+        case 7: // Right now the green LED is on. 
         
             #if TIMER_PHASE_COUNT!= 5
                 #error If this switch does not have 5 cases, then need to update the TIMER_PHASE_COUNT in timer.h to make calculations colrrect
