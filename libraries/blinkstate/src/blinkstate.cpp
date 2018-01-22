@@ -34,61 +34,78 @@
 
 #include "blinkstate.h"
 
-#define STATE_BROADCAST_RATE_MS  100            // Minimum number of milliseconds between broadcasting the same state again. 
 
-#define STATE_BROADCAST_JITTER   40             // We randomly add this jitter to each broadcast
+// ----  Keep track of neighbor IR states
 
-#define STATE_EXPIRE_TIME_MS     300            // If we have not heard anything on this this face in this long, then assume no neighbor there
+// TODO: The compiler hates these arrays. Maybe use a per-face struct so it can do indirect offsets?
+// TODO: These struct even better if they are padded to a power of 2 like https://stackoverflow.com/questions/1239855/pad-a-c-structure-to-a-power-of-two
 
-// TODO: The compiler hates these arrays. Maybe use struct so it can do indirect offsets?
+// Last received value on this face, or 0 if no neighbor ever seen since startup
 
-static byte lastValue[FACE_COUNT];               // Last received value
-static unsigned long expireTime[FACE_COUNT];     // time when last received state will expire
+static byte inValue[FACE_COUNT];               
 
-static void updateRecievedState( uint8_t face ) {
+// Value we send out on this face
 
-    if ( irIsReadyOnFace(face) ) {
+static byte outValue[FACE_COUNT];
 
-        lastValue[ face ] = irGetData(face);
-        
-        // We could cache this calculation, but for now this is simpler.
+// Last time we saw a message on this face so
+// we know if there is a neighbor there.
+// Inits to 0 so all faces are initially expired. https://www.geeksforgeeks.org/g-fact-53/
+static uint32_t expireTime[FACE_COUNT];
 
-        expireTime[face] = millis() + STATE_EXPIRE_TIME_MS;
+// Assume no neighbor if we don't see a message on a face for this long
+// TODO: Allow user to tweak this?
+static const uint16_t expireDurration_ms = 100;
 
-    }
+// Next time we will send on this face.
+// Reset to 0 anytime we get a message so we end up token passing across the link
+static uint32_t neighboorSendTime[FACE_COUNT];      // inits to 0 on startup, so we will immediately send a probe on all faces. https://www.geeksforgeeks.org/g-fact-53/
 
-}
+// How often do we send a probe message on a face where we haven't seen anything in a while?
+// TODO: Allow user to tweak this?
+static const uint16_t sendprobeDurration_ms = 200;
+
 
 
 // check and see if any states recently updated....
 
-static void updateRecievedStates(void) {
+static void updateIRFaces(uint32_t now) {
 
-    FOREACH_FACE(x) {
+    FOREACH_FACE(f) {
+        
+        // Check for anything new coming in...
 
-        updateRecievedState( x );
-
+        if (irIsReadyOnFace(f)) {
+        
+            // Got something, so we know there is someone out there
+            expireTime[f] = now + expireDurration_ms;
+        
+            // Clear to send on this face immediately to ping-pong messages at max speed without collisions
+            neighboorSendTime[f] = 0;
+        
+            byte receivedMessage = irGetData(f);
+            
+            inValue[f] = receivedMessage;
+        
+        }
+        
+        // Send out if it is time....
+        
+        if ( neighboorSendTime[f] <= now ) {        // Time to send on this face?
+        
+            irSendData( f , outValue[f]  );
+                    
+            // Here we set a timeout to keep periodically probing on this face, but
+            // if there is a neighbor, they will send back to us as soon as they get what we
+            // just transmitted, which will make us immediately send again. So the only case
+            // when this probe timeout will happen is if there is no neighbor there.
+        
+            neighboorSendTime[f] = now + sendprobeDurration_ms;
+        }        
+                
     }
 
 }
-
-static byte localState=0;
-static unsigned long localStateNextSendTime;
-
-// Broadcast our local state
-
-static void broadcastState(void) {
-
-    irBroadcastData( localState );
-        
-    localStateNextSendTime = millis() + STATE_BROADCAST_RATE_MS;
-    
-    if (rand() & 1) {           // 50% chance
-        localStateNextSendTime += STATE_BROADCAST_JITTER;
-    }        
-
-}
-
 
 // Called one per loop() to check for new data and repeat broadcast if it is time
 // Note that if this is not called frequently then neighbors can appear to still be there
@@ -96,19 +113,14 @@ static void broadcastState(void) {
 // go out often enough.
 
 // TODO: All these calls to millis() and subsequent calculations are expensive. Cache stuff and reuse.
+// TODO: now will come as an arg soon with freeze-time branch
 
 void blinkStateOnLoop(void) {
-
-    // Check for anything coming in...
-    updateRecievedStates();
     
-    // Check for anything going out...
-
-    if ( (localState!=0) && (localStateNextSendTime <= millis()) ) {         // Anything to send (state 0=don't send)? Time for next broadcast?
-
-        broadcastState();
-
-    }
+    uint32_t now = millis(); 
+    
+    updateIRFaces(now); 
+    
 
 }
 
@@ -143,61 +155,91 @@ void blinkStateBegin(void) {
 }
 
 
-
-// Returns the last received state of the indicated face, or
-// 0 if no messages received recently on indicated face
+// Returns the last received state on the indicated face
+// Remember that getNeighborState() starts at 0 on powerup.
+// so returns 0 if no neighbor ever seen on this face since power-up
+// so best to only use after checking if face is not expired first.
+// Note the a face expiring has no effect on the getNeighborState()
 
 byte getNeighborState( byte face ) {
-
-    registerHook();     // Check everytime. Maybe a begin() better?
-
-    updateRecievedState( face ) ;       // Refresh
-
-    if ( expireTime[face] > millis() ) {        // Expire time in the future?
-
-        return lastValue[ face ];
-
-    }  else {
-
-        // Face expired
-        return 0;
-
-    }
-
+    
+    return inValue[ face ];
 
 }
 
+// Did the neighborState value on this face change since the 
+// last time we checked?
+// Remember that getNeighborState starts at 0 on powerup. 
+// Note the a face expiring has no effect on the getNeighborState()
+
+byte neighborStateChanged( byte face ) {
+    static byte prevState[FACE_COUNT];
+    
+    byte curState = getNeighborState(face);
+    
+    if ( curState == prevState[face] ) {
+        return false;
+    }
+    prevState[face] = curState;
+    
+    return true; 
+    
+}    
+
+// 0 if no messages recently received on the indicated face
+// (currently configured to 100ms timeout in `expireDurration_ms` )
+
+static byte isNeighborExpired( byte face , uint32_t now ) {
+    
+    return expireTime[face] < now;
+        
+}    
 
 
+// 0 if no messages recently received on the indicated face
+// (currently configured to 100ms timeout in `expireDurration_ms` )
 
-// Set our state to newState. This state is repeatedly broadcast to any
-// neighboring tiles.
+byte isNeighborExpired( byte face ) {
+    
+    uint32_t now=millis(); 
+    
+    return isNeighborExpired( face , now );
+    
+}
 
-// Note that setting our state to 0 make us stop broadcasting and effectively
-// disappear from the view of neighboring tiles.
+
+// Set our broadcasted state on all faces to newState. 
+// This state is repeatedly broadcast to any neighboring tiles.
 
 // By default we power up in state 0.
 
-
 void setState( byte newState ) {
-
-    registerHook();     // Check everytime. Maybe a begin() better?
-
-    if ( newState != localState ) {     // Ignore redundant setting to same state (
-
-        localState = newState;
-
-        broadcastState();            // Grease the wheels and send immmedeately if needed rather than waiting for next onLoop()
-
+    
+    FOREACH_FACE(f) {
+        
+        outValue[f] = newState;
+        
     }
+    
+}            
 
+// Set our broadcasted state on indicated face to newState.
+// This state is repeatedly broadcast to the partner tile on the indicated face.
+
+// By default we power up in state 0.
+
+void setState( byte newState , byte face ) {
+    
+    outValue[face] = newState;
+    
 }
+
 
 // Get our state. This way we don't have to keep track of it somewhere exclusive
 // simply giving access to the local state which is already stored
 
-byte getState(void) {
+byte getState(byte face) {
 
-  return localState;
+  return outValue[face];
 
 }

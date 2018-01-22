@@ -626,13 +626,6 @@ static void callOnLoopChain(void ) {
 
 void run(void) {
 
-/*
-    SP_PIN_A_MODE_OUT();
-    SP_PIN_T_MODE_OUT();
-    SP_PIN_R_MODE_OUT();
-    sp_serial_init();
-    sp_serial_disable_rx();
-*/
     setup();
 
     while (1) {

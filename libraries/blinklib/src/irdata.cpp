@@ -98,7 +98,7 @@ static uint8_t oddParity(uint8_t p) {
                                            
 
     // Visible to outside world     
-     volatile uint8_t lastValue;            // Last successfully decoded RX value. 1 in high bit means valid and unread. 0= empty. 
+     volatile uint8_t inValue;            // Last successfully decoded RX value. 1 in high bit means valid and unread. 0= empty. 
 
     
     uint8_t dummy;                          // TODO: parity bit? for now just keep struct a power of 2
@@ -158,7 +158,7 @@ static uint8_t oddParity(uint8_t p) {
         uint8_t bit = bits & bitwalker;        
                                 
         if (bit) {      // This LED triggered in the last time window
-            
+                        
             uint8_t thisWindowsSinceLastFlash = ptr->windowsSinceLastFlash;
                                 
              ptr->windowsSinceLastFlash = 0;     // We just got a flash, so start counting over.
@@ -188,12 +188,13 @@ static uint8_t oddParity(uint8_t p) {
                 
                                                 
                 if ( (inputBuffer & 0b11000000) == 0b10000000 ) {       
-                    
+                                                            
                     // TODO: check for overrun in lastValue and either flag error or increase buffer size
                     
-                    ptr->lastValue = inputBuffer;           // Save the received byte (clobbers old if not read yet)
+                    ptr->inValue = inputBuffer;           // Save the received byte (clobbers old if not read yet)
                                         
                     inputBuffer =0;                    // Clear out the input buffer to look for next start bit
+                    
                     
                 } 
                 
@@ -205,8 +206,8 @@ static uint8_t oddParity(uint8_t p) {
                 
                 ptr->inputBuffer = 0;                       // Start looking for start bit again. 
                                                     
-            }                
-                
+            }            
+                                
         } else {
                         
             ptr->windowsSinceLastFlash++;           // Keep count of how many windows since last flash
@@ -229,7 +230,7 @@ static uint8_t oddParity(uint8_t p) {
 // Is there a received data ready to be read on this face?
 
 bool irIsReadyOnFace( uint8_t led ) {
-    return( ir_rx_states[led].lastValue != 0 );    
+    return( ir_rx_states[led].inValue != 0 );    
 }    
 
 // Read the most recently received data. Blocks if no data ready
@@ -238,13 +239,13 @@ uint8_t irGetData( uint8_t led ) {
         
     ir_rx_state_t volatile *ptr = ir_rx_states + led;        // This turns out to generate much more efficient code than array access. ptr saves 25 bytes. :/   Even so, the emitted ptr dereference code is awful.
     
-    while (! ptr->lastValue );      // Wait for high be to be set to indicate value waiting. 
+    while (! ptr->inValue );      // Wait for high be to be set to indicate value waiting. 
         
     // No need to atomic here since these accesses are lockstep, so the data can not be updated until we clear the ready bit        
     
-    uint8_t d = ptr->lastValue;
+    uint8_t d = ptr->inValue;
     
-    ptr->lastValue=0;       // Clear to indicate we read the value. Doesn't need to be atomic.
+    ptr->inValue=0;       // Clear to indicate we read the value. Doesn't need to be atomic.
 
     return d & 0b00111111;      // Don't show our internal preamble bits
     
@@ -256,18 +257,16 @@ void irSendDataBitmask(uint8_t data, uint8_t bitmask) {
     
     uint8_t bitwalker = 0b00100000;
     
-    // Start things up, send initial pulse
-    ir_tx_start( IR_SPACE_TIME_TICKS , bitmask );
+    // Start things up, send initial pulse and start bit (1)
+    ir_tx_start( IR_SPACE_TIME_TICKS , bitmask , 1 );
     
-    // Send the start bits
-    ir_tx_sendpulse( 1 );           // Start Bit
-    ir_tx_sendpulse( 3 );           // Guard 0 bit to ensure real start bit is detected and not extraious leading pulse.
+    ir_tx_sendpulse( 3 );           // Guard 0 bit to ensure real start bit is detected and not extraneous leading pulse.
     
     do {
         
         if (data & bitwalker) {
             ir_tx_sendpulse( 1 ) ;
-            } else {
+        } else {
             ir_tx_sendpulse( 3 ) ;
         }
         
@@ -275,9 +274,7 @@ void irSendDataBitmask(uint8_t data, uint8_t bitmask) {
         
     } while (bitwalker);
     
-    // Send stop bit
-    
-    ir_tx_sendpulse( 3 );
+    // TODO: Send a stop bit or some parity bit for error checking? Necessary? 
     
     ir_tx_end();
     
