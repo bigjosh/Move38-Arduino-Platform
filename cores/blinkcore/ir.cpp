@@ -315,22 +315,33 @@ static volatile uint16_t sendpulse_spaces_next;  // A one entry deep buffer for 
 
 // Currently clocks at 23us @ 4Mhz
 
+#warning swp
+#include "sp.h"
+
 ISR(TIMER1_CAPT_vect) {
-    
+        
     if (sendpulse_spaces) {
         
         sendpulse_spaces--;
         
         if (sendpulse_spaces==0) {
+            
+            
+            #warning 
+            if (sendpulse_bitmask==0x01) {
+                SP_PIN_T_SET_1();
+            }                
                
             ir_tx_pulse_internal( sendpulse_bitmask );     // Flash
             
             sendpulse_spaces = sendpulse_spaces_next;
             
             sendpulse_spaces_next = 0; 
+            SP_PIN_T_SET_0();
             
         }            
     }            
+        
 }        
 
 // Send a series of pulses with spacing_ticks clock ticks between each pulse (or as quickly as possible if spacing too short)
@@ -405,7 +416,7 @@ void ir_tx_sendpulse( uint8_t leadingSpaces ) {
 
 void ir_tx_end(void) {
     
-    while (sendpulse_spaces);       // Wait for all previous pulses to get sent (complete)
+    while (sendpulse_spaces);       // Wait for all previous pulses to get sent (buffered and immedeate complete)
     
     // stop timer (not more ISR) 
     TCCR1B = 0;             // Sets prescaler to 0 which stops the timer.

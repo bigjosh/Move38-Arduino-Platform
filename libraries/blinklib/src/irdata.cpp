@@ -162,7 +162,7 @@ static uint8_t oddParity(uint8_t p) {
             #warning debug code 
             #include "sp.h"
             if (bitwalker==0x01) {
-                SP_PIN_A_SET_1();
+                SP_PIN_R_SET_1();
             }                
             
             uint8_t thisWindowsSinceLastFlash = ptr->windowsSinceLastFlash;
@@ -177,7 +177,13 @@ static uint8_t oddParity(uint8_t p) {
                             
                 if (thisWindowsSinceLastFlash<=1) {     // Saw a 1 bit
                     
+                    #warning
+                    if (bitwalker==0x01) {
+                        SP_PIN_R_SET_0();
+                    }                        
+                    
                     inputBuffer |= 0b00000001;          // Save newly received 1 bit 
+                    SP_PIN_R_SET_1();
                     
                 }                     
                                
@@ -194,17 +200,13 @@ static uint8_t oddParity(uint8_t p) {
                 
                                                 
                 if ( (inputBuffer & 0b11000000) == 0b10000000 ) {       
-                    
-                    SP_PIN_T_SET_1();
-                                        
+                                                            
                     // TODO: check for overrun in lastValue and either flag error or increase buffer size
                     
                     ptr->inValue = inputBuffer;           // Save the received byte (clobbers old if not read yet)
                                         
                     inputBuffer =0;                    // Clear out the input buffer to look for next start bit
                     
-                    SP_PIN_T_SET_0();
-
                     
                 } 
                 
@@ -218,9 +220,8 @@ static uint8_t oddParity(uint8_t p) {
                                                     
             }            
             
-            SP_PIN_A_SET_0();
-    
-                
+            SP_PIN_R_SET_0();
+                    
         } else {
                         
             ptr->windowsSinceLastFlash++;           // Keep count of how many windows since last flash
@@ -270,18 +271,16 @@ void irSendDataBitmask(uint8_t data, uint8_t bitmask) {
     
     uint8_t bitwalker = 0b00100000;
     
-    // Start things up, send initial pulse
-    ir_tx_start( IR_SPACE_TIME_TICKS , bitmask );
+    // Start things up, send initial pulse and start bit (1)
+    ir_tx_start( IR_SPACE_TIME_TICKS , bitmask , 1 );
     
-    // Send the start bits
-    ir_tx_sendpulse( 1 );           // Start Bit
     ir_tx_sendpulse( 3 );           // Guard 0 bit to ensure real start bit is detected and not extraneous leading pulse.
     
     do {
         
         if (data & bitwalker) {
             ir_tx_sendpulse( 1 ) ;
-            } else {
+        } else {
             ir_tx_sendpulse( 3 ) ;
         }
         

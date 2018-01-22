@@ -101,7 +101,6 @@ static void updateIRFaces(uint32_t now) {
             // when this probe timeout will happen is if there is no neighbor there.
         
             neighboorSendTime[f] = now + sendprobeDurration_ms;
-        
         }        
                 
     }
