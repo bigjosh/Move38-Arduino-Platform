@@ -76,9 +76,9 @@ void setFaceColor( byte face , Color newColor ) {
     // users to get the whole pixel.h namespace. There has to be a good way around this. Maybe
     // break out the pixelColor type into its own core .H file? seems wrong. Hmmm....
 
-    newPixelColor.r = GET_R( newColor );
-    newPixelColor.g = GET_G( newColor );
-    newPixelColor.b = GET_B( newColor );
+    newPixelColor.r = GET_5BIT_R( newColor );
+    newPixelColor.g = GET_5BIT_G( newColor );
+    newPixelColor.b = GET_5BIT_B( newColor );
 
     pixel_bufferedSetPixel( face , newPixelColor );
 
@@ -95,7 +95,7 @@ void setColor( Color newColor ) {
 }
 
 
-// makeColorRGB defined as a macro for now so we get compile time calcuation for static colors.
+// makeColorRGB defined as a macro for now so we get compile time calculation for static colors.
 
 /*
 
@@ -160,9 +160,7 @@ Color makeColorHSB( uint8_t hue, uint8_t saturation, uint8_t brightness ) {
 		}
 	}
 
-    // Bring the 0-255 range values down to 0-31 range
-
-    return( makeColorRGB( r >> 3 , g >> 3  , b >> 3 ) );
+    return( makeColorRGB( r , g  , b ) );
 }
 
 // OMG, the Ardiuno rand() function is just a mod! We at least want a uniform distibution.

@@ -143,38 +143,37 @@ typedef unsigned Color;
 
 // Number of brightness levels in each channel of a color
 #define BRIGHTNESS_LEVELS 32
+#define MAX_BRIGHTNESS (BRIGHTNESS_LEVELS-1)
 
-#define GET_R(color) ((color>>10)&31)
-#define GET_G(color) ((color>> 5)&31)
-#define GET_B(color) ((color    )&31)
+#define GET_5BIT_R(color) ((color>>10)&31)
+#define GET_5BIT_G(color) ((color>> 5)&31)
+#define GET_5BIT_B(color) ((color    )&31)
 
 // R,G,B are all in the domain 0-31
 // Here we expose the internal color representation, but it is worth it
 // to get the performance and size benefits of static compilation 
 // Shame no way to do this right in C/C++
 
-#define MAX_BRIGHTNESS 31
+#define MAKECOLOR_5BIT_RGB(r,g,b) ((r&31)<<10|(g&31)<<5|(b&31))
 
-#define MAKECOLOR_RGB(r,g,b) ((r&31)<<10|(g&31)<<5|(b&31))
+#define RED         MAKECOLOR_5BIT_RGB(MAX_BRIGHTNESS    , 0                 , 0)
+#define ORANGE      MAKECOLOR_5BIT_RGB(MAX_BRIGHTNESS    ,MAX_BRIGHTNESS/2   , 0)
+#define YELLOW      MAKECOLOR_5BIT_RGB(MAX_BRIGHTNESS    ,MAX_BRIGHTNESS     , 0)
+#define GREEN       MAKECOLOR_5BIT_RGB( 0                ,MAX_BRIGHTNESS     , 0)
+#define CYAN        MAKECOLOR_5BIT_RGB( 0                ,MAX_BRIGHTNESS     ,MAX_BRIGHTNESS)
+#define BLUE        MAKECOLOR_5BIT_RGB( 0                , 0                 ,MAX_BRIGHTNESS)
+#define MAGENTA     MAKECOLOR_5BIT_RGB(MAX_BRIGHTNESS    , 0                 ,MAX_BRIGHTNESS)
 
-#define RED         MAKECOLOR_RGB(MAX_BRIGHTNESS    , 0                 , 0)
-#define ORANGE      MAKECOLOR_RGB(MAX_BRIGHTNESS    ,MAX_BRIGHTNESS/2   , 0)
-#define YELLOW      MAKECOLOR_RGB(MAX_BRIGHTNESS    ,MAX_BRIGHTNESS     , 0)
-#define GREEN       MAKECOLOR_RGB( 0                ,MAX_BRIGHTNESS     , 0)
-#define CYAN        MAKECOLOR_RGB( 0                ,MAX_BRIGHTNESS     ,MAX_BRIGHTNESS)
-#define BLUE        MAKECOLOR_RGB( 0                , 0                 ,MAX_BRIGHTNESS)
-#define MAGENTA     MAKECOLOR_RGB(MAX_BRIGHTNESS    , 0                 ,MAX_BRIGHTNESS)
+#define WHITE       MAKECOLOR_5BIT_RGB(MAX_BRIGHTNESS    ,MAX_BRIGHTNESS     ,MAX_BRIGHTNESS)
 
-#define WHITE       MAKECOLOR_RGB(MAX_BRIGHTNESS    ,MAX_BRIGHTNESS     ,MAX_BRIGHTNESS)
-
-#define OFF         MAKECOLOR_RGB( 0                , 0                 , 0)
+#define OFF         MAKECOLOR_5BIT_RGB( 0                , 0                 , 0)
 
 // We inline this so we can get compile time simplification for static colors
 
-// Make a new color from RGB values. Each value can be 0-31.
+// Make a new color from RGB values. Each value can be 0-255.
 
 inline Color makeColorRGB( byte red, byte green, byte blue ) {
-    return MAKECOLOR_RGB( red , green , blue );
+    return MAKECOLOR_5BIT_RGB( red>>3 , green>>3 , blue>>3 );
 }
 
 
@@ -182,10 +181,10 @@ inline Color makeColorRGB( byte red, byte green, byte blue ) {
 // Inlined to allow static simplification at compile time
 
 inline Color dim( Color color, byte brightness) {
-    return makeColorRGB(
-        (GET_R(color)*brightness)/MAX_BRIGHTNESS,
-        (GET_G(color)*brightness)/MAX_BRIGHTNESS,
-        (GET_B(color)*brightness)/MAX_BRIGHTNESS
+    return MAKECOLOR_5BIT_RGB(
+        (GET_5BIT_R(color)*brightness)/MAX_BRIGHTNESS,
+        (GET_5BIT_G(color)*brightness)/MAX_BRIGHTNESS,
+        (GET_5BIT_B(color)*brightness)/MAX_BRIGHTNESS
     );
 }
 
@@ -238,11 +237,6 @@ uint16_t rand( uint16_t limit );
 // There are 9 bytes in all, so n can be 0-8
 
 byte getSerialNumberByte( byte n );
-
-// Returns the number of millis since last call
-// Handy for profiling.
-
-uint32_t timeDelta(void);
 
 
 /*

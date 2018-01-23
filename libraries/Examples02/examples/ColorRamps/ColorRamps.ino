@@ -8,7 +8,7 @@ void setup() {
 
 }
 
-Color colors[] = { BLUE , MAGENTA,  RED , YELLOW , GREEN , CYAN  };
+Color colors[] = { BLUE ,   RED , GREEN   };
 
 byte color = 0; 
 
@@ -18,12 +18,11 @@ int direction = 1;
 
 void loop() {
 
-  //setColor( dim( BLUE , 1 ) ) ; return;
+   setColor( dim( colors[color] ,  brightness  ) );
 
-   setColor( dim( colors[color] , brightness ) );
 
    if (brightness== MAX_BRIGHTNESS) {     // Got to the top, turn around
-   
+    
       direction = -1; 
       
    } else if (brightness==0) {              // Got to the bottom, turn around and step to next color
