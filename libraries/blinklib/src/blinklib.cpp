@@ -95,16 +95,34 @@ void setColor( Color newColor ) {
 }
 
 
-// makeColorRGB defined as a macro for now so we get compile time calculation for static colors.
+// This maps 0-255 values to 0-31 values with the special case that 0 (in 0-255) is the only value that maps to 0 (in 0-31)
+// This leads to some slight non-linearity since there are not a uniform integral number of 1-255 values
+// to map to each of the 1-31 values. 
 
-/*
+byte map8bitTo5bit( byte b ) {
+    
+    if (b==0) return 0; 
+        
+    // 0 gets a special case of `off`, so we divide the rest of the range in to
+    // 31 equaly spaced regions to assign the remaing 31 brightness levels. 
+    
+    uint16_t normalizedB = b-1;     // Offset to a value 0-254 that will be scaled to the remaining 31 on values
+    
+    //uint16_t scaledB = (normalizedB / 255) * 31); // This is what we want to say, but it will underflow in integer math
+    
+    byte scaledB = ( (uint16_t) normalizedB * 31U) / 255U; // Be very careful to stay in bounds!
+    
+    // scaledB is now a number 0-30 that is (almost) lenearly scaled down from the orginal b
+        
+    return ( scaledB )+1;       // De-normalize back up to `on` values 1-31. 
+    
+}    
 
-Color makeColorRGB( byte r, byte g, byte b ) {
-    return ((r&31)<<10|(g&31)<<5|(b&31));
+// Make a new color from RGB values. Each value can be 0-255.
+
+Color makeColorRGB( byte red, byte green, byte blue ) {
+    return MAKECOLOR_5BIT_RGB( map8bitTo5bit(red) , map8bitTo5bit(green) ,  map8bitTo5bit(blue) );
 }
-
-*/
-
 
 Color makeColorHSB( uint8_t hue, uint8_t saturation, uint8_t brightness ) {
 

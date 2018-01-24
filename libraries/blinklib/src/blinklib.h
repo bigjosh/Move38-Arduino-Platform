@@ -139,7 +139,10 @@ uint8_t irGetErrorBits( uint8_t face );
 // TODO: Use top bit(s) for something useful like automatic
 //       blink or twinkle or something like that.
 
-typedef unsigned Color;
+// Argh, these macros are so ugly... but so ideomatic arduino. Maybe use a class with bitfields like 
+// we did in pixel.cpp just so we can sleep at night?
+
+typedef uint16_t Color;
 
 // Number of brightness levels in each channel of a color
 #define BRIGHTNESS_LEVELS 32
@@ -168,15 +171,14 @@ typedef unsigned Color;
 
 #define OFF         MAKECOLOR_5BIT_RGB( 0                , 0                 , 0)
 
-// We inline this so we can get compile time simplification for static colors
+// This maps 0-255 values to 0-31 values with the special case that 0 (in 0-255) is the only value that maps to 0 (in 0-31)
+// This leads to some slight non-linearity since there are not a uniform integral number of 1-255 values
+// to map to each of the 1-31 values. 
 
 // Make a new color from RGB values. Each value can be 0-255.
 
-inline Color makeColorRGB( byte red, byte green, byte blue ) {
-    return MAKECOLOR_5BIT_RGB( red>>3 , green>>3 , blue>>3 );
-}
-
-
+Color makeColorRGB( byte red, byte green, byte blue );
+ 
 // Dim the specified color. Brightness is 0-31 (0=off, 31=don't dim at all-keep original color)
 // Inlined to allow static simplification at compile time
 
