@@ -526,15 +526,20 @@ unsigned long millis(void) {
 // do that in C++ that is not verbose and inefficient, so here we are. 
 
 bool Timer::isExpired() {
-	return millis() >= expireTime; 
+	return millis() >= m_expireTime; 
 }
 	
-void Timer::setMsFromNow( uint32_t ms ) {
-	expireTime= millis()+ms;	
+void Timer::setMSFromNow( uint32_t ms ) {
+	m_expireTime= millis()+ms;	
 }
 	
 void Timer::setSecondsFromNow( uint16_t s ) {
-	setMsFromNow(s*MILLIS_PER_SECOND);
+	setMSFromNow(s*MILLIS_PER_SECOND);
+}
+
+
+void Timer::setNever() {
+	m_expireTime=NEVER;
 }
 
 

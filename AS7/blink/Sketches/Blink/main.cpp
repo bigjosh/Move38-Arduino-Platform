@@ -40,7 +40,7 @@ static int sourceFace=NO_FACE; // The face we got the spark from.
 static int targetFace=NO_FACE; // The face we are sending the spark to.
                                // Only matters in BURN state. NO_FACE if we are not spreading
 
-static uint32_t nextStateTime;        // Time we switch to next state. Valid in EXPLODING, COOLDOWN, and INFECT.
+Timer nextState;			   // Time we switch to next state. Valid in EXPLODING, COOLDOWN, and INFECT.
 
 // How long between when we first get a spark and start sending a new spark
 static const uint16_t igniteDurration_ms = 200;
@@ -147,10 +147,10 @@ void loop() {
   
     if (detonateFlag) {
         state=IGNITE;
-        nextStateTime=millis()+igniteDurration_ms;
+        nextState.setMSFromNow( igniteDurration_ms );
     }      
       
-    if ( nextStateTime < millis() ) {        // Time for next timed state transition?
+    if ( nextState.isExpired() ) {        // Time for next timed state transition?
         
         // These are the only states that can timeout
         
@@ -163,12 +163,12 @@ void loop() {
             targetFace = pickSparkTarget( sourceFace );
             
             state=BURN;
-            nextStateTime=millis()+burnDuration_ms;
+            nextState.setMSFromNow( burnDuration_ms );
             
         } else if (state==BURN) {              // Technically don't need this `if` since this is the only possible case, but here for clarity.             
             
             state=READY;
-            nextStateTime=NEVER;                 
+            nextState.setNever();                 
             
         }                
                 
