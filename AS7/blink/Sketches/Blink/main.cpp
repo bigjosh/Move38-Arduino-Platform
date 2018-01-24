@@ -99,8 +99,9 @@ static byte pickSparkTarget( byte exclude ) {
 
 void loop() {
         
+         
     // put your main code here, to run repeatedly:
-    uint32_t now = millis();
+
   
     bool detonateFlag = false;        // Set this flag to true to cause detonation
                                       // since the ignition can come from either button or spark
@@ -146,10 +147,10 @@ void loop() {
   
     if (detonateFlag) {
         state=IGNITE;
-        nextStateTime=now+igniteDurration_ms;
+        nextStateTime=millis()+igniteDurration_ms;
     }      
       
-    if ( nextStateTime < now ) {        // Time for next timed state transition?
+    if ( nextStateTime < millis() ) {        // Time for next timed state transition?
         
         // These are the only states that can timeout
         
@@ -162,7 +163,7 @@ void loop() {
             targetFace = pickSparkTarget( sourceFace );
             
             state=BURN;
-            nextStateTime=now+burnDuration_ms;
+            nextStateTime=millis()+burnDuration_ms;
             
         } else if (state==BURN) {              // Technically don't need this `if` since this is the only possible case, but here for clarity.             
             

@@ -212,13 +212,15 @@ void setFaceColor(  byte face, Color newColor );
 
 */
 
-// Number of milliseconds since we started (since last time setup called).
-// Note that this can increase by more than 1 between calls, so always use greater than
-// and less than rather than equals for comparisons
-
-// Overflows after about 50 days
-
-// Note that our clock is only accurate to about +/-10%
+// Number of running milliseconds since power up.
+//
+// Important notes:
+// 1) does not increment while sleeping
+// 2) is only updated between loop() interations
+// 3) is not monotonic, so always use greater than
+//    and less than rather than equals for comparisons
+// 4) overflows after about 50 days
+// 5) is only accurate to about +/-10%
 
 unsigned long millis(void);
 

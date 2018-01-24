@@ -493,10 +493,19 @@ static volatile uint32_t millisCounter=0;           // How many milliseconds sin
 // Overflows after about 60 days
 // Note that resolution is limited by timer tick rate
 
-
 // TODO: Clear out millis to zero on wake
 
+// This snapshot makes sure that we always see the same value for millis() in a given iteration of loop()
+// This "freeze-time" view makes it harder to have race conditions when millis() changes while you are looking at it. 
+// The value of millis_snapshot gets reset to 0 after each loop() iteration. 
+
+static uint32_t millis_snapshot=0; 
+
 unsigned long millis(void) {
+	
+	if (millis_snapshot) {				// Did we already compute this for this pass of loop()?
+		return millis_snapshot;	
+	}
 
     uint32_t tempMillis;
 
@@ -506,6 +515,9 @@ unsigned long millis(void) {
     DO_ATOMICALLY {
         tempMillis=millisCounter;
     }
+	
+	millis_snapshot = tempMillis;
+	
     return( tempMillis );
 }
 
@@ -652,6 +664,8 @@ void run(void) {
                                             // Also currently blocks until new frame actually starts
 
         callOnLoopChain();
+		
+		millis_snapshot=0;					// Clear out so we get an updated value next pass
 
         // TODO: Sleep here
 
