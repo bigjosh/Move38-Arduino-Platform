@@ -226,6 +226,25 @@ unsigned long millis(void);
 
 #define NEVER ( (uint32_t)-1 )          // UINT32_MAX would be correct here, but generates a Symbol Not Found. 
 
+
+
+class Timer {
+	
+	uint32_t expireTime;		// When this timer will expire
+	
+	public:
+	
+		Timer() : expireTime(0) {};		// Timers come into this world pre-expired. 
+			
+		bool isExpired();
+				
+		void setMsFromNow( uint32_t ms );
+		
+		void setSecondsFromNow( uint16_t s );
+					
+};
+
+
 /*
 
     Utility functions

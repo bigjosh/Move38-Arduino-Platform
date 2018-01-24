@@ -521,6 +521,23 @@ unsigned long millis(void) {
     return( tempMillis );
 }
 
+// Note we directlyt access millis() here, which is really bad style.
+// The timer should capture millis() in a closure, but no good way to 
+// do that in C++ that is not verbose and inefficient, so here we are. 
+
+bool Timer::isExpired() {
+	return millis() >= expireTime; 
+}
+	
+void Timer::setMsFromNow( uint32_t ms ) {
+	expireTime= millis()+ms;	
+}
+	
+void Timer::setSecondsFromNow( uint16_t s ) {
+	setMsFromNow(s*MILLIS_PER_SECOND);
+}
+
+
 /*
 
 // Delay for `ms` milliseconds
