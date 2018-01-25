@@ -23,7 +23,7 @@
 #endif
 
 
-// Manually add our hooks. 
+// Manually add our hooks.
 // Must be called before using any other blinkstate functions
 // TODO: Now that blinkstate is the primary game-level API, maybe make this the default?
 
@@ -45,11 +45,15 @@ byte getNeighborState( byte face );
 byte neighborStateChanged( byte face );
 
 
-// 0 if messages have been recently received on the indicated face
+// True if messages have been recently received on the indicated face
 // (currently configured to 100ms timeout in `expireDurration_ms` )
 
-byte isNeighborExpired( byte face );
+bool isNeighborPresent( byte face );
 
+// False if messages have been recently received on any of the faces
+// (currently configured to 100ms timeout in `expireDurration_ms` )
+
+bool isAlone();
 
 // Set our broadcasted state on all faces to newState.
 // This state is repeatedly broadcast to any neighboring tiles.
@@ -64,13 +68,18 @@ void setState( byte newState );
 
 // By default we power up in state 0.
 
-void setState( byte newState , byte face );
+void setFaceState( byte face, byte newState );
 
 
 // Get our state. This way we don't have to keep track of it somewhere exclusive
 // simply giving access to the local state which is already stored
 
-byte getState(byte face);
+byte getState();
+
+// Get a single face's state. This way we don't have to keep track of it somewhere exclusive
+// simply giving access to the local state which is already stored
+
+byte getFaceState( byte face );
 
 /*
 

@@ -42,7 +42,7 @@
 
 // Last received value on this face, or 0 if no neighbor ever seen since startup
 
-static byte inValue[FACE_COUNT];               
+static byte inValue[FACE_COUNT];
 
 // Value we send out on this face
 
@@ -72,37 +72,37 @@ static const uint16_t sendprobeDurration_ms = 200;
 static void updateIRFaces(uint32_t now) {
 
     FOREACH_FACE(f) {
-        
+
         // Check for anything new coming in...
 
         if (irIsReadyOnFace(f)) {
-        
+
             // Got something, so we know there is someone out there
             expireTime[f] = now + expireDurration_ms;
-        
+
             // Clear to send on this face immediately to ping-pong messages at max speed without collisions
             neighboorSendTime[f] = 0;
-        
+
             byte receivedMessage = irGetData(f);
-            
+
             inValue[f] = receivedMessage;
-        
+
         }
-        
+
         // Send out if it is time....
-        
+
         if ( neighboorSendTime[f] <= now ) {        // Time to send on this face?
-        
+
             irSendData( f , outValue[f]  );
-                    
+
             // Here we set a timeout to keep periodically probing on this face, but
             // if there is a neighbor, they will send back to us as soon as they get what we
             // just transmitted, which will make us immediately send again. So the only case
             // when this probe timeout will happen is if there is no neighbor there.
-        
+
             neighboorSendTime[f] = now + sendprobeDurration_ms;
-        }        
-                
+        }
+
     }
 
 }
@@ -116,11 +116,11 @@ static void updateIRFaces(uint32_t now) {
 // TODO: now will come as an arg soon with freeze-time branch
 
 void blinkStateOnLoop(void) {
-    
-    uint32_t now = millis(); 
-    
-    updateIRFaces(now); 
-    
+
+    uint32_t now = millis();
+
+    updateIRFaces(now);
+
 
 }
 
@@ -162,83 +162,108 @@ void blinkStateBegin(void) {
 // Note the a face expiring has no effect on the getNeighborState()
 
 byte getNeighborState( byte face ) {
-    
+
     return inValue[ face ];
 
 }
 
-// Did the neighborState value on this face change since the 
+// Did the neighborState value on this face change since the
 // last time we checked?
-// Remember that getNeighborState starts at 0 on powerup. 
+// Remember that getNeighborState starts at 0 on powerup.
 // Note the a face expiring has no effect on the getNeighborState()
 
 byte neighborStateChanged( byte face ) {
     static byte prevState[FACE_COUNT];
-    
+
     byte curState = getNeighborState(face);
-    
+
     if ( curState == prevState[face] ) {
         return false;
     }
     prevState[face] = curState;
-    
-    return true; 
-    
-}    
+
+    return true;
+
+}
 
 // 0 if no messages recently received on the indicated face
 // (currently configured to 100ms timeout in `expireDurration_ms` )
 
 static byte isNeighborExpired( byte face , uint32_t now ) {
-    
+
     return expireTime[face] < now;
-        
-}    
 
-
-// 0 if no messages recently received on the indicated face
-// (currently configured to 100ms timeout in `expireDurration_ms` )
-
-byte isNeighborExpired( byte face ) {
-    
-    uint32_t now=millis(); 
-    
-    return isNeighborExpired( face , now );
-    
 }
 
 
-// Set our broadcasted state on all faces to newState. 
+// True if messages recently received on the indicated face
+// (currently configured to 100ms timeout in `expireDurration_ms` )
+
+bool isNeighborPresent( byte face ) {
+
+    uint32_t now=millis();
+
+    return !isNeighborExpired( face , now );
+
+}
+
+// False if messages have been recently received on any of the faces
+// (currently configured to 100ms timeout in `expireDurration_ms` )
+
+bool isAlone() {
+
+    FOREACH_FACE(f) {
+
+        if( isNeighborPresent(f) ) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+// Set our broadcasted state on all faces to newState.
 // This state is repeatedly broadcast to any neighboring tiles.
 
 // By default we power up in state 0.
 
 void setState( byte newState ) {
-    
+
     FOREACH_FACE(f) {
-        
+
         outValue[f] = newState;
-        
+
     }
-    
-}            
+
+}
 
 // Set our broadcasted state on indicated face to newState.
 // This state is repeatedly broadcast to the partner tile on the indicated face.
 
 // By default we power up in state 0.
 
-void setState( byte newState , byte face ) {
-    
+void setFaceState( byte face, byte newState ) {
+
     outValue[face] = newState;
-    
+
 }
 
 
 // Get our state. This way we don't have to keep track of it somewhere exclusive
 // simply giving access to the local state which is already stored
 
-byte getState(byte face) {
+byte getState() {
+
+  return outValue[0]; // return the value on face 0 as it should match all other faces...
+  // TODO: warn the user if setFaceState is used that using getState may be
+  // not representative of what they want
+
+}
+
+// Get a face state. This way we don't have to keep track of it somewhere exclusive
+// simply giving access to the local state which is already stored
+
+byte getFaceState(byte face) {
 
   return outValue[face];
 
