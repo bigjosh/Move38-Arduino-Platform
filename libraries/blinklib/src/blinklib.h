@@ -82,16 +82,16 @@ bool buttonDown();
 */
 
 
-// Send data on a single face. 
+// Send data on a single face.
 // Data is 6-bits wide, top bits are ignored.
 
 void irSendData( uint8_t face , uint8_t data   );
 
 // Simultaneously send data on all faces that have a `1` in bitmask
 // Data is 6-bits wide, top bits are ignored.
-void irSendDataBitmask(uint8_t data, uint8_t bitmask);   
-    
-// Broadcast data on all faces. 
+void irSendDataBitmask(uint8_t data, uint8_t bitmask);
+
+// Broadcast data on all faces.
 // Data is 6-bits wide, top bits are ignored.
 
 void irBroadcastData( uint8_t data );
@@ -139,7 +139,7 @@ uint8_t irGetErrorBits( uint8_t face );
 // TODO: Use top bit(s) for something useful like automatic
 //       blink or twinkle or something like that.
 
-// Argh, these macros are so ugly... but so ideomatic arduino. Maybe use a class with bitfields like 
+// Argh, these macros are so ugly... but so ideomatic arduino. Maybe use a class with bitfields like
 // we did in pixel.cpp just so we can sleep at night?
 
 typedef uint16_t Color;
@@ -154,7 +154,7 @@ typedef uint16_t Color;
 
 // R,G,B are all in the domain 0-31
 // Here we expose the internal color representation, but it is worth it
-// to get the performance and size benefits of static compilation 
+// to get the performance and size benefits of static compilation
 // Shame no way to do this right in C/C++
 
 #define MAKECOLOR_5BIT_RGB(r,g,b) ((r&31)<<10|(g&31)<<5|(b&31))
@@ -173,12 +173,12 @@ typedef uint16_t Color;
 
 // This maps 0-255 values to 0-31 values with the special case that 0 (in 0-255) is the only value that maps to 0 (in 0-31)
 // This leads to some slight non-linearity since there are not a uniform integral number of 1-255 values
-// to map to each of the 1-31 values. 
+// to map to each of the 1-31 values.
 
 // Make a new color from RGB values. Each value can be 0-255.
 
 Color makeColorRGB( byte red, byte green, byte blue );
- 
+
 // Dim the specified color. Brightness is 0-31 (0=off, 31=don't dim at all-keep original color)
 // Inlined to allow static simplification at compile time
 
@@ -193,7 +193,7 @@ inline Color dim( Color color, byte brightness) {
 // Make a new color in the HSB colorspace. All values are 0-255.
 
 Color makeColorHSB( byte hue, byte saturation, byte brightness );
-    
+
 // Change the tile to the specified color
 // NOTE: all color changes are double buffered
 // and the display is updated when loop() returns
@@ -206,7 +206,7 @@ void setColor( Color newColor);
 
 void setFaceColor(  byte face, Color newColor );
 
-/* 
+/*
 
     Timing functions
 
@@ -224,27 +224,26 @@ void setFaceColor(  byte face, Color newColor );
 
 unsigned long millis(void);
 
-#define NEVER ( (uint32_t)-1 )          // UINT32_MAX would be correct here, but generates a Symbol Not Found. 
+#define NEVER ( (uint32_t)-1 )          // UINT32_MAX would be correct here, but generates a Symbol Not Found.
 
 
 
 class Timer {
-	
-	private: 
-		
+
+	private:
+
 		uint32_t m_expireTime;		// When this timer will expire
-	
+
 	public:
-	
-		Timer() : m_expireTime(0) {};		// Timers come into this world pre-expired. 
-			
-		bool isExpired();
-				
-		void setMSFromNow( uint32_t ms );
-		
-		void setSecondsFromNow( uint16_t s );
-		
-		void setNever();					
+
+		Timer() : m_expireTime(0) {};		// Timers come into this world pre-expired.
+
+		bool isComplete();
+    bool isRunning();
+
+		void set( uint32_t ms );
+
+		void stop();
 };
 
 
@@ -282,7 +281,7 @@ bool buttonDown(void);
 bool buttonPressed(void);
 
 
-/* 
+/*
 
     IR communications functions
 
@@ -296,7 +295,7 @@ void irSendDataBitmask( uint8_t face , uint8_t data );
 
 void irBroadcastData( uint8_t data );
 
-// Is there a received data ready to be read on the indicated face? Returns 0 if none. 
+// Is there a received data ready to be read on the indicated face? Returns 0 if none.
 
 bool irIsReadyOnFace( uint8_t face );
 
@@ -307,13 +306,13 @@ uint8_t irGetData( uint8_t face );
 
 /* Power functions */
 
-// The blink will automatically sleep if the button has not been pressed in 
+// The blink will automatically sleep if the button has not been pressed in
 // more than 10 minutes. The sleep is preemptive - the tile stops in the middle of whatever it
-// happens to be doing. 
+// happens to be doing.
 
 // The tile wakes from sleep when the button is pressed. Upon waking, it picks up from exactly
-// where it left off. It is up to the programmer to check to see if the blink has slept and then 
-// woken and react accordingly if desired. 
+// where it left off. It is up to the programmer to check to see if the blink has slept and then
+// woken and react accordingly if desired.
 
 
 // Returns 1 if we have slept and woken since last time we checked
