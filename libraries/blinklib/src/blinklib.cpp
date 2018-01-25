@@ -530,11 +530,11 @@ bool Timer::isComplete() {
 }
 
 bool Timer::isRunning() {
-	return millis() < m_expireTime;
+	return m_expireTime!=NEVER && millis() < m_expireTime;
 }
 
 void Timer::set( uint32_t ms ) {
-	m_expireTime= millis()+ms;	
+	m_expireTime= millis()+ms;
 }
 
 void Timer::stop() {
