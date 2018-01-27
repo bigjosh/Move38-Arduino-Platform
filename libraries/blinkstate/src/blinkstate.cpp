@@ -212,6 +212,7 @@ byte isNeighborExpired( byte face ) {
 bool isAlone() {
 	
 	FOREACH_FACE(f) {
+		
 		if( !isNeighborExpired(f) ) {
 			return false;
 		}
