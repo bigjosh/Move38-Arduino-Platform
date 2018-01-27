@@ -51,7 +51,7 @@ byte neighborStateChanged( byte face );
 byte isNeighborExpired( byte face );
 
 // Returns false if their has been a neighbor seen recently on any face, true otherwise.
-bool isAlone() {
+bool isAlone();
 
 // Set our broadcasted state on all faces to newState.
 // This state is repeatedly broadcast to any neighboring tiles.
