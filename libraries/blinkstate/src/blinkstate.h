@@ -23,7 +23,7 @@
 #endif
 
 
-// Manually add our hooks. 
+// Manually add our hooks.
 // Must be called before using any other blinkstate functions
 // TODO: Now that blinkstate is the primary game-level API, maybe make this the default?
 
@@ -50,7 +50,7 @@ byte neighborStateChanged( byte face );
 
 byte isNeighborExpired( byte face );
 
-// Returns false if their has been a neighbor seen recently on any face, true otherwise. 
+// Returns false if their has been a neighbor seen recently on any face, true otherwise.
 bool isAlone() {
 
 // Set our broadcasted state on all faces to newState.
@@ -66,13 +66,13 @@ void setState( byte newState );
 
 // By default we power up in state 0.
 
-void setState( byte newState , byte face );
+void setFaceState( byte face , byte newState );
 
 
 // Get our state. This way we don't have to keep track of it somewhere exclusive
 // simply giving access to the local state which is already stored
 
-byte getState(byte face);
+byte getFaceState(byte face);
 
 /*
 
