@@ -161,7 +161,7 @@ void blinkStateBegin(void) {
 // so best to only use after checking if face is not expired first.
 // Note the a face expiring has no effect on the getNeighborState()
 
-byte getNeighborState( byte face ) {
+byte getLastValueReceivedOnFace( byte face ) {
     
     return inValue[ face ];
 
@@ -172,10 +172,10 @@ byte getNeighborState( byte face ) {
 // Remember that getNeighborState starts at 0 on powerup. 
 // Note the a face expiring has no effect on the getNeighborState()
 
-byte neighborStateChanged( byte face ) {
+byte didValueOnFaceChange( byte face ) {
     static byte prevState[FACE_COUNT];
     
-    byte curState = getNeighborState(face);
+    byte curState = getLastValueReceivedOnFace(face);
     
     if ( curState == prevState[face] ) {
         return false;
@@ -189,7 +189,7 @@ byte neighborStateChanged( byte face ) {
 // 0 if no messages recently received on the indicated face
 // (currently configured to 100ms timeout in `expireDurration_ms` )
 
-static byte isNeighborExpired( byte face , uint32_t now ) {
+static byte isValueReceivedOnFaceExpired( byte face , uint32_t now ) {
     
     return expireTime[face] < now;
         
@@ -199,11 +199,11 @@ static byte isNeighborExpired( byte face , uint32_t now ) {
 // 0 if no messages recently received on the indicated face
 // (currently configured to 100ms timeout in `expireDurration_ms` )
 
-byte isNeighborExpired( byte face ) {
+byte isValueReceivedOnFaceExpired( byte face ) {
     
     uint32_t now=millis(); 
     
-    return isNeighborExpired( face , now );
+    return isValueReceivedOnFaceExpired( face , now );
     
 }
 
@@ -213,7 +213,7 @@ bool isAlone() {
 	
 	FOREACH_FACE(f) {
 		
-		if( !isNeighborExpired(f) ) {
+		if( !isValueReceivedOnFaceExpired(f) ) {
 			return false;
 		}
 		
@@ -228,7 +228,7 @@ bool isAlone() {
 
 // By default we power up in state 0.
 
-void setState( byte newState ) {
+void setValueSentOnAllFaces( byte newState ) {
     
     FOREACH_FACE(f) {
         
@@ -243,18 +243,9 @@ void setState( byte newState ) {
 
 // By default we power up in state 0.
 
-void setState( byte newState , byte face ) {
+void setValueSentOnFace( byte newState , byte face ) {
     
     outValue[face] = newState;
     
 }
 
-
-// Get our state. This way we don't have to keep track of it somewhere exclusive
-// simply giving access to the local state which is already stored
-
-byte getState(byte face) {
-
-  return outValue[face];
-
-}
