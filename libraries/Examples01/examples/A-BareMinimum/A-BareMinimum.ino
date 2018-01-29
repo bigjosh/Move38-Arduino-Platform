@@ -1,5 +1,3 @@
-#include "blinklib.h"
-
 void setup() {
   // put your start up code here, it will run
   // every time this blink wakes up 
