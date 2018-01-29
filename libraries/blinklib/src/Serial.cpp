@@ -15,8 +15,6 @@
 #include <inttypes.h>
 #include "Arduino.h"
 
-#include "blinklib.h"
-
 #include "Serial.h"
 
 #include "sp.h" 
