@@ -62,7 +62,7 @@ void loop() {
 
           brightness--;   // Decay brightness because it looks mucho mas suavecito 
 
-          setColor( dim( GREEN , (brightness*31)/200 ) );   // Normalize our 0-200 brightness into 0-31 that the dim() function wants. 
+          setColor( dim( GREEN , brightness );   // Our brightness is 0-200 and dim() range is 0-255 so we will not be as bright was we can be, but we are only a firefly. 
           
         }
 

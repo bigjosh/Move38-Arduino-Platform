@@ -21,11 +21,11 @@ void loop() {
    setColor( dim( colors[color] ,  brightness  ) );
 
 
-   if (brightness== MAX_BRIGHTNESS) {     // Got to the top, turn around
+   if (brightness>= MAX_BRIGHTNESS) {     // Got to the top, turn around
     
       direction = -1; 
       
-   } else if (brightness==0) {              // Got to the bottom, turn around and step to next color
+   } else if (brightness<=0) {              // Got to the bottom, turn around and step to next color
 
       direction = 1;
 

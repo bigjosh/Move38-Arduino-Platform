@@ -145,8 +145,8 @@ uint8_t irGetErrorBits( uint8_t face );
 typedef uint16_t Color;
 
 // Number of brightness levels in each channel of a color
-#define BRIGHTNESS_LEVELS 32
-#define MAX_BRIGHTNESS (BRIGHTNESS_LEVELS-1)
+#define BRIGHTNESS_LEVELS_5BIT 32
+#define MAX_BRIGHTNESS_5BIT    (BRIGHTNESS_LEVELS_5BIT-1)
 
 #define GET_5BIT_R(color) ((color>>10)&31)
 #define GET_5BIT_G(color) ((color>> 5)&31)
@@ -159,17 +159,17 @@ typedef uint16_t Color;
 
 #define MAKECOLOR_5BIT_RGB(r,g,b) ((r&31)<<10|(g&31)<<5|(b&31))
 
-#define RED         MAKECOLOR_5BIT_RGB(MAX_BRIGHTNESS    , 0                 , 0)
-#define ORANGE      MAKECOLOR_5BIT_RGB(MAX_BRIGHTNESS    ,MAX_BRIGHTNESS/2   , 0)
-#define YELLOW      MAKECOLOR_5BIT_RGB(MAX_BRIGHTNESS    ,MAX_BRIGHTNESS     , 0)
-#define GREEN       MAKECOLOR_5BIT_RGB( 0                ,MAX_BRIGHTNESS     , 0)
-#define CYAN        MAKECOLOR_5BIT_RGB( 0                ,MAX_BRIGHTNESS     ,MAX_BRIGHTNESS)
-#define BLUE        MAKECOLOR_5BIT_RGB( 0                , 0                 ,MAX_BRIGHTNESS)
-#define MAGENTA     MAKECOLOR_5BIT_RGB(MAX_BRIGHTNESS    , 0                 ,MAX_BRIGHTNESS)
+#define RED         MAKECOLOR_5BIT_RGB(MAX_BRIGHTNESS_5BIT, 0                    ,0)
+#define ORANGE      MAKECOLOR_5BIT_RGB(MAX_BRIGHTNESS_5BIT,MAX_BRIGHTNESS_5BIT/2 ,0)
+#define YELLOW      MAKECOLOR_5BIT_RGB(MAX_BRIGHTNESS_5BIT,MAX_BRIGHTNESS_5BIT   ,0)
+#define GREEN       MAKECOLOR_5BIT_RGB( 0                 ,MAX_BRIGHTNESS_5BIT   ,0)
+#define CYAN        MAKECOLOR_5BIT_RGB( 0                 ,MAX_BRIGHTNESS_5BIT   ,MAX_BRIGHTNESS_5BIT)
+#define BLUE        MAKECOLOR_5BIT_RGB( 0                 , 0                    ,MAX_BRIGHTNESS_5BIT)
+#define MAGENTA     MAKECOLOR_5BIT_RGB(MAX_BRIGHTNESS_5BIT, 0                    ,MAX_BRIGHTNESS_5BIT)
 
-#define WHITE       MAKECOLOR_5BIT_RGB(MAX_BRIGHTNESS    ,MAX_BRIGHTNESS     ,MAX_BRIGHTNESS)
+#define WHITE       MAKECOLOR_5BIT_RGB(MAX_BRIGHTNESS_5BIT,MAX_BRIGHTNESS_5BIT   ,MAX_BRIGHTNESS_5BIT)
 
-#define OFF         MAKECOLOR_5BIT_RGB( 0                , 0                 , 0)
+#define OFF         MAKECOLOR_5BIT_RGB( 0                 , 0                    , 0)
 
 // This maps 0-255 values to 0-31 values with the special case that 0 (in 0-255) is the only value that maps to 0 (in 0-31)
 // This leads to some slight non-linearity since there are not a uniform integral number of 1-255 values
@@ -178,15 +178,17 @@ typedef uint16_t Color;
 // Make a new color from RGB values. Each value can be 0-255.
 
 Color makeColorRGB( byte red, byte green, byte blue );
+
+#define MAX_BRIGHTNESS (255)
  
-// Dim the specified color. Brightness is 0-31 (0=off, 31=don't dim at all-keep original color)
+// Dim the specified color. Brightness is 0-255 (0=off, 255=don't dim at all-keep original color)
 // Inlined to allow static simplification at compile time
 
 inline Color dim( Color color, byte brightness) {
     return MAKECOLOR_5BIT_RGB(
-        (GET_5BIT_R(color)*brightness)/MAX_BRIGHTNESS,
-        (GET_5BIT_G(color)*brightness)/MAX_BRIGHTNESS,
-        (GET_5BIT_B(color)*brightness)/MAX_BRIGHTNESS
+        (GET_5BIT_R(color)*brightness)/255,
+        (GET_5BIT_G(color)*brightness)/255,
+        (GET_5BIT_B(color)*brightness)/255
     );
 }
 
