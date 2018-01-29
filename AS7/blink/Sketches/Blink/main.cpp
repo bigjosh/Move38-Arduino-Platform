@@ -54,7 +54,7 @@ void loop() {
 
 void step() {
   setValueSentOnAllFaces(STEP);
-  stepSendTimeout.setMSFromNow(STEP_SEND_DURATION);
-  stepReceiveTimeout.setMSFromNow(STEP_SEND_DURATION + STEP_BUFFER);
+  stepSendTimeout.set(STEP_SEND_DURATION);
+  stepReceiveTimeout.set(STEP_SEND_DURATION + STEP_BUFFER);
   blink(WHITE, 300);
 }

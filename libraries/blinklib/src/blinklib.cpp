@@ -529,19 +529,9 @@ bool Timer::isExpired() {
 	return millis() >= m_expireTime; 
 }
 	
-void Timer::setMSFromNow( uint32_t ms ) {
+void Timer::set( uint32_t ms ) {
 	m_expireTime= millis()+ms;	
 }
-	
-void Timer::setSecondsFromNow( uint16_t s ) {
-	setMSFromNow(s*MILLIS_PER_SECOND);
-}
-
-
-void Timer::setNever() {
-	m_expireTime=NEVER;
-}
-
 
 /*
 

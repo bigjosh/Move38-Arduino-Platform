@@ -242,11 +242,8 @@ class Timer {
 			
 		bool isExpired();
 				
-		void setMSFromNow( uint32_t ms );
+		void set( uint32_t ms );
 		
-		void setSecondsFromNow( uint16_t s );
-		
-		void setNever();					
 };
 
 
