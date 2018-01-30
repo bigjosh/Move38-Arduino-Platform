@@ -105,19 +105,6 @@ bool irIsReadyOnFace( uint8_t face );
 uint8_t irGetData( uint8_t led );
 
 
-#define ERRORBIT_PARITY       2    // There was an RX parity error
-#define ERRORBIT_OVERFLOW     3    // A received byte in lastValue was overwritten with a new value
-#define ERRORBIT_NOISE        4    // We saw unexpected extra pulses inside data
-#define ERRORBIT_DROPOUT      5    // We saw too few pulses, or two big a space between pulses
-#define ERRORBIT_DUMMY        6
-
-// Read the error state of the indicated LED
-// Clears the bits on read
-
-uint8_t irGetErrorBits( uint8_t face );
-
-
-
 /*
 
 	This set of functions lets you control the colors on the face RGB LEDs

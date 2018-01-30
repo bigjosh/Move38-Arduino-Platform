@@ -9,8 +9,6 @@
 #ifndef UTILS_H_
 #define UTILS_H_
 
-#include <util/atomic.h>
-
 // Duplicated from Arduino.h
 
 typedef bool boolean;

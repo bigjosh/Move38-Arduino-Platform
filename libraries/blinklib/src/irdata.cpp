@@ -47,6 +47,8 @@
 
 #include <util/delay.h>         // Must come after F_CPU definition
 
+#include <avr/sfr_defs.h>		// Gets us _BV()
+
 // A bit cycle is one 2x timer tick, currently 256us
 
 #define IR_WINDOW_US 256            // How long is each timing window? Based on timer programming and clock speed. 

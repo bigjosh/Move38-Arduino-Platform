@@ -28,8 +28,6 @@
 // Get the number of elements in an array.
 #define COUNT_OF(x) ((sizeof(x)/sizeof(x[0]))) 
 
-#define DO_ATOMICALLY ATOMIC_BLOCK(ATOMIC_FORCEON)                  // Non-HAL code always runs with interrupts on, so give users a way to do things atomically.
-
 #define BLINKCORE_UINT16_MAX (0xffff)                               // I can not get stdint.h to work even with #define __STDC_LIMIT_MACROS, so have to resort to this hack. 
 
 #define US_PER_SECOND 1000000

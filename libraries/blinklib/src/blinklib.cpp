@@ -37,6 +37,9 @@
 
 #include "run.h"
 
+#include <util//atomic.h>
+#define DO_ATOMICALLY ATOMIC_BLOCK(ATOMIC_FORCEON)                  // Non-HAL code always runs with interrupts on
+
 // IR CONSTANTS
 
 #define STATE_BROADCAST_SPACING_MS  50           // How often do we broadcast our state to neighboring tiles?

@@ -4,22 +4,15 @@
   
   This serial port lives on the service port on new boards. It is really intended for debugging. 
   
-  The port always runs at a fixed 500K baud. Adapter cables and boards will be available to connect to a USB port
+  The port always runs at a fixed 500K baud. Use the blink Dev Candy board to connect to a USB port
   and then use the Arduino IDE's serial monitor to interact with your tile. 
   
 */
 
-//#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <inttypes.h>
-#include "Arduino.h"
 
 #ifndef Serial_h
 
     #define Serial_h
-
-    #include <inttypes.h>
 
     #include "Print.h"
 
@@ -39,7 +32,7 @@
         // Best to limit yourself interactions with plenty of time (or an ACK) between each incoming byte.        
         
         virtual int read(void);                 // Read a byte - returns byte read or -1 if no byte ready. 
-        virtual byte readWait(void);            // Blocking read (faster)
+        virtual uint8_t readWait(void);            // Blocking read (faster)
         
         virtual size_t write(uint8_t);
         void flush(void);                       // Block until all pending transmits complete
