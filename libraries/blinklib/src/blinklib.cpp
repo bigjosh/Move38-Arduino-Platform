@@ -21,9 +21,10 @@
 #include <avr/pgmspace.h>
 #include <stddef.h>     // NULL
 
-#include <Arduino.h>
+//#include <Arduino.h>
 
 #include "blinklib.h"
+#include "blinkstate.h"			// Get the reference to beginBlinkState()
 #include "chainfunction.h"
 
 #include "pixel.h"
