@@ -36,9 +36,4 @@ utils_serialno_t const *utils_serialno(void);
 
 */
 
-// TODO: Is there some binary way to do this withouth the branch?
-
-// TODO: Where does this belong?
-void run(void);
-
 #endif /* UTILS_H_ */

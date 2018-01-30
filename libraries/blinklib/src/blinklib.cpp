@@ -35,6 +35,8 @@
 #include "ir.h"
 #include "irdata.h"
 
+#include "run.h"
+
 // IR CONSTANTS
 
 #define STATE_BROADCAST_SPACING_MS  50           // How often do we broadcast our state to neighboring tiles?
@@ -664,7 +666,12 @@ static void callOnLoopChain(void ) {
 // This is the entry point where the blinkcore platform will pass control to
 // us after initial power-up is complete
 
-void run(void) {
+// We make this weak so that a game can override and take over before we initialize all the hier level stuff
+
+void __attribute__ ((weak)) run(void) {
+	
+	// Let blinkstate sink its hooks in
+	blinkStateBegin();
 
     setup();
 
