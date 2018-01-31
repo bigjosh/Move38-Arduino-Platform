@@ -3,6 +3,10 @@
 #ifndef BLINKCORE_H_
 #define BLINKCORE_H_
 
+// Yeah, I know F_CPU really belongs in hardware.h, but then so much stuff would get unnessisarly pulled in.
+// Maybe it belongs in its own header file. 
+// TODO: Maybe break out into a delay.h since _delay_us() is really the main use case here. 
+
 // This mess is to avoid "warning: "F_CPU" redefined" under Arduino IDE.
 // If you know a better way, please tell me!
 
@@ -22,18 +26,6 @@
 #define CBI(x,b) (x&=~(1<<b))           // Clear bit in IO reg
 #define TBI(x,b) (x&(1<<b))             // Test bit in IO reg
 
-// 'Cause C ain't got iterators and all those FOR loops are too ugly. 
-#define FOREACH_FACE(x) for(int x = 0; x < FACE_COUNT ; ++ x)       // Pretend this is a real language with iterators
-
-// Get the number of elements in an array.
-#define COUNT_OF(x) ((sizeof(x)/sizeof(x[0]))) 
-
 #define BLINKCORE_UINT16_MAX (0xffff)                               // I can not get stdint.h to work even with #define __STDC_LIMIT_MACROS, so have to resort to this hack. 
-
-#define US_PER_SECOND 1000000
-
-#define MILLIS_PER_SECOND 1000
-
-#define SECONDS_PER_MINUTE  60
 
 #endif

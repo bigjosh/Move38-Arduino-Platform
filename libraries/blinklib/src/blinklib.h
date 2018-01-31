@@ -8,16 +8,14 @@
 #ifndef BLINKLIB_H_
 #define BLINKLIB_H_
 
-#include "blinkcore.h"
+//#include "blinkcore.h"
+
+#include "ArduinoTypes.h"
 
 #include "chainfunction.h"
 
 #include <stdbool.h>
 #include <stdint.h>
-
-// Duplicated from Arduino.h
-
-typedef uint8_t byte;
 
 
 /*
@@ -328,5 +326,23 @@ void loop();
 // Add a function to be called after each pass though loop()
 
 void addOnLoop( chainfunction_struct *chainfunction );
+
+
+/*
+ 
+	Some syntactic sugar to make our progrmas look not so ugly. 
+
+*/
+
+
+#define FACE_COUNT 6
+
+// 'Cause C ain't got iterators and all those FOR loops are too ugly.
+#define FOREACH_FACE(x) for(int x = 0; x < FACE_COUNT ; ++ x)       // Pretend this is a real language with iterators
+
+// Get the number of elements in an array.
+#define COUNT_OF(x) ((sizeof(x)/sizeof(x[0])))
+
+
 
 #endif /* BLINKLIB_H_ */

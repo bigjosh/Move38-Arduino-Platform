@@ -16,6 +16,8 @@
 
 #include "Serial.h"
 
+#include "ArduinoTypes.h"
+
 #include "sp.h" 
 
 // Public Methods //////////////////////////////////////////////////////////////

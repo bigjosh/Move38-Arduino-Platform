@@ -1,6 +1,8 @@
 /*
  * utils.h
  *
+ * Access to the unique serial number inside the ATMEGA chip. 
+ *
  * Created: 7/14/2017 1:50:04 PM
  *  Author: josh
  */ 
@@ -8,11 +10,6 @@
 
 #ifndef UTILS_H_
 #define UTILS_H_
-
-// Duplicated from Arduino.h
-
-typedef bool boolean;
-typedef uint8_t byte;
 
 #define SERIAL_NUMBER_LEN 9
 

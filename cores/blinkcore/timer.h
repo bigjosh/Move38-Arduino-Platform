@@ -60,5 +60,11 @@ void timer_512us_callback_sei(void);
 #define CYCLES_PER_US (F_CPU/US_PER_SECOND)
 
 #define US_TO_CYCLES(us) (us * CYCLES_PER_US )
+
+#define US_PER_SECOND 1000000
+
+#define MILLIS_PER_SECOND 1000
+
+#define SECONDS_PER_MINUTE  60
       
 #endif /* TIMER_H_ */

@@ -72,7 +72,9 @@ typedef struct {
 
 // Double buffer the raw pixels so we can switch quickly and atomically
 
-static rawpixelset_t rawpixelsetbuffer[2];
+#define RAW_PIXEL_SET_BUFFER_COUNT 2
+
+static rawpixelset_t rawpixelsetbuffer[RAW_PIXEL_SET_BUFFER_COUNT];
 
 static rawpixelset_t *displayedRawPixelSet=&rawpixelsetbuffer[0];        // Currently being displayed
 static rawpixelset_t *bufferedRawPixelSet =&rawpixelsetbuffer[1];        // Benignly Updateable 
@@ -270,9 +272,9 @@ static void setupTimers(void) {
 void pixel_init(void) {
     
     // First initialize the buffers
-    for( uint8_t i = 0 ; i < COUNT_OF( rawpixelsetbuffer ) ; i++ ) {
+    for( uint8_t i = 0 ; i < RAW_PIXEL_SET_BUFFER_COUNT ; i++ ) {
         rawpixelset_t *rawpixelset = &rawpixelsetbuffer[ i ];
-        for( uint8_t j =0; j < COUNT_OF( rawpixelset->rawpixels ); j++ ) {
+        for( uint8_t j =0; j < PIXEL_COUNT ; j++ ) {
             rawpixelset->rawpixels[j].rawValueR = 255;
             rawpixelset->rawpixels[j].rawValueG = 255;
             rawpixelset->rawpixels[j].rawValueB = 255;

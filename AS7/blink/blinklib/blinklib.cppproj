@@ -166,6 +166,14 @@
     </ToolchainSettings>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="..\..\..\libraries\blinklib\src\Arduino.h">
+      <SubType>compile</SubType>
+      <Link>Arduino.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\libraries\blinklib\src\ArduinoTypes.h">
+      <SubType>compile</SubType>
+      <Link>ArduinoTypes.h</Link>
+    </Compile>
     <Compile Include="..\..\..\libraries\blinklib\src\blinklib.cpp">
       <SubType>compile</SubType>
       <Link>blinklib.cpp</Link>

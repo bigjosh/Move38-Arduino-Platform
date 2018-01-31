@@ -27,8 +27,8 @@
 #ifndef Print_h
 #define Print_h
 
-#include <stdio.h> // for size_t
 
+#include <stdio.h> // for size_t
 
 // This lets us use strings stored directly in flash define like `F("this is not copied to RAM")`
 
