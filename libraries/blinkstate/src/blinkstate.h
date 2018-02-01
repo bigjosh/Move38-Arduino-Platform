@@ -44,7 +44,6 @@ byte getLastValueReceivedOnFace( byte face );
 
 byte didValueOnFaceChange( byte face );
 
-
 // false if messages have been recently received on the indicated face
 // (currently configured to 100ms timeout in `expireDurration_ms` )
 
