@@ -11,7 +11,7 @@
 #ifndef UTILS_H_
 #define UTILS_H_
 
-#define SERIAL_NUMBER_LEN 9
+#include "shared.h"
 
 typedef struct {
     uint8_t bytes[SERIAL_NUMBER_LEN] ;

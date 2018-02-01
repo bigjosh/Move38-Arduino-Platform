@@ -246,6 +246,7 @@ uint16_t rand( uint16_t limit );
 // Read the unique serial number for this blink tile
 // There are 9 bytes in all, so n can be 0-8
 
+
 byte getSerialNumberByte( byte n );
 
 

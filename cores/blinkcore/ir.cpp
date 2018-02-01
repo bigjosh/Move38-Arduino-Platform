@@ -20,7 +20,8 @@
 
 
 #include "hardware.h"
-#include "blinkcore.h"
+#include "shared.h"		// Get F_CPU and FACE_COUNT
+#include "bitfun.h"
 
 #include <avr/interrupt.h>
 #include <util/delay.h>         // Must come after F_CPU definition

@@ -9,7 +9,7 @@
 #ifndef RGB_PIXELS_H_
 #define RGB_PIXELS_H_
 
-#include "blinkcore.h"
+#include "shared.h"
 
 #include <avr/io.h>
 

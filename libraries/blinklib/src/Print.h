@@ -29,6 +29,7 @@
 
 
 #include <stdio.h> // for size_t
+#include <string.h>
 
 // This lets us use strings stored directly in flash define like `F("this is not copied to RAM")`
 

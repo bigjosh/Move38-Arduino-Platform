@@ -5,9 +5,8 @@
  * It initializes the hardware and then called run()
  */ 
 
-//#include "Arduino.h"
 #include "hardware.h"
-#include "blinkcore.h"
+#include "shared.h"
 
 #include <avr/sleep.h>
 #include <avr/interrupt.h>

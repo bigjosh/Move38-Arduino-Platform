@@ -15,9 +15,8 @@
     
     #include "hardware.h"
        
-    #include "blinkcore.h"    
+    #include "bitfun.h"    
     
-    #include "utils.h"          // Grab SBI and CBI
     
     // Set the pin direction for the service port pins
     // Note that you can not use the R pin in output mode with the serial adapter board 

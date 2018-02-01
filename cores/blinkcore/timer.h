@@ -11,7 +11,7 @@
 #ifndef TIMER_H_
 #define TIMER_H_
 
-#include "blinkcore.h"
+#include "shared.h"
 
 // These values are based on how we actually program the timer registers in timer_enable()
 // There are checked with assertion there, so don't change these without changing the actual registers first
@@ -40,8 +40,6 @@ void timer_256us_callback_sei(void);
 // Actually called form pixel.cpp since we also use the pixel timer for time keeping
 
 void timer_512us_callback_sei(void);
-
-
 
 #define TIMER_PRESCALER 8       // How much we divide the F_CPU by to get the timer0 frequency
 

@@ -35,7 +35,7 @@
 // TODO: Really nail down the blue booster 
 
 #include "hardware.h"
-#include "blinkcore.h"
+#include "bitfun.h"
 
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>

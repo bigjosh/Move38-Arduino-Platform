@@ -564,6 +564,9 @@ void delay( unsigned long ms ) {
 
 static uint16_t cyclesCounter=0;                    // Accumulate cycles to keep millisCounter accurate
 
+#define BLINKCORE_UINT16_MAX (0xffff)               // I can not get stdint.h to work even with #define __STDC_LIMIT_MACROS, so have to resort to this hack.
+
+
 #if TIMER_CYCLES_PER_TICK >  BLINKCORE_UINT16_MAX
     #error Overflow on cyclesCounter
 #endif
