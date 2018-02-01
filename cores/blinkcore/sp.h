@@ -15,9 +15,8 @@
     
     #include "hardware.h"
        
-    #include "blinkcore.h"    
+    #include "bitfun.h"    
     
-    #include "utils.h"          // Grab SBI and CBI
     
     // Set the pin direction for the service port pins
     // Note that you can not use the R pin in output mode with the serial adapter board 
@@ -52,7 +51,7 @@
     // Send a byte out the serial port. Blocks if a transmit already in progress. 
     // Must call sp_serial_init() first
         
-    void sp_serial_tx(byte b);
+    void sp_serial_tx(uint8_t b);
         
     #define SP_SERIAL_TX_NOW(b) (SP_SERIAL_DATA_REG=b)      // Send blindly, but instantly (1 instruction). New byte ignored if there is already a pending one in the buffer (avoid this by leaving 12 clocks between consecutive writes)
         

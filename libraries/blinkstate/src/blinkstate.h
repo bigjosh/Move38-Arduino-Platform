@@ -31,58 +31,38 @@ void blinkStateBegin(void);
 
 
 // Returns the last received state on the indicated face
-// returns 0 if no neighboor ever seen on this face since power-up
+// returns 0 if no neighbor ever seen on this face since power-up
 // so best to only use after checking if face is not expired first.
 
-byte getNeighborState( byte face );
+byte getLastValueReceivedOnFace( byte face );
 
 
 // Did the neighborState value on this face change since the
 // last time we checked?
-// Remember that getNeighborState starts at 0 on powerup.
-// Note the a face expiring has no effect on the getNeighborState()
 
-byte neighborStateChanged( byte face );
+// Note the a face expiring has no effect on the last value 
 
+byte didValueOnFaceChange( byte face );
 
-// 0 if messages have been recently received on the indicated face
+// false if messages have been recently received on the indicated face
 // (currently configured to 100ms timeout in `expireDurration_ms` )
 
-byte isNeighborExpired( byte face );
+byte isValueReceivedOnFaceExpired( byte face );
 
-// Returns false if their has been a neighbor seen recently on any face, true otherwise. 
+// Returns false if their has been a neighbor seen recently on any face, returns true otherwise. 
 bool isAlone();
 
-// Set our broadcasted state on all faces to newState.
-// This state is repeatedly broadcast to any neighboring tiles.
+// Set value that will be continuously broadcast on all face.
+// By default we power up with all faces sending the value 0.
 
-// By default we power up in state 0.
-
-void setState( byte newState );
+void setValueSentOnAllFaces( byte newState );
 
 
-// Set our broadcasted state on indicated face to newState.
-// This state is repeatedly broadcast to the partner tile on the indicated face.
+// Set value that will be continuously broadcast on indicated face.
 
-// By default we power up in state 0.
+// By default we power up with all faces sending the value 0.
 
-void setState( byte newState , byte face );
-
-
-// Get our state. This way we don't have to keep track of it somewhere exclusive
-// simply giving access to the local state which is already stored
-
-byte getState(byte face);
-
-/*
-
-// Has this neighbor changed since the last time we called
-// neighboorChanged() or getNeighboorState() on it?
-
-boolean neighboorChanged( byte face);
-
-*/
-
+void setValueSentOnFace( byte value , byte face );
 
 
 #ifndef BLINKSTATE_CANNARY

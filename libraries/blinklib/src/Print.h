@@ -27,9 +27,9 @@
 #ifndef Print_h
 #define Print_h
 
-#include <inttypes.h>
-#include <stdio.h> // for size_t
 
+#include <stdio.h> // for size_t
+#include <string.h>
 
 // This lets us use strings stored directly in flash define like `F("this is not copied to RAM")`
 
@@ -41,8 +41,6 @@
 class __FlashStringHelper;
 #define FPSTR(pstr_pointer) (reinterpret_cast<const __FlashStringHelper *>(pstr_pointer))
 #define F(string_literal) (FPSTR(PSTR(string_literal)))
-
-
 
 #define DEC 10
 #define HEX 16

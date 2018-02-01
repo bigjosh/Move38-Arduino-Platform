@@ -8,7 +8,8 @@
 #ifndef IR_H_
 #define IR_H_
 
-#include "blinkcore.h"
+#include "shared.h"			// Get FACECOUNT
+#include "bitfun.h"			
 
 #define IRLED_COUNT FACE_COUNT
 

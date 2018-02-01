@@ -139,6 +139,8 @@
           <ListValues>
             <Value>../../../../variants/standard</Value>
             <Value>%24(PackRepoDir)\atmel\ATmega_DFP\1.2.150\include</Value>
+            <Value>../../../../libraries/blinklib</Value>
+            <Value>../../../../libraries/blinkstate</Value>
           </ListValues>
         </avrgcccpp.compiler.directories.IncludePaths>
         <avrgcccpp.compiler.optimization.level>Optimize (-O1)</avrgcccpp.compiler.optimization.level>
@@ -169,13 +171,9 @@
       <SubType>compile</SubType>
       <Link>adc.h</Link>
     </Compile>
-    <Compile Include="..\..\..\cores\blinkcore\Arduino.h">
+    <Compile Include="..\..\..\cores\blinkcore\bitfun.h">
       <SubType>compile</SubType>
-      <Link>Arduino.h</Link>
-    </Compile>
-    <Compile Include="..\..\..\cores\blinkcore\blinkcore.h">
-      <SubType>compile</SubType>
-      <Link>blinkcore.h</Link>
+      <Link>bitfun.h</Link>
     </Compile>
     <Compile Include="..\..\..\cores\blinkcore\button.cpp">
       <SubType>compile</SubType>
@@ -224,6 +222,14 @@
     <Compile Include="..\..\..\cores\blinkcore\power.h">
       <SubType>compile</SubType>
       <Link>power.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\cores\blinkcore\run.h">
+      <SubType>compile</SubType>
+      <Link>run.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\cores\blinkcore\shared.h">
+      <SubType>compile</SubType>
+      <Link>shared.h</Link>
     </Compile>
     <Compile Include="..\..\..\cores\blinkcore\sp.cpp">
       <SubType>compile</SubType>

@@ -1,6 +1,8 @@
 /*
  * utils.h
  *
+ * Access to the unique serial number inside the ATMEGA chip. 
+ *
  * Created: 7/14/2017 1:50:04 PM
  *  Author: josh
  */ 
@@ -9,14 +11,7 @@
 #ifndef UTILS_H_
 #define UTILS_H_
 
-#include <util/atomic.h>
-
-// Duplicated from Arduino.h
-
-typedef bool boolean;
-typedef uint8_t byte;
-
-#define SERIAL_NUMBER_LEN 9
+#include "shared.h"
 
 typedef struct {
     uint8_t bytes[SERIAL_NUMBER_LEN] ;
@@ -35,10 +30,5 @@ utils_serialno_t const *utils_serialno(void);
  286:	24 83       	std	Z+4, r18	; 0x04  
 
 */
-
-// TODO: Is there some binary way to do this withouth the branch?
-
-// TODO: Where does this belong?
-void run(void);
 
 #endif /* UTILS_H_ */

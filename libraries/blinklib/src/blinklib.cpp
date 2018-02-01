@@ -21,9 +21,10 @@
 #include <avr/pgmspace.h>
 #include <stddef.h>     // NULL
 
-#include <Arduino.h>
+#include "ArduinoTypes.h"
 
 #include "blinklib.h"
+#include "blinkstate.h"			// Get the reference to beginBlinkState()
 #include "chainfunction.h"
 
 #include "pixel.h"
@@ -34,6 +35,11 @@
 
 #include "ir.h"
 #include "irdata.h"
+
+#include "run.h"
+
+#include <util//atomic.h>
+#define DO_ATOMICALLY ATOMIC_BLOCK(ATOMIC_FORCEON)                  // Non-HAL code always runs with interrupts on
 
 // IR CONSTANTS
 
@@ -529,19 +535,9 @@ bool Timer::isExpired() {
 	return millis() >= m_expireTime; 
 }
 	
-void Timer::setMSFromNow( uint32_t ms ) {
+void Timer::set( uint32_t ms ) {
 	m_expireTime= millis()+ms;	
 }
-	
-void Timer::setSecondsFromNow( uint16_t s ) {
-	setMSFromNow(s*MILLIS_PER_SECOND);
-}
-
-
-void Timer::setNever() {
-	m_expireTime=NEVER;
-}
-
 
 /*
 
@@ -567,6 +563,9 @@ void delay( unsigned long ms ) {
 // __uint24 timer24;
 
 static uint16_t cyclesCounter=0;                    // Accumulate cycles to keep millisCounter accurate
+
+#define BLINKCORE_UINT16_MAX (0xffff)               // I can not get stdint.h to work even with #define __STDC_LIMIT_MACROS, so have to resort to this hack.
+
 
 #if TIMER_CYCLES_PER_TICK >  BLINKCORE_UINT16_MAX
     #error Overflow on cyclesCounter
@@ -674,7 +673,12 @@ static void callOnLoopChain(void ) {
 // This is the entry point where the blinkcore platform will pass control to
 // us after initial power-up is complete
 
-void run(void) {
+// We make this weak so that a game can override and take over before we initialize all the hier level stuff
+
+void __attribute__ ((weak)) run(void) {
+	
+	// Let blinkstate sink its hooks in
+	blinkStateBegin();
 
     setup();
 
