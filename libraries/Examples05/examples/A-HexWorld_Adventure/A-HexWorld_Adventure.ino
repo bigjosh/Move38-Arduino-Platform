@@ -12,14 +12,13 @@
  * https://github.com/bigjosh/Move38-Arduino-Platform/blob/master/Service%20Port.MD
  */
 
-#include "blinklib.h"
 #include "Serial.h"
 
 ServicePortSerial Serial;
 
 // Hack to get enum count: https://stackoverflow.com/a/2102673/3152071
 
-// We have to rename SE as SEX because SE is used in io.h and clobbers us!
+// We have to rename SE as SEX because SE is used in io.h and clobbers us! Ahhh!
 
 enum DirectionsEnum { NE, E , SEX , SW , W , NW , UP , DOWN , DIRECTION_MAX = DOWN };
     
