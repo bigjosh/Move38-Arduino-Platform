@@ -15,9 +15,8 @@
     
     #include "hardware.h"
        
-    #include "blinkcore.h"    
+    #include "bitfun.h"    
     
-    #include "utils.h"          // Grab SBI and CBI
     
     // Set the pin direction for the service port pins
     // Note that you can not use the R pin in output mode with the serial adapter board 
@@ -33,7 +32,7 @@
     // Set the level on the service port pins. 
     // These execute in a single instruction
     // You must set the aux pin to output mode first or else 
-    // driving 1 will just enable the pullup. 
+    // driving 1 will just enable the pullup if pin is in input mode (which is the default at reset)
 
     #define SP_PIN_A_SET_1()               SBI( SP_A_PORT, SP_A_BIT)
     #define SP_PIN_A_SET_0()               CBI( SP_A_PORT, SP_A_BIT)
@@ -45,13 +44,14 @@
         
     // Initialize the serial on the service port.
     // Overrides digital mode for service port pins T and R respectively.
+    // Also enables the pull-up on the RX pin so it can be connected to an open-collector output
     
     void sp_serial_init(void);
         
     // Send a byte out the serial port. Blocks if a transmit already in progress. 
     // Must call sp_serial_init() first
         
-    void sp_serial_tx(byte b);
+    void sp_serial_tx(uint8_t b);
         
     #define SP_SERIAL_TX_NOW(b) (SP_SERIAL_DATA_REG=b)      // Send blindly, but instantly (1 instruction). New byte ignored if there is already a pending one in the buffer (avoid this by leaving 12 clocks between consecutive writes)
         
@@ -69,7 +69,7 @@
 
     uint8_t sp_serial_rx(void); 
     
-    
+        
     // Free up service port pin R for digital IO again after sp_serial_init() called
     void sp_serial_disable_rx(void);
     
@@ -80,10 +80,9 @@
     // Read the analog voltage on service port pin A
     // Returns 0-255 for voltage between 0 and Vcc
     // Handy to connect a potentiometer here and use to tune params
-    // like rightness or speed
+    // like brightness or speed
+    // Make sure SP_PIN_A is in input mode (default on power up) or this will be very boring
         
-    // Call  SP_PIN_A_SET_1()  to enable the pullup (assumes you have not called SP_PIN_A_MODE_OUT() )
-
     uint8_t sp_aux_analogRead(void);
         
 #endif /* DEBUG_H_ */

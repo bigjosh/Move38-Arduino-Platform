@@ -1,13 +1,12 @@
 /*
- * BlinksFirmware.c
+ * main.cpp
  *
- * Created: 3/26/2017 8:39:50 PM
- * Author : josh.com
+ * This gets called first by the C bootstrap code. 
+ * It initializes the hardware and then called run()
  */ 
 
-//#include "Arduino.h"
 #include "hardware.h"
-#include "blinkcore.h"
+#include "shared.h"
 
 #include <avr/sleep.h>
 #include <avr/interrupt.h>
@@ -20,6 +19,8 @@
 #include "adc.h"
 #include "power.h"
 #include "callbacks.h"
+
+#include "run.h"				// Prototype for the run function we will hand off to
  
 // Change clock prescaler to run at 8Mhz. 
 // By default the CLKDIV fuse boots us at 8Mhz osc /8 so 1Mhz clock
@@ -68,14 +69,10 @@ static void init(void) {
 }    
 
 
-// This empty run() lets us at least compile when no higher API is present.
-/*
-void __attribute__((weak)) run(void) {    
-    pixel_SetAllRGB( 0,  255 ,  0  );
-}
-*/     
+// Initialize the hardware and pass the flag to run()
+// Weak so that a user program can take over immediately on startup and do other stuff. 
     
-int main(void)
+int __attribute__ ((weak)) main(void)
 {
     
 	init();

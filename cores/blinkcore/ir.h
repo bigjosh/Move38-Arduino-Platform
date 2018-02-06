@@ -8,7 +8,8 @@
 #ifndef IR_H_
 #define IR_H_
 
-#include "blinkcore.h"
+#include "shared.h"			// Get FACECOUNT
+#include "bitfun.h"			
 
 #define IRLED_COUNT FACE_COUNT
 
@@ -35,7 +36,7 @@ void ir_disable(void);
 // Then continue to call ir_tx_sendpulse() to send subsequent pulses
 // Call ir_tx_end() after last pulse to turn off the ISR (optional but saves CPU and power)
 
-void ir_tx_start(uint16_t spacing_ticks , uint8_t bitmask );
+void ir_tx_start(uint16_t spacing_ticks , uint8_t bitmask , uint16_t initialSpaces );
 
 // Send next pulse int this pulse train. 
 // leadingSpaces is the number of spaces to wait between the previous pulse and this pulse.

@@ -22,40 +22,48 @@
     #error You must #include blinklib.h before blinkstate.h
 #endif
 
-/*
 
-// Has this neighbor changed since the last time we called 
-// neighboorChanged() or getNeighboorState() on it?
+// Manually add our hooks. 
+// Must be called before using any other blinkstate functions
+// TODO: Now that blinkstate is the primary game-level API, maybe make this the default?
 
-boolean neighboorChanged( byte face);
+void blinkStateBegin(void);
 
-*/
 
-// Returns the last received state of the indicated face, or
-// 0 if no messages received recently on indicated face
+// Returns the last received state on the indicated face
+// returns 0 if no neighbor ever seen on this face since power-up
+// so best to only use after checking if face is not expired first.
 
-byte getNeighborState( byte face );
+byte getLastValueReceivedOnFace( byte face );
 
-// Returns true if we have recently received a valid message from a neighbor
-// on the indicated face
 
-// Set our state to newState. This state is repeatedly broadcast to any
-// neighboring tiles.
+// Did the neighborState value on this face change since the
+// last time we checked?
 
-// Note that setting our state to 0 make us stop broadcasting and effectively
-// disappear from the view of neighboring tiles.
+// Note the a face expiring has no effect on the last value 
 
-// By default we power up in state 0.
+byte didValueOnFaceChange( byte face );
 
-void setState( byte newState );
+// false if messages have been recently received on the indicated face
+// (currently configured to 100ms timeout in `expireDurration_ms` )
 
-byte getState(void);
+byte isValueReceivedOnFaceExpired( byte face );
 
-// The blinkstate file needs to be able to call the blinklib IR functions, but we need to cover them
-// for anyone else. We could have two copies of blnkistate.h (one for blinkstate's exclusive use)
-// but then they could get out of sync and that is ugly.
-// An clean way would be to use __BASE_FILE__..... but Arduino doesn't give us that.
-// Instead we use this canary which is #defined in blinkstate.cpp
+// Returns false if their has been a neighbor seen recently on any face, returns true otherwise. 
+bool isAlone();
+
+// Set value that will be continuously broadcast on all face.
+// By default we power up with all faces sending the value 0.
+
+void setValueSentOnAllFaces( byte newState );
+
+
+// Set value that will be continuously broadcast on indicated face.
+
+// By default we power up with all faces sending the value 0.
+
+void setValueSentOnFace( byte value , byte face );
+
 
 #ifndef BLINKSTATE_CANNARY
 
@@ -73,11 +81,6 @@ byte getState(void);
 
 #endif
 
-
-// Manually add our hooks. Note that currently you never need to Call this - it is automtically ivoked the first time you call an blinkState function.
-// It is included to to not break code that references it, and in case we ever switch to requiring it.
-
-void blinkStateBegin(void);
 
 
 #endif /* BLINKSTATE_H_ */

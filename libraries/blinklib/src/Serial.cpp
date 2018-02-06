@@ -13,11 +13,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <inttypes.h>
-#include "Arduino.h"
-
-#include "blinklib.h"
 
 #include "Serial.h"
+
+#include "ArduinoTypes.h"
 
 #include "sp.h" 
 

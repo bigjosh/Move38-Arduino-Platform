@@ -20,7 +20,8 @@
 
 
 #include "hardware.h"
-#include "blinkcore.h"
+#include "shared.h"		// Get F_CPU and FACE_COUNT
+#include "bitfun.h"
 
 #include <avr/interrupt.h>
 #include <util/delay.h>         // Must come after F_CPU definition
@@ -311,21 +312,27 @@ uint8_t ir_test_and_charge_cli( void ) {
 
 static volatile uint16_t sendpulse_bitmask;      // Which IR LEDs to send on 
 static volatile uint16_t sendpulse_spaces;       // Time to delay until next pulse. 0=pulse sent
+static volatile uint16_t sendpulse_spaces_next;  // A one entry deep buffer for spaces so we can try to keep it primed. 
 
 // Currently clocks at 23us @ 4Mhz
 
 ISR(TIMER1_CAPT_vect) {
-    
+        
     if (sendpulse_spaces) {
         
         sendpulse_spaces--;
         
         if (sendpulse_spaces==0) {
-               
+                           
             ir_tx_pulse_internal( sendpulse_bitmask );     // Flash
+            
+            sendpulse_spaces = sendpulse_spaces_next;
+            
+            sendpulse_spaces_next = 0; 
             
         }            
     }            
+        
 }        
 
 // Send a series of pulses with spacing_ticks clock ticks between each pulse (or as quickly as possible if spacing too short)
@@ -358,7 +365,7 @@ ISR(TIMER1_CAPT_vect) {
 // Then continue to call ir_tx_sendpulse() to send subsequent pulses
 // Call ir_tx_end() after last pulse to turn off the ISR (optional but saves CPU and power)
 
-void ir_tx_start(uint16_t spacing_ticks , uint8_t bitmask ) {
+void ir_tx_start(uint16_t spacing_ticks , uint8_t bitmask , uint16_t initialSpaces ) {
     
     sendpulse_bitmask = bitmask &  IR_ALL_BITS; // Protect the non-IR LED bits from invalid input
 
@@ -373,6 +380,7 @@ void ir_tx_start(uint16_t spacing_ticks , uint8_t bitmask ) {
     TIMSK1 |= _BV(ICIE1);                // Enable the ISR when we hit ICR1
                                          // TODO: Do this only once at startup
     
+    sendpulse_spaces_next=initialSpaces; // Get our first space into the buffer so it is ready before we start
     sendpulse_spaces=1;                  // Will send as soon as called (immediately after next line). 
     
     // Start clock in mode 12 with /1 prescaller (one timer tick per clock tick)
@@ -389,8 +397,8 @@ void ir_tx_start(uint16_t spacing_ticks , uint8_t bitmask ) {
 
 void ir_tx_sendpulse( uint8_t leadingSpaces ) {
     
-    while (sendpulse_spaces);           // Wait for previous pulse to get sent
-    sendpulse_spaces=leadingSpaces;     // Get ready so next ISR trigger will end a pulse after specified number of spaces
+    while (sendpulse_spaces_next);           // Wait for previous entry to buffer to pulse to get sent
+    sendpulse_spaces_next=leadingSpaces;     // ISR trigger will end a pulse after specified number of spaces
     
 }    
 
@@ -398,7 +406,8 @@ void ir_tx_sendpulse( uint8_t leadingSpaces ) {
 // TODO: This should return any bit that had to be terminated because of collision
 
 void ir_tx_end(void) {
-    while (sendpulse_spaces);       // Wait for previous pulse to get sent (complete)
+    
+    while (sendpulse_spaces);       // Wait for all previous pulses to get sent (buffered and immedeate complete)
     
     // stop timer (not more ISR) 
     TCCR1B = 0;             // Sets prescaler to 0 which stops the timer.

@@ -21,9 +21,10 @@
 #include <avr/pgmspace.h>
 #include <stddef.h>     // NULL
 
-#include <Arduino.h>
+#include "ArduinoTypes.h"
 
 #include "blinklib.h"
+#include "blinkstate.h"			// Get the reference to beginBlinkState()
 #include "chainfunction.h"
 
 #include "pixel.h"
@@ -34,6 +35,11 @@
 
 #include "ir.h"
 #include "irdata.h"
+
+#include "run.h"
+
+#include <util//atomic.h>
+#define DO_ATOMICALLY ATOMIC_BLOCK(ATOMIC_FORCEON)                  // Non-HAL code always runs with interrupts on
 
 // IR CONSTANTS
 
@@ -76,9 +82,9 @@ void setFaceColor( byte face , Color newColor ) {
     // users to get the whole pixel.h namespace. There has to be a good way around this. Maybe
     // break out the pixelColor type into its own core .H file? seems wrong. Hmmm....
 
-    newPixelColor.r = GET_R( newColor );
-    newPixelColor.g = GET_G( newColor );
-    newPixelColor.b = GET_B( newColor );
+    newPixelColor.r = GET_5BIT_R( newColor );
+    newPixelColor.g = GET_5BIT_G( newColor );
+    newPixelColor.b = GET_5BIT_B( newColor );
 
     pixel_bufferedSetPixel( face , newPixelColor );
 
@@ -95,16 +101,34 @@ void setColor( Color newColor ) {
 }
 
 
-// makeColorRGB defined as a macro for now so we get compile time calcuation for static colors.
+// This maps 0-255 values to 0-31 values with the special case that 0 (in 0-255) is the only value that maps to 0 (in 0-31)
+// This leads to some slight non-linearity since there are not a uniform integral number of 1-255 values
+// to map to each of the 1-31 values. 
 
-/*
+byte map8bitTo5bit( byte b ) {
+    
+    if (b==0) return 0; 
+        
+    // 0 gets a special case of `off`, so we divide the rest of the range in to
+    // 31 equaly spaced regions to assign the remaing 31 brightness levels. 
+    
+    uint16_t normalizedB = b-1;     // Offset to a value 0-254 that will be scaled to the remaining 31 on values
+    
+    //uint16_t scaledB = (normalizedB / 255) * 31); // This is what we want to say, but it will underflow in integer math
+    
+    byte scaledB = ( (uint16_t) normalizedB * 31U) / 255U; // Be very careful to stay in bounds!
+    
+    // scaledB is now a number 0-30 that is (almost) lenearly scaled down from the orginal b
+        
+    return ( scaledB )+1;       // De-normalize back up to `on` values 1-31. 
+    
+}    
 
-Color makeColorRGB( byte r, byte g, byte b ) {
-    return ((r&31)<<10|(g&31)<<5|(b&31));
+// Make a new color from RGB values. Each value can be 0-255.
+
+Color makeColorRGB( byte red, byte green, byte blue ) {
+    return MAKECOLOR_5BIT_RGB( map8bitTo5bit(red) , map8bitTo5bit(green) ,  map8bitTo5bit(blue) );
 }
-
-*/
-
 
 Color makeColorHSB( uint8_t hue, uint8_t saturation, uint8_t brightness ) {
 
@@ -160,9 +184,7 @@ Color makeColorHSB( uint8_t hue, uint8_t saturation, uint8_t brightness ) {
 		}
 	}
 
-    // Bring the 0-255 range values down to 0-31 range
-
-    return( makeColorRGB( r >> 3 , g >> 3  , b >> 3 ) );
+    return( makeColorRGB( r , g  , b ) );
 }
 
 // OMG, the Ardiuno rand() function is just a mod! We at least want a uniform distibution.
@@ -477,10 +499,19 @@ static volatile uint32_t millisCounter=0;           // How many milliseconds sin
 // Overflows after about 60 days
 // Note that resolution is limited by timer tick rate
 
-
 // TODO: Clear out millis to zero on wake
 
+// This snapshot makes sure that we always see the same value for millis() in a given iteration of loop()
+// This "freeze-time" view makes it harder to have race conditions when millis() changes while you are looking at it. 
+// The value of millis_snapshot gets reset to 0 after each loop() iteration. 
+
+static uint32_t millis_snapshot=0; 
+
 unsigned long millis(void) {
+	
+	if (millis_snapshot) {				// Did we already compute this for this pass of loop()?
+		return millis_snapshot;	
+	}
 
     uint32_t tempMillis;
 
@@ -490,7 +521,22 @@ unsigned long millis(void) {
     DO_ATOMICALLY {
         tempMillis=millisCounter;
     }
+	
+	millis_snapshot = tempMillis;
+	
     return( tempMillis );
+}
+
+// Note we directlyt access millis() here, which is really bad style.
+// The timer should capture millis() in a closure, but no good way to 
+// do that in C++ that is not verbose and inefficient, so here we are. 
+
+bool Timer::isExpired() {
+	return millis() >= m_expireTime; 
+}
+	
+void Timer::set( uint32_t ms ) {
+	m_expireTime= millis()+ms;	
 }
 
 /*
@@ -517,6 +563,9 @@ void delay( unsigned long ms ) {
 // __uint24 timer24;
 
 static uint16_t cyclesCounter=0;                    // Accumulate cycles to keep millisCounter accurate
+
+#define BLINKCORE_UINT16_MAX (0xffff)               // I can not get stdint.h to work even with #define __STDC_LIMIT_MACROS, so have to resort to this hack.
+
 
 #if TIMER_CYCLES_PER_TICK >  BLINKCORE_UINT16_MAX
     #error Overflow on cyclesCounter
@@ -624,15 +673,13 @@ static void callOnLoopChain(void ) {
 // This is the entry point where the blinkcore platform will pass control to
 // us after initial power-up is complete
 
-void run(void) {
+// We make this weak so that a game can override and take over before we initialize all the hier level stuff
 
-/*
-    SP_PIN_A_MODE_OUT();
-    SP_PIN_T_MODE_OUT();
-    SP_PIN_R_MODE_OUT();
-    sp_serial_init();
-    sp_serial_disable_rx();
-*/
+void __attribute__ ((weak)) run(void) {
+	
+	// Let blinkstate sink its hooks in
+	blinkStateBegin();
+
     setup();
 
     while (1) {
@@ -643,6 +690,8 @@ void run(void) {
                                             // Also currently blocks until new frame actually starts
 
         callOnLoopChain();
+		
+		millis_snapshot=0;					// Clear out so we get an updated value next pass
 
         // TODO: Sleep here
 

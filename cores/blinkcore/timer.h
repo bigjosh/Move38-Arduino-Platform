@@ -11,7 +11,7 @@
 #ifndef TIMER_H_
 #define TIMER_H_
 
-#include "blinkcore.h"
+#include "shared.h"
 
 // These values are based on how we actually program the timer registers in timer_enable()
 // There are checked with assertion there, so don't change these without changing the actual registers first
@@ -41,8 +41,6 @@ void timer_256us_callback_sei(void);
 
 void timer_512us_callback_sei(void);
 
-
-
 #define TIMER_PRESCALER 8       // How much we divide the F_CPU by to get the timer0 frequency
 
 #define TIMER_TOP 256           // How many timer ticks per overflow?
@@ -60,5 +58,11 @@ void timer_512us_callback_sei(void);
 #define CYCLES_PER_US (F_CPU/US_PER_SECOND)
 
 #define US_TO_CYCLES(us) (us * CYCLES_PER_US )
+
+#define US_PER_SECOND 1000000
+
+#define MILLIS_PER_SECOND 1000
+
+#define SECONDS_PER_MINUTE  60
       
 #endif /* TIMER_H_ */
