@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>  
+<CodeSnippets  
+    xmlns="http://schemas.microsoft.com/VisualStudio/2005/CodeSnippet">  
+    <CodeSnippet Format="1.0.0">  
+        <Header>  
+            <Title>Special serial debuging snippet</Title>  
+        </Header>  
+        <Snippet>  
+            <Code Language="">  
+                <![CDATA[
+				
+#warning Delete this!
+
+/* FROM HERE */
+
+// Serial port hardware on service port
+#include <avr/io.h>
+#define SP_SERIAL_CTRL_REG      UCSR0A
+#define SP_SERIAL_DATA_REG      UDR0
+#define SP_SERIAL_READY_BIT     RXC0
+
+static void sp_serial_tx(uint8_t b) {
+    
+    while (!TBI(SP_SERIAL_CTRL_REG,UDRE0));         // Wait for buffer to be clear so we don't overwrite in progress
+    
+    SP_SERIAL_DATA_REG=b;                           // Send new byte
+    
+}
+
+/* TO HERE */
+				
+				
+				
+				]]>  
+            </Code>  
+        </Snippet>  
+    </CodeSnippet>  
+</CodeSnippets>  
+  
+

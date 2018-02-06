@@ -7,11 +7,12 @@
 
 
 #include "hardware.h"
-#include "blinkcore.h"
 
 #include "adc.h"
 
-#include "utils.h"
+#include "shared.h"
+
+#include "bitfun.h"
 
 
 // Set up adc to read Vcc
