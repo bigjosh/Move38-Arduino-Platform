@@ -229,6 +229,9 @@ class Timer {
 				
 		void set( uint32_t ms );
 		
+		void add( uint16_t ms );
+
+		
 };
 
 

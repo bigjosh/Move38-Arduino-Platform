@@ -539,6 +539,11 @@ void Timer::set( uint32_t ms ) {
 	m_expireTime= millis()+ms;	
 }
 
+void Timer::add( uint16_t ms ) {
+	m_expireTime+= ms;
+}
+
+
 /*
 
 // Delay for `ms` milliseconds
