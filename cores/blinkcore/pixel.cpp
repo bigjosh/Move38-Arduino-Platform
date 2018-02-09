@@ -39,8 +39,6 @@
 
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
-#include <util/delay.h>         // Must come after F_CPU definition
-#include <util/atomic.h>
 #include <string.h>             // memcpy()
 
 #include "pixel.h"
