@@ -53,7 +53,7 @@
     #define min(a,b) ((a)<(b)?(a):(b))
     #define max(a,b) ((a)>(b)?(a):(b))
     #define abs(x) ((x)>0?(x):-(x))
-    #define constrain(amt,low,high) ((amt)<(low)?(low):((amt)>(high)?(high):(amt)))
+    #define constrain(amt,low,high) ((amt)<(low)?(low):((amt)>(high)?(high):(amt)))	
     #define round(x)     ((x)>=0?(long)((x)+0.5):(long)((x)-0.5))
     #define radians(deg) ((deg)*DEG_TO_RAD)
     #define degrees(rad) ((rad)*RAD_TO_DEG)
@@ -67,8 +67,21 @@
     #define bitClear(value, bit) ((value) &= ~(1UL << (bit)))
     #define bitWrite(value, bit, bitvalue) (bitvalue ? bitSet(value, bit) : bitClear(value, bit))
 
-
     #define bit(b) (1UL << (b))		
+		
+
+	// WMath prototypes (embellished with arg names)
+	
+	uint16_t makeWord(uint16_t w);
+	uint16_t makeWord(byte h, byte l);
+
+	#define word(...) makeWord(__VA_ARGS__)
+
+	long random(long howbig);
+	long random(long howsmall, long howbig);
+	void randomSeed(unsigned long seed);
+	long map(long x, long in_min, long in_max, long out_min, long out_max);
+	
 		
 	// Don't judge me
 	// I know this is so ugly, but only other way to make it so people do not need to do a
