@@ -1,7 +1,7 @@
 /*
  * Access the service port 
  *
- * The service port has a high speed (500Kbps) bi-directional serial connection plus an Aux pin that can be used
+ * The service port has a high speed (1Mbps) bi-directional serial connection plus an Aux pin that can be used
  * as either digitalIO or an analog in. 
  *
  * Mostly useful for debugging, but maybe other stuff to? :)
@@ -49,7 +49,7 @@ void sp_serial_init(void) {
     //Initialize the AUX pin as digitalOut
     //SBI( SP_AUX_DDR , SP_AUX_PIN );
     
-    // Initialize SP serial port for 500K baud, n-8-1
+    // Initialize SP serial port for 1M baud, n-8-1
     // This feels like it belongs in hardware.c, maybe in an inline function?
         
     SBI( SP_SERIAL_CTRL_REG , U2X0);        // 2X speed
@@ -59,11 +59,11 @@ void sp_serial_init(void) {
     SP_PIN_R_SET_1();                       // Enable pull-up on RX pin so we can use an open-collector to drive it 
     SBI( UCSR0B , RXEN0);                   // Enable receiver    (disables digital mode on R pin)
     
-    #if F_CPU!=4000000  
+    #if F_CPU!=8000000  
         #error Serial port calculation in debug.cpp must be updated if not 4Mhz CPU clock.
     #endif
     
-    UBRR0 = 0;                  // 500Kbd. This is as fast as we can go at 4Mhz, and happens to be 0% error and supported by the Arduino serial monitor. 
+    UBRR0 = 0;                  // 1Mbd. This is as fast as we can go at 8Mhz, and happens to be 0% error and supported by the Arduino serial monitor. 
                                 // See datasheet table 25-7. 
         
 }   

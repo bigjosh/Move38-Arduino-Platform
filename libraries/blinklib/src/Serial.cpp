@@ -4,8 +4,8 @@
   
   This serial port lives on the service port on new boards. It is really intended for debugging. 
   
-  The port always runs at a fixed 500K baud. Adapter cables and boards will be available to connect to a USB port
-  and then use the Arduino IDE's serial monitor to interact with your tile. 
+  The port always runs at a fixed 1M baud. Dev Candy Adapter boards and cables are available to 
+  connect to a USB port and then use the Arduino IDE's serial monitor to interact with your tile. 
   
 */
 
