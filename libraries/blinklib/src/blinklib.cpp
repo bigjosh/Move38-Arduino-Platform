@@ -63,6 +63,9 @@
 
 #define BUTTON_LONGPRESS_TIME_MS 2000          // How long you must hold button down to register a long press.
 
+//#warning sleepy blinks cant stay up more than 10 seconds
+//#define BUTTON_SLEEP_TIMEOUT_SECONDS (10)   // If no button press in this long then goto sleep
+
 #define BUTTON_SLEEP_TIMEOUT_SECONDS (10*60)   // If no button press in this long then goto sleep
 
 // PIXEL FUNCTIONS

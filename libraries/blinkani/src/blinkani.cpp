@@ -24,7 +24,7 @@
 
 #include "blinklib.h"
 
-#include "chainfunction.h"
+//#include "chainfunction.h"
 
 // Tell blinkstate.h to save the IR functions just for us...
 
@@ -32,9 +32,14 @@
 
 #include "blinkani.h"
 
-// Here we simulate an interface in C
-// It is ugly, but works and is time & space efficient 
+Effect *Effect::first;					// Pointer to the currently running animation, or NULL if none 
 
+void Effect::start( Effect *e ) {
+	
+	e->next = first;
+	first = e;	
+	
+}
 
 struct Effect_t {
     
