@@ -62,7 +62,7 @@
 
  //#define IR_SPACE_TIME_US (IR_WINDOW_US + (( ((unsigned long) IR_WINDOW_US * IR_CLOCK_SPREAD_PCT) ) / 100UL ) - TX_PULSE_OVERHEAD )  // Used for sending flashes. Must be longer than one IR timer tick including if this clock is slow and RX is fast. 
  
-#define IR_SPACE_TIME_US (300)  // Used for sending flashes. 
+#define IR_SPACE_TIME_US (150)  // Used for sending flashes. 
                                 // Must be longer than one IR timer tick including if this clock is slow and RX is fast
                                 // Must be shorter than two IR timer ticks including if the sending pulse is delayed by maximum interrupt latency.
 
@@ -127,13 +127,10 @@ static uint8_t oddParity(uint8_t p) {
  
  volatile uint8_t most_recent_ir_test; 
   
- void timer_256us_callback_cli(void) {
-         
-    // Interrupts are off, so get it done as quickly as possible
-    most_recent_ir_test = ir_test_and_charge_cli();    
-    
- }     
- 
+  void timer_256us_callback_cli(void) {
+	  // Interrupts are off, so get it done as quickly as possible
+	  most_recent_ir_test = ir_test_and_charge_cli();
+  } 
  void updateIRComs(void) {
              
      // Grab which IR LEDs triggered in the last time window
