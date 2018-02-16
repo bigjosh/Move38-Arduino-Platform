@@ -151,15 +151,24 @@
  // we are stuck defining these even though they are wrong. If we do not, then ARDUINO still compiles
  // the Serial class even if we do not include it and that causes errors when it pulls in the sp.x files. 
 
-// Aux pin hardware
+ 
+ // Service port hardware
 
-// Digital IO
+// Pins as digital IO
 
-#define SP_AUX_PORT PORTE
-#define SP_AUX_DDR  DDRE
-#define SP_AUX_PIN  0
+#define SP_A_PORT PORTE
+#define SP_A_DDR  DDRE
+#define SP_A_BIT  2
 
-// Serial port hardware
+#define SP_R_PORT PORTD
+#define SP_R_DDR  DDRD
+#define SP_R_BIT  0
+
+#define SP_T_PORT PORTD
+#define SP_T_DDR  DDRD
+#define SP_T_BIT  1
+
+// Serial port hardware on service port 
 
 #define SP_SERIAL_CTRL_REG      UCSR0A
 #define SP_SERIAL_DATA_REG      UDR0
