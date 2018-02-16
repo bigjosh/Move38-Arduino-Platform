@@ -131,6 +131,34 @@ static uint8_t oddParity(uint8_t p) {
 	  // Interrupts are off, so get it done as quickly as possible
 	  most_recent_ir_test = ir_test_and_charge_cli();
   } 
+  
+  /*
+  enum IR_RX_STATE {
+	  PRE_IDLE_0,
+	  PRE_IDLE_1,
+	  PRE_IDLE_2,
+	  PRE_IDLE_3,
+	  START_1_0,
+	  START_1_1,
+	  START_0_0,
+	  BIT_0,
+	  BIT_1,
+	  BIT_2,
+	  BIT_3,
+	  BIT_4,
+	  BIT_5,
+	  BIT_6,
+	  BIT_7,
+	  PARITY,
+	  POST_IDLE_0,
+	  POST_IDLE_1,
+	  POST_IDLE_2,
+	  POST_IDLE_3
+  };
+	  
+	*/
+    
+  
  void updateIRComs(void) {
              
      // Grab which IR LEDs triggered in the last time window
@@ -172,31 +200,10 @@ static uint8_t oddParity(uint8_t p) {
                     
                     inputBuffer |= 0b00000001;          // Save newly received 1 bit 
                     
-                }                     
+                }        
+				
+				// TODO: Would also be nice to have a guard idle at the beginning of a byte..             
                                
-                // Here we look for a 1 followed by a 0 in the top two bits. We need this 
-                // because there can potentially be a leading 1 in the bit stream if the 
-                // first pulse of the 0 start bit happens to come right after an ambient 
-                // trigger - this could look like a 1. This can only happen at the first pulse 
-                // because after that we are pulsing often enough that there will never be
-                // an ambient trigger. 
-                // So we use the pattern '10' as a start because if there is a leading '1'
-                // then there will be '11' at the beginning and the 1st '1' will not have a '0'
-                // after it. 
-                // TODO: Explain this better with pictures. 
-                
-                                                
-                if ( (inputBuffer & 0b11000000) == 0b10000000 ) {       
-                                                            
-                    // TODO: check for overrun in lastValue and either flag error or increase buffer size
-                    
-                    ptr->inValue = inputBuffer;           // Save the received byte (clobbers old if not read yet)
-                                        
-                    inputBuffer =0;                    // Clear out the input buffer to look for next start bit
-                    
-                    
-                } 
-                
                 ptr->inputBuffer = inputBuffer;
                 
             }  else {
@@ -208,13 +215,50 @@ static uint8_t oddParity(uint8_t p) {
             }            
                                 
         } else {
-                        
-            ptr->windowsSinceLastFlash++;           // Keep count of how many windows since last flash
-                                   
-            // Note there here were do not check for overflow on windowsSinceLastFlash. 
-            // We assume that an LED will spontaneously fire form ambient light in fewer 
-            // than 255 time windows
-            
+			
+		
+			// The most number of windows for a Valid bit is 3
+			// so if we are at 4 now, then we already know we have gone too long for a valid bit so no point in 
+			// counting higher (and maybe overflowing)
+			
+			// When we see an idle time longer than the longest possible valid bit, then we check to 
+			// see if a valid byte has been received. 
+			// By waiting for an idle, we protect against extraneous triggers from ambient light
+			// since they will cause us to have too many bits. 
+			// The idle at the end also makes it less like to see a long string if extraneous
+			// triggers as a valid byte because it would just happen to have a break at just the right moment. 
+                        			
+			if (ptr->windowsSinceLastFlash==4) {
+				
+                // Here we look for a 1 followed by a 0 in the top two bits. We need this
+                // because there can potentially be a leading 1 in the bit stream if the
+                // first pulse of the 0 start bit happens to come right after an ambient
+                // trigger - this could look like a 1. This can only happen at the first pulse
+                // because after that we are pulsing often enough that there will never be
+                // an ambient trigger.
+                // So we use the pattern '10' as a start because if there is a leading '1'
+                // then there will be '11' at the beginning and the 1st '1' will not have a '0'
+                // after it.
+                // TODO: Explain this better with pictures.
+				
+                uint8_t inputBuffer = ptr->inputBuffer;     // Compiler should do this optimization for us, but it don't
+				                           
+                if ( (inputBuffer & 0b11000000) == 0b10000000 ) {
+	                
+	                // TODO: check for overrun in lastValue and either flag error or increase buffer size
+	                
+	                ptr->inValue = inputBuffer;           // Save the received byte (clobbers old if not read yet)
+	                
+	                ptr->inputBuffer = 0;                 // Clear out the input buffer to look for next start bit	                
+	                
+                }
+                				
+			} else {
+				
+				ptr->windowsSinceLastFlash++;
+				 
+			}
+                                               
         }                       
                          
                                                   

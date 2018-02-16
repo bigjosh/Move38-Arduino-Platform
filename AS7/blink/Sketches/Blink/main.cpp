@@ -1,282 +1,153 @@
 /*
- * Mortals for Blinks
- * 
- *  Setup: 2 player game. Tiles die slowly over time, all at the same rate. 
- *  Moving a single tile to a new place allows it to suck life from 
- *  surrounding tiles, friend or foe.
- *  
- *  Blinks start with 60 seconds of life
- *  
- *  When a tile is moved alone, it sucks 5 seconds of health from each one of
- *  its newly found neighbors. A non-moved neighbor with a new neighbor looses 5 seconds
- *  and animates in the direction it lost the life (i.e. where the neighbor showed up)
- *  
- *   Tiles resets health to full when triple press occurs
- *
- *   Long press changes team color 
- *
- *    States for game piece.
- *    Alive/Dead
- *    Team
- *    Attack, Injured
- *
- *  Technical Details:
- *  A long press on the tile changes the color of the tile for prototyping (switch state 1 or 2)
- *  Ready to attack tile shows spin pattern. 
- *  On successful attack, shows full brightness on attacked face(s).
- *  In idle, tiles breath their team color. At full health, breathing takes 2 seconds to range 255-128 brightness. At minimum health, 10hrtz breathing at lower brightness. 
- *  On injury, face where were were hit shows full RED which decays over 500ms.   
- * 
+ *  Take on the color of the dominant Blink attached
  */
 
+byte myState = 0;
+Color colors[] = { BLUE, RED, YELLOW, ORANGE, GREEN};
+const byte myState_count = COUNT_OF (colors);
 
-#define ATTACK_VALUE 5					// Amount of health units you loose when attacked.
-#define ATTACK_DURRATION_MS		100		// Time between when we see first new neighbor and when we stop attacking. 
-#define HEALTH_STEP_TIME_MS		1000	// Health decremented by 1 unit this often
+bool errorFlag[ FACE_COUNT ];
 
-#define INJURED_DURRATION_MS	100		// How long we stay injured after we are attacked. Prevents multiple hits on the same attack cycle. 
-
-#define INITIAL_HEALTH			60		 
-#define MAX_HEALTH				90	
-
-
-#define MAX_TEAMS           4     
-
-byte teamIndex = 0;					// Current team
-
-
-// Map team index to team color. 
-// TODO: Precompute these, and cache current one
-Color teamColor( byte index ) {		
-	return makeColorHSB( 60 + (index * 50) , 255, 255);
+void clearErrors() {
+  FOREACH_FACE(f) {
+    errorFlag[f]=false;
+  }  
 }
-  
-Timer healthTimer;  // Count down to next time we loose a unit of health
-
-enum State {
-  DEAD,
-  ALIVE,
-  ENGUARDE,   // I am ready to attack! 
-  ATTACKING,  // Short window when I have already come across my first victim and started attacking
-  INJURED
-};
-
-byte mode = DEAD;
-
-Timer modeTimeout;     // Started when we enter ATTACKING, when it expires we switch back to normal ALIVE. 
-                       // Started when we are injured to make sure we don't get injured multiple times on the same attack
-
-#include "Serial.h"
-
-ServicePortSerial sp;
 
 void setup() {
-  sp.begin();
-  sp.println("Hello!");
+  // put your setup code here, to run once:
+  clearErrors();
+}
+
+// Sin in degrees ( standard sin() takes radians )
+
+float sin_d( uint16_t degrees ) {
+
+    return sin( ( degrees / 360.0F ) * 2.0F * PI   );
+}
+
+// Returns a number 0-255 that throbs in a sin over time
+
+const word throb_duration_ms=500;    // How long one throb takes
+
+byte throbbing(void) {
+
+  word offset_ms = millis() % throb_duration_ms;
+
+  // offset range [0,throb_duration_ms)
+
+  float phase = (float) offset_ms / (float) throb_duration_ms;
+
+  // phase range [0,1)
+
+  float wave = sin( phase * 2.0 * PI );
+
+  // wave range [-1,1]
+
+  byte wave_byte = ( (wave + 1.0) * (255.0/2) );          // Note: NOT times 128! that would overflow byte!
+
+  // wave_byte range [0,255]
+  
+  return wave_byte;
+
 }
 
 
-class Health {
+// Returns the circular maxiumum of the two values
+// I define this as being the one that is larger looking 
+// from the perspective they are closer togther than farther 
+// appart. Make sense? 
+// To keep myself freom getting confused, I 
+// first figure out i,j where i<=j<count
+// next we figure out x,y,z which are...
+// x=distance from 0 to i
+// y=distance from i to j
+// z-distace from j to count
 
-	byte value;
-	byte maxValue; 
-	
-	public: 
-	
-		Health( byte m_maxValue ) {		// Really just gives us a way to ensure MAX_HEALTH fits into a byte
-			maxValue=m_maxValue;
-		}
-			
-		bool isAlive() {
-			return value>0;
-		}
-	
-		void set( byte x ) {
-		
-			value = x;	
-		}
-		
-		byte get(void) {
-			
-			return value;
-			
-		}
-	
-		// All this should be replaced with bounded::integer
-		
-		
-		void increase( byte x ) {
-							
-			if ( (x > maxValue) ||   ( value > ( maxValue-x ) ) ) {			// Mind your overflows! Order counts, people!
-			
-					value = maxValue;
-			
-			} else {
-			
-				value += x;
-			
-			}
-		}
-	
-	
-	
-		void decrease( byte x ) {
-		
-			if ( x > value  ) {			// Mind your overflows! Order counts, people!
-			
-				value = 0;
-			
-			} else {
-			
-				value -= x;
-			
-			}
-		}
-		
-	
-};
+byte circularMax( byte a , byte b , byte count ) {
 
-Health health(MAX_HEALTH); 
-	
+  byte i,j;
+
+  if ( b > a )   {
+
+    i = a;
+    j = b;
+
+  } else {
+
+    i = b;
+    j = a;
+
+  }
+
+  // Ok, i and j are now sorted out, so we can compute our number line...
+    
+  byte x=i;
+  byte y=j-i;
+  byte z=count-j;
+
+  /* 
+   * |-----|-----|-----|
+   * 0     i     j     count
+   *  <-x-> <-y-> <-z->  
+   */
+
+  if ( y < (x + z) ) {    
+    return j;
+  } 
+
+  // In ambiguous cases, b wins
+  
+  return i;
+
+}
+
+// This map() functuion is now in Arduino.h in /dev
+// It is replicated here so this skect can compile on older API commits
+
+long map_m(long x, long in_min, long in_max, long out_min, long out_max)
+{
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
 void loop() {
-  
-  // Update our mode first  
-  
-  if (buttonLongPressed()) {
-	  
-	  teamIndex++;
-	  if(teamIndex==MAX_TEAMS) {
-		  teamIndex=0;
-	  }
-	 	  
-	  // TODO: Should we reset health when changing teams?		   
+  // put your main code here, to run repeatedly:
+  if ( buttonSingleClicked() ) {
+    myState++;
+    if (myState >= myState_count ) {
+      myState = 0;
+    }    
+    clearErrors();
   }
 
-  if(buttonDoubleClicked()) {
-    // reset game piece   
-    mode=ALIVE;
-    health.set(INITIAL_HEALTH);
-    healthTimer.set(HEALTH_STEP_TIME_MS);
-  }
-  
-  if (healthTimer.isExpired()) {
-	  
-	health.decrease( 1 );
-	
-	if (health.isAlive()) {
-        
-      healthTimer.set(HEALTH_STEP_TIME_MS);  
-	  
-	  sp.print("health:");
-	  sp.println(health.get());
-	  
-    } else {	// if (!health.isAlive())
-	    
-		mode = DEAD;      
-		
-	}
-  
-  }
-  
-  if ( mode != DEAD ) {
-      
-    if (isAlone()) {
-      
-		mode = ENGUARDE;      // Being lonesome always makes us ready to attack!		
-        sp.println("enguarde");
-    
-    } else {  // !isAlone()
-      
-      if (mode==ENGUARDE) {     // We were ornery, but saw someone so we begin our attack in earnest!
-		  
-        sp.println("attack");
-        mode=ATTACKING;
-        modeTimeout.set( ATTACK_DURRATION_MS );
-		
+  FOREACH_FACE( f ) {
+    if ( !isValueReceivedOnFaceExpired( f )  ) {
+      // update to the value we see, if the value is already our value, do nothing
+      byte neighborState = getLastValueReceivedOnFace( f );
+      if (neighborState >= myState_count) {
+        errorFlag[f] = true;
+      } else {
+        myState = circularMax( neighborState , myState , myState_count );
       }
-        
     }
-        
-    if (mode==ATTACKING || mode == INJURED ) {
-      
-      if (modeTimeout.isExpired()) {
-        mode=ALIVE;
-        sp.println("alive");		
-      }
-	  
-    } 
-	
-  } // !DEAD
-    
-  FOREACH_FACE(f) {
-          
-    if(didValueOnFaceChange(f)) {
-		
-	    byte neighborState = getLastValueReceivedOnFace(f);		
-        
-		if ( mode == ATTACKING ) {
-      
-		  // We take our flesh when we see that someone we attacked is actually injured
-    
-		  if ( neighborState == INJURED ) {     
-        
-			// TODO: We should really keep a per-face attack timer to lock down the case where we attack the same tile twice in a since interaction. 
-        
-			health.increase(ATTACK_VALUE);
-	        sp.print("flesh from ");
-			sp.println(f);
-			
-                
-		  }
-      
-		} else if ( mode == ALIVE ) {
-        
-		  if ( neighborState == ATTACKING ) {
-        
-			health.decrease(ATTACK_VALUE);
-                                        
-			mode = INJURED;
-        
-			modeTimeout.set( INJURED_DURRATION_MS );
-			
-	        sp.print("flesh to ");
-	        sp.println(f);
-			
-      
-		  }
-        
-		} 		
-     } 
-  }  
-  
-  
-  // Update our display based on new state
-  
-  switch (mode) {
-    
-    case DEAD:
-      setColor( dim( RED , 30 ) );
-      break;
-      
-    case ALIVE:
-      setColor( dim( teamColor( teamIndex) , ( health.get() * MAX_BRIGHTNESS ) / MAX_HEALTH ) );   
-      break;
-    
-    case ENGUARDE:
-      setColor( CYAN );
-      break;
-    
-    case ATTACKING:
-      setColor( BLUE );
-      break;
-    
-    case INJURED:
-      setColor( ORANGE );
-      break;
-    
   }
-           
-  setValueSentOnAllFaces( mode );       // Tell everyone around how we are feeling
-    
+
+  // We put this check here as a defense from out of bounds incoming data (and the normal click wrap)
+
+
+  
+  //setColor(dim( colors[myState], 190 + 55 * sin_d( (millis()/10) % 360)));
+
+  byte brightness = map_m( throbbing() , 0, 255 , 1 , 255 );    // Don't go all the way down to 0 brightness. 
+
+  setColor( dim( colors[myState] , brightness ) );
+
+  FOREACH_FACE(f) {
+    if (errorFlag[f]) {
+      setFaceColor( f , WHITE );
+    }
+  }
+  
+  setValueSentOnAllFaces( myState );
 }
 
