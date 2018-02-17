@@ -30,8 +30,8 @@
 #undef F_CPU
 #endif
 
-#define F_CPU 4000000UL				// Default fuses are DIV8 so we boot at 1Mhz,
-// but then we change the prescaler to get to 4Mhz by the time user code runs
+#define F_CPU 8000000UL				// Default fuses are DIV8 so we boot at 1Mhz,
+									// but then we change the prescaler to get to 8Mhz by the time user code runs
 
 
 /*** Number of faces ***/

@@ -1,7 +1,7 @@
 /*
  * Access the service port 
  *
- * The service port has a high speed (500Kbps) bi-directional serial connection plus an Aux pin that can be used
+ * The service port has a high speed (1Mbps) bi-directional serial connection plus an Aux pin that can be used
  * as either digitalIO or an analog in. 
  *
  * Mostly useful for debugging, but maybe other stuff to? :)

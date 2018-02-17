@@ -39,9 +39,9 @@
 
 static void mhz_init(void) {
     CLKPR = _BV( CLKPCE );                  // Enable changes
-    CLKPR = _BV( CLKPS0 );                  // DIV 2 (4Mhz clock with 8Mhz RC osc)
+    CLKPR =				0;                  // DIV 1 (8Mhz clock with 8Mhz RC osc)
     
-    #if (F_CPU != 4000000 ) 
+    #if (F_CPU != 8000000 ) 
         #error F_CPU must match the clock prescaller bits set in mhz_init()
     #endif    
 }    
