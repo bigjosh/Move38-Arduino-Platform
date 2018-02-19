@@ -240,7 +240,7 @@ const char *statecharlow = "sabc01234567pe";
 						if (thisWindowsSinceLastFlash <=1 ) {		// Extra 1-bit symbol received (this can happen if the TX start bit happens right after a spontainious trigger)
 							ptr->state = START_0;
 						} else if ( thisWindowsSinceLastFlash <=3 ) {	// 0-bit symbol received
-							ptr->state = BIT5;
+							ptr->state = BIT7;
 						} else {
 							ptr->state = PRE_IDLE;
 						}
@@ -252,7 +252,7 @@ const char *statecharlow = "sabc01234567pe";
 						if (thisWindowsSinceLastFlash <=1 ) {		// 1-bit symbol received
 							ptr->state = PRE_IDLE;
 						} else if ( thisWindowsSinceLastFlash <=3 ) {	// 0-bit symbol received
-							ptr->state = BIT5;
+							ptr->state = BIT7;
 						} else {
 							ptr->state = PRE_IDLE;
 						}
@@ -548,7 +548,7 @@ uint8_t irGetData( uint8_t led ) {
 
 void irSendDataBitmask(uint8_t data, uint8_t bitmask) {
 
-    uint8_t bitwalker = 0b00100000;
+    uint8_t bitwalker = 0b10000000;
 
     // Start things up, send initial pulse and start bit (1)
     ir_tx_start( IR_SPACE_TIME_TICKS , bitmask , 1 );
