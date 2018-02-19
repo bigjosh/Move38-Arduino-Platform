@@ -121,7 +121,8 @@ enum IR_RX_STATE {
 						// If count==4 -> return byte, exit to START_1
 };
 
-const char *statechar = "SABC01234567PE";
+const char *statechar    = "SABC01234567PE";
+const char *statecharlow = "sabc01234567pe";
 
 // You really want sizeof( ir_rx_state_t) to be  a power of 2. It makes the emitted pointer calculations much smaller and faster.
 // TODO: Do we need all these volatiles? Probably not...
@@ -145,8 +146,8 @@ const char *statechar = "SABC01234567PE";
     // Visible to outside world
      volatile uint8_t inValue;            // Last successfully decoded RX value. 1 in high bit means valid and unread. 0= empty.
 
-
-    uint8_t dummy;                          // TODO: parity bit? for now just keep struct a power of 2
+     volatile uint8_t inValueReady:1;         // Newly decoded value in inValue
+          
 
     // This struct should be even power of 2 long.
 
@@ -175,7 +176,8 @@ const char *statechar = "SABC01234567PE";
 	  most_recent_ir_test = ir_test_and_charge_cli();
   }
 
-
+#warning
+#include "sp.h"   
 
  void updateIRComs(void) {
 
@@ -208,10 +210,8 @@ const char *statechar = "SABC01234567PE";
 
              ptr->windowsSinceLastFlash = 0;     // We just got a flash, so start counting over.
 
-             #include "sp.h"
-
              if (bitwalker==0x1) {
-                 SP_SERIAL_TX_NOW( statechar[ ptr->state ] );
+                 sp_serial_tx( statechar[ ptr->state ] );
                  sp_serial_tx( thisWindowsSinceLastFlash + '0' );
              }
 
@@ -240,7 +240,7 @@ const char *statechar = "SABC01234567PE";
 						if (thisWindowsSinceLastFlash <=1 ) {		// Extra 1-bit symbol received (this can happen if the TX start bit happens right after a spontainious trigger)
 							ptr->state = START_0;
 						} else if ( thisWindowsSinceLastFlash <=3 ) {	// 0-bit symbol received
-							ptr->state = BIT0;
+							ptr->state = BIT5;
 						} else {
 							ptr->state = PRE_IDLE;
 						}
@@ -252,24 +252,24 @@ const char *statechar = "SABC01234567PE";
 						if (thisWindowsSinceLastFlash <=1 ) {		// 1-bit symbol received
 							ptr->state = PRE_IDLE;
 						} else if ( thisWindowsSinceLastFlash <=3 ) {	// 0-bit symbol received
-							ptr->state = BIT0;
+							ptr->state = BIT5;
 						} else {
 							ptr->state = PRE_IDLE;
 						}
 
 					break;
 
-				case BIT0:
-
+				case BIT7:
+                
+    				    ptr->inputBuffer = 0;           // Clear out any old values
+                
 						if ( thisWindowsSinceLastFlash <=3 ) {		// valid symbol received
 
 							if (thisWindowsSinceLastFlash <=1 ) {		// 1-bit symbol received
-								ptr->inputBuffer = _BV(0);
-							} else {
-								ptr->inputBuffer = 0;
-							}
-
-							ptr->state = BIT1;
+								ptr->inputBuffer |= _BV(7);
+							} 
+                            
+							ptr->state = BIT6;
 
 						} else {
 
@@ -279,15 +279,15 @@ const char *statechar = "SABC01234567PE";
 
 					break;
 
-				case BIT1:
+				case BIT6:
 
 						if ( thisWindowsSinceLastFlash <=3 ) {		// valid symbol received
 
 							if (thisWindowsSinceLastFlash <=1 ) {		// 1-bit symbol received
-								ptr->inputBuffer |= _BV(1);
+								ptr->inputBuffer |= _BV(6);
 							}
 
-							ptr->state = BIT2;
+							ptr->state = BIT5;
 
 						} else {
 
@@ -298,12 +298,33 @@ const char *statechar = "SABC01234567PE";
 				break;
 
 
-				case BIT2:
+				case BIT5:
+
+                        #warning only for 5 bit
+    				    ptr->inputBuffer = 0;           // Clear out any old values
 
 						if ( thisWindowsSinceLastFlash <=3 ) {		// valid symbol received
 
 							if (thisWindowsSinceLastFlash <=1 ) {		// 1-bit symbol received
-								ptr->inputBuffer |= _BV(2);
+								ptr->inputBuffer |= _BV(5);
+							} 
+                            
+							ptr->state = BIT4;
+
+						} else {
+
+							// Start searching again from scratch
+							ptr->state = PRE_IDLE;
+						}
+
+				break;
+
+				case BIT4:
+
+						if ( thisWindowsSinceLastFlash <=3 ) {		// valid symbol received
+
+							if (thisWindowsSinceLastFlash <=1 ) {		// 1-bit symbol received
+								ptr->inputBuffer |= _BV(4);
 							}
 
 							ptr->state = BIT3;
@@ -324,25 +345,7 @@ const char *statechar = "SABC01234567PE";
 								ptr->inputBuffer |= _BV(3);
 							}
 
-							ptr->state = BIT4;
-
-						} else {
-
-							// Start searching again from scratch
-							ptr->state = PRE_IDLE;
-						}
-
-				break;
-
-				case BIT4:
-
-						if ( thisWindowsSinceLastFlash <=3 ) {		// valid symbol received
-
-							if (thisWindowsSinceLastFlash <=1 ) {		// 1-bit symbol received
-								ptr->inputBuffer |= _BV(4);
-							}
-
-							ptr->state = BIT5;
+							ptr->state = BIT2;
 
 						} else {
 
@@ -353,18 +356,60 @@ const char *statechar = "SABC01234567PE";
 				break;
 
 
-				case BIT5:
+
+				case BIT2:
 
 						if ( thisWindowsSinceLastFlash <=3 ) {		// valid symbol received
 
 							if (thisWindowsSinceLastFlash <=1 ) {		// 1-bit symbol received
-								ptr->inputBuffer |= _BV(5);
+								ptr->inputBuffer |= _BV(2);
 							}
 
 							//ptr->state = PARITY;
 
                             ptr->inValue = ptr->inputBuffer;
-                            ptr->state = PRE_IDLE;
+                            ptr->state = BIT1;
+
+						} else {
+
+							// Start searching again from scratch
+							ptr->state = PRE_IDLE;
+						}
+
+				break;
+
+
+
+
+				case BIT1:
+
+						if ( thisWindowsSinceLastFlash <=3 ) {		// valid symbol received
+
+							if (thisWindowsSinceLastFlash <=1 ) {		// 1-bit symbol received
+								ptr->inputBuffer |= _BV(1);
+							}
+
+                            ptr->state = BIT0;
+
+						} else {
+
+							// Start searching again from scratch
+							ptr->state = PRE_IDLE;
+						}
+
+				break;
+
+
+				case BIT0:
+
+						if ( thisWindowsSinceLastFlash <=3 ) {		// valid symbol received
+
+							if (thisWindowsSinceLastFlash <=1 ) {		// 1-bit symbol received
+								ptr->inputBuffer |= _BV(0);
+							}
+
+							//ptr->state = PARITY;
+                            ptr->state = POST_IDLE;
 
 						} else {
 
@@ -379,8 +424,6 @@ const char *statechar = "SABC01234567PE";
 						if ( thisWindowsSinceLastFlash <=3 ) {		// valid symbol received
 
 							if (thisWindowsSinceLastFlash <=1 ) {		// 1-bit symbol received
-
-
 								ptr->inputBuffer = _BV(1);
 							} else {
 								ptr->inputBuffer = 0;
@@ -395,47 +438,83 @@ const char *statechar = "SABC01234567PE";
 						}
 
 				break;
+                
+				case POST_IDLE:
+                
+                        // Error condition: we got a flash while waiting for the idle 
+                        // guard time after a received byte 
+                                              
+                        // Give up and start again
+
+						// Start searching again from scratch
+						ptr->state = PRE_IDLE;
+						
+
+				break;
+                
 
             }      //  switch (ptr->state)
 
+
+            if (bitwalker==0x1) {
+                sp_serial_tx( statechar[ ptr->state ] );
+            }
+             
             SP_PIN_R_SET_0();
 
         } else {        // if (!bit)
+            
+
+            if (bitwalker==0x01) {
+                sp_serial_tx( statecharlow[ ptr->state ] );                
+                sp_serial_tx( ptr->windowsSinceLastFlash + '0' );
+            }                       
+
+            if (ptr->windowsSinceLastFlash<4) {     // Higher than 4 doesn't add any meaning,  so don't overflow
+                
+                ptr->windowsSinceLastFlash++;       
+            
+            
+			    // The most number of windows for a Valid bit is 3
+			    // so if we are at 4 now, then we already know we have gone too long for a valid bit so no point in
+			    // counting higher (and maybe overflowing)
+
+			    // When we see an idle time longer than the longest possible valid bit, then we check to
+			    // see if a valid byte has been received.
+
+			    // By waiting for an idle, we protect against extraneous triggers from ambient light
+			    // since they will cause us to have too many bits.
+			    // The idle at the end also makes it less like to see a long string if extraneous
+			    // triggers as a valid byte because it would just happen to have a break at just the right moment.
+
+                if (ptr->windowsSinceLastFlash==4) {
+
+                    if (ptr->state==POST_IDLE) {
 
 
-			// The most number of windows for a Valid bit is 3
-			// so if we are at 4 now, then we already know we have gone too long for a valid bit so no point in
-			// counting higher (and maybe overflowing)
+                        if (bitwalker==0x1) {
+                            sp_serial_tx( 'R' );
+                            sp_serial_tx( ptr->inputBuffer );
+                        }            
+                    
+                    
+                        // Did we have a full received byte just waiting for the idle window?
 
-			// When we see an idle time longer than the longest possible valid bit, then we check to
-			// see if a valid byte has been received.
+                        ptr->inValue = ptr->inputBuffer;            // Valid! Pass it on!
+                        ptr->inValueReady  = 1;                          // Signal new value ready
 
-			// By waiting for an idle, we protect against extraneous triggers from ambient light
-			// since they will cause us to have too many bits.
-			// The idle at the end also makes it less like to see a long string if extraneous
-			// triggers as a valid byte because it would just happen to have a break at just the right moment.
-
-			if (ptr->windowsSinceLastFlash==4) {
-
-                if (ptr->state==POST_IDLE) {
-
-                    ptr->inValue = ptr->inputBuffer;
-                    ptr->state = PRE_IDLE;
-
-                }
-
-            } else {
-
-                ptr->windowsSinceLastFlash++;
-
-            }
-
-            if (bitwalker==0x1) {
-                SP_SERIAL_TX_NOW( statechar[ ptr->state ] );
-            }
-
+                    }
+                
+               
+                     ptr->state = PRE_IDLE;          // Any time we see 4 idle window, then we are reset and ready for new sync                
+                                                    // Note that we leave the counter at 4 since this idle counts for the begining of the next byte as well
+                }                                                    
+                
+            }                                                        
+            
         }
-
+        
+        SP_PIN_A_SET_0();     
 
         ptr--;
         bitwalker >>=1;
@@ -448,24 +527,20 @@ const char *statechar = "SABC01234567PE";
 // Is there a received data ready to be read on this face?
 
 bool irIsReadyOnFace( uint8_t led ) {
-    return( ir_rx_states[led].inValue != 0 );
+    return( ir_rx_states[led].inValueReady );
 }
 
-// Read the most recently received data. Blocks if no data ready
+// Read the most recently received data. (Defaults to 0 on powerup)
 
 uint8_t irGetData( uint8_t led ) {
 
     ir_rx_state_t volatile *ptr = ir_rx_states + led;        // This turns out to generate much more efficient code than array access. ptr saves 25 bytes. :/   Even so, the emitted ptr dereference code is awful.
 
-    while (! ptr->inValue );      // Wait for high be to be set to indicate value waiting.
-
-    // No need to atomic here since these accesses are lockstep, so the data can not be updated until we clear the ready bit
-
     uint8_t d = ptr->inValue;
 
-    ptr->inValue=0;       // Clear to indicate we read the value. Doesn't need to be atomic.
+    ptr->inValueReady=0;        // Clear to indicate we read the value. Doesn't need to be atomic.
 
-    return d & 0b00111111;      // Don't show our internal preamble bits
+    return d ;      
 
 }
 

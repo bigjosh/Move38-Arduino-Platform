@@ -327,7 +327,7 @@ ISR(TIMER1_CAPT_vect) {
         
         if (sendpulse_spaces==0) {
                
-            if (sendpulse_bitmask&0x01) SP_PIN_A_SET_1();
+           if (sendpulse_bitmask&0x01) SP_PIN_A_SET_1();
                                        
             ir_tx_pulse_internal( sendpulse_bitmask );     // Flash
             
