@@ -132,7 +132,10 @@ void loop() {
   FOREACH_FACE( f ) {
     if ( !isValueReceivedOnFaceExpired( f )  ) {
       // update to the value we see, if the value is already our value, do nothing
-      byte neighborState = getLastValueReceivedOnFace( f );
+      byte neighborState = getLastValueReceivedOnFace( f ) & 0b00001111;
+      
+      
+      
       if (neighborState >= myState_count) {
         errorFlag[f] = true;
       } else {
@@ -157,6 +160,6 @@ void loop() {
     }
   }
   
-  setValueSentOnAllFaces( myState );
+  setValueSentOnAllFaces( ( myState & 0b00001111)  | ( ( (~myState) & 0b00001111 ) << 4 ) );
 }
 
