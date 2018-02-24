@@ -1,18 +1,16 @@
 /*
- * BlinksFirmware.c
+ * main.cpp
  *
- * Created: 3/26/2017 8:39:50 PM
- * Author : josh.com
+ * This gets called first by the C bootstrap code. 
+ * It initializes the hardware and then called run()
  */ 
 
-//#include "Arduino.h"
 #include "hardware.h"
-#include "blinkcore.h"
+#include "shared.h"
 
 #include <avr/sleep.h>
 #include <avr/interrupt.h>
 
-#include "debug.h"
 #include "utils.h"
 #include "ir.h"
 #include "pixel.h"
@@ -21,10 +19,14 @@
 #include "adc.h"
 #include "power.h"
 #include "callbacks.h"
+
+#include "run.h"				// Prototype for the run function we will hand off to
  
-// Change clock prescaller to run at 4Mhz. 
+// Change clock prescaler to run at 8Mhz. 
 // By default the CLKDIV fuse boots us at 8Mhz osc /8 so 1Mhz clock
-// Change the prescaller to get some more speed but still run at low battery voltage
+// Change the prescaler to get some more speed but still run at low battery voltage
+// We could go to 8MHz, but then we would not be able to run the battery down lower than 2.4V...
+// https://electronics.stackexchange.com/questions/336718/what-is-the-minimum-voltage-required-to-operate-an-avr-mcu-at-8mhz-clock-speed/336719
 
 /*
 
@@ -45,34 +47,11 @@ static void mhz_init(void) {
 }    
 
 
-// This will put all timers into sync mode, where they will stop dead
-// We can then run the enable() fucntions as we please to get them all set up
-// and then release them all at the same exact time
-// We do this to get timer0/timer1 and timer2 to be exactly out of phase
-// with each other so they can run without stepping on each other
-// This assumes that one of the timers will start with its coutner 1/2 way finished
-//..which timer2 does. 
-
-void holdTimers(void) {
-    SBI(GTCCR,TSM);         // Activate sync mode
-    SBI(GTCCR,PSRASY);      // Stop timer0 and timer1
-    SBI(GTCCR,PSRSYNC);     // Stop timer2
-}     
-
-
-void releaseTimers(void) {
-    CBI(GTCCR,TSM);            // Release all timers at the same moment
-}    
-
-
 static void init(void) {
 
     mhz_init();				// switch to 4Mhz. TODO: Some day it would be nice to go back to 1Mhz for FCC, but lets just get things working now.
-    
-    DEBUG_INIT();			// Handy debug outputs on unused pins
-    
+        
     power_init();
-    timer_init();
     button_init();
     
     adc_init();			    // Init ADC to start measuring battery voltage
@@ -81,10 +60,7 @@ static void init(void) {
     
     ir_enable(); 
         
-    holdTimers();        
     pixel_enable();    
-    timer_enable();
-    releaseTimers();
     
     button_enable();
     
@@ -93,16 +69,12 @@ static void init(void) {
 }    
 
 
-
-// This empty run() lets us at least compile when no higher API is present.
-/*
-void __attribute__((weak)) run(void) {    
-    pixel_SetAllRGB( 0,  255 ,  0  );
-}
-*/     
+// Initialize the hardware and pass the flag to run()
+// Weak so that a user program can take over immediately on startup and do other stuff. 
     
-int main(void)
+int __attribute__ ((weak)) main(void)
 {
+    
 	init();
 	
     while (1) {

@@ -17,8 +17,7 @@
 #include <avr/interrupt.h>
 
 #include "button.h"
-#include "utils.h"
-#include "debug.h"
+#include "bitfun.h"
 
 // Callback that is called when the button state changes.
 // Note that you could get multiple consecutive calls with the

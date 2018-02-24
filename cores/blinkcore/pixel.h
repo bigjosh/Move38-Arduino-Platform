@@ -9,7 +9,7 @@
 #ifndef RGB_PIXELS_H_
 #define RGB_PIXELS_H_
 
-#include "blinkcore.h"
+#include "shared.h"
 
 #include <avr/io.h>
 
@@ -23,7 +23,7 @@ void pixel_init(void);
 
 // Enable pixels after a call to pixel_init or pixel_disable
 // Pixels will return to the color they had before being disabled.
-
+// Call pixel_setPixels() first to set initial values of pixels before 1st call to pixel_enable()
 void pixel_enable(void);
 
 // Turn of all pixels and the timer that drives them.
@@ -33,22 +33,24 @@ void pixel_disable(void);
         
 /** Display interface ***/
 
-// Set a single pixel's RGB value
-// p is the pixel number. 0 < p < PIXEL_COUNT
-// r,g,b are brightness values. 0=off, 255=full brightness
+// Each pixel has 32 brightness levels for each of the three colors (red,green,blue)
+// These brightness levels are normalized to be visually linear with 0=off and 31=max brightness
 
-// Note that there will likely be fewer than 256 actual visible values, but the mapping will be linear and smooth
+typedef struct {
+    uint8_t r:5;
+    uint8_t g:5;
+    uint8_t b:5;
+} pixelColor_t;
 
-// TODO: Balance, normalize, power optimize, and gamma correct these functions
-// Need some exponential compression at the top here
-// Maybe look up tables to make all calculations be one step at the cost of memory?
+// Update the pixel buffer. 
 
-void pixel_setRGB( uint8_t face, uint8_t r, uint8_t g, uint8_t b );
+void pixel_bufferedSetPixel( uint8_t pixel, pixelColor_t newColor );
 
-void pixel_SetAllRGB( uint8_t r, uint8_t g, uint8_t b  );
+// Display the buffered pixels. Blocks until next frame starts. 
+
+void pixel_displayBufferedPixels(void);
 
 /** Callback interface **/
-
 
 // This is the number of cycles between calls of the pixel_callback
 // It is determined by the programming of the timer that drives
@@ -62,5 +64,19 @@ void pixel_SetAllRGB( uint8_t r, uint8_t g, uint8_t b  );
 // about 66Hz
 
 void pixel_callback_onFrame(void) __attribute__((weak));
+
+// Update the pixel buffer with raw PWM register values.
+// Larger pwm values map to shorter PWM cycles (255=off) so for red and green
+// there is an inverse but very non linear relation between raw value and brightness.
+// For blue is is more complicated because of the charge pump. The peak brightness is somewhere
+// in the middle.
+
+// Values set here will be shown on the next hardware reload in the ISR - no buffering
+// except for the hardware buffering.
+
+// This is mostly useful for utilities to find the pwm -> brightness mapping to be used
+// in the gamma lookup table below.
+
+void pixel_bufferedSetPixelRaw( uint8_t pixel, uint8_t r_pwm , uint8_t g_pwm , uint8_t b_pwm );
 
 #endif /* RGB_PIXELS_H_ */

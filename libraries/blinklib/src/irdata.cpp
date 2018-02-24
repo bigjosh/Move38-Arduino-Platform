@@ -6,42 +6,52 @@
     THEORY OF OPERATION
     ===================
     
-    All communication is 7 bits wide. This leaves us with an 8th bit to use as a canary bit to save needing any counters.
+    The IR LEDs detect pulses of light.
     
-    Bytes are transmitted least significant bit first.
+    A bit is represented by the space between two pulses of light. A short space is a '1' and a long space is a '0'.
     
-    IR_MASK by default allows interrupts on all faces. 
+    A transmission is sent as a series of 8 bits. 
+            
+    We always send a preamble of "10" before the data bits. This allows the receiver to detect the 
+    incoming byte. This sequence is special because (1) the only way a '1' can end up in the top bit
+    of the buffer is if we have received enough consecutive valid bits, and (2) the following '0'
+    guards against the case where we send an opening '1' bit but it just happens to come right after the 
+    receiver had spontaneously fired. In this case, we might see these two fires (the spontaneous one 
+    and the intentional start of the preamble one) as a valid '1' bit. The extra '0' ensure that only the second 
+    intentional '1' bit will have a '0' after it and the phantom '1' will be pushed off the top of the buffer. 
+    
+    There are 6 data bits after the preamble. MSB sent first. 
+    
+    There must be an idle gap after the end of each transmission.  
+        
+    Internally, we use an 8-bit buffer to store incoming bits. We check to see if the top two
+    bit of the buffer match the '10' preamble sequence to know if we have received a good transmission.
+    
+    If we ever go too long between pulses, we reset the incoming buffer to '0' to avoid
+    detecting a phantom message. 
+    
     TODO: When noise causes a face to wake us from sleep too much, we can turn off the mask bit for a while.
     
-    MORE TO COME HERE NEED PICTURES. 
+    TODO: MORE TO COME HERE - NEED PICTURES. 
 
 
 */
 
-
-#define DEBUG_MODE
-
-
-#include "debug.h"
 #include "blinklib.h"
-
-const uint8_t x = ERRORBIT_DUMMY;
-
-
-
 
 #include "ir.h"
 #include "utils.h"
 #include "timer.h"          // get US_TO_CYCLES()
 
-
 #include "irdata.h"
 
 #include <util/delay.h>         // Must come after F_CPU definition
 
-// A bit cycle is one timer tick, currently 512us
+#include <avr/sfr_defs.h>		// Gets us _BV()
 
-#define IR_WINDOW_US 512            // How long is each timing window? Based on timer programming and clock speed. 
+// A bit cycle is one 2x timer tick, currently 256us
+
+#define IR_WINDOW_US 256            // How long is each timing window? Based on timer programming and clock speed. 
  
 #define IR_CLOCK_SPREAD_PCT  10     // Max clock spread between TX and RX clocks in percent
 
@@ -52,14 +62,15 @@ const uint8_t x = ERRORBIT_DUMMY;
 
  //#define IR_SPACE_TIME_US (IR_WINDOW_US + (( ((unsigned long) IR_WINDOW_US * IR_CLOCK_SPREAD_PCT) ) / 100UL ) - TX_PULSE_OVERHEAD )  // Used for sending flashes. Must be longer than one IR timer tick including if this clock is slow and RX is fast. 
  
-  #define IR_SPACE_TIME_US (600)  // Used for sending flashes. Must be longer than one IR timer tick including if this clock is slow and RX is fast. 
+#define IR_SPACE_TIME_US (300)  // Used for sending flashes. 
+                                // Must be longer than one IR timer tick including if this clock is slow and RX is fast
+                                // Must be shorter than two IR timer ticks including if the sending pulse is delayed by maximum interrupt latency.
 
-// Time between consecutive sync flashes
-// A sync is 4 consecutive flashes that must be seen as the RX as at least 3
+#define TICKS_PER_SECOND (F_CPU)
 
-//#define IR_SYNC_TIME_US (IR_WINDOW_US - (( ((unsigned long) IR_WINDOW_US * IR_CLOCK_SPREAD_PCT) ) / 100UL ) - TX_PULSE_OVERHEAD  )  // Used for sending flashes. Must be longer than one IR timer tick including if this clock is slow and RX is fast.
+#define IR_SPACE_TIME_TICKS US_TO_CYCLES( IR_SPACE_TIME_US )
 
- #define IR_SYNC_TIME_US (400)  // Used for sending flashes. Must be longer than one IR timer tick including if this clock is slow and RX is fast.
+/*
 
 // from http://www.microchip.com/forums/m587239.aspx
 
@@ -70,13 +81,11 @@ static uint8_t oddParity(uint8_t p) {
       return p & 1;
 }
 
+*/
 
 
-// TODO: Smaller window to increase bandwidth
-
-
-// You really want sizeof( ir_rx_state_t) to be  a power of 2. It makes the emmited pointer calculations much smaller and faster.
-
+// You really want sizeof( ir_rx_state_t) to be  a power of 2. It makes the emitted pointer calculations much smaller and faster.
+// TODO: Do we need all these volatiles? Probably not...
 
  typedef struct {
      
@@ -84,311 +93,207 @@ static uint8_t oddParity(uint8_t p) {
      
      // I think access to the  first element is slightly faster, so most frequently used should go here
      
-     uint8_t bitstream;               // The tail of the last sample window states. 
-     
-     uint8_t buffer;                  // Buffer for RX in progress. Bits step up until high bit set.           
+    uint8_t volatile windowsSinceLastFlash;          // How many times windows since last trigger? Reset to 0 when we see a trigger
+          
+    uint8_t inputBuffer;                    // Buffer for RX in progress. Data bits step up until high bit set.           
+                                            // High bit will always be set for real data because the start bit is 1
+                                           
 
     // Visible to outside world     
-     volatile uint8_t lastValue;      // Last successfully decoded RX value. 1 in high bit means valid and unread. 0= empty. 
-     
-     volatile uint8_t errorBits;      // Error conditions seen 
-     
-     
-          
-     // This struct should be even power of 2 long. See assert below. 
+     volatile uint8_t inValue;            // Last successfully decoded RX value. 1 in high bit means valid and unread. 0= empty. 
+
+    
+    uint8_t dummy;                          // TODO: parity bit? for now just keep struct a power of 2
+                                                           
+    // This struct should be even power of 2 long. 
               
  } ir_rx_state_t;
-
-
+ 
+ 
  // We keep these in together in a a struct to get faster access via
  // Data Indirect with Displacement opcodes
 
- ir_rx_state_t ir_rx_states[IRLED_COUNT];
-  
-// Got a valid bit. Deserialize it.
-
-static void gotBit(ir_rx_state_t *ptr, bool bit ) {
-        
-    //if (bit)    DEBUGB_PULSE(40);
-    //else DEBUGB_PULSE(20);
-    
-    uint8_t buffer=ptr->buffer;
-    
-    if (buffer) {           // There must be at least a leading 1-bit from the sync pulse or else we are not sync'ed
-        
-        if (buffer & 0b10000000) {     // We have already deserialized 7 bits, so this final bit is parity
-        
-            // TODO: Do we even need a parity check? Can any error really get though?
-            
-            if ( oddParity( buffer ) != bit ) {     // Parity checks (negate because of the leading non-data 1-bit
-
-                //DEBUGA_BITS( buffer );
-                
-                if (ptr->lastValue) {   // Already have a value?
-
-                    // Signal the overflow happened if anyone cares to check
-                    
-                    SBI( ptr->errorBits , ERRORBIT_OVERFLOW );
-                                                           
-                }             
-                                
-                ptr->lastValue = buffer;                    // Save new value (overwrites in case of overflow)
-                
-            }  else {
-
-                //DEBUGB_PULSE(50);
-
-                // Signal the parity error happened if anyone cares to check
-                
-                SBI( ptr->errorBits , ERRORBIT_PARITY );
-                    
-            }                     
-            
-            buffer=0;   // Start searching for next sync. 
-            
-        } else {  // buffer not full yet
-            
-            buffer <<= 1;
-            
-            buffer |= bit;
-            
-        }            
-        
-        ptr->buffer=buffer;
-        
-    }        
-    
-}    
-
-// Got a sync symbol. Start parsing bits.
-
-static void sync(ir_rx_state_t  *ptr) {
-    
-    ptr->buffer=0b00000001;         // This will walk up to the 8th bit to single a full deserialization
-    
-}    
-
-
-// Start searching for sync again
-
-static void reset(ir_rx_state_t  *ptr, uint8_t errorReasonBit ) {
-    
-    ptr->buffer=0;         // Start searching for next sync. 
-    SBI( ptr->errorBits , errorReasonBit );
-    
-    
-}
-
+ static volatile ir_rx_state_t ir_rx_states[IRLED_COUNT];
 
 // Called once per timer tick
 // Check all LEDs, decode any changes
  
+ // Note this runs in callback context in timercallback. 
+ 
+ volatile uint8_t specialWindowCounter=0;
+ 
+ // Temp storage to stash the IR bits while interrupts are off.
+ // We will later process and decode once interrupts are back on. 
+ 
+ volatile uint8_t most_recent_ir_test; 
+  
+ void timer_256us_callback_cli(void) {
+         
+    // Interrupts are off, so get it done as quickly as possible
+    most_recent_ir_test = ir_test_and_charge_cli();    
+    
+ }     
  
  void updateIRComs(void) {
-     
-     
-    DEBUGB_1(); 
-    uint8_t bits = ir_test_and_charge();
-    
-    //if ( TBI( bits , 0 ) ) DEBUGC_PULSE(50);
-    //else DEBUGC_PULSE(10);
-    
-//    if (ir_rx_states->buffer) DEBUGA_1();
-//    else DEBUGA_0();
-    
-  
-    ir_rx_state_t *ptr = ir_rx_states + IRLED_COUNT -1;
-    uint8_t bitwalker = 0b00100000;
-
-
-    //    #warning only processing IR0    
-    //uint8_t bitwalker = 0b00000001;
-    //ir_rx_state_t *ptr = ir_rx_states;;
-
-    while (bitwalker) {
-        
-        bool bit = bits & bitwalker;
-        
-        uint8_t bitstream = ptr->bitstream;
-        
-        bitstream <<= 1;                // Shift up 1 to make room for new bit
-        
-        bitstream |= bit;               // Save the new bit
-        
-        // The bitstream is a timeline of the last 8 samples, rightmost bit is the newest.
-        // A 1 here means that we saw an IR pulse in that sample. 
-        
-        // The reason that this looks a bit complicated is because the clocks of sender and receiver
-        // are not perfectly synced, so the sender can send two consecutive blinks but we 
-        // might see them with a space between them depending on how things line up. 
-        
-        // 1 blink is always a 0-bit
-        // 2 blinks is always a 1-bit
-        // 3 blinks is always a sync signal
-        // There is always 2 empty samples at the end of each of the above symbols. 
-              
-        // TODO: This can be massively optimized once we get the algorithm finalized.
-        // TODO: Maybe zero out top bits when we match so we don't need to mask with AND?
+             
+     // Grab which IR LEDs triggered in the last time window
        
-        
-        if ( (bitstream & 0b00011111) == 0b00000100 ) {     // Got a valid 0-bit symbol
-            gotBit( ptr , 0 );
-        } else if ( (bitstream & 0b00111111) == 0b00001100 ) {   // Got a valid 1-bit symbol (no gap between pulses)
-            gotBit( ptr , 1 );
-        } else if ( (bitstream & 0b01111111) == 0b00010100 ) {   // Got a valid 1-bit symbol (gap between pulses)
-            gotBit( ptr , 1 );
-        } else if ( (bitstream & 0b00000111) == 0b00000111 ) {   // Got a sync (can happen again on next sample when 4 consecutive pulses) 
-            sync( ptr );
-        } else {
-            
-            // Only bother checking for errors if we are currently actually receiving a frame
+    uint8_t bits = most_recent_ir_test;               
     
-            if (ptr->buffer) {
-                if ( (bitstream & 0b00011111) == 0b00000000 ) {   // Too long since last trigger
-                    reset(ptr , ERRORBIT_DROPOUT );
-                    } else if ( (bitstream & 0b00011111) == 0b00010101 ) {   // Not a valid pattern. Noise.
-                    reset(ptr , ERRORBIT_NOISE);
-                }
+    // Loop though and process each IR LED (which corresponds to one bit in `bits`)
+    // Start at IR5 and work out way down to IR0. 
+    // Going down is faster than up because we can test bitwalker == 0 for free
+
+    
+    uint8_t bitwalker = _BV( IRLED_COUNT -1 ); 
+    ir_rx_state_t volatile *ptr = ir_rx_states + IRLED_COUNT -1;    
+
+/*
+    #warning only checking IR0!    
+    uint8_t bitwalker = _BV( 0 );
+    ir_rx_state_t volatile *ptr = ir_rx_states;
+*/
+    // Loop though each of the IR LED and see if anything happened on each...
+
+    do {
+                
+        uint8_t bit = bits & bitwalker;        
+                                
+        if (bit) {      // This LED triggered in the last time window
+                        
+            uint8_t thisWindowsSinceLastFlash = ptr->windowsSinceLastFlash;
+                                
+             ptr->windowsSinceLastFlash = 0;     // We just got a flash, so start counting over.
+                
+            if (thisWindowsSinceLastFlash<=3) {     // We got a valid bit
+                                                                                
+                uint8_t inputBuffer = ptr->inputBuffer;     // Compiler should do this optimization for us, but it don't 
+                
+                inputBuffer <<= 1;      // Make room for new bit (fills with a 0)
+                            
+                if (thisWindowsSinceLastFlash<=1) {     // Saw a 1 bit
+                    
+                    inputBuffer |= 0b00000001;          // Save newly received 1 bit 
+                    
+                }                     
+                               
+                // Here we look for a 1 followed by a 0 in the top two bits. We need this 
+                // because there can potentially be a leading 1 in the bit stream if the 
+                // first pulse of the 0 start bit happens to come right after an ambient 
+                // trigger - this could look like a 1. This can only happen at the first pulse 
+                // because after that we are pulsing often enough that there will never be
+                // an ambient trigger. 
+                // So we use the pattern '10' as a start because if there is a leading '1'
+                // then there will be '11' at the beginning and the 1st '1' will not have a '0'
+                // after it. 
+                // TODO: Explain this better with pictures. 
+                
+                                                
+                if ( (inputBuffer & 0b11000000) == 0b10000000 ) {       
+                                                            
+                    // TODO: check for overrun in lastValue and either flag error or increase buffer size
+                    
+                    ptr->inValue = inputBuffer;           // Save the received byte (clobbers old if not read yet)
+                                        
+                    inputBuffer =0;                    // Clear out the input buffer to look for next start bit
+                    
+                    
+                } 
+                
+                ptr->inputBuffer = inputBuffer;
+                
+            }  else {
+                
+                // Received an invalid bit (too long between last two detected flashes)
+                
+                ptr->inputBuffer = 0;                       // Start looking for start bit again. 
+                                                    
             }            
+                                
+        } else {
+                        
+            ptr->windowsSinceLastFlash++;           // Keep count of how many windows since last flash
+                                   
+            // Note there here were do not check for overflow on windowsSinceLastFlash. 
+            // We assume that an LED will spontaneously fire form ambient light in fewer 
+            // than 255 time windows
             
-        }                        
-       
-        ptr->bitstream = bitstream;
+        }                       
                          
+                                                  
         ptr--;                    
         bitwalker >>=1;
-    }        
-    
-//    if (ir_rx_states->buffer) DEBUGA_1();
-//    else DEBUGA_0();
-    DEBUGB_0();
-     
+        
+        
+    } while (bitwalker);     
+         
 }     
  
-
-// Read the error state of the indicated LED
-// Clears the bits on read
-
-uint8_t irGetErrorBits( uint8_t led ) {
-    
-    uint8_t bits;
-
-    ir_rx_state_t *ptr = ir_rx_states + led;        
-    
-    // Must do the snap-and-clear atomically because otherwise i bit might get set by the ISR 
-    // after we snapped, but before we cleared, and then then clear could clobber it. 
-    
-    DO_ATOMICALLY {
-    
-        bits = ptr->errorBits;        // snapshot current value    
-        ptr->errorBits=0;                      // Clear out the bits we are grabbing
-        
-    }     
-    
-    return bits; 
-}    
-
 // Is there a received data ready to be read on this face?
 
 bool irIsReadyOnFace( uint8_t led ) {
-    return( ir_rx_states[led].lastValue != 0 );    
+    return( ir_rx_states[led].inValue != 0 );    
 }    
-
-
 
 // Read the most recently received data. Blocks if no data ready
 
-
 uint8_t irGetData( uint8_t led ) {
         
-    ir_rx_state_t *ptr = ir_rx_states + led;        // This turns out to generate much more efficient code than array access. ptr saves 25 bytes. :/   Even so, the emitted ptr dereference code is awful.
+    ir_rx_state_t volatile *ptr = ir_rx_states + led;        // This turns out to generate much more efficient code than array access. ptr saves 25 bytes. :/   Even so, the emitted ptr dereference code is awful.
     
-    while (! ptr->lastValue );      // Wait for high be to be set to indicate value waiting. 
+    while (! ptr->inValue );      // Wait for high be to be set to indicate value waiting. 
         
     // No need to atomic here since these accesses are lockstep, so the data can not be updated until we clear the ready bit        
     
-    uint8_t d = ptr->lastValue;
+    uint8_t d = ptr->inValue;
     
-    ptr->lastValue=0;       // Clear to indicate we read the value. Doesn't need to be atomic.
+    ptr->inValue=0;       // Clear to indicate we read the value. Doesn't need to be atomic.
 
-    return d & 0b01111111;      // Don't show our internal flag. 
-    
-}    
-
-
-
-static void txbit( uint8_t ledBitmask, uint8_t bit ) {
-    
-    // 1 blinks for a 0-bit
-    
-    if (bit) {
-    
-        ir_tx_pulses( 2 , US_TO_CYCLES( IR_SPACE_TIME_US ), ledBitmask );
-        
-    } else {
-
-        ir_tx_pulses( 1 , US_TO_CYCLES( IR_SPACE_TIME_US ) , ledBitmask );
-        
-    }                    
-    
-    // Two spaces at the end of each bit
-
-    _delay_us(IR_SPACE_TIME_US*2);
-
-    
+    return d & 0b00111111;      // Don't show our internal preamble bits
     
 }
 
-// Internal send to all faces with a 1 in the bitmask. 
+// Simultaneously send data on all faces that have a `1` in bitmask
 
-static void irBitmaskSendData( uint8_t ledBitmask , uint8_t data ) {
+void irSendDataBitmask(uint8_t data, uint8_t bitmask) {
     
-    // Note that we do not need to mask out the top bit of data because the bitwalker does it automatically. 
+    uint8_t bitwalker = 0b00100000;
     
-    // TODO: Check for RX in progress here?
-
-    // RESET link
+    // Start things up, send initial pulse and start bit (1)
+    ir_tx_start( IR_SPACE_TIME_TICKS , bitmask , 1 );
     
-    // Three consecutive pulses will reset RX state
-    // We need to send 4 to ensure the RX sees at least 3
+    ir_tx_sendpulse( 3 );           // Guard 0 bit to ensure real start bit is detected and not extraneous leading pulse.
     
-    ir_tx_pulses( 4 , US_TO_CYCLES( IR_SYNC_TIME_US ) , ledBitmask );
-    
-    // >2 spaces at the end of sync to load at least 1 zero into the bitstream
-
-
-    // TODO: Maybe do a timer based delay that does
-    // not accumulate additional time when interrupted?
-    
-    _delay_us(IR_SPACE_TIME_US*2);
-    
-    uint8_t bitwalker=0b01000000;                       // Send 7 bits of data
-    bool parityBit = 0;
-
     do {
         
-        bool bit = data & bitwalker;
-
-        txbit(  ledBitmask , bit );
+        if (data & bitwalker) {
+            ir_tx_sendpulse( 1 ) ;
+        } else {
+            ir_tx_sendpulse( 3 ) ;
+        }
         
-        // TODO: Faster parity calculation
-        parityBit ^= bit;
-        
-        bitwalker >>=1;
+        bitwalker>>=1;
         
     } while (bitwalker);
     
-    txbit( ledBitmask, parityBit );	           // parity bit, 1=odd number of 1's in data    
-}    
-
-void irSendData( uint8_t face , uint8_t data ) {
+    // TODO: Send a stop bit or some parity bit for error checking? Necessary? 
     
-    irBitmaskSendData( _BV( face ) , data );
+    ir_tx_end();
     
 }
+
+// Send data on specified face
+// I put destination (face) first to mirror the stdio.h functions like fprintf(). 
+
+void irSendData(  uint8_t face , uint8_t data  ) {
+    irSendDataBitmask( data , 1 << face );
+}
+
+
+// Send data on all faces
 
 void irBroadcastData( uint8_t data ) {
     
-    irBitmaskSendData( ALL_IR_BITS , data ); 
+    irSendDataBitmask( data , IR_ALL_BITS );
     
-}
+}    
