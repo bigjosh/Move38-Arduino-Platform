@@ -56,7 +56,7 @@ void setup() {
 
 
 void loop() {
-
+  
   // Update our mode first
 
   if(buttonDoubleClicked()) {
@@ -65,116 +65,118 @@ void loop() {
     health=INITIAL_HEALTH;
     healthTimer.set(HEALTH_STEP_TIME_MS);
   }
-
+  
   if (healthTimer.isExpired()) {
-
+    
     if (health>0) {
-
+      
       health--;
       healthTimer.set(HEALTH_STEP_TIME_MS);
-
+      
     } else {
-
+    
       mode = DEAD;
 
     }
-
+    
   }
-
+  
   if ( mode != DEAD ) {
-
+    
     if(isAlone()) {
-
+      
       mode = ENGUARDE;      // Being lonesome makes us ready to attack!
-
+      
       } else {  // !isAlone()
-
+      
       if (mode==ENGUARDE) {     // We were ornery, but saw someone so we begin our attack in earnest!
-
+        
         mode=ATTACKING;
         modeTimeout.set( ATTACK_DURRATION_MS );
       }
-
+      
     }
-
-
+    
+    
     if (mode==ATTACKING || mode == INJURED ) {
-
+      
       if (modeTimeout.isExpired()) {
         mode=ALIVE;
       }
     }
   } // !DEAD
-
+  
   FOREACH_FACE(f) {
-
-
+    
+    
     if(!isValueReceivedOnFaceExpired(f)) {
-
-      byte neighborMode = getLastValueReceivedOnFace(f);
-
+      
+      byte neighborMode = getLastValueReceivedOnFace(f); 
+      
       if ( mode == ATTACKING ) {
-
+        
         // We take our flesh when we see that someone we attacked is actually injured
-
+        
         if ( neighborMode == INJURED ) {
-
-          // TODO: We should really keep a per-face attack timer to lock down the case where we attack the same tile twice in a single interaction.
-
+          
+          // TODO: We should really keep a per-face attack timer to lock down the case where we attack the same tile twice in a since interaction.
+          
           health = min( health + ATTACK_VALUE , MAX_HEALTH );
-
+          
         }
-
+        
       } else if ( mode == ALIVE ) {
-
+        
         if ( neighborMode == ATTACKING ) {
-
+          
           health = max( health - ATTACK_VALUE , 0 ) ;
-
+          
           mode = INJURED;
-
+          
           modeTimeout.set( INJURED_DURRATION_MS );
-
+          
         }
-
+        
       } else if (mode==INJURED) {
-
+        
         if (modeTimeout.isExpired()) {
-
+          
           mode = ALIVE;
-
-        }
+          
+        }        
       }
     }
   }
-
-
+  
+  
   // Update our display based on new state
-
+  
   switch (mode) {
-
+    
     case DEAD:
       setColor( dim( RED , 40 ) );
       break;
-
+    
     case ALIVE:
       setColor( dim( GREEN , (health * MAX_BRIGHTNESS ) / MAX_HEALTH ) );
       break;
-
+    
     case ENGUARDE:
       setColor( CYAN );
       break;
-
+    
     case ATTACKING:
       setColor( BLUE );
       break;
-
+    
     case INJURED:
       setColor( ORANGE );
       break;
-
+    
   }
-
+  
   setValueSentOnAllFaces( mode );       // Tell everyone around how we are feeling
-
+  
 }
+
+
