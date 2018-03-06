@@ -83,65 +83,46 @@ static uint8_t oddParity(uint8_t p) {
 
 */
 
-// Note that POST_ILDE is the only state that is not exited with a trigger
-
 
 enum IR_RX_STATE {
-	PRE_IDLE,			// Count is number of consecutive idle windows
-						// If non-idle window seen -> exit to PRE_IDLE count=0
-						// If trigger and count>=4 -> exit to START_1
+    
+    IRS_WAIT,           // Waiting fir 1st flash or potenial preable
+    
+	IRS_PREAMBLE,	    // Reading preamble 
+                        // Input buffer has most recently received bits
+                        // When the sequence 0b10 is seen, then exit to DATA
 
-	START_1_0,			// Count is number of consecutive idle windows
-						// if 0-bit received AND count>0 -> exit to START_0
-						// if count>2 -> exit to PRE_IDLE
+	IRS_DATA,		    // bitcount is number of valid bits remaining
+						// if count==0 -> save received byte to invalue, exit to partity
+						// invalid bit-> exit to PREAMBLE
 
-	START_1_1,
+	//IRS_PARITY,			// if received valid bit AND even parity with byte -> exit to IDLE
+						// anything else -> exit to PREAMBLE
 
-	START_0,			// count is number of consecutive 0-bit symbols
-						// if count==1 -> exit to BIT
-						// if 1-bit received or anything else -> exit to PRE_IDLE
-
-	BIT0,				// count is number of consecutive consecutive idle windows
-						// if count==8 -> exist to partity
-						// invalid bit-> exit to PRE_IDLE
-
-	BIT1,
-	BIT2,
-	BIT3,
-	BIT4,
-	BIT5,
-	BIT6,
-	BIT7,
-
-	PARITY,				// Count number of valid bits received
-						// if received valid bit AND even parity with byte -> exist to POST_IDLE
-						// anything else -> exit to PRE_IDLE
-
-	POST_IDLE,			// Count is consecutive idle guard windows received
-						// If count==4 -> return byte, exit to START_1
+	IRS_IDLE,			// Wait for guard idle time after byte 
+                        // If 4 or more idle windows, signal received byte good and exist to PREAMBLE
+                        // 4 is chosen because the maximum number of windows for a valid bit is 3
+                        // If a flash is seen too soon, exit to preamble. 
 };
 
-const char *statechar    = "SABC01234567PE";
-const char *statecharlow = "sabc01234567pe";
+const char *statechar    = "WPDI";
+const char *statecharlow = "wpdi";
 
-// You really want sizeof( ir_rx_state_t) to be  a power of 2. It makes the emitted pointer calculations much smaller and faster.
 // TODO: Do we need all these volatiles? Probably not...
 
- typedef struct {
+struct ir_rx_state_t {
+    
 
      // These internal variables are only updated in ISR, so don't need to be volatile.
 
-     // I think access to the  first element is slightly faster, so most frequently used should go here
+    uint8_t windowsSinceLastFlash;                  // How many times windows since last trigger? Reset to 0 when we see a trigger
 
-    uint8_t volatile windowsSinceLastFlash;          // How many times windows since last trigger? Reset to 0 when we see a trigger
+	byte state;						                // Current read state
 
-	IR_RX_STATE state;						// Current read state
+	uint8_t bitCount;							    // Number of bits left in the byte in progress
 
-	uint8_t count;							// Different meaning in different states
-
-    uint8_t inputBuffer;                    // Buffer for RX in progress. Data bits step up until high bit set.
-                                            // High bit will always be set for real data because the start bit is 1
-
+    uint8_t inputBuffer;                            // Buffer for RX in progress. Data bits shift up until full. 
+    
 
     // Visible to outside world
      volatile uint8_t inValue;            // Last successfully decoded RX value. 1 in high bit means valid and unread. 0= empty.
@@ -151,7 +132,7 @@ const char *statecharlow = "sabc01234567pe";
 
     // This struct should be even power of 2 long.
 
- } ir_rx_state_t;
+ } ;
 
 
  // We keep these in together in a a struct to get faster access via
@@ -159,15 +140,10 @@ const char *statecharlow = "sabc01234567pe";
 
  static volatile ir_rx_state_t ir_rx_states[IRLED_COUNT];
 
-// Called once per timer tick
-// Check all LEDs, decode any changes
-
- // Note this runs in callback context in timercallback.
-
- volatile uint8_t specialWindowCounter=0;
-
  // Temp storage to stash the IR bits while interrupts are off.
  // We will later process and decode once interrupts are back on.
+
+// TODO: I don't think this needs to be volatile since always used in same context?
 
  volatile uint8_t most_recent_ir_test;
 
@@ -178,6 +154,12 @@ const char *statecharlow = "sabc01234567pe";
 
 #warning
 #include "sp.h"
+
+// The updateIRComs() function is probably the most optimized in this code base
+// because it iterated 8 times every tick so must be fast. I also tried making it 
+// clearer by using a case-based state machine, but the compiler exploded that with
+// code that ended up randomly blowing the stack. So here we are.
+
 
  void updateIRComs(void) {
 
@@ -202,329 +184,148 @@ const char *statecharlow = "sabc01234567pe";
 
     do {
 
-        uint8_t bit = bits & bitwalker;
+        const uint8_t bit = bits & bitwalker;
+        
+        // Keep a local read only copy of state
+        // We will directly update the master in cases where it is changed
+        const uint8_t state = ptr->state;
+        
 
         if (bit) {      // This LED triggered in the last time window
+            
+            // Cache the value before we reset it
+            const uint8_t thisWindowsSinceLastFlash = ptr->windowsSinceLastFlash;
 
-            uint8_t thisWindowsSinceLastFlash = ptr->windowsSinceLastFlash;
+            ptr->windowsSinceLastFlash = 0;     // We just got a flash, so start counting over.
 
-             ptr->windowsSinceLastFlash = 0;     // We just got a flash, so start counting over.
 
-             if (bitwalker==0x1) {
-                 sp_serial_tx( statechar[ ptr->state ] );
-                 sp_serial_tx(ptr->inputBuffer );
-             }
-
-			 switch (ptr->state) {
-
-				 case PRE_IDLE:
-
-						if (thisWindowsSinceLastFlash >= 4) {
-							ptr->state = START_1_0;
-						}
-
-					break;
-
-				case START_1_0:
-
-						if (thisWindowsSinceLastFlash <=1 ) {		// 1-bit symbol received
-							ptr->state = START_1_1;
-						} else {
-							ptr->state = PRE_IDLE;
-						}
-
-					break;
-
-				case START_1_1:
-
-						if (thisWindowsSinceLastFlash <=1 ) {		// Extra 1-bit symbol received (this can happen if the TX start bit happens right after a spontainious trigger)
-							ptr->state = START_0;
-						} else if ( thisWindowsSinceLastFlash <=3 ) {	// 0-bit symbol received
-							ptr->state = BIT0;
-						} else {
-							ptr->state = PRE_IDLE;
-						}
-
-					break;
-
-				case START_0:
-
-						if (thisWindowsSinceLastFlash <=1 ) {		// 1-bit symbol received
-							ptr->state = PRE_IDLE;
-						} else if ( thisWindowsSinceLastFlash <=3 ) {	// 0-bit symbol received
-							ptr->state = BIT0;
-						} else {
-							ptr->state = PRE_IDLE;
-						}
-
-					break;
-
-				case BIT0:
-
-    				    ptr->inputBuffer = 0;           // Clear out any old values
-
-						if ( thisWindowsSinceLastFlash <=3 ) {		// valid symbol received
-
-							if (thisWindowsSinceLastFlash <=1 ) {		// 1-bit symbol received
-								ptr->inputBuffer |= _BV(0);
-							}
-
-							ptr->state = BIT1;
-
-						} else {
-
-							// Start searching again from scratch
-							ptr->state = PRE_IDLE;
-						}
-
-					break;
-
-				case BIT1:
-
-						if ( thisWindowsSinceLastFlash <=3 ) {		// valid symbol received
-
-							if (thisWindowsSinceLastFlash <=1 ) {		// 1-bit symbol received
-								ptr->inputBuffer |= _BV(1);
-							}
-
-							ptr->state = BIT2;
-
-						} else {
-
-							// Start searching again from scratch
-							ptr->state = PRE_IDLE;
-						}
-
-				    break;
-
-
-				case BIT2:
-
-						if ( thisWindowsSinceLastFlash <=3 ) {		// valid symbol received
-
-							if (thisWindowsSinceLastFlash <=1 ) {		// 1-bit symbol received
-								ptr->inputBuffer |= _BV(2);
-							}
-
-							ptr->state = BIT3;
-
-						} else {
-
-							// Start searching again from scratch
-							ptr->state = PRE_IDLE;
-						}
-
-				    break;
-
-				case BIT3:
-
-						if ( thisWindowsSinceLastFlash <=3 ) {		// valid symbol received
-
-							if (thisWindowsSinceLastFlash <=1 ) {		// 1-bit symbol received
-								ptr->inputBuffer |= _BV(3);
-							}
-
-							ptr->state = BIT4;
-
-						} else {
-
-							// Start searching again from scratch
-							ptr->state = PRE_IDLE;
-						}
-
-				    break;
-
-				case BIT4:
-
-						if ( thisWindowsSinceLastFlash <=3 ) {		// valid symbol received
-
-							if (thisWindowsSinceLastFlash <=1 ) {		// 1-bit symbol received
-								ptr->inputBuffer |= _BV(4);
-							}
-
-							ptr->state = BIT5;
-
-						} else {
-
-							// Start searching again from scratch
-							ptr->state = PRE_IDLE;
-						}
-
-			    	break;
-
-
-
-				case BIT5:
-
-						if ( thisWindowsSinceLastFlash <=3 ) {		// valid symbol received
-
-							if (thisWindowsSinceLastFlash <=1 ) {		// 1-bit symbol received
-								ptr->inputBuffer |= _BV(5);
-							}
-
-                            ptr->state = BIT6;
-
-						} else {
-
-							// Start searching again from scratch
-							ptr->state = PRE_IDLE;
-						}
-
-			    	break;
-
-
-
-
-				case BIT6:
-
-						if ( thisWindowsSinceLastFlash <=3 ) {		// valid symbol received
-
-							if (thisWindowsSinceLastFlash <=1 ) {		// 1-bit symbol received
-								ptr->inputBuffer |= _BV(6);
-							}
-
-                            ptr->state = BIT7;
-
-						} else {
-
-							// Start searching again from scratch
-							ptr->state = PRE_IDLE;
-						}
-
-			    	break;
-
-
-				case BIT7:
-
-						if ( thisWindowsSinceLastFlash <=3 ) {		// valid symbol received
-
-							if (thisWindowsSinceLastFlash <=1 ) {		// 1-bit symbol received
-								ptr->inputBuffer |= _BV(7);
-							}
-
-							//ptr->state = PARITY;
-                            ptr->state = POST_IDLE;
-
-						} else {
-
-							// Start searching again from scratch
-							ptr->state = PRE_IDLE;
-						}
-
-			    	break;
-
-				case PARITY:
-
-						if ( thisWindowsSinceLastFlash <=3 ) {		// valid symbol received
-
-							if (thisWindowsSinceLastFlash <=1 ) {		// 1-bit symbol received
-								ptr->inputBuffer = _BV(1);
-							} else {
-								ptr->inputBuffer = 0;
-							}
-
-							ptr->state = BIT2;
-
-						} else {
-
-							// Start searching again from scratch
-							ptr->state = PRE_IDLE;
-						}
-
-				break;
-
-				case POST_IDLE:
-
-                        // Error condition: we got a flash while waiting for the idle
-                        // guard time after a received byte
-
-                        // Give up and start again
-
-						// Start searching again from scratch
-						ptr->state = PRE_IDLE;
-
-
-				break;
-
-
-            }      //  switch (ptr->state)
-
-
+            #warning Output current state for debuging
             if (bitwalker==0x1) {
-                sp_serial_tx( ptr->inputBuffer );
+                sp_serial_tx( statechar[ ptr->state ] );
             }
+            
+            
+            uint8_t thisInputBuffer = ptr->inputBuffer;
+                        
+            if (state == IRS_WAIT ) {
+                
+                // We got the flash we have been waiting for!
+                // This was the first flash so now we can start looking for a bit
+                // that might be the first bit of a preamble. 
+                
+                thisInputBuffer=0;
+                ptr->state = IRS_PREAMBLE;
+                
+            } else {
+                
+                // not in WAIT...                
+            
+                if (state==IRS_IDLE) {
+                
+                    // If we are in IDLE, then we did not see the needed 4 idle windows
+                    // yet, so this flash means that the preceding byte was no good
+                    // so we ignore it, but we register this flash because it might be the 
+                    // start of a preamble bit
 
-            SP_PIN_R_SET_0();
-
-        } else {        // if (!bit)
-
-
-            if (bitwalker==0x01) {
-                sp_serial_tx( statecharlow[ ptr->state ] );
-                sp_serial_tx( ptr->windowsSinceLastFlash + '0' );
-            }
-
-            if (ptr->windowsSinceLastFlash<4) {     // Higher than 4 doesn't add any meaning,  so don't overflow
-
-                ptr->windowsSinceLastFlash++;
-
-
-			    // The most number of windows for a Valid bit is 3
-			    // so if we are at 4 now, then we already know we have gone too long for a valid bit so no point in
-			    // counting higher (and maybe overflowing)
-
-			    // When we see an idle time longer than the longest possible valid bit, then we check to
-			    // see if a valid byte has been received.
-
-			    // By waiting for an idle, we protect against extraneous triggers from ambient light
-			    // since they will cause us to have too many bits.
-			    // The idle at the end also makes it less like to see a long string if extraneous
-			    // triggers as a valid byte because it would just happen to have a break at just the right moment.
-
-                if (ptr->windowsSinceLastFlash==4) {
-
-                    if (ptr->state==POST_IDLE) {
-
-
-                        if (bitwalker==0x1) {
-                            sp_serial_tx( 'R' );
-                            sp_serial_tx( ptr->inputBuffer );
-
-
-
-                            byte x = ptr->inputBuffer;
-                            byte bottom = x & 0b00001111;
-                            byte top = ( (~x) >> 4 ) & 0b00001111  ;
-
-                            if ( top != bottom ) {
-
-                                SP_PIN_R_MODE_OUT();
-                                SP_PIN_R_SET_1();
-                               // sp_serial_tx( top );
-                               // sp_serial_tx( bottom );
-
-                            }
-                        }
-
-
-
-                        // Did we have a full received byte just waiting for the idle window?
-
-                        ptr->inValue = ptr->inputBuffer;            // Valid! Pass it on!
-                        ptr->inValueReady  = 1;                     // Signal new value ready
-
-                    }
-
-
-                    ptr->state = PRE_IDLE;          // Any time we see 4 idle window, then we are reset and ready for new sync
-                                                    // Note that we leave the counter at 4 since this idle counts for the beginning of the next byte as well
-
+                    thisInputBuffer=0;                
+                    ptr->state = IRS_PREAMBLE;
+                                
+                }                
+            
+                // Note that we do not need to check if the windows since last flash 
+                // is less than 4 since it MUST be less than 4 if we are in DATA state since
+                // the case that counts the idle windows will bump us back to PREABLE
+                // anytime 4 empty windows are seen. 
+            
+                // Shift up the input buffer to make room for new bit
+                thisInputBuffer >>= 1;
+                                
+		        if (thisWindowsSinceLastFlash <=1 ) {		    // 1-bit symbol received
+			        thisInputBuffer |= 0b10000000;
                 }
+                
+                // If not a 1-bit, then it was a 0-bit so the shift will leave the new 0 in the inputBuffer
+                // Note that when we are waiting for the preamble, this will harmlessly
+                // stuff a 0 in the inputBuffer in the first flash
+                
+                // So now inputBuffer has the new bit in it
+                
+                if (state == IRS_PREAMBLE) {
+                    
+                    // Remember that we reassemble bits high to low, so the preamble pattern
+                    // of 10 will look like 01 in the inputBuffer
+                    
+                    if ( (thisInputBuffer & 0b11000000) == 0b01000000 ) {       // Check for preamble
+                        ptr->state = IRS_DATA;
+                        ptr->bitCount =8;                  // Number of bits to read
+                        // No need to clear the input buffer here since it will all get shifted out anyway over the next 8 bits
+                    }  
+                                          
+                } else if (state == IRS_DATA) {
+                                        
+                    ptr->bitCount--;
+                    
+                    // TODO: CHeck flag in ASM is faster
+                    
+                    if ( ptr->bitCount == 0  ) {
+                        
+                        // Got full byte 
+                        
+                        ptr->inValue = thisInputBuffer;         // Save the assembled byte
+                        
+                        ptr->state = IRS_IDLE;                  // Wait for the idle period before accepting it as valid
+                        
+                    } 
+                    
+                }             
+            }                
 
+            #warning Output current state for debuging
+            if (bitwalker==0x1) {            
+                sp_serial_tx( thisInputBuffer );
+            }                
+                                                                   
+            ptr->inputBuffer = thisInputBuffer;         // Save the changes to the inputBuffer                      
+            
+        }  else {               // No flash in this last window
+            
+            #warning Output current state for debuging
+            if (bitwalker==0x1) {
+                sp_serial_tx( statecharlow[ ptr->state ] );
             }
-
+                        
+            // Check if it has been 4 windows since last flash 
+            // Since any valid bit is only 3 windows, no need to increment past 
+            // 4 anyway, and this is faster and keeps up from ever overflowing. 
+            
+            if (ptr->windowsSinceLastFlash == 3) {
+            
+                if (state == IRS_IDLE ) {
+                                    
+                    // Successfully waited it out, so the data we received is value
+                    // pass it on up...
+                    
+                    #warning Output current state for debuging
+                    if (bitwalker==0x1) {            
+                        sp_serial_tx( ptr->inputBuffer );
+                    }                
+                    
+                    
+                    ptr->inValueReady = 1; 
+                    
+                }                    
+                
+                ptr->state = IRS_WAIT;
+                
+            } else {
+                
+                ptr->windowsSinceLastFlash++;
+                
+            }
+            
         }
 
+        #warning debug
         SP_PIN_A_SET_0();
         SP_PIN_R_SET_0();
 
@@ -542,7 +343,7 @@ bool irIsReadyOnFace( uint8_t led ) {
     return( ir_rx_states[led].inValueReady );
 }
 
-// Read the most recently received data. (Defaults to 0 on powerup)
+// Read the most recently received data. (Defaults to 0 on power-up)
 
 uint8_t irGetData( uint8_t led ) {
 
