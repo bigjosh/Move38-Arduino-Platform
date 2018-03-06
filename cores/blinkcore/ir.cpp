@@ -320,12 +320,15 @@ static volatile uint8_t sendpulse_spaces_next;  // A one entry deep buffer for s
 #include "sp.h"
 
 ISR(TIMER1_CAPT_vect) {
+    
+    // Cache because the compile is not so good here
+    uint8_t sendpulse_spaces_m = sendpulse_spaces;
         
-    if (sendpulse_spaces) {
+    if (sendpulse_spaces_m) {
         
-        sendpulse_spaces--;
+        sendpulse_spaces_m--;
         
-        if (sendpulse_spaces==0) {
+        if (sendpulse_spaces_m==0) {
                
            if (sendpulse_bitmask&0x01) SP_PIN_A_SET_1();
                                        
@@ -333,11 +336,13 @@ ISR(TIMER1_CAPT_vect) {
             
             SP_PIN_A_SET_0();
             
-            sendpulse_spaces = sendpulse_spaces_next;
+            sendpulse_spaces_m = sendpulse_spaces_next;
             
             sendpulse_spaces_next = 0; 
             
         }            
+        
+        sendpulse_spaces = sendpulse_spaces_m;
     }            
         
 }        
