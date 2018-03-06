@@ -308,14 +308,30 @@ struct ir_rx_state_t {
                     #warning Output current state for debuging
                     if (bitwalker==0x1) {            
                         sp_serial_tx( ptr->inputBuffer );
+
+
+                        //----
+                        
+                        #warning debug
+                        uint8_t top = ptr->inputBuffer >> 4;
+                        uint8_t bot = ptr->inputBuffer & 0x0f;
+                    
+                        if ( top != ( bot ^ 0x0f ) ) {
+                            SP_PIN_R_SET_1();
+                        }                        
+                    
+                        //---- test for errors in encoded data
+                        
+                        
                     }                
+                    
                     
                     
                     ptr->inValueReady = 1; 
                     
                 }                    
                 
-                ptr->state = IRS_WAIT;
+                ptr->state = IRS_WAIT;              // Yes, this will get benignly repeated after the 4th idle window. It is ok. It is cheaper than the test to skip it. 
                 
             } else {
                 

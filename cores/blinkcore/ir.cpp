@@ -310,9 +310,9 @@ uint8_t ir_test_and_charge_cli( void ) {
     
 */
 
-static volatile uint16_t sendpulse_bitmask;      // Which IR LEDs to send on 
-static volatile uint16_t sendpulse_spaces;       // Time to delay until next pulse. 0=pulse sent
-static volatile uint16_t sendpulse_spaces_next;  // A one entry deep buffer for spaces so we can try to keep it primed. 
+static volatile uint8_t sendpulse_bitmask;      // Which IR LEDs to send on 
+static volatile uint8_t sendpulse_spaces;       // Time to delay until next pulse. 0=pulse sent
+static volatile uint8_t sendpulse_spaces_next;  // A one entry deep buffer for spaces so we can try to keep it primed. 
 
 // Currently clocks at 23us @ 4Mhz
 
