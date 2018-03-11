@@ -49,15 +49,46 @@
 
 #endif
 
+
+// If defined, TX_DEBUG will output HIGH on pin A on a dev candy board anytime
+// an IR pulse is sent on IR0. The pulse is high for the duration of the IR on time. 
+
+//#define TX_DEBUG    
+
+
+// If defined, RX_DEBUG will output HIGH on pin A on a dev candy board anytime
+// an IR pulse is received on IR0. The pulse is high from the moment the pin changes, 
+// to the moment it is ready by the timer polling routine. 
+
+#define RX_DEBUG    
+
+
+#if defined ( TX_DEBUG )  || defined ( RX_DEBUG )
+
+    #include "sp.h"
+
+#endif
+
+
 // This gets called anytime one of the IR LED cathodes has a level change drops. This typically happens because some light
 // hit it and discharged the capacitance, so the pin goes from high to low. We initialize each pin at high, and we charge it
 // back to high everything it drops low, so we should in practice only ever see high to low transitions here.
 
 // TOOD: We will use this for waking from nap.
 
-ISR(IR_ISR) {
+ISR(IR_ISR,ISR_NAKED) {
     
-    // EMPTY
+    // We make this NAKED so we can deal with it efficiently
+    // It compiles down to code with no side effects, so no need to save an registers. 
+    // The compiler adds an R0 and R1 preamble and postamble even though these are no used at all. Arg. 
+    
+    #ifdef RX_DEBUG
+       if ( ! TBI(PINC,0) ) {
+           SP_PIN_A_SET_1();               // SP pin A goes high any time IR0 is triggered. We clear it when we later process in the polling code. 
+       }            
+    #endif
+    
+    asm("RETI");
     
 }
 
@@ -73,19 +104,21 @@ void ir_enable(void) {
     
     // TODO: IR interrupts totally disabled for now. We will need them for wake on data.
 
-    //SBI( PCICR , IR_PCI );      // Enable the pin group to actual generate interrupts    
+    SBI( PCICR , IR_PCI_BIT );      // Enable the pin group to actual generate interrupts    
     
     // There is a race where an IR can get a pulse right here, but that is ok becuase it will just generate an int and be processed normally
     // and get recharged naturally before the next line.
     
     // Initial charge up of cathodes to get things going
     //chargeLEDs( IR_BITS );      // Charge all the LEDS - this handles suppressing extra pin change INTs during charging
+
+
     
 }
 
 void ir_disable(void) {
 
-    CBI( PCICR , IR_PCI );      // Disable the pin group to block interrupts
+    CBI( PCICR , IR_PCI_BIT );      // Disable the pin group to block interrupts. Leave the bits for individual pins intact. 
         
 }        
 
@@ -101,8 +134,14 @@ void ir_init(void) {
 
     
     // Pin change interrupt setup
-    IR_MASK |= IR_PCINT;             // Enable pin in Pin Change Mask Register for all 6 cathode pins. Any change after this will set the pending interrupt flag.
+    
+    #warning we are only enabling INTs on IR0 for debugging here! 
+    IR_INT_MASK_REG |= _BV(0);    
+        
+    //IR_MASK_REG |= IR_BITS;          // Enable individual pins in Pin Change Mask Register for all 6 cathode pins. Any change after this will set the pending interrupt flag.
                                      // TODO: Single LEDs can get masked here if they get noisy to avoid spurious wakes 
+                                     
+    // The interrupt enable bit gets set/cleared in ir_enable()/ir_disable() so we can leave the pin bits in place.
                                               
 }
 
@@ -212,7 +251,7 @@ static inline void chargeLEDs( uint8_t bitmask ) {
     
     uint8_t ir_cathode_ddr_cache = IR_CATHODE_DDR;       // This will not change unless we change it, so no need to reload it every access
     
-     PCMSK1 &= ~bitmask;                                 // stop Triggering interrupts on these pins because they are going to change when we charge them
+     IR_INT_MASK_REG &= ~bitmask;                        // stop Triggering interrupts on these pins because they are going to change when we charge them
     
     // charge up receiver cathode pins while keeping other pins intact
            
@@ -228,7 +267,7 @@ static inline void chargeLEDs( uint8_t bitmask ) {
         Writing a '1' to PINxn toggles the value of PORTxn, independent on the value of DDRxn. 
     */
     
-    IR_CATHODE_PIN =  bitmask;       // This enables pull-ups on charge pins
+    IR_CATHODE_PIN =  bitmask;       // This enables pull-ups on charge pins. If we set the DDR first, then we would drive the low pins to ground. 
         
     IR_CATHODE_DDR = ir_cathode_ddr_cache | bitmask;       // This will drive the charge pins high 
     
@@ -237,11 +276,9 @@ static inline void chargeLEDs( uint8_t bitmask ) {
     
     _delay_us( IR_CHARGE_TIME_US );
     
-    
-    // Only takes a tiny bit of time to charge up the cathode, even though the pull-up so no extra delay needed here...
-    
+       
 
-    PCMSK1 |= bitmask;                  // Re-enable pin change on the pins we just charged up
+    IR_INT_MASK_REG |= bitmask;             // Re-enable pin change on the pins we just charged up
                                         // Note that we must do this while we know the pins are still high
                                         // or there might be a *tiny* race condition if the pin changed in the cycle right after
                                         // we finished charging but before we enabled interrupts. This would latch
@@ -251,6 +288,10 @@ static inline void chargeLEDs( uint8_t bitmask ) {
     
      
     IR_CATHODE_DDR = ir_cathode_ddr_cache;          // Back to the way we started, charge pins now only pulled-up
+    
+    #ifdef RX_DEBUG
+        SP_PIN_A_SET_0();       // We set the A output when we see a pin change interrupt on a cathode, so we clear it here to be ready to show the next one.
+    #endif
      
     IR_CATHODE_PIN = bitmask;                       // toggle pull-ups off, now cathodes pure inputs 
                                                           
@@ -316,9 +357,6 @@ static volatile uint8_t sendpulse_spaces_next;  // A one entry deep buffer for s
 
 // Currently clocks at 23us @ 4Mhz
 
-#warning
-#include "sp.h"
-
 ISR(TIMER1_CAPT_vect) {
     
     // Cache because the compile is not so good here
@@ -329,12 +367,16 @@ ISR(TIMER1_CAPT_vect) {
         sendpulse_spaces_m--;
         
         if (sendpulse_spaces_m==0) {
-               
-           if (sendpulse_bitmask&0x01) SP_PIN_A_SET_1();
+           
+           #ifdef TX_DEBUG    
+                if (sendpulse_bitmask&0x01) SP_PIN_A_SET_1();
+           #endif
                                        
             ir_tx_pulse_internal( sendpulse_bitmask );     // Flash
-            
-            SP_PIN_A_SET_0();
+
+            #ifdef TX_DEBUG    
+                SP_PIN_A_SET_0();
+            #endif
             
             sendpulse_spaces_m = sendpulse_spaces_next;
             

@@ -342,7 +342,6 @@ struct ir_rx_state_t {
         }
 
         #warning debug
-        SP_PIN_A_SET_0();
         SP_PIN_R_SET_0();
 
         ptr--;
