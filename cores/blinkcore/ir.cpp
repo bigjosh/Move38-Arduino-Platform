@@ -176,9 +176,7 @@ static inline void ir_tx_pulse_internal( uint8_t bitmask ) {
         uint8_t cathode_ddr_save = IR_CATHODE_DDR;          // We don't want to mess with the upper bits not used for IR LEDs
     
         PCMSK1 &= ~bitmask;                                 // stop Triggering interrupts on these cathode pins because they are going to change when we pulse
-
-        // TODO: Current blinklib does not use IR interrupts, so we could get rid of this but would only save a couple instructions/cycles
-        
+       
         // Now we don't have to worry about...
         // (1) a received pulse on this LED interfering with our transmit and 
         // (2) Our fiddling the LED bits causing an interrupt on this LED 
@@ -247,12 +245,41 @@ static inline void ir_tx_pulse_internal( uint8_t bitmask ) {
 }
 
 
-static inline void chargeLEDs( uint8_t bitmask ) {
+// Measure the IR LEDs to to see if they have been triggered.
+// Must be called when interrupts are off. 
+// Returns a 1 in each bit for each LED that was fired.
+// Triggered LEDs are recharged. 
+
+uint8_t ir_test_and_charge_cli( void ) {
     
-    uint8_t ir_cathode_ddr_cache = IR_CATHODE_DDR;       // This will not change unless we change it, so no need to reload it every access
+    uint8_t ir_cathode_ddr_cache = IR_CATHODE_DDR;       // This will not change unless we change it, so no need to reload it every access    
+           
+   // ===Time critcal section start===
+   
+   // Grab the IR LEDs that have triggered since the last time we checked.
+   // These will be 0 on the cathode since it got discharged by the flash
+      
+   uint8_t ir_LED_triggered_bits;
+   
+   // We and with the IR_BIT because there are other bits in this IO register that connect to other things
+   // and we need to not mess with those. 
+
+   ir_LED_triggered_bits = (~IR_CATHODE_PIN) & IR_BITS;      // A 1 in ir_led_triggered_bits means that LED triggered
+      
+    // If a pulse comes in after we sample but before we finish charging, then we will miss it
+    // so best to keep this short and straight
+   
+    // Note that protocol should make sure that real data pulses should have a header pulse that
+    // gets this receiver in sync so we only are recharging in the idle time after a pulse.
+    // real data pulses should come less than 1ms after the header pulse, and should always be less than 1ms apart.
     
-     IR_INT_MASK_REG &= ~bitmask;                        // stop Triggering interrupts on these pins because they are going to change when we charge them
     
+    // Recharge the ones that have fired
+
+    uint8_t bitmask = ir_LED_triggered_bits;
+    
+    IR_INT_MASK_REG &= ~bitmask;                         // stop Triggering interrupts on these pins because they are going to change when we charge them   
+                
     // charge up receiver cathode pins while keeping other pins intact
            
     // This will enable the pull-ups on the LEDs we want to change without impacting other pins
@@ -278,7 +305,7 @@ static inline void chargeLEDs( uint8_t bitmask ) {
     
        
 
-    IR_INT_MASK_REG |= bitmask;             // Re-enable pin change on the pins we just charged up
+    IR_INT_MASK_REG |= bitmask;         // Re-enable pin change on the pins we just charged up
                                         // Note that we must do this while we know the pins are still high
                                         // or there might be a *tiny* race condition if the pin changed in the cycle right after
                                         // we finished charging but before we enabled interrupts. This would latch
@@ -294,38 +321,7 @@ static inline void chargeLEDs( uint8_t bitmask ) {
     #endif
      
     IR_CATHODE_PIN = bitmask;                       // toggle pull-ups off, now cathodes pure inputs 
-                                                          
-}    
-
-// Measure the IR LEDs to to see if they have been triggered.
-// Must be called when interrupts are off. 
-// Returns a 1 in each bit for each LED that was fired.
-// Fired LEDs are recharged. 
-
-uint8_t ir_test_and_charge_cli( void ) {
-   
-   // ===Time critcal section start===
-   
-   // Find out which IR LED(s) went low to trigger this interrupt
-   
-   // TODO: Could save lots by redoing in ASM
-   // TODO: Look into moving _zero_reg_ out of R! to save a push/pop and eor.
-   
-   uint8_t ir_LED_triggered_bits;
-
-    ir_LED_triggered_bits = (~IR_CATHODE_PIN) & IR_BITS;      // A 1 means that LED triggered
-
-   
-    // If a pulse comes in after we sample but before we finish charging and enabling pin change, then we will miss it
-    // so best to keep this short and straight
-   
-    // Note that protocol should make sure that real data pulses should have a header pulse that
-    // gets this receiver in sync so we only are recharging in the idle time after a pulse.
-    // real data pulses should come less than 1ms after the header pulse, and should always be less than 1ms apart.
-    // Recharge the ones that have fired
-
-    chargeLEDs( ir_LED_triggered_bits );
-
+    
     // TODO: Some LEDs seem to fire right after IR0 is charged when connected to programmer?
 
     // ===Time critcal section end===
@@ -385,6 +381,7 @@ ISR(TIMER1_CAPT_vect) {
         }            
         
         sendpulse_spaces = sendpulse_spaces_m;
+        
     }            
         
 }        
