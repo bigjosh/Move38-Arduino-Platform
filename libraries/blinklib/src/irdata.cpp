@@ -43,11 +43,14 @@
 #include "utils.h"
 #include "timer.h"          // get US_TO_CYCLES()
 
+
 #include "irdata.h"
 
 #include <util/delay.h>         // Must come after F_CPU definition
 
 #include <avr/sfr_defs.h>		// Gets us _BV()
+
+#include <util/atomic.h>        // ATOMIC_BLOCK
 
 // A bit cycle is one 2x timer tick, currently 256us
 
@@ -70,7 +73,7 @@
 
 #define IR_SPACE_TIME_TICKS US_TO_CYCLES( IR_SPACE_TIME_US )
 
-/*
+
 
 // from http://www.microchip.com/forums/m587239.aspx
 
@@ -80,8 +83,6 @@ static uint8_t oddParity(uint8_t p) {
       p = p ^ (p >> 1);
       return p & 1;
 }
-
-*/
 
 
 enum IR_RX_STATE {
@@ -125,10 +126,10 @@ struct ir_rx_state_t {
     
 
     // Visible to outside world
-     volatile uint8_t inValue;            // Last successfully decoded RX value. 1 in high bit means valid and unread. 0= empty.
+     volatile uint8_t inValue;              // Last successfully decoded RX value. 1 in high bit means valid and unread. 0= empty.
 
-     volatile uint8_t inValueReady:1;         // Newly decoded value in inValue
-
+     volatile uint8_t inValueReady;         // Newly decoded value in inValue. Could be a bitflag - that would save a byte but cost a cycle.
+     //volatile uint8_t parity;               // Top bit is received parity for value in inValue. Up to foreground to test. Could be a bitflag - that would save a byte but cost a cycle.
 
     // This struct should be even power of 2 long.
 
@@ -236,7 +237,7 @@ struct ir_rx_state_t {
                 // is less than 4 since it MUST be less than 4 if we are in DATA state since
                 // the case that counts the idle windows will bump us back to PREABLE
                 // anytime 4 empty windows are seen. 
-            
+                            
                 // Shift up the input buffer to make room for new bit
                 thisInputBuffer >>= 1;
                                 
@@ -273,9 +274,19 @@ struct ir_rx_state_t {
                         
                         ptr->inValue = thisInputBuffer;         // Save the assembled byte
                         
-                        ptr->state = IRS_IDLE;                  // Wait for the idle period before accepting it as valid
+                        ptr->state = IRS_IDLE;                // Wait for the idle period before accepting it as valid
                         
                     } 
+                    
+                    /*
+                    else if (state == IRS_PARITY ) {
+                                                
+                        ptr->parity = thisInputBuffer;
+                        
+                        ptr->state = IRS_IDLE;                  // Wait for the idle period before accepting it as valid
+                        
+                    }                        
+                    */  
                     
                 }             
             }                
@@ -359,16 +370,26 @@ bool irIsReadyOnFace( uint8_t led ) {
 }
 
 // Read the most recently received data. (Defaults to 0 on power-up)
+// Requires interrupts to be on
 
 uint8_t irGetData( uint8_t led ) {
+    
+    uint8_t data;
+    //uint8_t parity;
 
     ir_rx_state_t volatile *ptr = ir_rx_states + led;        // This turns out to generate much more efficient code than array access. ptr saves 25 bytes. :/   Even so, the emitted ptr dereference code is awful.
 
-    uint8_t d = ptr->inValue;
+    // We need this to be atomic otherwise would could potentially miss an incoming value that arrives
+    // exactly between when we collect the data and clear the inValueReady
 
-    ptr->inValueReady=0;        // Clear to indicate we read the value. Doesn't need to be atomic.
+    ATOMIC_BLOCK( ATOMIC_FORCEON ) {
+        data = ptr->inValue;
+        //parity = ptr->parity;
+        ptr->inValueReady=0;        // Clear to indicate we read the value. Doesn't need to be atomic.
+    };        
 
-    return d ;
+    
+    return data ;
 
 }
 
