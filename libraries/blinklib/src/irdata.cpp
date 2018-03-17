@@ -73,18 +73,6 @@
 
 #define IR_SPACE_TIME_TICKS US_TO_CYCLES( IR_SPACE_TIME_US )
 
-
-
-// from http://www.microchip.com/forums/m587239.aspx
-
-static uint8_t oddParity(uint8_t p) {
-      p = p ^ (p >> 4 | p << 4);
-      p = p ^ (p >> 2);
-      p = p ^ (p >> 1);
-      return p & 1;
-}
-
-
 enum IR_RX_STATE {
     
     IRS_WAIT,           // Waiting fir 1st flash or potenial preable
@@ -96,9 +84,6 @@ enum IR_RX_STATE {
 	IRS_DATA,		    // bitcount is number of valid bits remaining
 						// if count==0 -> save received byte to invalue, exit to partity
 						// invalid bit-> exit to PREAMBLE
-
-	//IRS_PARITY,			// if received valid bit AND even parity with byte -> exit to IDLE
-						// anything else -> exit to PREAMBLE
 
 	IRS_IDLE,			// Wait for guard idle time after byte 
                         // If 4 or more idle windows, signal received byte good and exist to PREAMBLE
@@ -176,11 +161,6 @@ struct ir_rx_state_t {
     uint8_t bitwalker = _BV( IRLED_COUNT -1 );
     ir_rx_state_t volatile *ptr = ir_rx_states + IRLED_COUNT -1;
 
-/*
-    #warning only checking IR0!
-    uint8_t bitwalker = _BV( 0 );
-    ir_rx_state_t volatile *ptr = ir_rx_states;
-*/
     // Loop though each of the IR LED and see if anything happened on each...
 
     do {
@@ -277,17 +257,7 @@ struct ir_rx_state_t {
                         ptr->state = IRS_IDLE;                // Wait for the idle period before accepting it as valid
                         
                     } 
-                    
-                    /*
-                    else if (state == IRS_PARITY ) {
-                                                
-                        ptr->parity = thisInputBuffer;
-                        
-                        ptr->state = IRS_IDLE;                  // Wait for the idle period before accepting it as valid
-                        
-                    }                        
-                    */  
-                    
+                                        
                 }             
             }                
 
@@ -319,21 +289,6 @@ struct ir_rx_state_t {
                     #warning Output current state for debuging
                     if (bitwalker==0x1) {            
                         sp_serial_tx( ptr->inputBuffer );
-
-
-                        //----
-                        
-                        #warning debug
-                        uint8_t top = ptr->inputBuffer >> 4;
-                        uint8_t bot = ptr->inputBuffer & 0x0f;
-                    
-                        if ( top != ( bot ^ 0x0f ) ) {
-                            SP_PIN_R_SET_1();
-                        }                        
-                    
-                        //---- test for errors in encoded data
-                        
-                        
                     }                
                     
                     
