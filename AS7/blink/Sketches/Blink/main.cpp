@@ -11,7 +11,7 @@ bool errorFlag[ FACE_COUNT ];
 void clearErrors() {
   FOREACH_FACE(f) {
     errorFlag[f]=false;
-  }  
+  }
 }
 
 #warning
@@ -25,7 +25,7 @@ void setup() {
              sp_serial_disable_rx();
              SP_PIN_R_MODE_OUT();
              sp_serial_tx('h');
-  
+
 }
 
 // Sin in degrees ( standard sin() takes radians )
@@ -56,22 +56,22 @@ byte throbbing(void) {
   byte wave_byte = ( (wave + 1.0) * (255.0/2) );          // Note: NOT times 128! that would overflow byte!
 
   // wave_byte range [0,255]
-  
+
   return wave_byte;
 
 }
 
 
-// Returns the circular maxiumum of the two values
-// I define this as being the one that is larger looking 
-// from the perspective they are closer togther than farther 
-// appart. Make sense? 
-// To keep myself freom getting confused, I 
+// Returns the circular maximum of the two values
+// I define this as being the one that is larger looking
+// from the perspective they are closer together than farther
+// apart. Make sense?
+// To keep myself from getting confused, I
 // first figure out i,j where i<=j<count
 // next we figure out x,y,z which are...
 // x=distance from 0 to i
 // y=distance from i to j
-// z-distace from j to count
+// z-distance from j to count
 
 byte circularMax( byte a , byte b , byte count ) {
 
@@ -90,23 +90,23 @@ byte circularMax( byte a , byte b , byte count ) {
   }
 
   // Ok, i and j are now sorted out, so we can compute our number line...
-    
+
   byte x=i;
   byte y=j-i;
   byte z=count-j;
 
-  /* 
+  /*
    * |-----|-----|-----|
    * 0     i     j     count
-   *  <-x-> <-y-> <-z->  
+   *  <-x-> <-y-> <-z->
    */
 
-  if ( y < (x + z) ) {    
+  if ( y < (x + z) ) {
     return j;
-  } 
+  }
 
   // In ambiguous cases, b wins
-  
+
   return i;
 
 }
@@ -119,27 +119,67 @@ long map_m(long x, long in_min, long in_max, long out_min, long out_max)
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
+
+// Just a little error test that adds the inverted value on top of the value
+// Breaks if (myState_count^2) > IR_DATA_VALUE_MAX
+
+byte encode( byte v ) {
+    return( v);
+
+    byte inverted =  ( myState_count -1 -v ) ;
+
+    return( v + ( inverted * myState_count) );
+
+}
+
+byte decode( byte v ) {
+    return( v);
+
+    return( v % myState_count );
+
+}
+
+
+byte test( byte v ) {
+    return (true);
+
+
+    byte orginal = decode( v ) ;
+
+    byte recoveredInverted = v / myState_count ;
+
+    return orginal == ( myState_count -1 - recoveredInverted );
+
+}
+
+
 void loop() {
+
   // put your main code here, to run repeatedly:
   if ( buttonSingleClicked() ) {
     myState++;
     if (myState >= myState_count ) {
       myState = 0;
-    }    
+    }
     clearErrors();
   }
 
   FOREACH_FACE( f ) {
+
     if ( !isValueReceivedOnFaceExpired( f )  ) {
+
       // update to the value we see, if the value is already our value, do nothing
-      byte neighborState = getLastValueReceivedOnFace( f ) & 0b00001111;
-      
-      
-      
-      if (neighborState >= myState_count) {
-        errorFlag[f] = true;
+
+      byte neighborValue = getLastValueReceivedOnFace( f );
+
+      if ( test(neighborValue)) {
+
+        myState = circularMax( decode(neighborValue) , myState , myState_count );
+
       } else {
-        myState = circularMax( neighborState , myState , myState_count );
+
+        errorFlag[f] = true;
+
       }
     }
   }
@@ -147,10 +187,10 @@ void loop() {
   // We put this check here as a defense from out of bounds incoming data (and the normal click wrap)
 
 
-  
+
   //setColor(dim( colors[myState], 190 + 55 * sin_d( (millis()/10) % 360)));
 
-  byte brightness = map_m( throbbing() , 0, 255 , 1 , 255 );    // Don't go all the way down to 0 brightness. 
+  byte brightness = map_m( throbbing() , 0, 255 , 1 , 255 );    // Don't go all the way down to 0 brightness.
 
   setColor( dim( colors[myState] , brightness ) );
 
@@ -159,7 +199,8 @@ void loop() {
       setFaceColor( f , WHITE );
     }
   }
-  
-  setValueSentOnAllFaces( ( myState & 0b00001111)  | ( ( (~myState) & 0b00001111 ) << 4 ) );
-}
 
+
+  setValueSentOnAllFaces( encode( myState ) );
+
+}
