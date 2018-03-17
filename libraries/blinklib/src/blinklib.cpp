@@ -497,7 +497,10 @@ volatile uint8_t verticalRetraceFlag=0;     // Turns to 1 when we are about to s
 // Will overflow after about 62 days...
 // https://www.google.com/search?q=(2%5E31)*2.5ms&rlz=1C1CYCW_enUS687US687&oq=(2%5E31)*2.5ms
 
-static volatile uint32_t millisCounter=0;           // How many milliseconds since startup?
+static volatile uint32_t millisCounter=1;           // How many milliseconds since startup?
+                                                    // We begin at 1 so that the comparison `0 < mills() `
+                                                    // will always be true so we can use `0` time to semantically
+                                                    // mean `always in the past.
 
 // Overflows after about 60 days
 // Note that resolution is limited by timer tick rate

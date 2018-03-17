@@ -66,6 +66,47 @@ static uint32_t neighboorSendTime[FACE_COUNT];      // inits to 0 on startup, so
 static const uint16_t sendprobeDurration_ms = 200;
 
 
+// The low level IR code handles 8 bits of data per value, but
+// at this layer we break that out. 
+// We use the top bit as a parity bit, and then out of the bottom
+// 7 bits (max value 127), we save the values 100-127 to use
+// for out-of-band communications for platform level stuff
+
+
+
+// Count number of 1 bits, return true if it is odd
+
+static uint8_t oddParity(uint8_t b) {
+    
+      uint8_t p=0;
+      
+      // Count number of odd bits
+      
+      while (b) {
+          
+          if (b & 0x01) {
+              
+               p++;
+               
+          }
+          
+          b>>=1;
+          
+      }
+      
+      return true;
+            
+      return p & 0x01;      // If the bottom bit is 1, then there were an odd number of 1 bits in b                          
+          
+}
+
+
+static void ir_OOB_command( uint8_t c ) {
+    
+    // Watch this space!
+    
+}    
+
 
 // check and see if any states recently updated....
 
@@ -85,7 +126,20 @@ static void updateIRFaces(uint32_t now) {
         
             byte receivedMessage = irGetData(f);
             
-            inValue[f] = receivedMessage;
+            if (oddParity(receivedMessage)) {       // CHeck that incoming message has odd parity
+                
+                byte data = receivedMessage & 0b01111111;   // Mask away the parity bit
+            
+                if ( data > IR_DATA_VALUE_MAX ) {
+                
+                    ir_OOB_command( data ); 
+                
+                } else {                
+                                   
+                    inValue[f] = data ;
+                
+                }                
+            }                
         
         }
         
@@ -228,11 +282,23 @@ bool isAlone() {
 
 // By default we power up in state 0.
 
-void setValueSentOnAllFaces( byte newState ) {
+void setValueSentOnAllFaces( byte value ) {
     
+    if (value > IR_DATA_VALUE_MAX ) {
+        
+        value = IR_DATA_VALUE_MAX;
+        
+    }        
+    
+    if ( !oddParity(value) ) {
+        
+        value |= 0b10000000;        // Force it to be odd!
+        
+    }       
+            
     FOREACH_FACE(f) {
         
-        outValue[f] = newState;
+        outValue[f] = value;
         
     }
     
@@ -243,9 +309,21 @@ void setValueSentOnAllFaces( byte newState ) {
 
 // By default we power up in state 0.
 
-void setValueSentOnFace( byte newState , byte face ) {
+void setValueSentOnFace( byte value , byte face ) {
     
-    outValue[face] = newState;
+    if (value > IR_DATA_VALUE_MAX ) {
+        
+        value = IR_DATA_VALUE_MAX;
+        
+    }                
+    
+    if ( !oddParity(value) ) {
+        
+        value |= 0b10000000;        // Force it to be odd!
+        
+    }       
+    
+    outValue[face] = value;
     
 }
 
