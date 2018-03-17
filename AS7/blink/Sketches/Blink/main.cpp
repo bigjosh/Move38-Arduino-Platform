@@ -126,6 +126,8 @@ long map_m(long x, long in_min, long in_max, long out_min, long out_max)
 byte encode( byte v ) {
 
     byte inverted =  ( myState_count -1 -v ) ;
+    
+    byte invertedTruncated = inverted % 8;
 
     return( v + ( inverted * myState_count) );
 
@@ -142,9 +144,15 @@ byte test( byte v ) {
 
     byte orginal = decode( v ) ;
 
-    byte recoveredInverted = v / myState_count ;
+    byte inverted =  ( myState_count -1 - orginal ) ;
+    
+    byte calculatedInvertedTruncated = inverted % 8;
+    
+    
+    byte recoveredInvertedTruncated = v / myState_count ;
+    
 
-    return orginal == ( myState_count -1 - recoveredInverted );
+    return calculatedInvertedTruncated == recoveredInvertedTruncated;
 
 }
 
