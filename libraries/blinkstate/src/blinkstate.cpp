@@ -65,6 +65,11 @@ static uint32_t neighboorSendTime[FACE_COUNT];      // inits to 0 on startup, so
 // TODO: Allow user to tweak this?
 static const uint16_t sendprobeDurration_ms = 200;
 
+static void ir_OOB_command( uint8_t c ) {
+    
+    // Watch this space!
+    
+}    
 
 
 // check and see if any states recently updated....
@@ -85,7 +90,15 @@ static void updateIRFaces(uint32_t now) {
         
             byte receivedMessage = irGetData(f);
             
-            inValue[f] = receivedMessage;
+            if (receivedMessage > IR_DATA_VALUE_MAX ) {
+                
+                ir_OOB_command( receivedMessage ); 
+                
+            } else {                
+                                   
+                inValue[f] = receivedMessage;
+                
+            }                
         
         }
         
@@ -228,11 +241,17 @@ bool isAlone() {
 
 // By default we power up in state 0.
 
-void setValueSentOnAllFaces( byte newState ) {
+void setValueSentOnAllFaces( byte value ) {
     
+    if (value > IR_DATA_VALUE_MAX ) {
+        
+        value = IR_DATA_VALUE_MAX;
+        
+    }        
+            
     FOREACH_FACE(f) {
         
-        outValue[f] = newState;
+        outValue[f] = value;
         
     }
     
@@ -243,9 +262,15 @@ void setValueSentOnAllFaces( byte newState ) {
 
 // By default we power up in state 0.
 
-void setValueSentOnFace( byte newState , byte face ) {
+void setValueSentOnFace( byte value , byte face ) {
     
-    outValue[face] = newState;
+    if (value > IR_DATA_VALUE_MAX ) {
+        
+        value = IR_DATA_VALUE_MAX;
+        
+    }                
+    
+    outValue[face] = value;
     
 }
 
