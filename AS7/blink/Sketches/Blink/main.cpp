@@ -6,7 +6,7 @@ byte myState = 0;
 Color colors[] = { BLUE, RED, YELLOW, ORANGE, GREEN};
 const byte myState_count = COUNT_OF (colors);
 
-bool errorFlag[ FACE_COUNT ];
+bool errorFlag[ FACE_COUNT ];           
 
 void clearErrors() {
   FOREACH_FACE(f) {
@@ -124,7 +124,6 @@ long map_m(long x, long in_min, long in_max, long out_min, long out_max)
 // Breaks if (myState_count^2) > IR_DATA_VALUE_MAX
 
 byte encode( byte v ) {
-    return( v);
 
     byte inverted =  ( myState_count -1 -v ) ;
 
@@ -133,16 +132,13 @@ byte encode( byte v ) {
 }
 
 byte decode( byte v ) {
-    return( v);
-
+    
     return( v % myState_count );
 
 }
 
 
 byte test( byte v ) {
-    return (true);
-
 
     byte orginal = decode( v ) ;
 
@@ -154,6 +150,9 @@ byte test( byte v ) {
 
 
 void loop() {
+    
+                 sp_serial_tx('J');
+
 
   // put your main code here, to run repeatedly:
   if ( buttonSingleClicked() ) {
@@ -162,21 +161,32 @@ void loop() {
       myState = 0;
     }
     clearErrors();
+                 sp_serial_tx('L');
+
   }
 
   FOREACH_FACE( f ) {
 
     if ( !isValueReceivedOnFaceExpired( f )  ) {
+        
+             if (f==0) sp_serial_tx('M');
+        
 
       // update to the value we see, if the value is already our value, do nothing
 
       byte neighborValue = getLastValueReceivedOnFace( f );
 
       if ( test(neighborValue)) {
+          
+        if (f==0)  sp_serial_tx('N');
+
 
         myState = circularMax( decode(neighborValue) , myState , myState_count );
 
       } else {
+
+        if (f==0)  sp_serial_tx('O');
+
 
         errorFlag[f] = true;
 
