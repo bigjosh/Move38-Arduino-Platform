@@ -50,7 +50,7 @@
 #endif
 
 
-// If defined, TX_DEBUG will output HIGH on pin A on a dev candy board anytime
+// If defined, TX_DEBUG will output HIGH on pin A on a Dev Candy board anytime
 // an IR pulse is sent on IR0. The pulse is high for the duration of the IR on time. 
 
 //#define TX_DEBUG    
@@ -58,7 +58,7 @@
 
 // If defined, RX_DEBUG will output HIGH on pin A on a dev candy board anytime
 // an IR pulse is received on IR0. The pulse is high from the moment the pin changes, 
-// to the moment it is ready by the timer polling routine. 
+// to the moment it is read by the timer polling routine. 
 
 #define RX_DEBUG    
 
@@ -79,8 +79,10 @@
 ISR(IR_ISR,ISR_NAKED) {
     
     // We make this NAKED so we can deal with it efficiently
-    // It compiles down to code with no side effects, so no need to save an registers. 
-    // The compiler adds an R0 and R1 preamble and postamble even though these are no used at all. Arg. 
+    // otherwise the compiler adds an R0 and R1 preamble and postamble even though these are not used at all. Arg.    
+    // It compiles down to a single SBS with no side effects, so no need to save any registers. 
+    
+    // Be careful if you put anything here that changes flags or registers!
     
     #ifdef RX_DEBUG
        if ( ! TBI(PINC,0) ) {
@@ -447,8 +449,12 @@ void ir_tx_start(uint16_t spacing_ticks , uint8_t bitmask , uint16_t initialSpac
 // TODO: single buffer this in case sender has a hiccup or is too slow to keep up?
 
 void ir_tx_sendpulse( uint8_t leadingSpaces ) {
-    
-    while (sendpulse_spaces_next);           // Wait for previous entry to buffer to pulse to get sent
+    while (sendpulse_spaces_next) {           // Wait for previous entry to buffer to pulse to get sent
+        
+        // TODO: This should be a sleep_cpu() and the inetrrupt will wake us. 
+        
+        //sleep_cpu();                         // Don't burn power, the timer interrupt will wake us
+    }    
     sendpulse_spaces_next=leadingSpaces;     // ISR trigger will end a pulse after specified number of spaces
     
 }    
