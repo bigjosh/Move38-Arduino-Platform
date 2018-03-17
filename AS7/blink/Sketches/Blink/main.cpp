@@ -150,43 +150,31 @@ byte test( byte v ) {
 
 
 void loop() {
-    
-                 sp_serial_tx('J');
-
-
+        
   // put your main code here, to run repeatedly:
   if ( buttonSingleClicked() ) {
+      
     myState++;
     if (myState >= myState_count ) {
       myState = 0;
     }
     clearErrors();
-                 sp_serial_tx('L');
-
+    
   }
 
   FOREACH_FACE( f ) {
 
     if ( !isValueReceivedOnFaceExpired( f )  ) {
         
-             if (f==0) sp_serial_tx('M');
-        
-
       // update to the value we see, if the value is already our value, do nothing
 
       byte neighborValue = getLastValueReceivedOnFace( f );
 
       if ( test(neighborValue)) {
-          
-        if (f==0)  sp_serial_tx('N');
-
 
         myState = circularMax( decode(neighborValue) , myState , myState_count );
 
       } else {
-
-        if (f==0)  sp_serial_tx('O');
-
 
         errorFlag[f] = true;
 
