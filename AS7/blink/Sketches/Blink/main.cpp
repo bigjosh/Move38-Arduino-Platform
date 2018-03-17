@@ -62,16 +62,16 @@ byte throbbing(void) {
 }
 
 
-// Returns the circular maxiumum of the two values
+// Returns the circular maximum of the two values
 // I define this as being the one that is larger looking 
-// from the perspective they are closer togther than farther 
-// appart. Make sense? 
-// To keep myself freom getting confused, I 
+// from the perspective they are closer together than farther 
+// apart. Make sense? 
+// To keep myself from getting confused, I 
 // first figure out i,j where i<=j<count
 // next we figure out x,y,z which are...
 // x=distance from 0 to i
 // y=distance from i to j
-// z-distace from j to count
+// z-distance from j to count
 
 byte circularMax( byte a , byte b , byte count ) {
 
@@ -119,7 +119,42 @@ long map_m(long x, long in_min, long in_max, long out_min, long out_max)
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
+
+// Just a little error test that adds the inverted value on top of the value
+// Breaks if (myState_count^2) > IR_DATA_VALUE_MAX
+
+byte encode( byte v ) {
+    return( v); 
+    
+    byte inverted =  ( myState_count -1 -v ) ;
+    
+    return( v + ( inverted * myState_count) ); 
+    
+}    
+
+byte decode( byte v ) {
+    return( v);
+    
+    return( v % myState_count ); 
+    
+}    
+
+
+byte test( byte v ) {
+    return (true);
+    
+    
+    byte orginal = decode( v ) ;
+    
+    byte recoveredInverted = v / myState_count ;
+    
+    return orginal == ( myState_count -1 - recoveredInverted ); 
+    
+}    
+
+
 void loop() {
+    
   // put your main code here, to run repeatedly:
   if ( buttonSingleClicked() ) {
     myState++;
@@ -130,18 +165,23 @@ void loop() {
   }
 
   FOREACH_FACE( f ) {
+      
     if ( !isValueReceivedOnFaceExpired( f )  ) {
+        
       // update to the value we see, if the value is already our value, do nothing
-      byte neighborState = getLastValueReceivedOnFace( f ) & 0b00001111;
       
+      byte neighborValue = getLastValueReceivedOnFace( f );
       
-      
-      if (neighborState >= myState_count) {
-        errorFlag[f] = true;
+      if ( test(neighborValue)) {
+          
+        myState = circularMax( decode(neighborValue) , myState , myState_count );
+        
       } else {
-        myState = circularMax( neighborState , myState , myState_count );
-      }
-    }
+          
+        errorFlag[f] = true;
+        
+      }              
+    }      
   }
 
   // We put this check here as a defense from out of bounds incoming data (and the normal click wrap)
@@ -159,7 +199,8 @@ void loop() {
       setFaceColor( f , WHITE );
     }
   }
-  
-  setValueSentOnAllFaces( ( myState & 0b00001111)  | ( ( (~myState) & 0b00001111 ) << 4 ) );
-}
 
+  
+  setValueSentOnAllFaces( encode( myState ) );
+  
+}

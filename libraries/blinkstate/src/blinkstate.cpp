@@ -34,7 +34,6 @@
 
 #include "blinkstate.h"
 
-
 // ----  Keep track of neighbor IR states
 
 // TODO: The compiler hates these arrays. Maybe use a per-face struct so it can do indirect offsets?
@@ -66,6 +65,46 @@ static uint32_t neighboorSendTime[FACE_COUNT];      // inits to 0 on startup, so
 static const uint16_t sendprobeDurration_ms = 200;
 
 
+// The low level IR code handles 8 bits of data per value, but
+// at this layer we break that out. 
+// We use the top bit as a parity bit, and then out of the bottom
+// 7 bits (max value 127), we save the values 100-127 to use
+// for out-of-band communications for platform level stuff
+
+
+
+// Count number of 1 bits, return true if it is odd
+
+static uint8_t oddParity(uint8_t b) {
+    
+      uint8_t p=0;
+      
+      // Count number of odd bits
+      
+      while (b) {
+          
+          if (b & 0x01) {
+              
+               p++;
+               
+          }
+          
+          b>>=1;
+          
+      }
+      
+      return true;
+            
+      return p & 0x01;      // If the bottom bit is 1, then there were an odd number of 1 bits in b                          
+          
+}
+
+static void ir_OOB_command( uint8_t c ) {
+    
+    // Watch this space!
+    
+}    
+
 
 // check and see if any states recently updated....
 
@@ -78,6 +117,8 @@ static void updateIRFaces(uint32_t now) {
         if (irIsReadyOnFace(f)) {
         
             // Got something, so we know there is someone out there
+            // (even if it fails the parity check later, which typically happens becuase
+            // the partner is slightly out of range)
             expireTime[f] = now + expireDurration_ms;
         
             // Clear to send on this face immediately to ping-pong messages at max speed without collisions
@@ -85,7 +126,23 @@ static void updateIRFaces(uint32_t now) {
         
             byte receivedMessage = irGetData(f);
             
-            inValue[f] = receivedMessage;
+            // Only accept new value if it passes extra parity check            
+            
+            if (oddParity( receivedMessage )) {
+                
+                uint8_t data = receivedMessage & 0x01111111;     // Drop parity bit
+                
+                if (data>IR_DATA_VALUE_MAX) {
+                    
+                    ir_OOB_command( data );
+                    
+                } else {                                        
+                                
+                    inValue[f] = data;
+                        
+                }                        
+                                    
+            }                
         
         }
         
@@ -121,7 +178,6 @@ void blinkStateOnLoop(void) {
     
     updateIRFaces(now); 
     
-
 }
 
 // Make a record to add to the callback chain
@@ -223,29 +279,56 @@ bool isAlone() {
 }
 
 
-// Set our broadcasted state on all faces to newState. 
-// This state is repeatedly broadcast to any neighboring tiles.
-
-// By default we power up in state 0.
-
-void setValueSentOnAllFaces( byte newState ) {
-    
-    FOREACH_FACE(f) {
-        
-        outValue[f] = newState;
-        
-    }
-    
-}            
 
 // Set our broadcasted state on indicated face to newState.
 // This state is repeatedly broadcast to the partner tile on the indicated face.
 
 // By default we power up in state 0.
 
-void setValueSentOnFace( byte newState , byte face ) {
+void setValueSentOnFace( byte value , byte face ) {
+
+    if (value > IR_DATA_VALUE_MAX ) {
+        
+        value = IR_DATA_VALUE_MAX;
+        
+    }     
     
-    outValue[face] = newState;
+    if ( !oddParity(value) ) {
+        
+        value |= 0b10000000;        // Force it to be odd!
+        
+    }        
+               
+    outValue[face] = value;
     
 }
 
+// Set our broadcasted state on all faces to newState. 
+// This state is repeatedly broadcast to any neighboring tiles.
+
+// This function can be slightly more efficient than manually setting each face
+// because we can to checks and parity generation just once. 
+
+// By default we power up in state 0.
+
+void setValueSentOnAllFaces( byte value ) {
+    
+    if (value > IR_DATA_VALUE_MAX ) {
+        
+        value = IR_DATA_VALUE_MAX;
+        
+    }        
+    
+    if ( !oddParity(value) ) {
+        
+        value |= 0b10000000;        // Force it to be odd!
+        
+    }        
+    
+    FOREACH_FACE(f) {
+        
+        outValue[f] = value;
+        
+    }
+    
+}            
