@@ -129,7 +129,7 @@ byte encode( byte v ) {
     
     byte invertedTruncated = inverted % 8;
 
-    return( v + ( inverted * myState_count) );
+    return( v + ( invertedTruncated * myState_count) );
 
 }
 
@@ -147,11 +147,9 @@ byte test( byte v ) {
     byte inverted =  ( myState_count -1 - orginal ) ;
     
     byte calculatedInvertedTruncated = inverted % 8;
-    
-    
+        
     byte recoveredInvertedTruncated = v / myState_count ;
     
-
     return calculatedInvertedTruncated == recoveredInvertedTruncated;
 
 }
@@ -184,7 +182,6 @@ void loop() {
       
       } else {
 
-        SP_PIN_R_SET_1();                                    
         errorFlag[f] = true;
 
       }
