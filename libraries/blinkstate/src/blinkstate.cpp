@@ -161,6 +161,14 @@ static void updateIRFaces(uint32_t now) {
 
 }
 
+
+void blinkStateSetup(void) {
+
+    // Blank for now. 
+
+}
+
+
 // Called one per loop() to check for new data and repeat broadcast if it is time
 // Note that if this is not called frequently then neighbors can appear to still be there
 // even if they have been gone longer than the time out, and the refresh broadcasts will not
@@ -169,7 +177,7 @@ static void updateIRFaces(uint32_t now) {
 // TODO: All these calls to millis() and subsequent calculations are expensive. Cache stuff and reuse.
 // TODO: now will come as an arg soon with freeze-time branch
 
-void blinkStateOnLoop(void) {
+void blinkStateLoop(void) {
 
     uint32_t now = millis();
 
@@ -177,37 +185,6 @@ void blinkStateOnLoop(void) {
 
 
 }
-
-// Make a record to add to the callback chain
-
-static struct chainfunction_struct blinkStateOnLoopChain = {
-     .callback = blinkStateOnLoop,
-     .next     = NULL                  // This is a waste because it gets overwritten, but no way to make this un-initialized in C
-};
-
-// Something tricky here:  I can not find a good place to automatically add
-// our onLoop() hook at compile time, and we
-// don't want to follow idiomatic Arduino ".begin()" pattern, so we
-// hack it by adding here the first time anything that could use state
-// stuff is called. This is an ugly hack. :/
-
-// TODO: This is a good place for a GPIO register bit. Then we could inline the test to a single instruction.,
-
-static uint8_t hookRegisteredFlag=0;        // Did we already register?
-
-static void registerHook(void) {
-    if (!hookRegisteredFlag) {
-        addOnLoop( &blinkStateOnLoopChain );
-        hookRegisteredFlag=1;
-    }
-}
-
-// Manually add our hooks
-
-void blinkStateBegin(void) {
-    registerHook();
-}
-
 
 // Returns the last received state on the indicated face
 // Remember that getNeighborState() starts at 0 on powerup.

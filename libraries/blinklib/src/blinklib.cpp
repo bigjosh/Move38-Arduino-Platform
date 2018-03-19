@@ -63,10 +63,10 @@
 
 #define BUTTON_LONGPRESS_TIME_MS 2000          // How long you must hold button down to register a long press.
 
-//#warning sleepy blinks cant stay up more than 10 seconds
-//#define BUTTON_SLEEP_TIMEOUT_SECONDS (10)   // If no button press in this long then goto sleep
+#warning sleepy blinks cant stay up more than 10 seconds
+#define BUTTON_SLEEP_TIMEOUT_SECONDS (10)   // If no button press in this long then goto sleep
 
-#define BUTTON_SLEEP_TIMEOUT_SECONDS (10*60)   // If no button press in this long then goto sleep
+//#define BUTTON_SLEEP_TIMEOUT_SECONDS (10*60)   // If no button press in this long then goto sleep
 
 // PIXEL FUNCTIONS
 
@@ -662,23 +662,11 @@ void timer_256us_callback_sei(void) {
 }
 
 
-static chainfunction_struct *onLoopChain = NULL;
+// Clear out the cached value so next call to millis()
+// will recalculate a new snapshot
 
-// Call all the functions on the chain (if any)...
-
-static void callOnLoopChain(void ) {
-
-    chainfunction_struct *c = onLoopChain;
-
-    while (c) {
-
-
-        c->callback();
-
-        c= c->next;
-
-    }
-
+void inline clearMillisSnapshot() {
+    millis_snapshot=0;
 }
 
 // This is the entry point where the blinkcore platform will pass control to
@@ -689,33 +677,28 @@ static void callOnLoopChain(void ) {
 void __attribute__ ((weak)) run(void) {
 
 	// Let blinkstate sink its hooks in
-	blinkStateBegin();
+	blinkStateSetup();
 
     setup();
 
     while (1) {
-
+        
+        clearMillisSnapshot(); 
+        
+                                            // Clear out so we get an updated value on each pass
+		                                    // We load the millisnapshot lazily, so this makes sure it gets cleared
+		                                    // to be recalculated on each pass
+        
         loop();
 
         pixel_displayBufferedPixels();      // show all display updates that happened in last loop()
                                             // Also currently blocks until new frame actually starts
 
-        callOnLoopChain();
-
-		millis_snapshot=0;					// Clear out so we get an updated value next pass
+        blinkStateLoop();                 // Process any received IR messages. 
+        
 
         // TODO: Sleep here
 
     }
-
-}
-
-// Add a function to be called after each pass though loop()
-// `cons` onto the linked list of functions
-
-void addOnLoop( chainfunction_struct *chainfunction ) {
-
-    chainfunction->next = onLoopChain;
-    onLoopChain = chainfunction;
 
 }

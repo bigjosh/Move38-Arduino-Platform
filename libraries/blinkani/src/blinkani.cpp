@@ -439,30 +439,11 @@ void blinkAniOnLoop(void) {
 
 }
 
-// Make a record to add to the callback chain
-
-static struct chainfunction_struct blinkAniOnLoopChain = {
-     .callback = blinkAniOnLoop,
-     .next     = NULL                  // This is a waste because it gets overwritten, but no way to make this un-initialized in C
-};
-
-// Something tricky here:  I can not find a good place to automatically add
-// our onLoop() hook at compile time, and we
-// don't want to follow idiomatic Arduino ".begin()" pattern, so we
-// hack it by adding here the first time anything that could use state
-// stuff is called. This is an ugly hack. :/
-
-// TODO: This is a good place for a GPIO register bit. Then we could inline the test to a single instruction.,
-
-static void registerHook(void) {
-    addOnLoop( &blinkAniOnLoopChain );
-}
 
 // Manually add our hooks
 
 void blinkAniBegin(void) {
     clearEffects();
-    registerHook();
 }
 
 

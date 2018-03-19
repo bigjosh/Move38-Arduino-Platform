@@ -27,12 +27,13 @@
 
 #define IR_DATA_VALUE_MAX 100
 
-// Manually add our hooks.
-// Must be called before using any other blinkstate functions
-// TODO: Now that blinkstate is the primary game-level API, maybe make this the default?
 
-void blinkStateBegin(void);
+// Setup the blinkstate layer. 
+void blinkStateSetup(void);
 
+
+// Called once per loop. 
+void blinkStateLoop(void);
 
 // Returns the last received value on the indicated face
 // Between 0 and IR_DATA_VALUE_MAX inclusive
