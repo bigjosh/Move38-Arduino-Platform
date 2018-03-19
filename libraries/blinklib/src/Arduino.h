@@ -24,11 +24,11 @@
 #ifndef Arduino_h
 
     #define Arduino_h
-	
+
     #include <stdbool.h>
     #include <stdint.h>
     #include <math.h>
-	
+
 	#include "ArduinoTypes.h"
 
     #define HIGH 0x1
@@ -53,7 +53,7 @@
     #define min(a,b) ((a)<(b)?(a):(b))
     #define max(a,b) ((a)>(b)?(a):(b))
     #define abs(x) ((x)>0?(x):-(x))
-    #define constrain(amt,low,high) ((amt)<(low)?(low):((amt)>(high)?(high):(amt)))	
+    #define constrain(amt,low,high) ((amt)<(low)?(low):((amt)>(high)?(high):(amt)))
     #define round(x)     ((x)>=0?(long)((x)+0.5):(long)((x)-0.5))
     #define radians(deg) ((deg)*DEG_TO_RAD)
     #define degrees(rad) ((rad)*RAD_TO_DEG)
@@ -67,11 +67,11 @@
     #define bitClear(value, bit) ((value) &= ~(1UL << (bit)))
     #define bitWrite(value, bit, bitvalue) (bitvalue ? bitSet(value, bit) : bitClear(value, bit))
 
-    #define bit(b) (1UL << (b))		
-		
+    #define bit(b) (1UL << (b))
+
 
 	// WMath prototypes (embellished with arg names)
-	
+
 	uint16_t makeWord(uint16_t w);
 	uint16_t makeWord(byte h, byte l);
 
@@ -81,15 +81,15 @@
 	long random(long howsmall, long howbig);
 	void randomSeed(unsigned long seed);
 	long map(long x, long in_min, long in_max, long out_min, long out_max);
-	
-		
+
+
 	// Don't judge me
 	// I know this is so ugly, but only other way to make it so people do not need to do a
-	// manual #include in their sketches would be to throw all the library code into one giant 
+	// manual #include in their sketches would be to throw all the library code into one giant
 	// directory... and that is even uglier, right?
-	
+
 	#include "shared.h"
 	#include "blinklib.h"
-	#include "blinkstate.h"	
-    
+	#include "blinkstate.h"
+
 #endif
