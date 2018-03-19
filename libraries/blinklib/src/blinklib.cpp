@@ -64,7 +64,14 @@
 #define BUTTON_LONGPRESS_TIME_MS 2000          // How long you must hold button down to register a long press.
 
 #warning sleepy blinks cant stay up more than 10 seconds
-#define BUTTON_SLEEP_TIMEOUT_SECONDS (10)   // If no button press in this long then goto sleep
+#define SLEEP_TIMEOUT_SECONDS (10)   // If no button press in this long then goto sleep
+
+#define SLEEP_TIMEOUT_MS ( SLEEP_TIMEOUT_SECONDS  * MILLIS_PER_SECOND) 
+
+
+// When we should fall sleep from inactivity
+Timer sleepTimer;
+
 
 //#define BUTTON_SLEEP_TIMEOUT_SECONDS (10*60)   // If no button press in this long then goto sleep
 
@@ -290,11 +297,8 @@ static volatile bool longPressFlag=0;                   // Has the button been l
 
 static volatile uint8_t maxCompletedClickCount=0;       // Remember the most completed clicks to support the clickCount() function
 
-#define BUTTON_SLEEP_TIMEOUT_MS ( BUTTON_SLEEP_TIMEOUT_SECONDS * (unsigned long) MILLIS_PER_SECOND)
 
-static volatile unsigned long buttonSleepTimout=BUTTON_SLEEP_TIMEOUT_MS;
-                                                        // we sleep when millis() >= buttonSleepTimeout
-                                                        // Here we assume that millis() starts at 0 on power up
+static volatile uint8_t buttonChangeFlag = 0;           // Set anytime the button changes state. Used to reset the sleep timer in the forground. 
 
 // Called once per tick by the timer to check the button position
 // and update the button state variables.
@@ -366,6 +370,8 @@ static void updateButtonState(void) {
     }  else {       // New button position
 
         if (!buttonDebounceCountdown) {         // Done bouncing
+            
+            buttonChangeFlag = 1;               // Signal ro forground that something happened on the button
 
             buttonState = buttonPositon;
 
@@ -378,8 +384,6 @@ static void updateButtonState(void) {
 
                 clickWindowCountdown = TIMER_MS_TO_TICKS( BUTTON_CLICK_TIMEOUT_MS );
                 longPressCountdown   = TIMER_MS_TO_TICKS( BUTTON_LONGPRESS_TIME_MS );
-
-                buttonSleepTimout = millis() + BUTTON_SLEEP_TIMEOUT_MS;        // Button pressed, so restart the sleep countdown
 
             } else {
                 buttonReleasedFlag=1;
@@ -528,8 +532,26 @@ void Timer::set( uint32_t ms ) {
 }
 
 void Timer::add( uint16_t ms ) {
-	m_expireTime+= ms;
+    
+    // Check to avoid overflow
+    
+    uint32_t timeLeft = NEVER - m_expireTime;
+    
+    if (ms > timeLeft ) {
+        
+        m_expireTime = NEVER;
+        
+    } else {        
+    
+	    m_expireTime+= ms;  
+        
+    }        
 }
+
+void Timer::never(void) {
+    m_expireTime=NEVER;
+}
+
 
 
 /*
@@ -619,15 +641,6 @@ void sleep(void) {
 
 }
 
-// Time to sleep? (No button presses recently?)
-
-void checkSleepTimeout(void) {
-
-    if ( millis() >= buttonSleepTimout) {
-        sleep();
-    }
-
-}
 
 // This is called by about every 512us with interrupts on.
 
@@ -653,9 +666,9 @@ void __attribute__ ((weak)) run(void) {
 	blinkStateSetup();
 
     setup();
-
-    while (1) {
         
+    while (1) {
+                
         updateMillis();                     // The millis() function only offers a snapshot so that 
                                             // we always get the same value no matter when we look inside 
                                             // a single loop iteration. 
@@ -667,11 +680,20 @@ void __attribute__ ((weak)) run(void) {
                                             // Also currently blocks until new frame actually starts
 
         blinkStateLoop();                 // Process any received IR messages. 
+            
+        if (buttonChangeFlag) {
+                
+            buttonChangeFlag = 0;
+                
+            sleepTimer.set( SLEEP_TIMEOUT_MS ); 
+                
+        }                
         
-        
-        checkSleepTimeout(); 
-        
-
+        if (sleepTimer.isExpired()) {
+            sleep();
+            
+        }             
+       
         // TODO: Sleep here
 
     }

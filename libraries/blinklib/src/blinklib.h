@@ -227,9 +227,11 @@ class Timer {
 
 		bool isExpired();
 
-		void set( uint32_t ms );
+		void set( uint32_t ms );            // This time will expire ms milliseconds from now
 
 		void add( uint16_t ms );
+        
+        void never(void);                   // Make this timer never expire (unless set())
 
 
 };
