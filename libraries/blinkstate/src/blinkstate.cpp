@@ -26,8 +26,6 @@
 
 #include "blinklib.h"
 
-#include "chainfunction.h"
-
 // Tell blinkstate.h to save the IR functions just for us...
 
 #define BLINKSTATE_CANNARY

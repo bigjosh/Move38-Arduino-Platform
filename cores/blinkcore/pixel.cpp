@@ -44,8 +44,6 @@
 #include "pixel.h"
 #include "utils.h"
 
-#include "callbacks.h"
-
 #include "timer.h"      // We piggyback actual timer callback in pixel since we are using that clock for PWM
 
 // Here are the raw compare register values for each pixel

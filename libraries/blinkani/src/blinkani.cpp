@@ -22,6 +22,8 @@
  *
  */
 
+#include <stddef.h>     // NULL
+
 #include "blinklib.h"
 
 //#include "chainfunction.h"

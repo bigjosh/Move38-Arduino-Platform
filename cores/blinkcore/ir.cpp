@@ -29,8 +29,6 @@
 #include "ir.h"
 #include "utils.h"
 
-#include "callbacks.h"
-
 // A bit cycle is one timer tick, currently 512us
 
 //TODO: Optimize these to be exact minimum for the distance in the real physical object
@@ -106,7 +104,7 @@ void ir_enable(void) {
 
     // TODO: IR interrupts totally disabled for now. We will need them for wake on data.
 
-    SBI( PCICR , IR_PCI_BIT );      // Enable the pin group to actual generate interrupts
+    //SBI( PCICR , IR_PCI_BIT );      // Enable the pin group to actualy generate interrupts
 
     // There is a race where an IR can get a pulse right here, but that is ok becuase it will just generate an int and be processed normally
     // and get recharged naturally before the next line.
@@ -120,7 +118,7 @@ void ir_enable(void) {
 
 void ir_disable(void) {
 
-    CBI( PCICR , IR_PCI_BIT );      // Disable the pin group to block interrupts. Leave the bits for individual pins intact.
+    //CBI( PCICR , IR_PCI_BIT );      // Disable the pin group to block interrupts. Leave the bits for individual pins intact.
 
 }
 

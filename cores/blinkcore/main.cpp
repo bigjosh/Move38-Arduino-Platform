@@ -18,7 +18,6 @@
 #include "button.h"
 #include "adc.h"
 #include "power.h"
-#include "callbacks.h"
 
 #include "run.h"				// Prototype for the run function we will hand off to
 

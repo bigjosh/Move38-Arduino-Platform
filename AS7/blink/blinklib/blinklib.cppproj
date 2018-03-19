@@ -182,10 +182,6 @@
       <SubType>compile</SubType>
       <Link>blinklib.h</Link>
     </Compile>
-    <Compile Include="..\..\..\libraries\blinklib\src\chainfunction.h">
-      <SubType>compile</SubType>
-      <Link>chainfunction.h</Link>
-    </Compile>
     <Compile Include="..\..\..\libraries\blinklib\src\irdata.cpp">
       <SubType>compile</SubType>
       <Link>irdata.cpp</Link>

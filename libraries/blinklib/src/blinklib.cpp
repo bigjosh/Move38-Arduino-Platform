@@ -25,7 +25,6 @@
 
 #include "blinklib.h"
 #include "blinkstate.h"			// Get the reference to beginBlinkState()
-#include "chainfunction.h"
 
 #include "pixel.h"
 #include "timer.h"
@@ -625,7 +624,7 @@ uint8_t hasWoken(void) {
 
 // Turn off everything and goto to sleep
 
-void sleep(void) {
+static void sleep(void) {
 
     pixel_disable();        // Turn off pixels so battery drain
     ir_disable();           // TODO: Wake on pixel
@@ -639,7 +638,13 @@ void sleep(void) {
 
     wokeFlag = 1;
 
-}
+} 
+
+// Leave everyhing running, jjust sleep the CPU until the next interrupt. 
+
+static void nap(void) {
+    
+}    
 
 
 // This is called by about every 512us with interrupts on.
@@ -692,9 +697,10 @@ void __attribute__ ((weak)) run(void) {
         if (sleepTimer.isExpired()) {
             sleep();
             
-        }             
+        } else {
+            nap();
+        }                         
        
-        // TODO: Sleep here
 
     }
 
