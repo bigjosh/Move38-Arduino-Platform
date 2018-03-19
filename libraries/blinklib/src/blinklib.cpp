@@ -484,16 +484,6 @@ void button_callback_onChange(void) {
 }
 
 
-// TODO: Need this?
-
-volatile uint8_t verticalRetraceFlag=0;     // Turns to 1 when we are about to start a new refresh cycle at pixel zero
-// Once this turns to 1, you have about 2ms to load new values into the raw array
-// to have them displayed in the next frame.
-// Only matters if you want to have consistent frames and avoid visual tearing
-// which might not even matter for this application at 80hz
-// TODO: Is this empirically necessary?
-
-
 // Will overflow after about 62 days...
 // https://www.google.com/search?q=(2%5E31)*2.5ms&rlz=1C1CYCW_enUS687US687&oq=(2%5E31)*2.5ms
 
@@ -513,24 +503,16 @@ static volatile uint32_t millisCounter=1;           // How many milliseconds sin
 
 static uint32_t millis_snapshot=0;
 
+// Need not be atomic since never called from the background. 
+
+static void updateMillis(void) {
+
+	millis_snapshot = millisCounter;
+    
+}    
+
 unsigned long millis(void) {
-
-	if (millis_snapshot) {				// Did we already compute this for this pass of loop()?
-		return millis_snapshot;
-	}
-
-    uint32_t tempMillis;
-
-    // millisCounter is 4 bytes long and is updated in the background
-    // so we need an atomic block to make sure it does not change while we are reading it
-
-    DO_ATOMICALLY {
-        tempMillis=millisCounter;
-    }
-
-	millis_snapshot = tempMillis;
-
-    return( tempMillis );
+    return( millis_snapshot );
 }
 
 // Note we directlyt access millis() here, which is really bad style.
@@ -584,7 +566,7 @@ static uint16_t cyclesCounter=0;                    // Accumulate cycles to keep
 
 // Note this runs in callback context
 
-static void updateMillis(void) {
+static void incrementMillis(void) {
 
     cyclesCounter+=TIMER_CYCLES_PER_TICK;    // Used for timekeeping. Nice to increment here since this is the least time consuming phase
 
@@ -650,23 +632,14 @@ void checkSleepTimeout(void) {
 // This is called by about every 512us with interrupts on.
 
 void timer_512us_callback_sei(void) {
-    updateMillis();
+    incrementMillis();
     updateButtonState();
-    checkSleepTimeout();
 }
 
 // This is called by about every 256us with interrupts on.
 
 void timer_256us_callback_sei(void) {
     updateIRComs();
-}
-
-
-// Clear out the cached value so next call to millis()
-// will recalculate a new snapshot
-
-void inline clearMillisSnapshot() {
-    millis_snapshot=0;
 }
 
 // This is the entry point where the blinkcore platform will pass control to
@@ -683,11 +656,10 @@ void __attribute__ ((weak)) run(void) {
 
     while (1) {
         
-        clearMillisSnapshot(); 
+        updateMillis();                     // The millis() function only offers a snapshot so that 
+                                            // we always get the same value no matter when we look inside 
+                                            // a single loop iteration. 
         
-                                            // Clear out so we get an updated value on each pass
-		                                    // We load the millisnapshot lazily, so this makes sure it gets cleared
-		                                    // to be recalculated on each pass
         
         loop();
 
@@ -695,6 +667,9 @@ void __attribute__ ((weak)) run(void) {
                                             // Also currently blocks until new frame actually starts
 
         blinkStateLoop();                 // Process any received IR messages. 
+        
+        
+        checkSleepTimeout(); 
         
 
         // TODO: Sleep here
