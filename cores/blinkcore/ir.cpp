@@ -38,7 +38,7 @@
 
 // Currently chosen empirically to work with some tile cases Jon made 7/28/17
 
-#define IR_PULSE_TIME_US 4         // Used for sending flashes
+#define IR_PULSE_TIME_US 6         // Used for sending flashes
 
 
 #if IR_ALL_BITS != IR_BITS
