@@ -138,38 +138,39 @@ struct ir_rx_state_t {
 	  most_recent_ir_test = ir_test_and_charge_cli();
   }
 
-#warning
-#include "sp.h"
+
+#ifdef IR_DEBUG
+
+    #include "sp.h"
 
 
-#warning debug
-namespace debug {
-    const uint8_t myState_count = 5;
+    namespace debug {
+        const uint8_t myState_count = 5;
 
-    byte decode( byte v ) {
+        byte decode( byte v ) {
 
-        return( v % myState_count );
+            return( v % myState_count );
 
+        }
+
+
+        byte test( byte v ) {
+
+            byte orginal = decode( v ) ;
+
+            byte inverted =  ( myState_count -1 - orginal ) ;
+
+            byte calculatedInvertedTruncated = inverted % 8;
+
+
+            byte recoveredInvertedTruncated = v / myState_count ;
+
+
+            return calculatedInvertedTruncated == recoveredInvertedTruncated;
+
+        }
     }
-
-
-    byte test( byte v ) {
-
-        byte orginal = decode( v ) ;
-
-        byte inverted =  ( myState_count -1 - orginal ) ;
-
-        byte calculatedInvertedTruncated = inverted % 8;
-
-
-        byte recoveredInvertedTruncated = v / myState_count ;
-
-
-        return calculatedInvertedTruncated == recoveredInvertedTruncated;
-
-    }
-}
-
+#endif
 
 // The updateIRComs() function is probably the most optimized in this code base
 // because it iterated 8 times every tick so must be fast. I also tried making it
@@ -210,10 +211,12 @@ namespace debug {
             ptr->windowsSinceLastFlash = 0;     // We just got a flash, so start counting over.
 
 
-            #warning Output current state for debuging
-            if (bitwalker==0x1) {
-                sp_serial_tx( statechar[ ptr->state ] );
-            }
+            #ifdef IR_DEBUG
+                #warning Output current state for debuging
+                if (bitwalker==0x1) {
+                    sp_serial_tx( statechar[ ptr->state ] );
+                }
+            #endif
 
 
             uint8_t thisInputBuffer = ptr->inputBuffer;
@@ -291,19 +294,23 @@ namespace debug {
                 }
             }
 
-            #warning Output current state for debuging
-            if (bitwalker==0x1) {
-                sp_serial_tx( thisInputBuffer );
-            }
+            #ifdef IR_DEBUG
+                #warning Output current state for debuging
+                if (bitwalker==0x1) {
+                    sp_serial_tx( thisInputBuffer );
+                }
+            #endif
 
             ptr->inputBuffer = thisInputBuffer;         // Save the changes to the inputBuffer
 
         }  else {               // No flash in this last window
 
-            #warning Output current state for debuging
-            if (bitwalker==0x1) {
-                sp_serial_tx( statecharlow[ ptr->state ] );
-            }
+            #ifdef IR_DEBUG
+                #warning Output current state for debuging
+                if (bitwalker==0x1) {
+                    sp_serial_tx( statecharlow[ ptr->state ] );
+                }
+            #endif
 
             // Check if it has been 4 windows since last flash
             // Since any valid bit is only 3 windows, no need to increment past
@@ -316,19 +323,20 @@ namespace debug {
                     // Successfully waited it out, so the data we received is value
                     // pass it on up...
 
-                    #warning Output current state for debuging
-                    if (bitwalker==0x1) {
-                        sp_serial_tx( ptr->inputBuffer );
+                    #ifdef IR_DEBUG
+                        #warning Output current state for debuging
+                        if (bitwalker==0x1) {
+                            sp_serial_tx( ptr->inputBuffer );
 
 
-                        if (!debug::test(ptr->inputBuffer)) {
+                            if (!debug::test(ptr->inputBuffer)) {
 
-                            SP_PIN_R_SET_1();
+                                SP_PIN_R_SET_1();
 
+                            }
                         }
-                    }
 
-
+                    #endif
 
 
                     ptr->inValueReady = 1;
@@ -345,8 +353,10 @@ namespace debug {
 
         }
 
-        #warning debug
-        SP_PIN_R_SET_0();
+        #ifdef IR_DEBUG
+            #warning debug
+            SP_PIN_R_SET_0();
+        #endif
 
         ptr--;
         bitwalker >>=1;

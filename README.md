@@ -15,7 +15,17 @@ Ends with loading a `HelloBlink` program it a tile.
 The best way to start writing games is to work your way though the examples in the "File->Examples->Examples for Blink Tile" menu in the Arduino IDE (after you have installed this repo as described in the Getting Started above).  
   
 
+### [Service Port](Service Port.MD)
+
+Describes the service port connector on each blink. Lets you add `print` statements to your programs, which can be very helpful during development.  
+
 ### Digging Deeper
+
+### API Layers
+
+The blinks hardware can do incredible things, and you can have unfettered access to it at any level you want. This documents describes those layers from bare metal up.  
+
+
 
 #### Hardware Abstraction Layer
 

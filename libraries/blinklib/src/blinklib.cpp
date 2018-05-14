@@ -62,10 +62,9 @@
 
 #define BUTTON_LONGPRESS_TIME_MS 2000          // How long you must hold button down to register a long press.
 
-#warning sleepy blinks cant stay up more than 10 seconds
-#define SLEEP_TIMEOUT_SECONDS (10)   // If no button press in this long then goto sleep
+#define SLEEP_TIMEOUT_SECONDS (10*60)          // If no button press in this long then goto sleep
 
-#define SLEEP_TIMEOUT_MS ( SLEEP_TIMEOUT_SECONDS  * MILLIS_PER_SECOND) 
+#define SLEEP_TIMEOUT_MS ( (unsigned long) SLEEP_TIMEOUT_SECONDS  * MILLIS_PER_SECOND) // Must cast up becuase otherwise will overflow
 
 
 // When we should fall sleep from inactivity

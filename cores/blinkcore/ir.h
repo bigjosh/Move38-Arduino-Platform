@@ -11,6 +11,8 @@
 #include "shared.h"			// Get FACECOUNT
 #include "bitfun.h"
 
+//#define IR_DEBUG            
+
 #define IRLED_COUNT FACE_COUNT
 
 #define IR_ALL_BITS (0b00111111)        // All six IR LEDs

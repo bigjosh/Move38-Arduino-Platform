@@ -61,7 +61,7 @@
 #define RX_DEBUG
 
 
-#if defined ( TX_DEBUG )  || defined ( RX_DEBUG )
+#if defined ( TX_DEBUG )  || defined ( RX_DEBUG ) || defined (IR_DEBUG)
 
     #include "sp.h"
 
@@ -135,9 +135,19 @@ void ir_init(void) {
 
     // Pin change interrupt setup
 
-    #warning we are only enabling INTs on IR0 for debugging here!
-    IR_INT_MASK_REG |= _BV(0);
+    #ifdef IR_DEBUG
 
+        #warning we are only enabling INTs on IR0 for debugging here!
+        IR_INT_MASK_REG |= _BV(0);
+        
+        SP_PIN_A_MODE_OUT();
+        sp_serial_init();
+        sp_serial_disable_rx();
+        SP_PIN_R_MODE_OUT();
+        sp_serial_tx('h');
+        
+    #endif 
+    
     //IR_MASK_REG |= IR_BITS;          // Enable individual pins in Pin Change Mask Register for all 6 cathode pins. Any change after this will set the pending interrupt flag.
                                      // TODO: Single LEDs can get masked here if they get noisy to avoid spurious wakes
 
