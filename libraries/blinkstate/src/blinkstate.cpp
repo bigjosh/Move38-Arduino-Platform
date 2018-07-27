@@ -26,8 +26,6 @@
 
 #include "blinklib.h"
 
-#include "chainfunction.h"
-
 // Tell blinkstate.h to save the IR functions just for us...
 
 #define BLINKSTATE_CANNARY
@@ -42,7 +40,7 @@
 
 // Last received value on this face, or 0 if no neighbor ever seen since startup
 
-static byte inValue[FACE_COUNT];               
+static byte inValue[FACE_COUNT];
 
 // Value we send out on this face
 
@@ -66,46 +64,108 @@ static uint32_t neighboorSendTime[FACE_COUNT];      // inits to 0 on startup, so
 static const uint16_t sendprobeDurration_ms = 200;
 
 
+// The low level IR code handles 8 bits of data per value, but
+// at this layer we break that out.
+// We use the top bit as a parity bit, and then out of the bottom
+// 7 bits (max value 127), we save the values 100-127 to use
+// for out-of-band communications for platform level stuff
+
+
+
+// Count number of 1 bits, return true if it is odd
+
+static uint8_t oddParity(uint8_t b) {
+
+      uint8_t p=0;
+
+      // Count number of odd bits
+
+      while (b) {
+
+          if (b & 0x01) {
+
+               p++;
+
+          }
+
+          b>>=1;
+
+      }
+
+      return true;
+
+      return p & 0x01;      // If the bottom bit is 1, then there were an odd number of 1 bits in b
+
+}
+
+
+static void ir_OOB_command( uint8_t c ) {
+
+    // Watch this space!
+
+}
+
 
 // check and see if any states recently updated....
 
 static void updateIRFaces(uint32_t now) {
 
     FOREACH_FACE(f) {
-        
+
         // Check for anything new coming in...
 
         if (irIsReadyOnFace(f)) {
-        
+
             // Got something, so we know there is someone out there
             expireTime[f] = now + expireDurration_ms;
-        
+
             // Clear to send on this face immediately to ping-pong messages at max speed without collisions
             neighboorSendTime[f] = 0;
-        
+
             byte receivedMessage = irGetData(f);
-            
-            inValue[f] = receivedMessage;
-        
+
+            if (oddParity(receivedMessage)) {       // CHeck that incoming message has odd parity
+
+                byte data = receivedMessage & 0b01111111;   // Mask away the parity bit
+
+                if ( data > IR_DATA_VALUE_MAX ) {
+
+                    ir_OOB_command( data );
+
+                } else {
+
+                    inValue[f] = data ;
+
+                }
+            }
+
         }
-        
+
         // Send out if it is time....
-        
+
         if ( neighboorSendTime[f] <= now ) {        // Time to send on this face?
-        
+
             irSendData( f , outValue[f]  );
-                    
+
             // Here we set a timeout to keep periodically probing on this face, but
             // if there is a neighbor, they will send back to us as soon as they get what we
             // just transmitted, which will make us immediately send again. So the only case
             // when this probe timeout will happen is if there is no neighbor there.
-        
+
             neighboorSendTime[f] = now + sendprobeDurration_ms;
-        }        
-                
+        }
+
     }
 
 }
+
+
+void blinkStateSetup(void) {
+
+    // Blank for now. 
+
+}
+
 
 // Called one per loop() to check for new data and repeat broadcast if it is time
 // Note that if this is not called frequently then neighbors can appear to still be there
@@ -115,45 +175,14 @@ static void updateIRFaces(uint32_t now) {
 // TODO: All these calls to millis() and subsequent calculations are expensive. Cache stuff and reuse.
 // TODO: now will come as an arg soon with freeze-time branch
 
-void blinkStateOnLoop(void) {
-    
-    uint32_t now = millis(); 
-    
-    updateIRFaces(now); 
-    
+void blinkStateLoop(void) {
+
+    uint32_t now = millis();
+
+    updateIRFaces(now);
+
 
 }
-
-// Make a record to add to the callback chain
-
-static struct chainfunction_struct blinkStateOnLoopChain = {
-     .callback = blinkStateOnLoop,
-     .next     = NULL                  // This is a waste because it gets overwritten, but no way to make this un-initialized in C
-};
-
-// Something tricky here:  I can not find a good place to automatically add
-// our onLoop() hook at compile time, and we
-// don't want to follow idiomatic Arduino ".begin()" pattern, so we
-// hack it by adding here the first time anything that could use state
-// stuff is called. This is an ugly hack. :/
-
-// TODO: This is a good place for a GPIO register bit. Then we could inline the test to a single instruction.,
-
-static uint8_t hookRegisteredFlag=0;        // Did we already register?
-
-static void registerHook(void) {
-    if (!hookRegisteredFlag) {
-        addOnLoop( &blinkStateOnLoopChain );
-        hookRegisteredFlag=1;
-    }
-}
-
-// Manually add our hooks
-
-void blinkStateBegin(void) {
-    registerHook();
-}
-
 
 // Returns the last received state on the indicated face
 // Remember that getNeighborState() starts at 0 on powerup.
@@ -162,90 +191,114 @@ void blinkStateBegin(void) {
 // Note the a face expiring has no effect on the getNeighborState()
 
 byte getLastValueReceivedOnFace( byte face ) {
-    
+
     return inValue[ face ];
 
 }
 
-// Did the neighborState value on this face change since the 
+// Did the neighborState value on this face change since the
 // last time we checked?
-// Remember that getNeighborState starts at 0 on powerup. 
+// Remember that getNeighborState starts at 0 on powerup.
 // Note the a face expiring has no effect on the getNeighborState()
 
 byte didValueOnFaceChange( byte face ) {
     static byte prevState[FACE_COUNT];
-    
+
     byte curState = getLastValueReceivedOnFace(face);
-    
+
     if ( curState == prevState[face] ) {
         return false;
     }
     prevState[face] = curState;
-    
-    return true; 
-    
-}    
+
+    return true;
+
+}
 
 // 0 if no messages recently received on the indicated face
 // (currently configured to 100ms timeout in `expireDurration_ms` )
 
 static byte isValueReceivedOnFaceExpired( byte face , uint32_t now ) {
-    
+
     return expireTime[face] < now;
-        
-}    
+
+}
 
 
 // 0 if no messages recently received on the indicated face
 // (currently configured to 100ms timeout in `expireDurration_ms` )
 
 byte isValueReceivedOnFaceExpired( byte face ) {
-    
-    uint32_t now=millis(); 
-    
+
+    uint32_t now=millis();
+
     return isValueReceivedOnFaceExpired( face , now );
-    
+
 }
 
-// Returns false if their has been a neighbor seen recently on any face, true otherwise. 
+// Returns false if their has been a neighbor seen recently on any face, true otherwise.
 
 bool isAlone() {
-	
+
 	FOREACH_FACE(f) {
-		
+
 		if( !isValueReceivedOnFaceExpired(f) ) {
 			return false;
 		}
-		
+
 	}
 	return true;
-	
+
 }
 
 
-// Set our broadcasted state on all faces to newState. 
+// Set our broadcasted state on all faces to newState.
 // This state is repeatedly broadcast to any neighboring tiles.
 
 // By default we power up in state 0.
 
-void setValueSentOnAllFaces( byte newState ) {
-    
-    FOREACH_FACE(f) {
-        
-        outValue[f] = newState;
-        
+void setValueSentOnAllFaces( byte value ) {
+
+    if (value > IR_DATA_VALUE_MAX ) {
+
+        value = IR_DATA_VALUE_MAX;
+
     }
-    
-}            
+
+    if ( !oddParity(value) ) {
+
+        value |= 0b10000000;        // Force it to be odd!
+
+    }
+
+    FOREACH_FACE(f) {
+
+        outValue[f] = value;
+
+    }
+
+}
 
 // Set our broadcasted state on indicated face to newState.
 // This state is repeatedly broadcast to the partner tile on the indicated face.
 
 // By default we power up in state 0.
 
-void setValueSentOnFace( byte newState , byte face ) {
-    
-    outValue[face] = newState;
-    
+void setValueSentOnFace( byte value , byte face ) {
+
+    if (value > IR_DATA_VALUE_MAX ) {
+
+        value = IR_DATA_VALUE_MAX;
+
+    }
+
+    if ( !oddParity(value) ) {
+
+        value |= 0b10000000;        // Force it to be odd!
+
+    }
+
+    outValue[face] = value;
+
 }
 

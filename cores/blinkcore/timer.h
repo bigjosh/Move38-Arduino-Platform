@@ -6,7 +6,7 @@
  * Note that the RGB pixel PWM uses timer0 and timer2, so we piggy back on timer0 overflow to
  * provide the timer callback. That means all this code lives in pixel.h
  *
- */ 
+ */
 
 #ifndef TIMER_H_
 #define TIMER_H_
@@ -20,7 +20,7 @@
 // There are two timer callback speeds - every 256us and every 512us.
 // The 256us timer callback is broken into two parts. One is called with interrupts off
 // and should complete any atomic operations very quickly and return. Then the interrupts
-// on callback is called and can take longer but must comeplete before the next firing. 
+// on callback is called and can take longer but must comeplete before the next firing.
 
 // User supplied callback. Called every 256us with interrupts off. Should complete work as
 // quickly as possible!!!
@@ -45,7 +45,7 @@ void timer_512us_callback_sei(void);
 
 #define TIMER_TOP 256           // How many timer ticks per overflow?
 
-#define TIMER_PHASE_COUNT  5    // How many phases between timer callback? 
+#define TIMER_PHASE_COUNT  5    // How many phases between timer callback?
 
 #define TIMER_CYCLES_PER_TICK (TIMER_PRESCALER*TIMER_TOP)
 
@@ -64,5 +64,5 @@ void timer_512us_callback_sei(void);
 #define MILLIS_PER_SECOND 1000
 
 #define SECONDS_PER_MINUTE  60
-      
+
 #endif /* TIMER_H_ */
