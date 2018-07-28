@@ -1,0 +1,8 @@
+# Added a faster upload speed for the USB Tiny ISP
+# this matches the speed of the AVRISP MKii
+# cuts programming time for Blinks to 25%
+blinksprogrammer.name=Blinks Programmer
+blinksprogrammer.communication=usb
+blinksprogrammer.protocol=usbtiny
+blinksprogrammer.program.tool=avrdude
+blinksprogrammer.program.extra_params=-B3
