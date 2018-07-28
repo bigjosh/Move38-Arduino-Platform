@@ -24,6 +24,7 @@
         //inline ServicePortSerialSerial(void);
     
         void begin(void); 
+        void begin(unsigned long _baudrate); 
         void end();
     
         virtual int available(void);

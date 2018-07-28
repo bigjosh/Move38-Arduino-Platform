@@ -29,6 +29,18 @@ void ServicePortSerial::begin(void)
   
 }
 
+void ServicePortSerial::begin(unsigned long _baudrate=500000) {
+  switch(_baudrate) {
+    case 250000:
+		sp_serial_init(250000);
+		break;
+    case 500000:
+    default:
+		sp_serial_init(500000);
+		break;
+  }
+}
+
 void ServicePortSerial::end()
 {    
     // TODO: Is there any reason to turn off the serial port? Power?
