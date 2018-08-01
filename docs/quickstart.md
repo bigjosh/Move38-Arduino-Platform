@@ -12,7 +12,7 @@
 
 
 - Programmer
-  - 1x AVR Pocket AVR programmer (AKA USBtinyISP)
+  - 1x AVR Pocket [AVR programmer] (https://www.sparkfun.com/products/9825) (AKA USBtinyISP)
   - 1x USB mini cable (3’)
 
 
@@ -56,7 +56,7 @@ Now if you go to `File/Examples`, you should see Examples for Blinks Tiles at th
 2. Place the magnetic programming jig on top of the Blink
 3. Press `Upload` to transfer
 
-Not successfully transferring to your Blinks? try these [troubleshooting tips from the forum] (http://forum.move38.com/t/error-the-selected-serial-port-does-not-exist-or-your-board-is-not-connected/79/3?u=jbobrow)
+Not successfully transferring to your Blinks? try these [troubleshooting tips from the forum](http://forum.move38.com/t/error-the-selected-serial-port-does-not-exist-or-your-board-is-not-connected/79/3?u=jbobrow)
 
 
 ## Windows Troubleshooting
@@ -64,11 +64,11 @@ Not successfully transferring to your Blinks? try these [troubleshooting tips fr
 No programmer detected?
 Check to make sure you have the correct [driver installed](https://learn.adafruit.com/usbtinyisp/drivers), relaunch the Ardunio IDE and then you should be able to select USBTinyISP from the Tools > Programmer drop-down in Arduino.
 
-For the extra curious, here is the [source code] (https://github.com/sparkfun/Pocket_AVR_Programmer/tree/master/Drivers) for that driver.
+For the extra curious, here is the [source code](https://github.com/sparkfun/Pocket_AVR_Programmer/tree/master/Drivers) for that driver.
 
 
 ## *Faster Upload Time
-1. Download [this] (https://move38.com/attic/blinks/programmers.txt) file (right click and save link as)
+1. Download [this](https://move38.com/attic/blinks/programmers.txt) file (right click and save link as)
 2. Move file to `/Applications/Arduino.app/Contents/Java/hardware/arduino/avr` (it will replace the existing file here)
 3. Restart Arduino if it was open
 4. Now select the `Blinks Programmer` when programming and it should be roughly 4x faster upload speeds ⚡

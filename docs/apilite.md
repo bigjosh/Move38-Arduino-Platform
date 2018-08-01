@@ -1,4 +1,4 @@
-#Blinks API Reference
+# Blinks API Reference
 
 [Blinks API Reference](api.md) - a reference with function parameters
 
