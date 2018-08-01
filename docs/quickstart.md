@@ -25,10 +25,10 @@
 
 ## Needed Software
 
-Arduino IDE - Download it here
-Blinks Library - Download it here*
+Arduino IDE - [Download it here] (https://www.arduino.cc/en/Main/Software)
+Blinks Library - [Download it here] (https://move38.com/attic/blinks/Move38-Blinks-Library.zip)
 
-*If you want to have the latest and contribute to the development of Blinks, here’s our Github Repo
+*If you want to have the latest and contribute to the development of Blinks, here’s our [Github Repo] (https://github.com/Move38/Move38-Arduino-Platform/tree/dev)
 
 
 ## Installing the Blinks Library
@@ -52,29 +52,28 @@ Now if you go to `File/Examples`, you should see Examples for Blinks Tiles at th
 
 ## Transfer code to Blink
 
-
 1. Connect the USB programmer
 2. Place the magnetic programming jig on top of the Blink
 3. Press `Upload` to transfer
 
-Not successfully transferring to your Blinks? try these troubleshooting tips from the forum
+Not successfully transferring to your Blinks? try these [troubleshooting tips from the forum] (http://forum.move38.com/t/error-the-selected-serial-port-does-not-exist-or-your-board-is-not-connected/79/3?u=jbobrow)
 
 
 ## Windows Troubleshooting
 
 No programmer detected?
-Check to make sure you have the correct driver installed, relaunch the Ardunio IDE and then you should be able to select USBTinyISP from the Tools > Programmer drop-down in Arduino.
+Check to make sure you have the correct [driver installed](https://learn.adafruit.com/usbtinyisp/drivers), relaunch the Ardunio IDE and then you should be able to select USBTinyISP from the Tools > Programmer drop-down in Arduino.
 
-For the extra curious, here is the source code for that driver.
+For the extra curious, here is the [source code] (https://github.com/sparkfun/Pocket_AVR_Programmer/tree/master/Drivers) for that driver.
 
 
 ## *Faster Upload Time
-1. Download this file (right click and save link as)
+1. Download [this] (https://move38.com/attic/blinks/programmers.txt) file (right click and save link as)
 2. Move file to `/Applications/Arduino.app/Contents/Java/hardware/arduino/avr` (it will replace the existing file here)
 3. Restart Arduino if it was open
 4. Now select the `Blinks Programmer` when programming and it should be roughly 4x faster upload speeds ⚡
 
-Not seeing `Blinks Programmer`? Try out these steps, found by Alpha Blinks Dev, Ken 🙂 
+Not seeing `Blinks Programmer`? Try out [these steps](http://forum.move38.com/t/faster-upload-time-directory-change-and-modified-programmers-txt/83), found by Alpha Blinks Dev, Ken 🙂 
 
 
 ##Using the Blinks Service Port to talk to or listen to your Blink
@@ -101,4 +100,5 @@ Here is the simplest of ServicePort sketches:
 
 ## Unboxing And Walkthrough Video
 
-And last but not least, here’s a handy little unboxing video that will walk you through some basics!
+And last but not least, [here’s a handy little unboxing video](https://www.youtube.com/watch?v=UA1Vl7x3Y7g) that will walk you through some basics!
+
