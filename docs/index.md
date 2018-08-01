@@ -1,6 +1,6 @@
-#H1 Welcome Blinks Developers!
+# Welcome Blinks Developers!
 
-Congrats, you got your hands on a Move38 dev kit for Blinks!* Seriously, how did you do that?! There are so few in existence, roughly just 0.00000001% of humanity gets to experience what you’re about to!  (Deep breath) Okay, we’ll settle down. Let’s just say, you’re special, and we thank you for that 🙂
+Congrats, you got your hands on a [Move38](https://www.move38.com/) dev kit for Blinks!* Seriously, how did you do that?! There are so few in existence, roughly just 0.00000001% of humanity gets to experience what you’re about to!  (Deep breath) Okay, we’ll settle down. Let’s just say, you’re special, and we thank you for that 🙂
 
 **Welcome to the Blinks Documentation!** We’ve created this resource as a way for Blinks developers to have everything they should need at their fingertips to begin designing games for Blinks as quickly as possible. 
 
@@ -10,7 +10,7 @@ After you have all the libraries downloaded and installed, where you go next dep
 
 ----------
 
-Functionality Guide - Learn exactly what your Blinks are capable of.
+[Functionality Guide](https://github.com/IdesOfJune/Move38-Arduino-Platform/tree/master/docs/quickstart.md) - Learn exactly what your Blinks are capable of.
 
 Games Primer - A list of game mechanics and categories that are currently being utilized.
 
