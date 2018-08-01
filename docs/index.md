@@ -1,3 +1,5 @@
+<head> <link rel="icon" type="image/ico"  href="favicon.ico" /> </head>
+
 # Welcome Blinks Developers!
 
 ![Image of Blinks Logo](assets/blinkslogo.png)
