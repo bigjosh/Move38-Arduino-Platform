@@ -191,7 +191,9 @@ void setColor( Color newColor);
 // NOTE: all color changes are double buffered
 // and the display is updated when loop() returns
 
-void setFaceColor(  byte face, Color newColor );
+void setFaceColor(  byte face, Color newColor ); 
+
+void setColorOnFace( Color newColor , byte face );
 
 /* 
 
