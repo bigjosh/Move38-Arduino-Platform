@@ -14,18 +14,18 @@ After you have all the libraries downloaded and installed, where you go next dep
 
 [Games Primer](primer.md) - A list of game mechanics and categories that are currently being utilized.
 
-Blinks API Reference - list of all the function calls that Blinks needs (it’s short, like really short) 
+[Blinks API Reference](api.md) - list of all the function calls that Blinks needs (it’s short, like really short) 
 
-Blinks API Reference (lite) - bare bones list of all function calls w/o parameters (think glossary)
+[Blinks API Reference (lite)](apilite.md) - bare bones list of all function calls w/o parameters (think glossary)
 
 
 ## External Resources
 
-¡¡¡Blinks Discourse Forum!!! 🙂 - The Blinks developer community awaits 😍 🤠 🤗😨 
+[¡¡¡Blinks Discourse Forum!!!](http://forum.move38.com/) 🙂 - The Blinks developer community awaits 😍 🤠 🤗😨 
 
-Blinks Tutorials - Like tutorials? While we recommend the examples in the `File/examples` menu, sometimes the step by step is a little more helpful. Here’s a couple to get you started.
+[Blinks Tutorials] (http://forum.move38.com/c/tutorials) - Like tutorials? While we recommend the examples in the `File/examples` menu, sometimes the step by step is a little more helpful. Here’s a couple to get you started.
 
-Blinks Source Code (GitHub Repo) - The truth, the whole truth, and nothing but the truth
+[Blinks Source Code (GitHub Repo)] (https://github.com/Move38/Move38-Arduino-Platform) - The truth, the whole truth, and nothing but the truth
 
 Tried Discourse and scoured the documentation but still have questions? 
 Reach out at blinks@move38.com.
@@ -33,4 +33,4 @@ Reach out at blinks@move38.com.
 
 ----------
 
-* If you are reading this and in fact do not yet have your hands on a Blinks Dev-Kit, hang tight, you are one step closer. 
+* If you are reading this and in fact do not yet have your hands on a Blinks Dev-Kit, hang tight, [you are one step closer.] (https://blinks.backerkit.com/hosted_preorders)
