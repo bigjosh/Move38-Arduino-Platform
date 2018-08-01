@@ -52,7 +52,7 @@ Now if you go to `File/Examples`, you should see Examples for Blinks Tiles at th
 
 ## Transfer code to Blink
 
-![Image of Transferring Blink Code](assets/transfercode.jpeg)
+[Image of Transferring Blink Code](assets/transfercode.jpeg)
 
 1. Connect the USB programmer
 2. Place the magnetic programming jig on top of the Blink
