@@ -76,7 +76,7 @@ For the extra curious, here is the [source code] (https://github.com/sparkfun/Po
 Not seeing `Blinks Programmer`? Try out [these steps](http://forum.move38.com/t/faster-upload-time-directory-change-and-modified-programmers-txt/83), found by Alpha Blinks Dev, Ken 🙂 
 
 
-##Using the Blinks Service Port to talk to or listen to your Blink
+## Using the Blinks Service Port to talk to or listen to your Blink
 
 The Service Port is by no means necessary, but is a phenomenal tool for debugging code and refining early sketches into robust games. The following steps show you how to use your Blinks Service Port.
 

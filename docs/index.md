@@ -23,9 +23,9 @@ After you have all the libraries downloaded and installed, where you go next dep
 
 [¡¡¡Blinks Discourse Forum!!!](http://forum.move38.com/) 🙂 - The Blinks developer community awaits 😍 🤠 🤗😨 
 
-[Blinks Tutorials] (http://forum.move38.com/c/tutorials) - Like tutorials? While we recommend the examples in the `File/examples` menu, sometimes the step by step is a little more helpful. Here’s a couple to get you started.
+[Blinks Tutorials](http://forum.move38.com/c/tutorials) - Like tutorials? While we recommend the examples in the `File/examples` menu, sometimes the step by step is a little more helpful. Here’s a couple to get you started.
 
-[Blinks Source Code (GitHub Repo)] (https://github.com/Move38/Move38-Arduino-Platform) - The truth, the whole truth, and nothing but the truth
+[Blinks Source Code (GitHub Repo)](https://github.com/Move38/Move38-Arduino-Platform) - The truth, the whole truth, and nothing but the truth
 
 Tried Discourse and scoured the documentation but still have questions? 
 Reach out at blinks@move38.com.
