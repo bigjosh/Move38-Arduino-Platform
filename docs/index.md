@@ -1,7 +1,5 @@
 # Welcome Blinks Developers!
 
-[BlinksLogo](/assets/blinkslogo.png)
-
 Congrats, you got your hands on a [Move38](https://www.move38.com/) dev kit for Blinks!* Seriously, how did you do that?! There are so few in existence, roughly just 0.00000001% of humanity gets to experience what you’re about to!  (Deep breath) Okay, we’ll settle down. Let’s just say, you’re special, and we thank you for that 🙂
 
 **Welcome to the Blinks Documentation!** We’ve created this resource as a way for Blinks developers to have everything they should need at their fingertips to begin designing games for Blinks as quickly as possible. 

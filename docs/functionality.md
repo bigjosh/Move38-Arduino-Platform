@@ -70,11 +70,11 @@ Please feel free to ask about features, and if I didn't cover something that is 
 
 
 ## API
-  - Check out the glossary [here] (apilite.md)
-  - Slightly more verbose version [here] (api.md)
+  - Check out the glossary [here](apilite.md)
+  - Slightly more verbose version [here](api.md)
   - Full API [here](https://github.com/Move38/Move38-Arduino-Platform)
 
 
 ## Nerdy Details
 
-Each Blink has 16KB of RAM. For not having a screen, this is more than sufficient. In fact, we recommend keeping games under 4KB, so that we can transmit them from Blink to Blink in an efficient manner. The [full code-base] (https://github.com/Move38/Move38-Arduino-Platform) is published on GitHub where master contains our latest robust release and dev contains in progress features (such as an animation library).
+Each Blink has 16KB of RAM. For not having a screen, this is more than sufficient. In fact, we recommend keeping games under 4KB, so that we can transmit them from Blink to Blink in an efficient manner. The [full code-base](https://github.com/Move38/Move38-Arduino-Platform) is published on GitHub where master contains our latest robust release and dev contains in progress features (such as an animation library).

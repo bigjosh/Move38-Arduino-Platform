@@ -12,7 +12,7 @@
 
 
 - Programmer
-  - 1x AVR Pocket [AVR programmer] (https://www.sparkfun.com/products/9825) (AKA USBtinyISP)
+  - 1x AVR Pocket [AVR programmer](https://www.sparkfun.com/products/9825) (AKA USBtinyISP)
   - 1x USB mini cable (3’)
 
 
@@ -25,10 +25,10 @@
 
 ## Needed Software
 
-Arduino IDE - [Download it here] (https://www.arduino.cc/en/Main/Software)
-Blinks Library - [Download it here] (https://move38.com/attic/blinks/Move38-Blinks-Library.zip)
+Arduino IDE - [Download it here](https://www.arduino.cc/en/Main/Software)
+Blinks Library - [Download it here](https://move38.com/attic/blinks/Move38-Blinks-Library.zip)
 
-*If you want to have the latest and contribute to the development of Blinks, here’s our [Github Repo] (https://github.com/Move38/Move38-Arduino-Platform/tree/dev)
+*If you want to have the latest and contribute to the development of Blinks, here’s our [Github Repo](https://github.com/Move38/Move38-Arduino-Platform/tree/dev)
 
 
 ## Installing the Blinks Library
@@ -51,6 +51,8 @@ Now if you go to `File/Examples`, you should see Examples for Blinks Tiles at th
 
 
 ## Transfer code to Blink
+
+![Image of Transferring Blink Code](assets/transfercode.jpeg)
 
 1. Connect the USB programmer
 2. Place the magnetic programming jig on top of the Blink
