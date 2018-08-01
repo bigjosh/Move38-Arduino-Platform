@@ -57,7 +57,7 @@ Randomness can also be used with Blinks with a bit of care and caution. In the e
 
 ## Memory
 
-While Blinks can maintain a bit of a memory or history of what they have done, neighbors they've had, or how much time has passed, this is limited and it is important to remember that if this isn't transparent to the player, it could be very confusing. I look forward to seeing elegant solutions in which a bit of stygmergy might just seep its way into a game and shed light on a beautiful invisible system that lies just beneath the surface. (more on program space below)
+While Blinks can maintain a bit of a memory or history of what they have done, neighbors they've had, or how much time has passed, this is limited and it is important to remember that if this isn't transparent to the player, it could be very confusing. I look forward to seeing elegant solutions in which a bit of [stygmergy](https://www.wikiwand.com/en/Stigmergy) might just seep its way into a game and shed light on a beautiful invisible system that lies just beneath the surface. (more on program space below)
 
 
 ## Trickery
@@ -70,11 +70,11 @@ Please feel free to ask about features, and if I didn't cover something that is 
 
 
 ## API
-  - Check out the glossary here
-  - Slightly more verbose version here
-  - Full API here
+  - Check out the glossary [here] (apilite.md)
+  - Slightly more verbose version [here] (api.md)
+  - Full API [here](https://github.com/Move38/Move38-Arduino-Platform)
 
 
 ## Nerdy Details
 
-Each Blink has 16KB of RAM. For not having a screen, this is more than sufficient. In fact, we recommend keeping games under 4KB, so that we can transmit them from Blink to Blink in an efficient manner. The full code-base is published on GitHub where master contains our latest robust release and dev contains in progress features (such as an animation library).
+Each Blink has 16KB of RAM. For not having a screen, this is more than sufficient. In fact, we recommend keeping games under 4KB, so that we can transmit them from Blink to Blink in an efficient manner. The [full code-base] (https://github.com/Move38/Move38-Arduino-Platform) is published on GitHub where master contains our latest robust release and dev contains in progress features (such as an animation library).

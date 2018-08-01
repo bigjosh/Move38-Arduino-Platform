@@ -19,7 +19,7 @@ Blinks API Reference - list of all the function calls that Blinks needs (it’s 
 Blinks API Reference (lite) - bare bones list of all function calls w/o parameters (think glossary)
 
 
-External Resources
+## External Resources
 
 ¡¡¡Blinks Discourse Forum!!! 🙂 - The Blinks developer community awaits 😍 🤠 🤗😨 
 
