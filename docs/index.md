@@ -4,15 +4,15 @@ Congrats, you got your hands on a [Move38](https://www.move38.com/) dev kit for 
 
 **Welcome to the Blinks Documentation!** We’ve created this resource as a way for Blinks developers to have everything they should need at their fingertips to begin designing games for Blinks as quickly as possible. 
 
-If you just received your Dev Kit, your first stop should be the Quick Start Guide. It will help you understand the physical contents of your Dev Kit and also contains instructions on how to install the software and drivers you’ll need to develop Blinks games. 
+If you just received your Dev Kit, your first stop should be the[Quick Start Guide](quickstart.md). It will help you understand the physical contents of your Dev Kit and also contains instructions on how to install the software and drivers you’ll need to develop Blinks games. 
 
 After you have all the libraries downloaded and installed, where you go next depends on how you like to work. 
 
 ----------
 
-[Functionality Guide](https://github.com/IdesOfJune/Move38-Arduino-Platform/tree/master/docs/quickstart.md) - Learn exactly what your Blinks are capable of.
+[Functionality Guide](functionality.md) - Learn exactly what your Blinks are capable of.
 
-Games Primer - A list of game mechanics and categories that are currently being utilized.
+[Games Primer](primer.md) - A list of game mechanics and categories that are currently being utilized.
 
 Blinks API Reference - list of all the function calls that Blinks needs (it’s short, like really short) 
 
