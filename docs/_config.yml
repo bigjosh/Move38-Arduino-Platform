@@ -1,7 +1,7 @@
 theme: jekyll-theme-minimal
 
-title: /assets/blinkslogo.png
+title: Blinks Developers
 description: [Resource for Blinks from Move38]
-logo: 
+logo: /assets/blinkslogo.png
 show_downloads: true 
 
