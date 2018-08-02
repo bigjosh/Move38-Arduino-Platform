@@ -12,7 +12,7 @@
 
 
 ## Colors
-```C
+
     Color makeColorRGB(red, green, blue);
     // R, G, and B values [0-255]
     
