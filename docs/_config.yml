@@ -3,5 +3,5 @@ theme: jekyll-theme-minimal
 title: /assets/blinkslogo.png
 description: [Resource for Blinks from Move38]
 logo: 
-
+show_downloads: true 
 
