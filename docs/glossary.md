@@ -1,5 +1,5 @@
 # Glossary
-[Blinks API Reference](api.md) - glanceable reference
+[Blinks API Reference](api.md) - full API reference
 
 [API Source Code - absolute truth](https://github.com/Move38/Move38-Arduino-Platform) - (would I lie about something like that?)
 
