@@ -70,7 +70,7 @@ Please feel free to ask about features, and if I didn't cover something that is 
 
 
 ## API
-  - Check out the glossary [here](apilite.md)
+  - Check out the glossary [here](glossary.md)
   - Slightly more verbose version [here](api.md)
   - Full API [here](https://github.com/Move38/Move38-Arduino-Platform)
 
