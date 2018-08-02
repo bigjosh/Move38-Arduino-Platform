@@ -1,4 +1,4 @@
 .DS_Store
 [Dd]ebug/
 [Rr]elease/
-.vs
+.vs*
