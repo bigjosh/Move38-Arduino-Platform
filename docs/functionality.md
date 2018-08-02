@@ -11,7 +11,7 @@ First of all, what are Blinks? Blinks is a digital/physical (“phygital”) tab
 
 Let’s start with an understanding of the ins and outs of Blinks. If you want to jump right into the API, it is rather self explanatory, head here now.
 
-## ![6 RGB Leds illuminate Blinks](assets/blinksbrightness.png =250x250)
+## ![6 RGB Leds illuminate Blinks](assets/blink_light.png=250x250)
 
 
 Blinks communicate to the players through RGB(red, green, blue… like a screen) illumination. You have full control over their hue, saturation, brightness, and can animate them in countless ways (i.e. pulsing, blinking, flashing...).  A diffuser makes Blinks look like an even glowing surface; however, there are 6 LEDs or pixels, one for each face of the hexagon. This allows for more complex animation and directionality, such as spinning, flowing from side to side, or counting up or down to name a few. 
@@ -20,7 +20,7 @@ While illumination is how a single Blink communicates to the players, the arrang
 
 
 ## Inputs
-![Located in the center of each Blink, a tactile button is an input you can feel.](assets/blinksclick.png =250x250)
+![Located in the center of each Blink, a tactile button is an input you can feel.](assets/blink_click.png=250x250)
 
 
 The simplest of inputs is a press. Each Blink responds to touch by pressing on a tactile button in the middle of the Blink (Blinks are seamless, so the entire top depresses). The button can be used in a variety of ways, and can respond to a quick click, a long press, a double click...
@@ -31,7 +31,7 @@ The press can also be used to reveal information contained in a Blink. For examp
 
 
 ## Communication
-![each face communicates with neighboring Blinks, conveniently within magnetic range.](assets/blinkscommunication.png =250x250)
+![each face communicates with neighboring Blinks, conveniently within magnetic range.](assets/blink_comm.png=250x250)
 
 
 The Blinks communicate with each of their six neighbors by receiving information ~20 times per second. The information passed is in the form of a single integer (0-63). If no Blink is present on a single side, the information expires. What does this mean in simple terms? This means that each Blink can tell each neighboring Blink that it is in one of roughly 64 states. In the forest fire example, there are 3 states: tree, fire, soil. But what about lightning? that isn't a state, since it only affects the local Blink, so it is animated through the illumination, but simply changes the Blink’s state from tree to fire.
