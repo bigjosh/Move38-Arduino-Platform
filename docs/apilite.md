@@ -2,7 +2,8 @@
 
 [Blinks API Reference](api.md) - a reference with function parameters
 
-[API Source Code](https://github.com/Move38/Move38-Arduino-Platform) - absolute truth (would I lie about something like that? 🙂 )
+
+[API Source Code](https://github.com/Move38/Move38-Arduino-Platform) - absolute truth (would I lie about something like that?)
 
 ## Display
 
