@@ -10,23 +10,21 @@
 
 
 ## Colors
+```
+makeColorRGB(red, green, blue) - values[0-255]
+makeColorHSB(hue, saturation, brightness) - values[0-255]
+dim(color, value) - values[0-255]    
 
-    makeColorRGB(red, green, blue) - values[0-255]
-    
-    makeColorHSB(hue, saturation, brightness) - values[0-255]
-    
-    dim(color, value) - values[0-255]
-    
-    #RED    
-    #ORANGE 
-    #YELLOW 
-    #GREEN   
-    #CYAN    
-    #BLUE    
-    #MAGENTA 
-    #WHITE   
-    #OFF     
-
+#RED    
+#ORANGE 
+#YELLOW 
+#GREEN   
+#CYAN    
+#BLUE    
+#MAGENTA 
+#WHITE   
+#OFF
+```    
 
 ## Button
     
