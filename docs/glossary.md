@@ -7,14 +7,14 @@
 
 ## Display
 
-`setColor(color)`
-`setFaceColor( face, color)`
+`setColor(color)
+setFaceColor( face, color)`
 
 ## Colors
 
-`makeColorRGB(red, green, blue) - values [0-255]`
-`*makeColorHSB(hue, saturation, brightness) - values [0-255]`
-`*dim(color, value) - values[0-255]
+`makeColorRGB(red, green, blue) - values [0-255]
+*makeColorHSB(hue, saturation, brightness) - values [0-255]
+*dim(color, value) - values[0-255]
 *RED
 *ORANGE
 *YELLOW
@@ -23,10 +23,11 @@
 *BLUE
 *MAGENTA
 *WHITE
-*OFF
+*OFF`
+
 ## Button
 
-buttonPressed()
+`buttonPressed()
 buttonReleased()
 buttonSingleClicked()
 buttonDoubleClicked()
