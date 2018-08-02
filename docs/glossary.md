@@ -27,44 +27,36 @@ dim(color, value) - values[0-255]
 ```    
 
 ## Button
-    
-    buttonPressed()
-    
-    buttonReleased()
-    
-    buttonSingleClicked()
-    
-    buttonDoubleClicked()
-    
-    buttonMultiClicked()
-    
-    buttonClickCount()
-    
-    buttonLongPressed()
-    
-    buttonDown()
-
-
+``` 
+buttonPressed()
+buttonReleased()
+buttonSingleClicked()
+buttonDoubleClicked()
+buttonMultiClicked()
+buttonClickCount()
+buttonLongPressed()
+buttonDown()
+```
 
 ## Communication
-    setValueSentOnAllFaces(value)
+``` 
+ setValueSentOnAllFaces(value)
+ setValueSentOnFace(value, face);
+ getLastValueReceivedOnFace(face);
+ isValueReceivedOnFaceExpired(face);
+ didValueOnFaceChange(face);
+ isAlone();
+
+ ```
     
-    setValueSentOnFace(value, face);
-    
-    getLastValueReceivedOnFace(face);
-    
-    isValueReceivedOnFaceExpired(face);
-    
-    didValueOnFaceChange(face);
-    
-    isAlone();
+  
 
 ## Time
-    millis() - monotically incrementing timer
-    
-    Timer.set(duration)
-    
-    Timer.isExpired()
+``` 
+ millis() - monotically incrementing timer
+ Timer.set(duration)
+ Timer.isExpired()
+```
 
 ## Types
     byte
@@ -79,13 +71,13 @@ dim(color, value) - values[0-255]
 
 
 ## Convenience
-    *FOREACH_FACE(f) { }
-    
-    *COUNT_OF(array);
-
-    *FACE_COUNT 6
-    
-    *define MAX_BRIGHTNESS 
+ 
+```
+*FOREACH_FACE(f) { }
+*COUNT_OF(array);
+*FACE_COUNT 6
+*define MAX_BRIGHTNESS 
+```
 
     – the asterisk signals that this function is syntactic sugar… i.e. you can get the same information by means of the functions included, but it is such a common occurrence that we include it for everyone’s benefit.
 
@@ -93,8 +85,8 @@ dim(color, value) - values[0-255]
 # Coming Soon…
 
 ## Collaboration -- Time & Communication
-
-    Metronome.start(period)
+```
+	Metronome.start(period)
     Metronome.stop()
     Metronome.didTick()
     Metronome.getPhase()
@@ -102,4 +94,5 @@ dim(color, value) - values[0-255]
     Step.next()
     Step.getHighestSeen()
     *Step.didStep() - returns number of times stepped… since
+```
 
