@@ -11,7 +11,7 @@ First of all, what are Blinks? Blinks is a digital/physical (“phygital”) tab
 
 Let’s start with an understanding of the ins and outs of Blinks. If you want to jump right into the API, it is rather self explanatory, head here now.
 
-## ![6 RGB Leds illuminate Blinks](assets/blink_light.png){:height="250px" width="250px"}.
+## LEDs ![6 RGB Leds illuminate Blinks](assets/blink_light.png){:height="250px" width="250px"}.
 
 
 Blinks communicate to the players through RGB(red, green, blue… like a screen) illumination. You have full control over their hue, saturation, brightness, and can animate them in countless ways (i.e. pulsing, blinking, flashing...).  A diffuser makes Blinks look like an even glowing surface; however, there are 6 LEDs or pixels, one for each face of the hexagon. This allows for more complex animation and directionality, such as spinning, flowing from side to side, or counting up or down to name a few. 

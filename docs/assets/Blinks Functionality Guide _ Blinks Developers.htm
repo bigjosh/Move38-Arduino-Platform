@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<!-- saved from url=(0071)https://idesofjune.github.io/Move38-Arduino-Platform/functionality.html -->
+<html lang="en-US"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="shortcut icon" type="image/x-icon" href="https://idesofjune.github.io/Move38-Arduino-Platform/favicon.ico">
+
+<!-- Begin Jekyll SEO tag v2.5.0 -->
+<title>Blinks Functionality Guide | Blinks Developers</title>
+<meta name="generator" content="Jekyll v3.7.3">
+<meta property="og:title" content="Blinks Functionality Guide">
+<meta property="og:locale" content="en_US">
+<meta name="description" content="Resources for Blinks developers">
+<meta property="og:description" content="Resources for Blinks developers">
+<link rel="canonical" href="https://idesofjune.github.io/Move38-Arduino-Platform/functionality.html">
+<meta property="og:url" content="https://idesofjune.github.io/Move38-Arduino-Platform/functionality.html">
+<meta property="og:site_name" content="Blinks Developers">
+<script type="application/ld+json">
+{"description":"Resources for Blinks developers","@type":"WebPage","url":"https://idesofjune.github.io/Move38-Arduino-Platform/functionality.html","publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://idesofjune.github.io/Move38-Arduino-Platform/assets/blinkslogo.png"}},"headline":"Blinks Functionality Guide","@context":"http://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+
+    <link rel="stylesheet" href="./Blinks Functionality Guide _ Blinks Developers_files/style.css">
+    <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv.min.js"></script>
+    <![endif]-->
+  </head>
+  <body style="">
+    <div class="wrapper">
+      <header>
+        <h1><a href="https://idesofjune.github.io/Move38-Arduino-Platform/">Blinks Developers</a></h1>
+        
+        
+          <img src="./Blinks Functionality Guide _ Blinks Developers_files/blinkslogo.png" alt="Logo">
+        
+
+        <p>Resources for Blinks developers</p>
+
+      <!--   
+        <p class="view"><a href="https://github.com/IdesOfJune/Move38-Arduino-Platform">View the Project on GitHub <small>IdesOfJune/Move38-Arduino-Platform</small></a></p>
+         -->
+
+        
+
+        
+        <ul class="downloads">
+          <li><a href="https://github.com/IdesOfJune/Move38-Arduino-Platform/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://www.arduino.cc/en/Main/Software">Download <strong>Arduino IDE</strong></a></li>
+          <li><a href="https://github.com/IdesOfJune/Move38-Arduino-Platform">View On <strong>GitHub</strong></a></li>
+        </ul>
+
+        
+
+         <p><a href="https://idesofjune.github.io/Move38-Arduino-Platform/quickstart.html">Quickstart Guide</a></p>
+         <p><a href="https://idesofjune.github.io/Move38-Arduino-Platform/functionality.html">Functionality Guide</a></p>
+         <p><a href="https://idesofjune.github.io/Move38-Arduino-Platform/api.html">API Reference</a></p>
+         <p><a href="https://idesofjune.github.io/Move38-Arduino-Platform/glossary.html">Glossary</a></p>
+         <p><a href="https://idesofjune.github.io/Move38-Arduino-Platform/primer.html">Games Primer</a></p>
+       
+      </header>
+
+      <section>
+
+      <h1 id="blinks-functionality-guide">Blinks Functionality Guide</h1>
+
+<h2 id="overview">Overview</h2>
+
+<p>First of all, what are Blinks? Blinks is a digital/physical (“phygital”) tabletop game system that contains either six Blinks or twelve Blinks (the party pack). Each Blink is a “smart” hexagonal tile, designed to be held in the hand or placed next to other Blinks on a table. Magnets inside of each Blink allow the hexagonal tile to maintain an organized grid-like structure without needing a board. Each Blink has 3 key properties:</p>
+
+<ol>
+  <li>Blinks are ticklish (respond to touch)</li>
+  <li>Blinks are social (communicate with their neighbors)</li>
+  <li>Blinks love to play games (each one is responsible for remembering a single game, and can teach the others… more on game transmission later)</li>
+</ol>
+
+<p>Let’s start with an understanding of the ins and outs of Blinks. If you want to jump right into the API, it is rather self explanatory, head here now.</p>
+
+<h2><img src="./Blinks Functionality Guide _ Blinks Developers_files/blink_light.png" alt="6 RGB Leds illuminate Blinks" height="250px" width="250px">.</h2>
+
+<p>Blinks communicate to the players through RGB(red, green, blue… like a screen) illumination. You have full control over their hue, saturation, brightness, and can animate them in countless ways (i.e. pulsing, blinking, flashing…).  A diffuser makes Blinks look like an even glowing surface; however, there are 6 LEDs or pixels, one for each face of the hexagon. This allows for more complex animation and directionality, such as spinning, flowing from side to side, or counting up or down to name a few.</p>
+
+<p>While illumination is how a single Blink communicates to the players, the arrangement of the Blinks also communicates something to the players. In one example, the arrangement of 10 Blinks into different forms creates different behaviors of the whole. For example, if the Blinks are representing trees in a forest fire, a tightly packed set of 10 will spread the fire quicker than a long single file line of Blinks(trees). The player can reason this by seeing the arrangement of the board, and conversely, affect it by rearranging the board. Which brings me to inputs.</p>
+
+<h2 id="inputs">Inputs<img src="./Blinks Functionality Guide _ Blinks Developers_files/blink_click.png" alt="Located in the center of each Blink, a tactile button is an input you can feel." height="250px" width="250px">.</h2>
+
+<p>The simplest of inputs is a press. Each Blink responds to touch by pressing on a tactile button in the middle of the Blink (Blinks are seamless, so the entire top depresses). The button can be used in a variety of ways, and can respond to a quick click, a long press, a double click…</p>
+
+<p>The button press can be an input to change the state of a Blink, or inform the Blink of a users action. For example, in the forest fire ruleset, a single press strikes lightning upon a Blink. If the Blink is a tree, it will then change state to be on fire, and if it is not a tree, it will simply go on being not a tree, as well as not on fire.</p>
+
+<p>The press can also be used to reveal information contained in a Blink. For example, a Blink representing a place in a game of minesweeper could reveal that it has a mine under it only when held with a long press. The button press in this case didn’t add information to the system but is simply used to reveal information.</p>
+
+<h2 id="communication-">Communication <img src="./Blinks Functionality Guide _ Blinks Developers_files/blink_comm.png" alt="each face communicates with neighboring Blinks, conveniently within magnetic range." height="250px" width="250px">.</h2>
+
+<p>The Blinks communicate with each of their six neighbors by receiving information ~20 times per second. The information passed is in the form of a single integer (0-63). If no Blink is present on a single side, the information expires. What does this mean in simple terms? This means that each Blink can tell each neighboring Blink that it is in one of roughly 64 states. In the forest fire example, there are 3 states: tree, fire, soil. But what about lightning? that isn’t a state, since it only affects the local Blink, so it is animated through the illumination, but simply changes the Blink’s state from tree to fire.
+Blinks are setup to do this kind of communication often and reliably, but it is not the only way they can communicate. For longer forms of information, such as passing string-like information, there is a shared data buffer that could be utilized. This is experimental and not refined in the API, so I recommend first trying to rely on simple communication with the dozen or so states afforded above.</p>
+
+<h2 id="time">Time</h2>
+
+<p>Game time for the Blinks can be continuous, evaluating their state 20 times a second, or they can be discrete, evaluating their state only when a step is called. A step is a convenience function that allows all connected Blinks to understand that a step has happened. Think of it as a convenient way to let the entire connected board know that a single move has been made.</p>
+
+<p>In the forest fire example, time is discrete, which makes the spread of the fire controlled by the rate of the steps. One could see this as a game mechanic, where each turn is a step forward.</p>
+
+<p>In the game Fracture, a continuous game, Blinks are constantly evaluating their state so they can show players the most up to date representation of the current board state. This results in a board that is quickly responsive to arrangement, while discrete time makes a board that feels responsive to specific state changes or steps.</p>
+
+<h2 id="random-vs-deterministic">Random vs. Deterministic</h2>
+
+<p>Blinks can respond to their inputs and neighbors deterministically, where they will respond exactly the same way given the same inputs and neighbors every time. This is the case in the example of Fracture or Game of Life. Players can learn how Blinks will behave given a certain arrangement because of this deterministic rule-set.</p>
+
+<p>Games often use randomness for a bit of chance involved in each move. A dice roll, or a weighted random value can be very useful in creating suspense or capturing the real world uncertainty.</p>
+
+<p>Randomness can also be used with Blinks with a bit of care and caution. In the example of the forest fire, each Blink (plot of land) has an n% chance of growing a tree. That percent increases with the number of neighboring trees, to represent fertile ground, but it is random none-the-less. The caviat with randomness and Blinks is that players must feel like Blinks are giving signal, not simply noise. If a player can’t understand why a Blink is behaving in the way it is, it will be confusing for everyone. That said, it is not a technical limitation, if you want a Blink to be a random different color every time you press it, that is an easy program to write.</p>
+
+<h2 id="memory">Memory</h2>
+
+<p>While Blinks can maintain a bit of a memory or history of what they have done, neighbors they’ve had, or how much time has passed, this is limited and it is important to remember that if this isn’t transparent to the player, it could be very confusing. I look forward to seeing elegant solutions in which a bit of <a href="https://www.wikiwand.com/en/Stigmergy">stygmergy</a> might just seep its way into a game and shed light on a beautiful invisible system that lies just beneath the surface. (more on program space below)</p>
+
+<h2 id="trickery">Trickery</h2>
+
+<p>As you might have noticed, you have complete control over the way a Blink displays itself to the player and the state a Blink is actually in. It might be useful to have many states an only 2 visibly different appearances to the players. Conversely, it might be useful to have only two states and show many different illuminations.</p>
+
+<p>The possibilities are many, feel free to look through the examples, they aim to walk you through the basics, and we welcome contributions for more.</p>
+
+<p>Please feel free to ask about features, and if I didn’t cover something that is in the API, I should, so point it out, it belongs here, too!</p>
+
+<h2 id="api">API</h2>
+<ul>
+  <li>Check out the glossary <a href="https://idesofjune.github.io/Move38-Arduino-Platform/glossary.html">here</a></li>
+  <li>Slightly more verbose version <a href="https://idesofjune.github.io/Move38-Arduino-Platform/api.html">here</a></li>
+  <li>Full API <a href="https://github.com/Move38/Move38-Arduino-Platform">here</a></li>
+</ul>
+
+<h2 id="nerdy-details">Nerdy Details</h2>
+
+<p>Each Blink has 16KB of RAM. For not having a screen, this is more than sufficient. In fact, we recommend keeping games under 4KB, so that we can transmit them from Blink to Blink in an efficient manner. The <a href="https://github.com/Move38/Move38-Arduino-Platform">full code-base</a> is published on GitHub where master contains our latest robust release and dev contains in progress features (such as an animation library).</p>
+
+
+      </section>
+      <footer>
+        <p><small>Hosted on GitHub Pages — Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="./Blinks Functionality Guide _ Blinks Developers_files/scale.fix.js"></script>
+    
+  
+</body></html>
