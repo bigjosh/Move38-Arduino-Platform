@@ -18,7 +18,7 @@ After you have all the libraries downloaded and installed, where you go next dep
 
 [Blinks API Reference](api.md) - list of all the function calls that Blinks needs (it’s short, like really short) 
 
-[Blinks API Reference (lite)](apilite.md) - bare bones list of all function calls w/o parameters (think glossary)
+[Glossary](glossary.md) - bare bones list of all function calls w/o parameters
 
 
 ## External Resources
