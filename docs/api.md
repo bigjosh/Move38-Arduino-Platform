@@ -32,7 +32,7 @@
     #define MAGENTA makeColorRGB(255,   0, 255)
     #define WHITE   makeColorRGB(255, 255, 255)
     #define OFF     makeColorRGB(  0,   0,   0)
-```
+
 
 ## Button
     /*
