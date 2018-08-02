@@ -16,6 +16,8 @@
 
     #include "Print.h"
 
+    #define DEF_SERVICE_PORT_BAUDRATE 500000
+
     class ServicePortSerial : public Print
     {
 
@@ -24,7 +26,7 @@
         //inline ServicePortSerialSerial(void);
     
         void begin(void); 
-        void begin(unsigned long _baudrate); 
+        void begin(unsigned long); 
         void end();
     
         virtual int available(void);

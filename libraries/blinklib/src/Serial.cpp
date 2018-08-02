@@ -25,19 +25,19 @@
 void ServicePortSerial::begin(void)
 {
     
-  sp_serial_init();
-  
+  sp_serial_init(DEF_SERVICE_PORT_BAUDRATE);
+
 }
 
-void ServicePortSerial::begin(unsigned long _baudrate=500000) {
+void ServicePortSerial::begin(unsigned long _baudrate=DEF_SERVICE_PORT_BAUDRATE) {
   switch(_baudrate) {
     case 250000:
-		sp_serial_init(250000);
-		break;
+      sp_serial_init(250000);
+      break;
     case 500000:
     default:
-		sp_serial_init(500000);
-		break;
+      sp_serial_init(500000);
+      break;
   }
 }
 
