@@ -2,8 +2,8 @@
 
 
 ## What’s Included
-- 6x Blinks 
-  - 6x custom PCBs, 
+- 6x Blinks
+  - 6x custom PCBs,
   - 6x 3D printed bases  
   - 6x 12 polarity aligned magnets
   - 6x CR2032 coin cell batteries
@@ -16,15 +16,14 @@
   - 1x USB mini cable (3’)
 
 
-- Service Port (used for Serial Monitor) 
+- Service Port (used for Serial Monitor)
   - 1x Blinks Serial Adapter
-  - 1x FTDI board (Red w/ usb on one side and 6 pins on the other) 
+  - 1x FTDI board (Red w/ usb on one side and 6 pins on the other)
   - 1x Molex cable (4 black wires)
   - 1x USB mini cable (6”)
 
 
 ## Needed Software
-
 Arduino IDE - [Download it here](https://www.arduino.cc/en/Main/Software)
 Blinks Library - [Download it here](https://move38.com/attic/blinks/Move38-Blinks-Library.zip)
 
@@ -75,7 +74,7 @@ For the extra curious, here is the [source code](https://github.com/sparkfun/Poc
 3. Restart Arduino if it was open
 4. Now select the `Blinks Programmer` when programming and it should be roughly 4x faster upload speeds ⚡
 
-Not seeing `Blinks Programmer`? Try out [these steps](http://forum.move38.com/t/faster-upload-time-directory-change-and-modified-programmers-txt/83), found by Alpha Blinks Dev, Ken 🙂 
+Not seeing `Blinks Programmer`? Try out [these steps](http://forum.move38.com/t/faster-upload-time-directory-change-and-modified-programmers-txt/83), found by Alpha Blinks Dev, Ken 🙂
 
 
 ## Using the Blinks Service Port to talk to or listen to your Blink
@@ -102,5 +101,6 @@ Here is the simplest of ServicePort sketches:
 
 ## Unboxing And Walkthrough Video
 
-And last but not least, [here’s a handy little unboxing video](https://www.youtube.com/watch?v=UA1Vl7x3Y7g) that will walk you through some basics!
+{% include youtubePlayer.html id=UA1Vl7x3Y7g %}
 
+And last but not least, [here’s a handy little unboxing video](https://www.youtube.com/watch?v=UA1Vl7x3Y7g) that will walk you through some basics!
