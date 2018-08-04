@@ -24,8 +24,8 @@
 
 
 ## Needed Software
-Arduino IDE - [Download it here](https://www.arduino.cc/en/Main/Software)
-Blinks Library - [Download it here](https://move38.com/attic/blinks/Move38-Blinks-Library.zip)
+- Arduino IDE - [Download it here](https://www.arduino.cc/en/Main/Software)
+- Blinks Library - [Download it here](https://github.com/Move38/Move38-Arduino-Platform/zipball/master)
 
 *If you want to have the latest and contribute to the development of Blinks, here’s our [Github Repo](https://github.com/Move38/Move38-Arduino-Platform/tree/dev)
 
@@ -101,6 +101,6 @@ Here is the simplest of ServicePort sketches:
 
 ## Unboxing And Walkthrough Video
 
-{% include youtubePlayer.html id=UA1Vl7x3Y7g %}
+{% include youtubePlayer.html id='UA1Vl7x3Y7g' %}
 
 And last but not least, [here’s a handy little unboxing video](https://www.youtube.com/watch?v=UA1Vl7x3Y7g) that will walk you through some basics!
