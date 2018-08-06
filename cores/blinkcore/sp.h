@@ -47,6 +47,7 @@
     // Also enables the pull-up on the RX pin so it can be connected to an open-collector output
     
     void sp_serial_init(void);
+    void sp_serial_init(unsigned long);
         
     // Send a byte out the serial port. Blocks if a transmit already in progress. 
     // Must call sp_serial_init() first
