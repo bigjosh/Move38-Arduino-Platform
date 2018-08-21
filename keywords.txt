@@ -37,6 +37,7 @@
 # --Display--
 setColor	KEYWORD2
 setFaceColor	KEYWORD2
+setColorOnFace	KEYWORD2
 
 # --Color--
 makeColorRGB	KEYWORD3	 	RESERVED_WORD
