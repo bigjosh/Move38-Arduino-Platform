@@ -45,6 +45,10 @@ uint8_t sp_aux_analogRead(void) {
 // Overrides digital mode for service port pins T and R respectively. 
 
 void sp_serial_init(void) {
+	sp_serial_init(500000);
+}
+
+void sp_serial_init(unsigned long _baudrate=500000) {
     
     //Initialize the AUX pin as digitalOut
     //SBI( SP_AUX_DDR , SP_AUX_PIN );
@@ -63,9 +67,23 @@ void sp_serial_init(void) {
         #error Serial port calculation in debug.cpp must be updated if not 4Mhz CPU clock.
     #endif
     
-    UBRR0 = 0;                  // 500Kbd. This is as fast as we can go at 4Mhz, and happens to be 0% error and supported by the Arduino serial monitor. 
-                                // See datasheet table 25-7. 
-        
+    /*
+     * kenj:
+     * UBRR calculation for async double speed is:
+     * (from http://masteringarduino.blogspot.com/2013/11/USART.html)
+     *    UBRR=(F_CPU/(8 * baudrate)-1)
+     */
+  switch(_baudrate) {
+    case 250000:
+		UBRR0=1;
+		break;
+    case 500000:
+    default:
+		UBRR0 = 0;                  // 500Kbd. This is as fast as we can go at 4Mhz, and happens to be 0% error and supported by the Arduino serial monitor. 
+                                    // See datasheet table 25-7. 
+		break;
+    break;
+  }
 }   
 
 // Free up service port pin R for digital IO again

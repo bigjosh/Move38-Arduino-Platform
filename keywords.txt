@@ -6,7 +6,105 @@
 # MACROS WITH PARAMETERS are are color coded with	KEYWORD3	 	RESERVED_WORD
 # MACROS WITHOUT PARAMETERS are color coded with	LITERAL2		RESERVED_WORD_2
 
+#######################################
+# Labels
+#######################################
+# KEYWORD1 = classes
 
+# KEYWORD2 = functions & methods
+
+# KEYWORD3 = Macros()
+
+# LITERAL1 = Constants
+
+# LITERAL2 = Macros
+
+#######################################
+# Color Code
+#######################################
+
+# Keyword# = Orange
+
+# RESERVED_WORD = GREEN
+
+# RESERVED_WORD_2 = CYAN
+
+# LITERAL1 = CYAN <-- Unique
+
+#######################################
+# BlinkAPI
+#######################################
+# --Display--
+setColor	KEYWORD2
+setFaceColor	KEYWORD2
+setColorOnFace	KEYWORD2
+
+# --Color--
+makeColorRGB	KEYWORD3	 	RESERVED_WORD
+makeColorHSB	KEYWORD3	 	RESERVED_WORD
+dim	KEYWORD3	 	RESERVED_WORD
+RED	LITERAL1
+ORANGE	LITERAL1
+YELLOW	LITERAL1
+GREEN	LITERAL1
+CYAN	LITERAL1
+BLUE	LITERAL1
+MAGENTA	LITERAL1
+WHITE	LITERAL1
+OFF	LITERAL1
+
+# --Button--
+buttonPressed	KEYWORD3	 	RESERVED_WORD
+buttonReleased	KEYWORD3	 	RESERVED_WORD
+buttonSingleClicked	KEYWORD3	 	RESERVED_WORD
+buttonDoubleClicked	KEYWORD3	 	RESERVED_WORD
+buttonMultiClicked	KEYWORD3	 	RESERVED_WORD
+buttonClickCount	KEYWORD3	 	RESERVED_WORD
+buttonLongPressed	KEYWORD3	 	RESERVED_WORD
+buttonDown	KEYWORD3	 	RESERVED_WORD
+
+# --Communication-- 
+setValueSentOnAllFaces	KEYWORD3
+setValueSentOnFace	KEYWORD3
+getLastValueReceivedOnFace	KEYWORD3
+isValueReceivedOnFaceExpired	KEYWORD3
+didValueOnFaceChange	KEYWORD3
+isAlone	KEYWORD3
+
+# --Time--
+millis	KEYWORD2
+set	KEYWORD3	 	RESERVED_WORD
+isExpired	KEYWORD3	 	RESERVED_WORD
+
+# --Types--
+Color	LITERAL1
+Timer	KEYWORD1	 	RESERVED_WORD_2
+
+# --Convenience-- 
+FOREACH_FACE	KEYWORD3	 	RESERVED_WORD
+COUNT_OF	KEYWORD3	 	RESERVED_WORD
+
+# --Constants--
+FACE_COUNT	LITERAL1	 	RESERVED_WORD_2
+MAX_BRIGHTNESS	LITERAL1	 	RESERVED_WORD_2
+NEVER	LITERAL1	 	RESERVED_WORD_2
+SERIAL_NUMBER_LEN	LITERAL1	 	RESERVED_WORD_2
+
+# --Uniqueness--
+getSerialNumberByte	KEYWORD3
+
+#######################################
+# BlinkAnimationLibrary
+#######################################
+blinkAniBegin	KEYWORD2
+flash	KEYWORD2
+blink	KEYWORD2
+strobe	KEYWORD2
+rotate	KEYWORD2
+spin	KEYWORD2
+fadeTo	KEYWORD2
+
+#######################################
 
 #OTHER
 minicore	LITERAL2		RESERVED_WORD_2
@@ -1336,5 +1434,3 @@ PCIFR	LITERAL2		RESERVED_WORD_2
 PCIF2	KEYWORD3	 	RESERVED_WORD
 PCIF1	KEYWORD3	 	RESERVED_WORD
 PCIF0	KEYWORD3	 	RESERVED_WORD
-
-
