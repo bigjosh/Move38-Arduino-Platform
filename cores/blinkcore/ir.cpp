@@ -38,7 +38,7 @@
 
 // Currently chosen empirically to work with some tile cases Jon made 7/28/17
 
-#define IR_PULSE_TIME_US 6         // Used for sending flashes
+#define IR_PULSE_TIME_US 10         // Used for sending flashes
 
 
 #if IR_ALL_BITS != IR_BITS
@@ -365,7 +365,7 @@ static volatile uint8_t sendpulse_spaces_next;  // A one entry deep buffer for s
 
 ISR(TIMER1_CAPT_vect) {
 
-    // Cache because the compile is not so good here
+    // Cache because the compiler is not so good here
     uint8_t sendpulse_spaces_m = sendpulse_spaces;
 
     if (sendpulse_spaces_m) {
@@ -472,7 +472,7 @@ void ir_tx_sendpulse( uint8_t leadingSpaces ) {
 
 void ir_tx_end(void) {
 
-    while (sendpulse_spaces);       // Wait for all previous pulses to get sent (buffered and immedeate complete)
+    while (sendpulse_spaces);       // Wait for all previous pulses to get sent (buffered and immediate complete)
 
     // stop timer (not more ISR)
     TCCR1B = 0;             // Sets prescaler to 0 which stops the timer.

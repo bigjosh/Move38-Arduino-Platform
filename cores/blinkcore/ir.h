@@ -61,7 +61,7 @@ void ir_tx_end(void);
 uint8_t ir_test_and_charge_cli( void );
 
 
-// Called anytime on of the IR LEDs triggers, which could
+// Called anytime one of the IR LEDs triggers, which could
 // happen because it received a flash or just because
 // enough ambient light accumulated
 
