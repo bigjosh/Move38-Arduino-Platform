@@ -120,26 +120,26 @@ void setColor( Color newColor ) {
 
 // This maps 0-255 values to 0-31 values with the special case that 0 (in 0-255) is the only value that maps to 0 (in 0-31)
 // This leads to some slight non-linearity since there are not a uniform integral number of 1-255 values
-// to map to each of the 1-31 values. 
+// to map to each of the 1-31 values.
 
 byte map8bitTo5bit( byte b ) {
-    
-    if (b==0) return 0; 
-        
+
+    if (b==0) return 0;
+
     // 0 gets a special case of `off`, so we divide the rest of the range in to
-    // 31 equaly spaced regions to assign the remaing 31 brightness levels. 
-    
+    // 31 equaly spaced regions to assign the remaing 31 brightness levels.
+
     uint16_t normalizedB = b-1;     // Offset to a value 0-254 that will be scaled to the remaining 31 on values
-    
+
     //uint16_t scaledB = (normalizedB / 255) * 31); // This is what we want to say, but it will underflow in integer math
-    
+
     byte scaledB = ( (uint16_t) normalizedB * 31U) / 255U; // Be very careful to stay in bounds!
-    
+
     // scaledB is now a number 0-30 that is (almost) lenearly scaled down from the orginal b
-        
-    return ( scaledB )+1;       // De-normalize back up to `on` values 1-31. 
-    
-}    
+
+    return ( scaledB )+1;       // De-normalize back up to `on` values 1-31.
+
+}
 
 // Make a new color from RGB values. Each value can be 0-255.
 
@@ -212,49 +212,49 @@ Color makeColorHSB( uint8_t hue, uint8_t saturation, uint8_t brightness ) {
 #define GETNEXTRANDUINT_MAX UINT16_MAX
 
 static uint16_t GetNextRandUint(void) {
-    
+
     // These values are not magical, just the default values Marsaglia used.
     // Any unit should work.
-    
+
     // We make them local static so that we only consume the storage if the random()
-    // functions are actually ever called. 
-    
+    // functions are actually ever called.
+
     static uint32_t u = 521288629UL;
     static uint32_t v = 362436069UL;
-    
+
     v = 36969*(v & 65535) + (v >> 16);
     u = 18000*(u & 65535) + (u >> 16);
-    
+
     return (v << 16) + u;
-    
-}    
+
+}
 
 // return a random number between 0 and limit inclusive.
 // TODO: Use entropy from the button or decaying IR LEDs
 // https://stackoverflow.com/a/2999130/3152071
 
 uint16_t rand( uint16_t limit ) {
-       
+
     uint16_t divisor = GETNEXTRANDUINT_MAX/(limit+1);
     uint16_t retval;
 
-    do { 
+    do {
         retval = GetNextRandUint() / divisor;
     } while (retval > limit);
 
     return retval;
-}    
+}
 
 // Returns the number of millis since last call
 // Handy for profiling.
 
 uint32_t timeDelta(void) {
     static uint32_t lastcall=0;
-    uint32_t now = millis();    
-    uint32_t delta = now - lastcall;    
+    uint32_t now = millis();
+    uint32_t delta = now - lastcall;
     lastcall = now;
     return delta;
-}    
+}
 
 // Read the unique serial number for this blink tile
 // There are 9 bytes in all, so n can be 0-8
@@ -519,15 +519,15 @@ static volatile uint32_t millisCounter=0;           // How many milliseconds sin
 // TODO: Clear out millis to zero on wake
 
 // This snapshot makes sure that we always see the same value for millis() in a given iteration of loop()
-// This "freeze-time" view makes it harder to have race conditions when millis() changes while you are looking at it. 
-// The value of millis_snapshot gets reset to 0 after each loop() iteration. 
+// This "freeze-time" view makes it harder to have race conditions when millis() changes while you are looking at it.
+// The value of millis_snapshot gets reset to 0 after each loop() iteration.
 
-static uint32_t millis_snapshot=0; 
+static uint32_t millis_snapshot=0;
 
 unsigned long millis(void) {
-	
+
 	if (millis_snapshot) {				// Did we already compute this for this pass of loop()?
-		return millis_snapshot;	
+		return millis_snapshot;
 	}
 
     uint32_t tempMillis;
@@ -538,22 +538,32 @@ unsigned long millis(void) {
     DO_ATOMICALLY {
         tempMillis=millisCounter;
     }
-	
+
 	millis_snapshot = tempMillis;
-	
+
     return( tempMillis );
 }
 
 // Note we directlyt access millis() here, which is really bad style.
-// The timer should capture millis() in a closure, but no good way to 
-// do that in C++ that is not verbose and inefficient, so here we are. 
+// The timer should capture millis() in a closure, but no good way to
+// do that in C++ that is not verbose and inefficient, so here we are.
 
 bool Timer::isExpired() {
-	return millis() >= m_expireTime; 
+	return millis() >= m_expireTime;
 }
-	
+
 void Timer::set( uint32_t ms ) {
-	m_expireTime= millis()+ms;	
+	m_expireTime= millis()+ms;
+}
+
+uint32_t Timer::getRemaining() {
+  uint32_t timeRemaining;
+  if( millis() >= m_expireTime) {
+    timeRemaining = 0;
+  }else {
+    timeRemaining = m_expireTime - millis();
+  }
+  return timeRemaining;
 }
 
 /*
@@ -653,7 +663,7 @@ void checkSleepTimeout(void) {
 
 }
 
-// This is called by about every 512us with interrupts on. 
+// This is called by about every 512us with interrupts on.
 
 void timer_512us_callback_sei(void) {
     updateMillis();
@@ -661,7 +671,7 @@ void timer_512us_callback_sei(void) {
     checkSleepTimeout();
 }
 
-// This is called by about every 256us with interrupts on. 
+// This is called by about every 256us with interrupts on.
 
 void timer_256us_callback_sei(void) {
     updateIRComs();
@@ -693,7 +703,7 @@ static void callOnLoopChain(void ) {
 // We make this weak so that a game can override and take over before we initialize all the hier level stuff
 
 void __attribute__ ((weak)) run(void) {
-	
+
 	// Let blinkstate sink its hooks in
 	blinkStateBegin();
 
@@ -707,7 +717,7 @@ void __attribute__ ((weak)) run(void) {
                                             // Also currently blocks until new frame actually starts
 
         callOnLoopChain();
-		
+
 		millis_snapshot=0;					// Clear out so we get an updated value next pass
 
         // TODO: Sleep here
