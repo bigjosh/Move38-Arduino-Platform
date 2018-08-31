@@ -35,11 +35,11 @@
 After you have installed the Arduino IDE (> 1.8.5) and launched the application, you will notice that Arduino has created a folder in your `Documents` folder, aptly named, `Arduino`. Follow these next 5 steps to have the Blinks library installed:
 
 
-1. Create a folder called ‘hardware’ inside of the Arduino folder `~/Documents/Arduino/hardware` (it will be next to ‘libraries’, not nested inside)
+1. Create a folder called `hardware` inside of the Arduino folder `~/Documents/Arduino/hardware` (it will be next to ‘libraries’, not nested inside) and one more called `Move38-Blinks-Library` inside of the hardware folder you just created. `~/Documents/Arduino/hardware/Move38-Blinks-Library`
 2. Download the Blinks Library if you haven’t already done so
-3. Unzip the Blinks Library
-4. Move the Blinks Library into the hardware folder
-5. Restart Arduino (quit and relaunch)
+3. Unzip the Blinks Library into a folder called `avr`
+5. Move the Blinks Library into the `Move38-Blinks-Library` folder (the path will be `~/Documents/Arduino/hardware/Move38-Blinks-Library/avr/`)
+6. Restart Arduino (quit and relaunch)
 
 If you click on `Tools` in your menu bar, and navigate down to `Board:`  you should now see `Move38: Blinks Tile` at the bottom. Select it.
 
