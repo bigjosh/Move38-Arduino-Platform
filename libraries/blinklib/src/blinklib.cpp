@@ -669,6 +669,7 @@ void __attribute__ ((weak)) run(void) {
 	// Let blinkstate sink its hooks in
 	blinkStateSetup();
 
+    // Call user setup code
     setup();
         
     while (1) {

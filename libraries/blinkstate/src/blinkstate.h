@@ -28,11 +28,22 @@
 #define IR_DATA_VALUE_MAX 100
 
 
-// Setup the blinkstate layer. 
+// The blinksatate library continuously transmits on all IR LEDs
+// when enabled. If you don't want this, then disable it.
+
+// blinkstate is enabled by default, but you can renable it after you have disabled it.
+void blinkStateEnable(void);
+
+// If called from setup(), then no blinkstate will be transmitted at all
+
+void blinkStateDisable(void);
+
+// Setup the blinkstate layer.
+// Enables blinkstate functionality by default
 void blinkStateSetup(void);
 
 
-// Called once per loop. 
+// Called once per loop.
 void blinkStateLoop(void);
 
 // Returns the last received value on the indicated face

@@ -160,11 +160,25 @@ static void updateIRFaces(uint32_t now) {
 }
 
 
+static uint8_t enabled;
+
+
+void blinkStateEnable(void) {
+    enabled = 1;
+}
+
+void blinkStateDisable(void) {
+    enabled = 0;
+}
+
+
 void blinkStateSetup(void) {
 
-    // Blank for now. 
+    // Blinkstate is enabled by default
+    blinkStateEnable();
 
 }
+
 
 
 // Called one per loop() to check for new data and repeat broadcast if it is time
@@ -177,10 +191,13 @@ void blinkStateSetup(void) {
 
 void blinkStateLoop(void) {
 
-    uint32_t now = millis();
+    if (enabled) {
 
-    updateIRFaces(now);
+        uint32_t now = millis();
 
+        updateIRFaces(now);
+
+    }
 
 }
 
