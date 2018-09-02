@@ -81,22 +81,6 @@ Timer sleepTimer;
 // sure that the final result of any loop() interation will always hit the display for at least
 // one frame to eliminate aliasing and tearing.
 
-void setFaceColor( byte face , Color newColor ) {
-
-    pixelColor_t newPixelColor;
-
-    // TODO: OMG, this is the most inefficient conversion from a unit16 back to (the same) unit16 ever!
-    // But to share a type between the core and blinklib level though pixel.h would require all blinklib
-    // users to get the whole pixel.h namespace. There has to be a good way around this. Maybe
-    // break out the pixelColor type into its own core .H file? seems wrong. Hmmm....
-
-    newPixelColor.r = GET_5BIT_R( newColor );
-    newPixelColor.g = GET_5BIT_G( newColor );
-    newPixelColor.b = GET_5BIT_B( newColor );
-
-    pixel_bufferedSetPixel( face , newPixelColor );
-	#warning You are using setFaceColor(face, color), which is being deprecated. Please use setColorOnFace(color, face) in its place.
-}
 
 void setColorOnFace( Color newColor , byte face ) {
 
@@ -115,16 +99,21 @@ void setColorOnFace( Color newColor , byte face ) {
 
 }
 
+void setFaceColor( byte face , Color newColor ) __attribute__ ((deprecated));
+
+void setFaceColor( byte face , Color newColor ) {
+    setColorOnFace( newColor , face );
+}
+
 // Convenience function to set all pixels to the same color.
 
 void setColor( Color newColor ) {
 
     FOREACH_FACE(f) {
-        setFaceColor( f , newColor );
+        setColorOnFace( newColor, f );
     }
 
 }
-
 
 // This maps 0-255 values to 0-31 values with the special case that 0 (in 0-255) is the only value that maps to 0 (in 0-31)
 // This leads to some slight non-linearity since there are not a uniform integral number of 1-255 values
