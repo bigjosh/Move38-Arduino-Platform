@@ -29,16 +29,19 @@
 #include "ir.h"
 #include "utils.h"
 
-// A bit cycle is one timer tick, currently 512us
-
 //TODO: Optimize these to be exact minimum for the distance in the real physical object
 //TODO: This can likely be reduced or eliminated when we increase sampling rate
 
-#define IR_CHARGE_TIME_US 2        // How long to charge the LED though the pull-up
+#define IR_CHARGE_TIME_US 12        // How long to charge the LED though the pull-up
+
+#define IR_PULSE_TIME_US 10         // How long to turn IR LED on to send a pulse
+
+
+#if (IR_CHARGE_TIME_US < IR_PULSE_TIME_US )
+    #warning "You want charge time to be larger than pulse time so that a single pulse can not be detected twice"
+#endif
 
 // Currently chosen empirically to work with some tile cases Jon made 7/28/17
-
-#define IR_PULSE_TIME_US 10         // Used for sending flashes
 
 
 #if IR_ALL_BITS != IR_BITS
@@ -139,15 +142,15 @@ void ir_init(void) {
 
         #warning we are only enabling INTs on IR0 for debugging here!
         IR_INT_MASK_REG |= _BV(0);
-        
+
         SP_PIN_A_MODE_OUT();
         sp_serial_init();
         sp_serial_disable_rx();
         SP_PIN_R_MODE_OUT();
         sp_serial_tx('h');
-        
-    #endif 
-    
+
+    #endif
+
     //IR_MASK_REG |= IR_BITS;          // Enable individual pins in Pin Change Mask Register for all 6 cathode pins. Any change after this will set the pending interrupt flag.
                                      // TODO: Single LEDs can get masked here if they get noisy to avoid spurious wakes
 
@@ -311,7 +314,12 @@ uint8_t ir_test_and_charge_cli( void ) {
     // Empirically this is how long it takes to charge
     // and avoid false positive triggers in 1ms window 12" from halogen desk lamp
 
-    _delay_us( IR_CHARGE_TIME_US );
+    _delay_us( IR_CHARGE_TIME_US );      // We charge for as long as the pulse time
+                                        // It actually does not take this long to charge up the LED
+                                        // (it has very low capacitance)
+                                        // This is to avoid seeing the same pulse twice because it started sending
+                                        // right before we sampled and finished right after in the next window.
+
 
 
 
