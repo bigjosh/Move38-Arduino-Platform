@@ -16,13 +16,14 @@
 
     #include "Print.h"
 
+    #define DEF_SERVICE_PORT_BAUDRATE 500000
+
     class ServicePortSerial : public Print
     {
 
         public:
 
         //inline ServicePortSerialSerial(void);
-
         void begin(void);
         void end();
 

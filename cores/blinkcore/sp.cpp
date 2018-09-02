@@ -45,7 +45,6 @@ uint8_t sp_aux_analogRead(void) {
 // Overrides digital mode for service port pins T and R respectively.
 
 void sp_serial_init(void) {
-
     //Initialize the AUX pin as digitalOut
     //SBI( SP_AUX_DDR , SP_AUX_PIN );
 
@@ -65,7 +64,6 @@ void sp_serial_init(void) {
 
     UBRR0 = 0;                  // 1Mbd. This is as fast as we can go at 8Mhz, and happens to be 0% error and supported by the Arduino serial monitor.
                                 // See datasheet table 25-7.
-
 }
 
 // Free up service port pin R for digital IO again

@@ -95,6 +95,23 @@ void setFaceColor( byte face , Color newColor ) {
     newPixelColor.b = GET_5BIT_B( newColor );
 
     pixel_bufferedSetPixel( face , newPixelColor );
+	#warning You are using setFaceColor(face, color), which is being deprecated. Please use setColorOnFace(color, face) in its place.
+}
+
+void setColorOnFace( Color newColor , byte face ) {
+
+    pixelColor_t newPixelColor;
+
+    // TODO: OMG, this is the most inefficient conversion from a unit16 back to (the same) unit16 ever!
+    // But to share a type between the core and blinklib level though pixel.h would require all blinklib
+    // users to get the whole pixel.h namespace. There has to be a good way around this. Maybe
+    // break out the pixelColor type into its own core .H file? seems wrong. Hmmm....
+
+    newPixelColor.r = GET_5BIT_R( newColor );
+    newPixelColor.g = GET_5BIT_G( newColor );
+    newPixelColor.b = GET_5BIT_B( newColor );
+
+    pixel_bufferedSetPixel( face , newPixelColor );
 
 }
 
@@ -529,6 +546,24 @@ void Timer::set( uint32_t ms ) {
 	m_expireTime= millis()+ms;
 }
 
+uint32_t Timer::getRemaining() {
+  
+  uint32_t timeRemaining;
+  
+  if( millis() >= m_expireTime) {
+    
+    timeRemaining = 0;
+    
+  } else {
+    
+    timeRemaining = m_expireTime - millis();
+    
+  }
+  
+  return timeRemaining;
+  
+}
+
 void Timer::add( uint16_t ms ) {
     
     // Check to avoid overflow
@@ -549,7 +584,6 @@ void Timer::add( uint16_t ms ) {
 void Timer::never(void) {
     m_expireTime=NEVER;
 }
-
 
 
 /*
@@ -701,7 +735,6 @@ void __attribute__ ((weak)) run(void) {
             nap();
         }                         
        
-
     }
 
 }

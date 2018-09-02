@@ -82,4 +82,3 @@ void ServicePortSerial::flush(void)
 {
     sp_serial_flush();
 }
-     
