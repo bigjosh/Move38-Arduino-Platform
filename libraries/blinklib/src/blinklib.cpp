@@ -99,8 +99,6 @@ void setColorOnFace( Color newColor , byte face ) {
 
 }
 
-void setFaceColor( byte face , Color newColor ) __attribute__ ((deprecated));
-
 void setFaceColor( byte face , Color newColor ) {
     setColorOnFace( newColor , face );
 }
@@ -302,7 +300,7 @@ static volatile bool longPressFlag=0;                   // Has the button been l
 static volatile uint8_t maxCompletedClickCount=0;       // Remember the most completed clicks to support the clickCount() function
 
 
-static volatile uint8_t buttonChangeFlag = 0;           // Set anytime the button changes state. Used to reset the sleep timer in the forground. 
+static volatile uint8_t buttonChangeFlag = 0;           // Set anytime the button changes state. Used to reset the sleep timer in the forground.
 
 // Called once per tick by the timer to check the button position
 // and update the button state variables.
@@ -374,7 +372,7 @@ static void updateButtonState(void) {
     }  else {       // New button position
 
         if (!buttonDebounceCountdown) {         // Done bouncing
-            
+
             buttonChangeFlag = 1;               // Signal ro forground that something happened on the button
 
             buttonState = buttonPositon;
@@ -511,13 +509,13 @@ static volatile uint32_t millisCounter=1;           // How many milliseconds sin
 
 static uint32_t millis_snapshot=0;
 
-// Need not be atomic since never called from the background. 
+// Need not be atomic since never called from the background.
 
 static void updateMillis(void) {
 
 	millis_snapshot = millisCounter;
-    
-}    
+
+}
 
 unsigned long millis(void) {
     return( millis_snapshot );
@@ -536,38 +534,38 @@ void Timer::set( uint32_t ms ) {
 }
 
 uint32_t Timer::getRemaining() {
-  
+
   uint32_t timeRemaining;
-  
+
   if( millis() >= m_expireTime) {
-    
+
     timeRemaining = 0;
-    
+
   } else {
-    
+
     timeRemaining = m_expireTime - millis();
-    
+
   }
-  
+
   return timeRemaining;
-  
+
 }
 
 void Timer::add( uint16_t ms ) {
-    
+
     // Check to avoid overflow
-    
+
     uint32_t timeLeft = NEVER - m_expireTime;
-    
+
     if (ms > timeLeft ) {
-        
+
         m_expireTime = NEVER;
-        
-    } else {        
-    
-	    m_expireTime+= ms;  
-        
-    }        
+
+    } else {
+
+	    m_expireTime+= ms;
+
+    }
 }
 
 void Timer::never(void) {
@@ -660,13 +658,13 @@ static void sleep(void) {
 
     wokeFlag = 1;
 
-} 
+}
 
-// Leave everyhing running, jjust sleep the CPU until the next interrupt. 
+// Leave everyhing running, jjust sleep the CPU until the next interrupt.
 
 static void nap(void) {
-    
-}    
+
+}
 
 
 // This is called by about every 512us with interrupts on.
@@ -694,36 +692,36 @@ void __attribute__ ((weak)) run(void) {
 
     // Call user setup code
     setup();
-        
+
     while (1) {
-                
-        updateMillis();                     // The millis() function only offers a snapshot so that 
-                                            // we always get the same value no matter when we look inside 
-                                            // a single loop iteration. 
-        
-        
+
+        updateMillis();                     // The millis() function only offers a snapshot so that
+                                            // we always get the same value no matter when we look inside
+                                            // a single loop iteration.
+
+
         loop();
 
         pixel_displayBufferedPixels();      // show all display updates that happened in last loop()
                                             // Also currently blocks until new frame actually starts
 
-        blinkStateLoop();                 // Process any received IR messages. 
-            
+        blinkStateLoop();                 // Process any received IR messages.
+
         if (buttonChangeFlag) {
-                
+
             buttonChangeFlag = 0;
-                
-            sleepTimer.set( SLEEP_TIMEOUT_MS ); 
-                
-        }                
-        
+
+            sleepTimer.set( SLEEP_TIMEOUT_MS );
+
+        }
+
         if (sleepTimer.isExpired()) {
             sleep();
-            
+
         } else {
             nap();
-        }                         
-       
+        }
+
     }
 
 }

@@ -189,9 +189,12 @@ void setColor( Color newColor);
 // NOTE: all color changes are double buffered
 // and the display is updated when loop() returns
 
+void setColorOnFace( Color newColor , byte face );
+
+// DEPREICATED: Use setColorOnFace()
+void setFaceColor( byte face , Color newColor ) __attribute__ ((deprecated));
 void setFaceColor(  byte face, Color newColor );
 
-void setColorOnFace( Color newColor , byte face );
 
 /*
 
