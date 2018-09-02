@@ -191,6 +191,8 @@ void setColor( Color newColor);
 
 void setFaceColor(  byte face, Color newColor );
 
+void setColorOnFace( Color newColor , byte face );
+
 /*
 
     Timing functions
@@ -225,11 +227,13 @@ class Timer {
 
 		bool isExpired();
 
-		void set( uint32_t ms );            // This time will expire ms milliseconds from now
+    uint32_t getRemaining();
+
+    void set( uint32_t ms );            // This time will expire ms milliseconds from now
 
 		void add( uint16_t ms );
 
-        void never(void);                   // Make this timer never expire (unless set())
+    void never(void);                   // Make this timer never expire (unless set())
 
 
 };
@@ -330,7 +334,7 @@ void loop();
 
 /*
 
-	Some syntactic sugar to make our programs look not so ugly.
+	Some syntactic sugar to make our progrmas look not so ugly.
 
 */
 
