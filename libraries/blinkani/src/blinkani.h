@@ -31,34 +31,6 @@
 
 // Call to initialize the blinkani subsystem before starting any effects
 
-
-class Effect {
-
-	static Effect *first;	// The currently running animation or NULL if none
-
-	Effect *next;
-
-	virtual void updatePixels() =0;
-
-	public:
-
-		static void start( Effect *a);
-
-		static void queue( Effect *a);
-
-		static bool allComplete();
-
-		static void update();
-
-
-		virtual bool isComplete() = 0;
-
-};
-
-
-
-/*
-
 void blinkAniBegin(void);
 
 
@@ -76,7 +48,7 @@ void blink( Color onColor , uint16_t onDurration_ms);
 // blink specified number of times
 void strobe( uint16_t occurances, Color onColor,  uint16_t onDurration_ms, Color offColor , uint16_t offDurration );
 
-// black off, 50% duty cycle.
+// black off, 50% duty cycle. 
 void strobe( uint16_t occurances, Color onColor,  uint16_t period_ms );
 
 
@@ -98,8 +70,6 @@ Color getColor();
 Color getFaceColor(byte face);
 
 bool effectCompleted();
-
-*/
 
 
 #endif /* BLINKANI_H_ */

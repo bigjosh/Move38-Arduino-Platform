@@ -3,15 +3,13 @@
  *
  * All the functions for communication and waking on the 6 IR LEDs on the tile edges.
  *
- */
+ */ 
 
 #ifndef IR_H_
 #define IR_H_
 
 #include "shared.h"			// Get FACECOUNT
-#include "bitfun.h"
-
-//#define IR_DEBUG            
+#include "bitfun.h"			
 
 #define IRLED_COUNT FACE_COUNT
 
@@ -40,7 +38,7 @@ void ir_disable(void);
 
 void ir_tx_start(uint16_t spacing_ticks , uint8_t bitmask , uint16_t initialSpaces );
 
-// Send next pulse int this pulse train.
+// Send next pulse int this pulse train. 
 // leadingSpaces is the number of spaces to wait between the previous pulse and this pulse.
 // 0 doesn't really make any sense
 // Note that you must called ir_tx_sendpuse fast enough that the buffer doesn't run dry
@@ -61,7 +59,7 @@ void ir_tx_end(void);
 uint8_t ir_test_and_charge_cli( void );
 
 
-// Called anytime one of the IR LEDs triggers, which could
+// Called anytime on of the IR LEDs triggers, which could
 // happen because it received a flash or just because
 // enough ambient light accumulated
 

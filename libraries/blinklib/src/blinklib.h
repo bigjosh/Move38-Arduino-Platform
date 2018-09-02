@@ -12,6 +12,8 @@
 
 #include "ArduinoTypes.h"
 
+#include "chainfunction.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -227,15 +229,9 @@ class Timer {
 
 		bool isExpired();
 
+		void set( uint32_t ms );
+
     uint32_t getRemaining();
-
-    void set( uint32_t ms );            // This time will expire ms milliseconds from now
-
-		void add( uint16_t ms );
-
-    void never(void);                   // Make this timer never expire (unless set())
-
-
 };
 
 
@@ -330,6 +326,10 @@ void setup(void);
 // on the tile face are updated
 
 void loop();
+
+// Add a function to be called after each pass though loop()
+
+void addOnLoop( chainfunction_struct *chainfunction );
 
 
 /*
