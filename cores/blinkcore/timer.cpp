@@ -1,7 +1,7 @@
 /*
  * Timer related functions
- * 
- */ 
+ *
+ */
 
 
-// NOTE: Everythin is in the header for Timer
+// NOTE: Everything is in the header for Timer

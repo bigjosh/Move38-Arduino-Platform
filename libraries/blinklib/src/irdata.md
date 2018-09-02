@@ -24,8 +24,8 @@ The amount of time between consecutive flashes represents the bits as follows...
 
 | Bit | Time | 
 |-|-|
-| 0 | 300us |
-| 1 | 900us |
+| 0 | 150us |
+| 1 | 600us |
 
 The receiver periodically samples the IR LEDs to see if a flash (or ambient discharge) has occurred since the last sample.  If the LED has been discharged then it is recharged at this time. 
 
@@ -44,6 +44,8 @@ Because the transmit and receive clocks are asynchronous and possibly up to 10% 
 | 4+ | Invalid |
 
 If it has been 0 or 1 samples since the last trigger, this corresponds to a valid transmitted `1` bit.
+
+(note that the speed has been doubled since these drawings were made, so all absolute time periods are half as long!) 
 
 ![](img/1-bit-timing.png)
 

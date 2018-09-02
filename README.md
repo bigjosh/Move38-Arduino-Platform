@@ -2,24 +2,25 @@
 An Arduino core for the Blinks gaming tile. More info at...
 http://move38.com
 
+## Roadmap
 
 This core requires at least Arduino IDE v1.6.2, where v1.6.5+ is recommended. <br/>
 * [Programmers](#programmers)
 * **[How to install](#how-to-install)**
 * **[Getting started](#getting-started)**
 
-* **[Digging deeper](#digging-deeper)**
-	- [Hardware Abstraction Layer](#hardware-abstraction-layer)
+Covers installing this repo so that you can write and download code into a Blinks tile using the Arduino IDE. 
 
-## Programmers
+Ends with loading a `HelloBlink` program it a tile.
 
-Since there is no bootloader in a tile, all code must be programmed rather than downloaded.
+### Writing games
 
-You can use any AVR programmer supported by AVRDUDE and the Arduino IDE.
+The best way to start writing games is to work your way though the examples in the "File->Examples->Examples for Blink Tile" menu in the Arduino IDE (after you have installed this repo as described in the Getting Started above).  
+  
 
-Just connect your programmer and select it in the "Programmers" menu, and connect the 6-pin ISP to the tile. If you do not have a programmer, you can also use an Arduino and a couple of wires. More detailed instructions to come. 
+### [Service Port](Service Port.MD)
 
-You can then use the "Sketch-Upload to Programmer" menu choice or just press the Play button to compile your code and program it into the connected tile. (Both the menu option and the button do the same thing with a tile.)
+Describes the service port connector on each blink. Lets you add `print` statements to your programs, which can be very helpful during development.  
 
 ## How to install
 
@@ -37,16 +38,11 @@ In the future, we'll offer a simplified Arduino Boards Manager install path.
 
 * The "**~/Documents/Arduino/hardware/Move38-manual/avr**" folder is a Git repo and is also set up for easy editing in Atmel Studio with a solution inside the `\AS7` sub-folder. 
 
-## Getting started with Move38 Blinks on Arduino
+### API Layers
 
-* Open the **Tools > Board** menu item, and select `Blinks` from the `Move38` submenu.
-* Select what kind of programmer you're using under the **Programmers** menu.
-* Select "File->Examples->Examples for Blink Tile" and choose "HelloBlink".
-* Hit the Play button.
+The blinks hardware can do incredible things, and you can have unfettered access to it at any level you want. This documents describes those layers from bare metal up.  
 
-The IDE should compile the code and program the Blinks tile... and you should see pretty blinking lights!
 
-### Digging Deeper
 
 #### Hardware Abstraction Layer
 
