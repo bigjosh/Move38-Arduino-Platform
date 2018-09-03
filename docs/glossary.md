@@ -80,19 +80,3 @@ buttonDown()
 ```
 
     – the asterisk signals that this function is syntactic sugar… i.e. you can get the same information by means of the functions included, but it is such a common occurrence that we include it for everyone’s benefit.
-
-
-# Coming Soon…
-
-## Collaboration -- Time & Communication
-```
-	Metronome.start(period)
-    Metronome.stop()
-    Metronome.didTick()
-    Metronome.getPhase()
-    
-    Step.next()
-    Step.getHighestSeen()
-    *Step.didStep() - returns number of times stepped… since
-```
-
