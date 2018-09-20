@@ -1,11 +1,11 @@
 /*
 
-  This is a slimed down version of the Arduino Print class for the tiles platform.
+  This is a slimed down version of the Arduino Print class for the tiles platform. 
   Implements most cases except WStrings and Printables
 
 
   Original header:
-
+  
   Print.h - Base class that provides print() and println()
   Copyright (c) 2008 David A. Mellis.  All right reserved.
 
@@ -92,19 +92,5 @@ class Print
 
     virtual void flush() { /* Empty implementation for backward compatibility */ }
 };
-
-
-/** The Printable class provides a way for new classes to allow themselves to be printed.
-    By deriving from Printable and implementing the printTo method, it will then be possible
-    for users to print out instances of this class by passing them into the usual
-    Print::print and Print::println methods.
-*/
-
-class Printable
-{
-  public:
-    virtual size_t printTo(Print& p) const = 0;
-};
-
 
 #endif
