@@ -23,7 +23,7 @@
 #endif
 
 
-// Manually add our hooks. 
+// Manually add our hooks.
 // Must be called before using any other blinkstate functions
 // TODO: Now that blinkstate is the primary game-level API, maybe make this the default?
 
@@ -40,7 +40,7 @@ byte getLastValueReceivedOnFace( byte face );
 // Did the neighborState value on this face change since the
 // last time we checked?
 
-// Note the a face expiring has no effect on the last value 
+// Note the a face expiring has no effect on the last value
 
 byte didValueOnFaceChange( byte face );
 
@@ -49,7 +49,7 @@ byte didValueOnFaceChange( byte face );
 
 byte isValueReceivedOnFaceExpired( byte face );
 
-// Returns false if their has been a neighbor seen recently on any face, returns true otherwise. 
+// Returns false if their has been a neighbor seen recently on any face, returns true otherwise.
 bool isAlone();
 
 // Set value that will be continuously broadcast on all face.

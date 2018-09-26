@@ -1,9 +1,9 @@
 /*
  * callbacks.h
- * 
- * The user provides these functions to be called by the platform. 
  *
- */ 
+ * The user provides these functions to be called by the platform.
+ *
+ */
 
 #ifndef CALLBACKS_H_
 #define CALLBACKS_H_
@@ -57,39 +57,39 @@
 
 template <class T >
 struct CALLBACK_BASE {
-    
+
     // Fill in the callback function and bits here.
-    
+
     static void inline callback(void);
-    
+
     static const uint8_t running_bit;
     static const uint8_t pending_bit;
-    
+
     // General code for making a call back
-    
+
     static void inline invokeCallback(void) {
-        
+
         if ( TBI( CALLBACK_REG , T::running_bit ) ) {
-            
+
             // Remember that we need to rerun when current one is finished.
-            
+
             SBI( CALLBACK_REG ,  T::pending_bit );
-            
+
             } else {
-            
+
             // We are not currently running, so set the gate bit...
-            
+
             SBI( CALLBACK_REG , T::running_bit );
-            
+
             do {
                 CBI( CALLBACK_REG , T::pending_bit);
                 sei();
                 T::callback();
                 cli();
             } while ( TBI( CALLBACK_REG , T::pending_bit ) );
-            
+
             CBI( CALLBACK_REG , T::running_bit);
-            
+
         }
     }
 };

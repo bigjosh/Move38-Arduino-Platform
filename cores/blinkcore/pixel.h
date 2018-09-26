@@ -4,7 +4,7 @@
  * All the functions for showing colors on the 6 RGB LEDs on the tile face.
  * Also timekeeping functions since we use the same timer as for the LEDs.
  *
- */ 
+ */
 
 #ifndef RGB_PIXELS_H_
 #define RGB_PIXELS_H_
@@ -30,7 +30,7 @@ void pixel_enable(void);
 // You'd want to do this before going to sleep.
 
 void pixel_disable(void);
-        
+
 /** Display interface ***/
 
 // Each pixel has 32 brightness levels for each of the three colors (red,green,blue)
@@ -42,11 +42,11 @@ typedef struct {
     uint8_t b:5;
 } pixelColor_t;
 
-// Update the pixel buffer. 
+// Update the pixel buffer.
 
 void pixel_bufferedSetPixel( uint8_t pixel, pixelColor_t newColor );
 
-// Display the buffered pixels. Blocks until next frame starts. 
+// Display the buffered pixels. Blocks until next frame starts.
 
 void pixel_displayBufferedPixels(void);
 

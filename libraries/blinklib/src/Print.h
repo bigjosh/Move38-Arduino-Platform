@@ -1,11 +1,11 @@
 /*
 
-  This is a slimed down version of the Arduino Print class for the tiles platform. 
+  This is a slimed down version of the Arduino Print class for the tiles platform.
   Implements most cases except WStrings and Printables
 
 
   Original header:
-  
+
   Print.h - Base class that provides print() and println()
   Copyright (c) 2008 David A. Mellis.  All right reserved.
 

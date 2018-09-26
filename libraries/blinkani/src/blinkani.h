@@ -48,7 +48,7 @@ void blink( Color onColor , uint16_t onDurration_ms);
 // blink specified number of times
 void strobe( uint16_t occurances, Color onColor,  uint16_t onDurration_ms, Color offColor , uint16_t offDurration );
 
-// black off, 50% duty cycle. 
+// black off, 50% duty cycle.
 void strobe( uint16_t occurances, Color onColor,  uint16_t period_ms );
 
 
