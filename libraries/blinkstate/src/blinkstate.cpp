@@ -204,7 +204,7 @@ byte isValueReceivedOnFaceExpired( byte face ) {
     uint32_t now=millis();
 
     return isValueReceivedOnFaceExpired( face , now );
-
+    
 }
 
 // Returns false if their has been a neighbor seen recently on any face, true otherwise.
@@ -246,6 +246,6 @@ void setValueSentOnAllFaces( byte newState ) {
 void setValueSentOnFace( byte newState , byte face ) {
 
     outValue[face] = newState;
-
+    
 }
 

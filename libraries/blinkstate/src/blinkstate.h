@@ -57,11 +57,6 @@ bool isAlone();
 
 void setValueSentOnAllFaces( byte newState );
 
-
-// Set value that will be continuously broadcast on indicated face.
-
-// By default we power up with all faces sending the value 0.
-
 void setValueSentOnFace( byte value , byte face );
 
 
