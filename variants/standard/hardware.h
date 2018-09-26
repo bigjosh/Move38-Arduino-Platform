@@ -1,11 +1,11 @@
 /*
  * hardware.h
  *
- * Defines the location of all the hardware 
- * This header matches all boards that *DO* have the pretty logo on the front (newer than 1/1/17). 
- * Less than 100 boards older than this, hopefully we can retire the legacy header and move this to core 
+ * Defines the location of all the hardware
+ * This header matches all boards that *DO* have the pretty logo on the front (newer than 1/1/17).
+ * Less than 100 boards older than this, hopefully we can retire the legacy header and move this to core
  *
- */ 
+ */
 
 
 #ifndef HARDWARE_H_
@@ -69,7 +69,7 @@
 #define BLUE_SINK_DDR  DDRE
 #define BLUE_SINK_BIT  3
 
-/*** IR ***/ 
+/*** IR ***/
 
 // IR transceivers
 // There are 6 IR LEDs - one for each face
@@ -84,7 +84,7 @@
 
 
 // CONSTRAINTS:
-// Note that all IR anodes must be on same port, as do all IR cathodes. 
+// Note that all IR anodes must be on same port, as do all IR cathodes.
 // Cathodes must have pin change interrupt
 //
 // Each anode must be on the same bit as the corresponding anode. (this could be relaxed with extra code)
@@ -94,10 +94,10 @@
 #define IR_BITS     (_BV( 0 )|_BV( 1 )|_BV( 2 )|_BV( 3 )|_BV( 4 )|_BV( 5 ))
 
 // IR pin change interrupts are unused so far, but we will want them for waking from sleep soon...
-// TODO: Wake on IR change. 
+// TODO: Wake on IR change.
 
-// We want a pin change interrupt on the CATHODES since these will get charged up 
-// and then exposure will make them go low. 
+// We want a pin change interrupt on the CATHODES since these will get charged up
+// and then exposure will make them go low.
 // PORTC is connected to the cathodes, and they are on PCINT0-PCINT5
 // which is controlled by PCIE0
 
@@ -161,7 +161,7 @@
 #define SP_T_DDR  DDRD
 #define SP_T_BIT  1
 
-// Serial port hardware on service port 
+// Serial port hardware on service port
 
 #define SP_SERIAL_CTRL_REG      UCSR0A
 #define SP_SERIAL_DATA_REG      UDR0

@@ -1,13 +1,13 @@
 /*
  * hardware.h
  *
- * Defines the location of all the hardware 
- * This header matches all boards that do NOT have the pretty logo on the front. 
+ * Defines the location of all the hardware
+ * This header matches all boards that do NOT have the pretty logo on the front.
  * Less than 100 boards like this, so someday hopefully we can retire this header.
  *
  *
  * Created: 7/23/2017 9:50:54 PM
- */ 
+ */
 
 
 #ifndef HARDWARE_H_
@@ -72,7 +72,7 @@
 #define BLUE_SINK_DDR  DDRE
 #define BLUE_SINK_BIT  3
 
-/*** IR ***/ 
+/*** IR ***/
 
 // IR transceivers
 // There are 6 IR LEDs - one for each face
@@ -87,7 +87,7 @@
 
 
 // CONSTRAINTS:
-// Note that all IR anodes must be on same port, as do all IR cathodes. 
+// Note that all IR anodes must be on same port, as do all IR cathodes.
 // Cathodes must have pin change interrupt
 //
 // Each anode must be on the same bit as the corresponding anode. (this could be relaxed with extra code)
@@ -97,10 +97,10 @@
 #define IR_BITS     (_BV( 0 )|_BV( 1 )|_BV( 2 )|_BV( 3 )|_BV( 4 )|_BV( 5 ))
 
 // IR pin change interrupts are unused so far, but we will want them for waking from sleep soon...
-// TODO: Wake on IR change. 
+// TODO: Wake on IR change.
 
-// We want a pin change interrupt on the CATHODES since these will get charged up 
-// and then exposure will make them go low. 
+// We want a pin change interrupt on the CATHODES since these will get charged up
+// and then exposure will make them go low.
 // PORTC is connected to the cathodes, and they are on PCINT0-PCINT5
 // which is controlled by PCIE0
 
@@ -147,11 +147,11 @@
 
 // Do not define SP_PRESENT
 
- // There is no good way to have a board variant only include compatible libraries in Arduino IDE, so 
+ // There is no good way to have a board variant only include compatible libraries in Arduino IDE, so
  // we are stuck defining these even though they are wrong. If we do not, then ARDUINO still compiles
- // the Serial class even if we do not include it and that causes errors when it pulls in the sp.x files. 
+ // the Serial class even if we do not include it and that causes errors when it pulls in the sp.x files.
 
- 
+
  // Service port hardware
 
 // Pins as digital IO
@@ -168,7 +168,7 @@
 #define SP_T_DDR  DDRD
 #define SP_T_BIT  1
 
-// Serial port hardware on service port 
+// Serial port hardware on service port
 
 #define SP_SERIAL_CTRL_REG      UCSR0A
 #define SP_SERIAL_DATA_REG      UDR0

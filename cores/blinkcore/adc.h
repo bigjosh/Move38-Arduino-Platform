@@ -1,9 +1,9 @@
 /*
  * Internal analog to digital converter
- * 
+ *
  * We connect the ADC to the battery so we can check its voltage.
  *
- */ 
+ */
 
 #ifndef ADC_H_
 #define ADC_H_
@@ -25,7 +25,7 @@ void adc_enable(void);
 void adc_startConversion(void);
 
 // Returns the previous conversion result.
-// Blocks if conversion not ready yet. 
+// Blocks if conversion not ready yet.
 // The value is the voltage of the battery * 10.
 // So 30 = 3.0 volts
 

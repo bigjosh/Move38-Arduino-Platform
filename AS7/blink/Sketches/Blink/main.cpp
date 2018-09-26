@@ -1,9 +1,9 @@
 /*
  * Prototype Step Function
- * 
+ *
  * A button press sends step from a single Blink
  * All Blinks call their step function
- * 
+ *
  * Step is special in that it leaves getNeighborState as the value before step happened...
  */
 
@@ -46,7 +46,7 @@ void loop() {
       }
     }
   }
-  
+
   if( stepSendTimeout.isExpired() ) {
     setValueSentOnAllFaces(BREATHE);
   }

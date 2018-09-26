@@ -3,7 +3,7 @@
  *
  * All the functions for controlling power and sleep.
  *
- */ 
+ */
 
 #ifndef POWER_H_
 #define POWER_H_
@@ -19,7 +19,7 @@
 // Possible sleep timeout values
 // I know that it is idiomatic Arduino to use straight defines here
 // but that leaves open questions. This makes is clear that you pass
-// a single timeout value from the list of permitted values. 
+// a single timeout value from the list of permitted values.
 
 typedef enum {
 
@@ -33,8 +33,8 @@ typedef enum {
     TIMEOUT_2S   = (_BV(WDIE) | _BV( WDP2) | _BV( WDP1) | _BV( WDP0) ),
     TIMEOUT_4S   = (_BV(WDIE) | _BV( WDP3) ),
     TIMEOUT_8S   = (_BV(WDIE) | _BV( WDP3) | _BV( WDP0) )
-        
-} power_sleepTimeoutType;    
+
+} power_sleepTimeoutType;
 
 
 #endif
@@ -43,7 +43,7 @@ typedef enum {
 // which could include button change or IR change
 
 void power_sleep(void);
-    
+
 // Sleep with a predefined timeout.
 // This is very power efficient since chip is stopped except for WDT
 
@@ -58,5 +58,5 @@ void power_init(void);
 // Execute a soft reset - almost like power up
 
 void power_soft_reset(void);
-    
+
 #endif /* POWER_H_ */

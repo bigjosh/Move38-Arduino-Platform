@@ -24,11 +24,11 @@
 #ifndef Arduino_h
 
     #define Arduino_h
-	
+
     #include <stdbool.h>
     #include <stdint.h>
     #include <math.h>
-	
+
 	#include "ArduinoTypes.h"
 
     #define HIGH 0x1
@@ -68,15 +68,15 @@
     #define bitWrite(value, bit, bitvalue) (bitvalue ? bitSet(value, bit) : bitClear(value, bit))
 
 
-    #define bit(b) (1UL << (b))		
-		
+    #define bit(b) (1UL << (b))
+
 	// Don't judge me
 	// I know this is so ugly, but only other way to make it so people do not need to do a
-	// manual #include in their sketches would be to throw all the library code into one giant 
+	// manual #include in their sketches would be to throw all the library code into one giant
 	// directory... and that is even uglier, right?
-	
+
 	#include "shared.h"
 	#include "blinklib.h"
-	#include "blinkstate.h"	
-    
+	#include "blinkstate.h"
+
 #endif
