@@ -50,48 +50,15 @@
 
 #endif
 
-
-// If defined, TX_DEBUG will output HIGH on pin A on a Dev Candy board anytime
-// an IR pulse is sent on IR0. The pulse is high for the duration of the IR on time.
-
-//#define TX_DEBUG
-
-
-// If defined, RX_DEBUG will output HIGH on pin A on a dev candy board anytime
-// an IR pulse is received on IR0. The pulse is high from the moment the pin changes,
-// to the moment it is read by the timer polling routine.
-
-#define RX_DEBUG
-
-
-#if defined ( TX_DEBUG )  || defined ( RX_DEBUG ) || defined (IR_DEBUG)
-
-    #include "sp.h"
-
-#endif
-
-
 // This gets called anytime one of the IR LED cathodes has a level change drops. This typically happens because some light
 // hit it and discharged the capacitance, so the pin goes from high to low. We initialize each pin at high, and we charge it
 // back to high everything it drops low, so we should in practice only ever see high to low transitions here.
 
 // TOOD: We will use this for waking from nap.
 
-ISR(IR_ISR,ISR_NAKED) {
+ISR(IR_ISR) {
 
-    // We make this NAKED so we can deal with it efficiently
-    // otherwise the compiler adds an R0 and R1 preamble and postamble even though these are not used at all. Arg.
-    // It compiles down to a single SBS with no side effects, so no need to save any registers.
-
-    // Be careful if you put anything here that changes flags or registers!
-
-    #ifdef RX_DEBUG
-       if ( ! TBI(PINC,0) ) {
-           SP_PIN_A_SET_1();               // SP pin A goes high any time IR0 is triggered. We clear it when we later process in the polling code.
-       }
-    #endif
-
-    asm("RETI");
+    // EMPTY
 
 }
 
@@ -107,7 +74,7 @@ void ir_enable(void) {
 
     // TODO: IR interrupts totally disabled for now. We will need them for wake on data.
 
-    //SBI( PCICR , IR_PCI_BIT );      // Enable the pin group to actualy generate interrupts
+    //SBI( PCICR , IR_PCI );      // Enable the pin group to actual generate interrupts
 
     // There is a race where an IR can get a pulse right here, but that is ok becuase it will just generate an int and be processed normally
     // and get recharged naturally before the next line.
@@ -115,13 +82,11 @@ void ir_enable(void) {
     // Initial charge up of cathodes to get things going
     //chargeLEDs( IR_BITS );      // Charge all the LEDS - this handles suppressing extra pin change INTs during charging
 
-
-
 }
 
 void ir_disable(void) {
 
-    //CBI( PCICR , IR_PCI_BIT );      // Disable the pin group to block interrupts. Leave the bits for individual pins intact.
+    CBI( PCICR , IR_PCI );      // Disable the pin group to block interrupts
 
 }
 
@@ -153,8 +118,6 @@ void ir_init(void) {
 
     //IR_MASK_REG |= IR_BITS;          // Enable individual pins in Pin Change Mask Register for all 6 cathode pins. Any change after this will set the pending interrupt flag.
                                      // TODO: Single LEDs can get masked here if they get noisy to avoid spurious wakes
-
-    // The interrupt enable bit gets set/cleared in ir_enable()/ir_disable() so we can leave the pin bits in place.
 
 }
 
@@ -189,6 +152,8 @@ static inline void ir_tx_pulse_internal( uint8_t bitmask ) {
         uint8_t cathode_ddr_save = IR_CATHODE_DDR;          // We don't want to mess with the upper bits not used for IR LEDs
 
         PCMSK1 &= ~bitmask;                                 // stop Triggering interrupts on these cathode pins because they are going to change when we pulse
+
+        // TODO: Current blinklib does not use IR interrupts, so we could get rid of this but would only save a couple instructions/cycles
 
         // Now we don't have to worry about...
         // (1) a received pulse on this LED interfering with our transmit and
@@ -258,40 +223,11 @@ static inline void ir_tx_pulse_internal( uint8_t bitmask ) {
 }
 
 
-// Measure the IR LEDs to to see if they have been triggered.
-// Must be called when interrupts are off.
-// Returns a 1 in each bit for each LED that was fired.
-// Triggered LEDs are recharged.
-
-uint8_t ir_test_and_charge_cli( void ) {
+static inline void chargeLEDs( uint8_t bitmask ) {
 
     uint8_t ir_cathode_ddr_cache = IR_CATHODE_DDR;       // This will not change unless we change it, so no need to reload it every access
 
-   // ===Time critcal section start===
-
-   // Grab the IR LEDs that have triggered since the last time we checked.
-   // These will be 0 on the cathode since it got discharged by the flash
-
-   uint8_t ir_LED_triggered_bits;
-
-   // We and with the IR_BIT because there are other bits in this IO register that connect to other things
-   // and we need to not mess with those.
-
-   ir_LED_triggered_bits = (~IR_CATHODE_PIN) & IR_BITS;      // A 1 in ir_led_triggered_bits means that LED triggered
-
-    // If a pulse comes in after we sample but before we finish charging, then we will miss it
-    // so best to keep this short and straight
-
-    // Note that protocol should make sure that real data pulses should have a header pulse that
-    // gets this receiver in sync so we only are recharging in the idle time after a pulse.
-    // real data pulses should come less than 1ms after the header pulse, and should always be less than 1ms apart.
-
-
-    // Recharge the ones that have fired
-
-    uint8_t bitmask = ir_LED_triggered_bits;
-
-    IR_INT_MASK_REG &= ~bitmask;                         // stop Triggering interrupts on these pins because they are going to change when we charge them
+     PCMSK1 &= ~bitmask;                                 // stop Triggering interrupts on these pins because they are going to change when we charge them
 
     // charge up receiver cathode pins while keeping other pins intact
 
@@ -307,7 +243,7 @@ uint8_t ir_test_and_charge_cli( void ) {
         Writing a '1' to PINxn toggles the value of PORTxn, independent on the value of DDRxn.
     */
 
-    IR_CATHODE_PIN =  bitmask;       // This enables pull-ups on charge pins. If we set the DDR first, then we would drive the low pins to ground.
+    IR_CATHODE_PIN =  bitmask;       // This enables pull-ups on charge pins
 
     IR_CATHODE_DDR = ir_cathode_ddr_cache | bitmask;       // This will drive the charge pins high
 
@@ -321,6 +257,7 @@ uint8_t ir_test_and_charge_cli( void ) {
                                         // right before we sampled and finished right after in the next window.
 
 
+    // Only takes a tiny bit of time to charge up the cathode, even though the pull-up so no extra delay needed here...
 
 
     IR_INT_MASK_REG |= bitmask;         // Re-enable pin change on the pins we just charged up
@@ -334,11 +271,38 @@ uint8_t ir_test_and_charge_cli( void ) {
 
     IR_CATHODE_DDR = ir_cathode_ddr_cache;          // Back to the way we started, charge pins now only pulled-up
 
-    #ifdef RX_DEBUG
-        SP_PIN_A_SET_0();       // We set the A output when we see a pin change interrupt on a cathode, so we clear it here to be ready to show the next one.
-    #endif
-
     IR_CATHODE_PIN = bitmask;                       // toggle pull-ups off, now cathodes pure inputs
+
+}
+
+// Measure the IR LEDs to to see if they have been triggered.
+// Must be called when interrupts are off.
+// Returns a 1 in each bit for each LED that was fired.
+// Fired LEDs are recharged.
+
+uint8_t ir_test_and_charge_cli( void ) {
+
+   // ===Time critcal section start===
+
+   // Find out which IR LED(s) went low to trigger this interrupt
+
+   // TODO: Could save lots by redoing in ASM
+   // TODO: Look into moving _zero_reg_ out of R! to save a push/pop and eor.
+
+   uint8_t ir_LED_triggered_bits;
+
+    ir_LED_triggered_bits = (~IR_CATHODE_PIN) & IR_BITS;      // A 1 means that LED triggered
+
+
+    // If a pulse comes in after we sample but before we finish charging and enabling pin change, then we will miss it
+    // so best to keep this short and straight
+
+    // Note that protocol should make sure that real data pulses should have a header pulse that
+    // gets this receiver in sync so we only are recharging in the idle time after a pulse.
+    // real data pulses should come less than 1ms after the header pulse, and should always be less than 1ms apart.
+    // Recharge the ones that have fired
+
+    chargeLEDs( ir_LED_triggered_bits );
 
     // TODO: Some LEDs seem to fire right after IR0 is charged when connected to programmer?
 
@@ -365,41 +329,27 @@ uint8_t ir_test_and_charge_cli( void ) {
 
 */
 
-static volatile uint8_t sendpulse_bitmask;      // Which IR LEDs to send on
-static volatile uint8_t sendpulse_spaces;       // Time to delay until next pulse. 0=pulse sent
-static volatile uint8_t sendpulse_spaces_next;  // A one entry deep buffer for spaces so we can try to keep it primed.
+static volatile uint16_t sendpulse_bitmask;      // Which IR LEDs to send on
+static volatile uint16_t sendpulse_spaces;       // Time to delay until next pulse. 0=pulse sent
+static volatile uint16_t sendpulse_spaces_next;  // A one entry deep buffer for spaces so we can try to keep it primed.
 
 // Currently clocks at 23us @ 4Mhz
 
 ISR(TIMER1_CAPT_vect) {
 
-    // Cache because the compiler is not so good here
-    uint8_t sendpulse_spaces_m = sendpulse_spaces;
+    if (sendpulse_spaces) {
 
-    if (sendpulse_spaces_m) {
+        sendpulse_spaces--;
 
-        sendpulse_spaces_m--;
-
-        if (sendpulse_spaces_m==0) {
-
-           #ifdef TX_DEBUG
-                if (sendpulse_bitmask&0x01) SP_PIN_A_SET_1();
-           #endif
+        if (sendpulse_spaces==0) {
 
             ir_tx_pulse_internal( sendpulse_bitmask );     // Flash
 
-            #ifdef TX_DEBUG
-                SP_PIN_A_SET_0();
-            #endif
-
-            sendpulse_spaces_m = sendpulse_spaces_next;
+            sendpulse_spaces = sendpulse_spaces_next;
 
             sendpulse_spaces_next = 0;
 
         }
-
-        sendpulse_spaces = sendpulse_spaces_m;
-
     }
 
 }
@@ -465,12 +415,8 @@ void ir_tx_start(uint16_t spacing_ticks , uint8_t bitmask , uint16_t initialSpac
 // TODO: single buffer this in case sender has a hiccup or is too slow to keep up?
 
 void ir_tx_sendpulse( uint8_t leadingSpaces ) {
-    while (sendpulse_spaces_next) {           // Wait for previous entry to buffer to pulse to get sent
 
-        // TODO: This should be a sleep_cpu() and the inetrrupt will wake us.
-
-        //sleep_cpu();                         // Don't burn power, the timer interrupt will wake us
-    }
+    while (sendpulse_spaces_next);           // Wait for previous entry to buffer to pulse to get sent
     sendpulse_spaces_next=leadingSpaces;     // ISR trigger will end a pulse after specified number of spaces
 
 }
@@ -480,7 +426,7 @@ void ir_tx_sendpulse( uint8_t leadingSpaces ) {
 
 void ir_tx_end(void) {
 
-    while (sendpulse_spaces);       // Wait for all previous pulses to get sent (buffered and immediate complete)
+    while (sendpulse_spaces);       // Wait for all previous pulses to get sent (buffered and immedeate complete)
 
     // stop timer (not more ISR)
     TCCR1B = 0;             // Sets prescaler to 0 which stops the timer.
