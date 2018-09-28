@@ -121,10 +121,9 @@
 */
 
 
-#define IR_PCI     PCIE1
-#define IR_ISR     PCINT1_vect
-#define IR_MASK    PCMSK1           // Each bit here corresponds to 1 pin
-#define IR_PCINT   IR_BITS
+#define IR_PCI_BIT      PCIE1            // Set this bit in PCICR to enable pin change INT on pins PCINT8-14 - the cathode pins on PORTC
+#define IR_ISR          PCINT1_vect      // The vector called when pin change happens on cathode pins
+#define IR_INT_MASK_REG PCMSK1           // Each bit here corresponds to 1 cathode pin
 
 /*** Button ***/
 

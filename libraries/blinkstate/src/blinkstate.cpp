@@ -26,8 +26,6 @@
 
 #include "blinklib.h"
 
-#include "chainfunction.h"
-
 // Tell blinkstate.h to save the IR functions just for us...
 
 #define BLINKSTATE_CANNARY
@@ -66,6 +64,47 @@ static uint32_t neighboorSendTime[FACE_COUNT];      // inits to 0 on startup, so
 static const uint16_t sendprobeDurration_ms = 200;
 
 
+// The low level IR code handles 8 bits of data per value, but
+// at this layer we break that out.
+// We use the top bit as a parity bit, and then out of the bottom
+// 7 bits (max value 127), we save the values 100-127 to use
+// for out-of-band communications for platform level stuff
+
+
+
+// Count number of 1 bits, return true if it is odd
+
+static uint8_t oddParity(uint8_t b) {
+
+      uint8_t p=0;
+
+      // Count number of odd bits
+
+      while (b) {
+
+          if (b & 0x01) {
+
+               p++;
+
+          }
+
+          b>>=1;
+
+      }
+
+      return true;
+
+      return p & 0x01;      // If the bottom bit is 1, then there were an odd number of 1 bits in b
+
+}
+
+
+static void ir_OOB_command( uint8_t c ) {
+
+    // Watch this space!
+
+}
+
 
 // check and see if any states recently updated....
 
@@ -85,7 +124,20 @@ static void updateIRFaces(uint32_t now) {
 
             byte receivedMessage = irGetData(f);
 
-            inValue[f] = receivedMessage;
+            if (oddParity(receivedMessage)) {       // CHeck that incoming message has odd parity
+
+                byte data = receivedMessage & 0b01111111;   // Mask away the parity bit
+
+                if ( data > IR_DATA_VALUE_MAX ) {
+
+                    ir_OOB_command( data );
+
+                } else {
+
+                    inValue[f] = data ;
+
+                }
+            }
 
         }
 
@@ -107,6 +159,28 @@ static void updateIRFaces(uint32_t now) {
 
 }
 
+
+static uint8_t enabled;
+
+
+void blinkStateEnable(void) {
+    enabled = 1;
+}
+
+void blinkStateDisable(void) {
+    enabled = 0;
+}
+
+
+void blinkStateSetup(void) {
+
+    // Blinkstate is enabled by default
+    blinkStateEnable();
+
+}
+
+
+
 // Called one per loop() to check for new data and repeat broadcast if it is time
 // Note that if this is not called frequently then neighbors can appear to still be there
 // even if they have been gone longer than the time out, and the refresh broadcasts will not
@@ -115,45 +189,17 @@ static void updateIRFaces(uint32_t now) {
 // TODO: All these calls to millis() and subsequent calculations are expensive. Cache stuff and reuse.
 // TODO: now will come as an arg soon with freeze-time branch
 
-void blinkStateOnLoop(void) {
+void blinkStateLoop(void) {
 
-    uint32_t now = millis();
+    if (enabled) {
 
-    updateIRFaces(now);
+        uint32_t now = millis();
 
+        updateIRFaces(now);
 
-}
-
-// Make a record to add to the callback chain
-
-static struct chainfunction_struct blinkStateOnLoopChain = {
-     .callback = blinkStateOnLoop,
-     .next     = NULL                  // This is a waste because it gets overwritten, but no way to make this un-initialized in C
-};
-
-// Something tricky here:  I can not find a good place to automatically add
-// our onLoop() hook at compile time, and we
-// don't want to follow idiomatic Arduino ".begin()" pattern, so we
-// hack it by adding here the first time anything that could use state
-// stuff is called. This is an ugly hack. :/
-
-// TODO: This is a good place for a GPIO register bit. Then we could inline the test to a single instruction.,
-
-static uint8_t hookRegisteredFlag=0;        // Did we already register?
-
-static void registerHook(void) {
-    if (!hookRegisteredFlag) {
-        addOnLoop( &blinkStateOnLoopChain );
-        hookRegisteredFlag=1;
     }
+
 }
-
-// Manually add our hooks
-
-void blinkStateBegin(void) {
-    registerHook();
-}
-
 
 // Returns the last received state on the indicated face
 // Remember that getNeighborState() starts at 0 on powerup.
@@ -204,7 +250,7 @@ byte isValueReceivedOnFaceExpired( byte face ) {
     uint32_t now=millis();
 
     return isValueReceivedOnFaceExpired( face , now );
-    
+
 }
 
 // Returns false if their has been a neighbor seen recently on any face, true otherwise.
@@ -228,11 +274,23 @@ bool isAlone() {
 
 // By default we power up in state 0.
 
-void setValueSentOnAllFaces( byte newState ) {
+void setValueSentOnAllFaces( byte value ) {
+
+    if (value > IR_DATA_VALUE_MAX ) {
+
+        value = IR_DATA_VALUE_MAX;
+
+    }
+
+    if ( !oddParity(value) ) {
+
+        value |= 0b10000000;        // Force it to be odd!
+
+    }
 
     FOREACH_FACE(f) {
 
-        outValue[f] = newState;
+        outValue[f] = value;
 
     }
 
@@ -243,9 +301,21 @@ void setValueSentOnAllFaces( byte newState ) {
 
 // By default we power up in state 0.
 
-void setValueSentOnFace( byte newState , byte face ) {
+void setValueSentOnFace( byte value , byte face ) {
 
-    outValue[face] = newState;
-    
+    if (value > IR_DATA_VALUE_MAX ) {
+
+        value = IR_DATA_VALUE_MAX;
+
+    }
+
+    if ( !oddParity(value) ) {
+
+        value |= 0b10000000;        // Force it to be odd!
+
+    }
+
+    outValue[face] = value;
+
 }
 

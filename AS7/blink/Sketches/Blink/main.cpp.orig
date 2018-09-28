@@ -6,7 +6,7 @@ byte myState = 0;
 Color colors[] = { BLUE, RED, YELLOW, ORANGE, GREEN};
 const byte myState_count = COUNT_OF (colors);
 
-bool errorFlag[ FACE_COUNT ];
+bool errorFlag[ FACE_COUNT ];           
 
 void clearErrors() {
   FOREACH_FACE(f) {
@@ -126,15 +126,15 @@ long map_m(long x, long in_min, long in_max, long out_min, long out_max)
 byte encode( byte v ) {
 
     byte inverted =  ( myState_count -1 -v ) ;
-
+    
     byte invertedTruncated = inverted % 8;
 
-    return( v + ( invertedTruncated * myState_count) );
+    return( v + ( inverted * myState_count) );
 
 }
 
 byte decode( byte v ) {
-
+    
     return( v % myState_count );
 
 }
@@ -145,10 +145,12 @@ byte test( byte v ) {
     byte orginal = decode( v ) ;
 
     byte inverted =  ( myState_count -1 - orginal ) ;
-
+    
     byte calculatedInvertedTruncated = inverted % 8;
-
+    
+    
     byte recoveredInvertedTruncated = v / myState_count ;
+    
 
     return calculatedInvertedTruncated == recoveredInvertedTruncated;
 
@@ -156,22 +158,22 @@ byte test( byte v ) {
 
 
 void loop() {
-
+        
   // put your main code here, to run repeatedly:
   if ( buttonSingleClicked() ) {
-
+      
     myState++;
     if (myState >= myState_count ) {
       myState = 0;
     }
     clearErrors();
-
+    
   }
 
   FOREACH_FACE( f ) {
 
     if ( !isValueReceivedOnFaceExpired( f )  ) {
-
+        
       // update to the value we see, if the value is already our value, do nothing
 
       byte neighborValue = getLastValueReceivedOnFace( f );
@@ -182,6 +184,10 @@ void loop() {
 
       } else {
 
+<<<<<<< HEAD
+        SP_PIN_R_SET_1();                                    
+=======
+>>>>>>> 14110e1df2052b68b36b2b14b56ddd1835302b48
         errorFlag[f] = true;
 
       }

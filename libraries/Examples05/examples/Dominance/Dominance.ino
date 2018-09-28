@@ -1,6 +1,16 @@
 /*
+ *  Dominance 
+ *  
  *  Take on the color of the dominant Blink attached
+ *  
+ *  All the blinks in a connected group will switch to the dominant color in the group.
+ *  Pressing the button will change the color of that blink to the next higher dominant color,
+ *  so has the effect of updating all connected blinks to a new color. 
+ *  
+ *  Demonstrates group converance. 
  */
+
+#include "Serial.h"
 
 byte myState = 0;
 Color colors[] = { BLUE, RED, YELLOW, ORANGE, GREEN};
@@ -14,17 +24,13 @@ void clearErrors() {
   }
 }
 
-#warning
-#include "sp.h"
+ServicePortSerial serial;
 
 void setup() {
   // put your setup code here, to run once:
-  clearErrors();
-             SP_PIN_A_MODE_OUT();
-             sp_serial_init();
-             sp_serial_disable_rx();
-             SP_PIN_R_MODE_OUT();
-             sp_serial_tx('h');
+  //clearErrors();
+  //serial.begin();
+  //  serial.println("Hi.");
 
 }
 
@@ -155,7 +161,33 @@ byte test( byte v ) {
 }
 
 
+Timer t;
+
+int colorIndex=0;
+
+
 void loop() {
+    setColor(BLUE);
+    
+   if (t.isExpired()) {
+       
+       colorIndex++;
+       
+       if (colorIndex == COUNT_OF( colors ) ) {
+           
+           colorIndex=0;
+           
+       }           
+       
+       setColor( colors[ colorIndex ] );
+       
+       t.set( 1000 );
+       
+   }       
+   
+      
+           
+
 
   // put your main code here, to run repeatedly:
   if ( buttonSingleClicked() ) {
@@ -208,3 +240,4 @@ void loop() {
   setValueSentOnAllFaces( encode( myState ) );
 
 }
+

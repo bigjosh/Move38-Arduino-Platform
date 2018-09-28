@@ -2,11 +2,9 @@
  * hardware.h
  *
  * Defines the location of all the hardware
- * This header matches all boards that do NOT have the pretty logo on the front.
- * Less than 100 boards like this, so someday hopefully we can retire this header.
+ * This header matches all boards that *DO* have the pretty logo on the front (newer than 1/1/17).
+ * Less than 100 boards older than this, hopefully we can retire the legacy header and move this to core
  *
- *
- * Created: 7/23/2017 9:50:54 PM
  */
 
 
@@ -15,8 +13,7 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include "utils.h"
-
+//#include "utils.h"
 
 /*** PIXELS ***/
 
@@ -106,7 +103,7 @@
 
 /*
     PCICR
-    Bit 1 – PCIE1:?Pin Change Interrupt Enable 1
+    Bit 1 â€“ PCIE1:?Pin Change Interrupt Enable 1
     When the PCIE1 bit is set and the I-bit in the Status Register (SREG) is set, pin change interrupt 1 is
     enabled. Any change on any enabled PCINT[14:8] pin will cause an interrupt. The corresponding interrupt
     of Pin Change Interrupt Request is executed from the PCI1 Interrupt Vector. PCINT[14:8] pins are
@@ -115,7 +112,7 @@
 
 /*
     PCMSK1
-    Bits 0, 1, 2, 3, 4, 5, 6 – PCINT8, PCINT9, PCINT10, PCINT11, PCINT12, PCINT13, PCINT14:?Pin
+    Bits 0, 1, 2, 3, 4, 5, 6 â€“ PCINT8, PCINT9, PCINT10, PCINT11, PCINT12, PCINT13, PCINT14:?Pin
     Change Enable Mask
     Each PCINT[15:8]-bit selects whether pin change interrupt is enabled on the corresponding I/O pin. If
     PCINT[15:8] is set and the PCIE1 bit in PCICR is set, pin change interrupt is enabled on the
@@ -124,10 +121,9 @@
 */
 
 
-#define IR_PCI     PCIE1
-#define IR_ISR     PCINT1_vect
-#define IR_MASK    PCMSK1           // Each bit here corresponds to 1 pin
-#define IR_PCINT   IR_BITS
+#define IR_PCI_BIT      PCIE1            // Set this bit in PCICR to enable pin change INT on pins PCINT8-14 - the cathode pins on PORTC
+#define IR_ISR          PCINT1_vect      // The vector called when pin change happens on cathode pins
+#define IR_INT_MASK_REG PCMSK1           // Each bit here corresponds to 1 cathode pin
 
 /*** Button ***/
 
@@ -143,13 +139,12 @@
 #define BUTTON_DOWN() (!TBI(BUTTON_PIN,BUTTON_BIT))           // PCINT23 - pulled low when button pressed
 
 
-/*** SERCIVE PORT ***/
 
 // Do not define SP_PRESENT
 
- // There is no good way to have a board variant only include compatible libraries in Arduino IDE, so
+ // There is no good way to have a board variant only include compatible libraries in Arduino IDE, so 
  // we are stuck defining these even though they are wrong. If we do not, then ARDUINO still compiles
- // the Serial class even if we do not include it and that causes errors when it pulls in the sp.x files.
+ // the Serial class even if we do not include it and that causes errors when it pulls in the sp.x files. 
 
 
  // Service port hardware
@@ -168,11 +163,10 @@
 #define SP_T_DDR  DDRD
 #define SP_T_BIT  1
 
-// Serial port hardware on service port
+// Serial port hardware on service port 
 
 #define SP_SERIAL_CTRL_REG      UCSR0A
 #define SP_SERIAL_DATA_REG      UDR0
 #define SP_SERIAL_READY_BIT     RXC0
-
 
 #endif /* HARDWARE_H_ */

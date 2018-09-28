@@ -22,9 +22,11 @@
  *
  */
 
+#include <stddef.h>     // NULL
+
 #include "blinklib.h"
 
-#include "chainfunction.h"
+//#include "chainfunction.h"
 
 // Tell blinkstate.h to save the IR functions just for us...
 
@@ -32,9 +34,14 @@
 
 #include "blinkani.h"
 
-// Here we simulate an interface in C
-// It is ugly, but works and is time & space efficient
+Effect *Effect::first;					// Pointer to the currently running animation, or NULL if none
 
+void Effect::start( Effect *e ) {
+
+	e->next = first;
+	first = e;
+
+}
 
 struct Effect_t {
 
@@ -434,30 +441,11 @@ void blinkAniOnLoop(void) {
 
 }
 
-// Make a record to add to the callback chain
-
-static struct chainfunction_struct blinkAniOnLoopChain = {
-     .callback = blinkAniOnLoop,
-     .next     = NULL                  // This is a waste because it gets overwritten, but no way to make this un-initialized in C
-};
-
-// Something tricky here:  I can not find a good place to automatically add
-// our onLoop() hook at compile time, and we
-// don't want to follow idiomatic Arduino ".begin()" pattern, so we
-// hack it by adding here the first time anything that could use state
-// stuff is called. This is an ugly hack. :/
-
-// TODO: This is a good place for a GPIO register bit. Then we could inline the test to a single instruction.,
-
-static void registerHook(void) {
-    addOnLoop( &blinkAniOnLoopChain );
-}
 
 // Manually add our hooks
 
 void blinkAniBegin(void) {
     clearEffects();
-    registerHook();
 }
 
 
