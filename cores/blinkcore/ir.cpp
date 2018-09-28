@@ -32,8 +32,8 @@
 //TODO: Optimize these to be exact minimum for the distance in the real physical object
 //TODO: This can likely be reduced or eliminated when we increase sampling rate
 
-#define IR_CHARGE_TIME_US           // How long to charge the capacitance on the IR LEDs
-#define IR_PULSE_TIME_US 10         // How long to turn IR LED on to send a pulse
+#define IR_CHARGE_TIME_US  2         // How long to charge the capacitance on the IR LEDs
+#define IR_PULSE_TIME_US  10         // How long to turn IR LED on to send a pulse
 
 
 #if (IR_CHARGE_TIME_US < IR_PULSE_TIME_US )
