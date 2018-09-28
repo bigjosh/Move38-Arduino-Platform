@@ -4,4 +4,4 @@
  */
 
 
-// NOTE: Everything is in the header for Timer
+// NOTE: Everythin is in the header for Timer

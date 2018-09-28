@@ -4,8 +4,8 @@
 
   This serial port lives on the service port on new boards. It is really intended for debugging.
 
-  The port always runs at a fixed 1M baud. Dev Candy Adapter boards and cables are available to
-  connect to a USB port and then use the Arduino IDE's serial monitor to interact with your tile.
+  The port always runs at a fixed 500K baud. Adapter cables and boards will be available to connect to a USB port
+  and then use the Arduino IDE's serial monitor to interact with your tile.
 
 */
 
@@ -25,8 +25,20 @@
 void ServicePortSerial::begin(void)
 {
 
-  sp_serial_init();
+  sp_serial_init(DEF_SERVICE_PORT_BAUDRATE);
 
+}
+
+void ServicePortSerial::begin(unsigned long _baudrate=DEF_SERVICE_PORT_BAUDRATE) {
+  switch(_baudrate) {
+    case 250000:
+      sp_serial_init(250000);
+      break;
+    case 500000:
+    default:
+      sp_serial_init(500000);
+      break;
+  }
 }
 
 void ServicePortSerial::end()
@@ -82,3 +94,4 @@ void ServicePortSerial::flush(void)
 {
     sp_serial_flush();
 }
+

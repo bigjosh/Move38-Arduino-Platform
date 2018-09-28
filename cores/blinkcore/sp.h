@@ -1,7 +1,7 @@
 /*
  * Access the service port
  *
- * The service port has a high speed (1Mbps) bi-directional serial connection plus an Aux pin that can be used
+ * The service port has a high speed (500Kbps) bi-directional serial connection plus an Aux pin that can be used
  * as either digitalIO or an analog in.
  *
  * Mostly useful for debugging, but maybe other stuff to? :)
@@ -47,6 +47,7 @@
     // Also enables the pull-up on the RX pin so it can be connected to an open-collector output
 
     void sp_serial_init(void);
+    void sp_serial_init(unsigned long);
 
     // Send a byte out the serial port. Blocks if a transmit already in progress.
     // Must call sp_serial_init() first

@@ -12,11 +12,41 @@
 
 
 #include "hardware.h"
+#include "callbacks.h"
 
 #include <avr/interrupt.h>
 
 #include "button.h"
 #include "bitfun.h"
+
+// Callback that is called when the button state changes.
+// Note that you could get multiple consecutive calls with the
+// Same state if the button quickly toggles back and forth quickly enough that
+// we miss one phase. This is particularly true if there is a keybounce exactly when
+// and ISR is running.
+
+// Use BUTTON_DOWN() to check buttonstate when called.
+
+// Confirmed that all the pre/postamble pushes and pops compile away if this is left blank
+
+// Weak reference so it (almost) compiles away if not used.
+// (looks like GCC is not yet smart enough to see an empty C++ virtual invoke. Maybe some day!)
+// REMOVED WEAK REFERENCE! THE COMPILER SOMETIMES WOULD LINK THE WEAK RATHER THAN THE STRONG! WTF GCC?!?!
+// So for now, you must supply empty stubs. :/
+
+
+struct ISR_CALLBACK_BUTTON : CALLBACK_BASE<ISR_CALLBACK_BUTTON> {
+
+    static const uint8_t running_bit = CALLBACK_BUTTON_RUNNING_BIT;
+    static const uint8_t pending_bit = CALLBACK_BUTTON_PENDING_BIT;
+
+    static inline void callback(void) {
+
+        button_callback_onChange();
+
+    }
+
+};
 
 
 void button_init(void) {
@@ -58,7 +88,7 @@ uint8_t button_down(void) {
 
 ISR(BUTTON_ISR)
 {
-    // More to come here
+    ISR_CALLBACK_BUTTON::invokeCallback();
 }
 
 // Enable callback to button_callback_onChange on button change interrupt

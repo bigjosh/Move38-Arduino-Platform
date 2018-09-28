@@ -39,10 +39,14 @@
 
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
+#include <util/delay.h>         // Must come after F_CPU definition
+#include <util/atomic.h>
 #include <string.h>             // memcpy()
 
 #include "pixel.h"
 #include "utils.h"
+
+#include "callbacks.h"
 
 #include "timer.h"      // We piggyback actual timer callback in pixel since we are using that clock for PWM
 

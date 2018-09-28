@@ -11,8 +11,6 @@
 #include "shared.h"			// Get FACECOUNT
 #include "bitfun.h"
 
-//#define IR_DEBUG            
-
 #define IRLED_COUNT FACE_COUNT
 
 #define IR_ALL_BITS (0b00111111)        // All six IR LEDs
@@ -61,7 +59,7 @@ void ir_tx_end(void);
 uint8_t ir_test_and_charge_cli( void );
 
 
-// Called anytime one of the IR LEDs triggers, which could
+// Called anytime on of the IR LEDs triggers, which could
 // happen because it received a flash or just because
 // enough ambient light accumulated
 

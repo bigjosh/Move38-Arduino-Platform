@@ -31,34 +31,6 @@
 
 // Call to initialize the blinkani subsystem before starting any effects
 
-
-class Effect {
-
-	static Effect *first;	// The currently running animation or NULL if none
-
-	Effect *next;
-
-	virtual void updatePixels() =0;
-
-	public:
-
-		static void start( Effect *a);
-
-		static void queue( Effect *a);
-
-		static bool allComplete();
-
-		static void update();
-
-
-		virtual bool isComplete() = 0;
-
-};
-
-
-
-/*
-
 void blinkAniBegin(void);
 
 
@@ -98,8 +70,6 @@ Color getColor();
 Color getFaceColor(byte face);
 
 bool effectCompleted();
-
-*/
 
 
 #endif /* BLINKANI_H_ */

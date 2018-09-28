@@ -43,14 +43,11 @@
 #include "utils.h"
 #include "timer.h"          // get US_TO_CYCLES()
 
-
 #include "irdata.h"
 
 #include <util/delay.h>         // Must come after F_CPU definition
 
 #include <avr/sfr_defs.h>		// Gets us _BV()
-
-#include <util/atomic.h>        // ATOMIC_BLOCK
 
 // A bit cycle is one 2x timer tick, currently 256us
 
@@ -65,7 +62,7 @@
 
  //#define IR_SPACE_TIME_US (IR_WINDOW_US + (( ((unsigned long) IR_WINDOW_US * IR_CLOCK_SPREAD_PCT) ) / 100UL ) - TX_PULSE_OVERHEAD )  // Used for sending flashes. Must be longer than one IR timer tick including if this clock is slow and RX is fast.
 
-#define IR_SPACE_TIME_US (150)  // Used for sending flashes.
+#define IR_SPACE_TIME_US (300)  // Used for sending flashes.
                                 // Must be longer than one IR timer tick including if this clock is slow and RX is fast
                                 // Must be shorter than two IR timer ticks including if the sending pulse is delayed by maximum interrupt latency.
 
@@ -73,52 +70,44 @@
 
 #define IR_SPACE_TIME_TICKS US_TO_CYCLES( IR_SPACE_TIME_US )
 
-enum IR_RX_STATE {
+/*
 
-    IRS_WAIT,           // Waiting fir 1st flash or potential preable
+// from http://www.microchip.com/forums/m587239.aspx
 
-	IRS_PREAMBLE,	    // Reading preamble
-                        // Input buffer has most recently received bits
-                        // When the sequence 0b10 is seen, then exit to DATA
+static uint8_t oddParity(uint8_t p) {
+      p = p ^ (p >> 4 | p << 4);
+      p = p ^ (p >> 2);
+      p = p ^ (p >> 1);
+      return p & 1;
+}
 
-	IRS_DATA,		    // bitcount is number of valid bits remaining
-						// if count==0 -> save received byte to invalue, exit to partity
-						// invalid bit-> exit to PREAMBLE
+*/
 
-	IRS_IDLE,			// Wait for guard idle time after byte
-                        // If 4 or more idle windows, signal received byte good and exist to PREAMBLE
-                        // 4 is chosen because the maximum number of windows for a valid bit is 3
-                        // If a flash is seen too soon, exit to preamble.
-};
 
-const char *statechar    = "WPDI";
-const char *statecharlow = "wpdi";
-
+// You really want sizeof( ir_rx_state_t) to be  a power of 2. It makes the emitted pointer calculations much smaller and faster.
 // TODO: Do we need all these volatiles? Probably not...
 
-struct ir_rx_state_t {
-
+ typedef struct {
 
      // These internal variables are only updated in ISR, so don't need to be volatile.
 
-    uint8_t windowsSinceLastFlash;                  // How many times windows since last trigger? Reset to 0 when we see a trigger
+     // I think access to the  first element is slightly faster, so most frequently used should go here
 
-	byte state;						                // Current read state
+    uint8_t volatile windowsSinceLastFlash;          // How many times windows since last trigger? Reset to 0 when we see a trigger
 
-	uint8_t bitCount;							    // Number of bits left in the byte in progress
-
-    uint8_t inputBuffer;                            // Buffer for RX in progress. Data bits shift up until full.
+    uint8_t inputBuffer;                    // Buffer for RX in progress. Data bits step up until high bit set.
+                                            // High bit will always be set for real data because the start bit is 1
 
 
     // Visible to outside world
-     volatile uint8_t inValue;              // Last successfully decoded RX value. 1 in high bit means valid and unread. 0= empty.
+     volatile uint8_t inValue;            // Last successfully decoded RX value. 1 in high bit means valid and unread. 0= empty.
 
-     volatile uint8_t inValueReady;         // Newly decoded value in inValue. Could be a bitflag - that would save a byte but cost a cycle.
-     //volatile uint8_t parity;               // Top bit is received parity for value in inValue. Up to foreground to test. Could be a bitflag - that would save a byte but cost a cycle.
+
+    uint8_t dummy;                          // TODO: parity bit? for now just keep struct a power of 2
 
     // This struct should be even power of 2 long.
 
- } ;
+ } ir_rx_state_t;
 
 
  // We keep these in together in a a struct to get faster access via
@@ -126,57 +115,24 @@ struct ir_rx_state_t {
 
  static volatile ir_rx_state_t ir_rx_states[IRLED_COUNT];
 
+// Called once per timer tick
+// Check all LEDs, decode any changes
+
+ // Note this runs in callback context in timercallback.
+
+ volatile uint8_t specialWindowCounter=0;
+
  // Temp storage to stash the IR bits while interrupts are off.
  // We will later process and decode once interrupts are back on.
 
-// TODO: I don't think this needs to be volatile since always used in same context?
-
  volatile uint8_t most_recent_ir_test;
 
-  void timer_256us_callback_cli(void) {
-	  // Interrupts are off, so get it done as quickly as possible
-	  most_recent_ir_test = ir_test_and_charge_cli();
-  }
+ void timer_256us_callback_cli(void) {
 
+    // Interrupts are off, so get it done as quickly as possible
+    most_recent_ir_test = ir_test_and_charge_cli();
 
-#ifdef IR_DEBUG
-
-    #include "sp.h"
-
-
-    namespace debug {
-        const uint8_t myState_count = 5;
-
-        byte decode( byte v ) {
-
-            return( v % myState_count );
-
-        }
-
-
-        byte test( byte v ) {
-
-            byte orginal = decode( v ) ;
-
-            byte inverted =  ( myState_count -1 - orginal ) ;
-
-            byte calculatedInvertedTruncated = inverted % 8;
-
-
-            byte recoveredInvertedTruncated = v / myState_count ;
-
-
-            return calculatedInvertedTruncated == recoveredInvertedTruncated;
-
-        }
-    }
-#endif
-
-// The updateIRComs() function is probably the most optimized in this code base
-// because it iterated 8 times every tick so must be fast. I also tried making it
-// clearer by using a case-based state machine, but the compiler exploded that with
-// code that ended up randomly blowing the stack. So here we are.
-
+ }
 
  void updateIRComs(void) {
 
@@ -192,171 +148,78 @@ struct ir_rx_state_t {
     uint8_t bitwalker = _BV( IRLED_COUNT -1 );
     ir_rx_state_t volatile *ptr = ir_rx_states + IRLED_COUNT -1;
 
+/*
+    #warning only checking IR0!
+    uint8_t bitwalker = _BV( 0 );
+    ir_rx_state_t volatile *ptr = ir_rx_states;
+*/
     // Loop though each of the IR LED and see if anything happened on each...
 
     do {
 
-        const uint8_t bit = bits & bitwalker;
-
-        // Keep a local read only copy of state
-        // We will directly update the master in cases where it is changed
-        const uint8_t state = ptr->state;
-
+        uint8_t bit = bits & bitwalker;
 
         if (bit) {      // This LED triggered in the last time window
 
-            // Cache the value before we reset it
-            const uint8_t thisWindowsSinceLastFlash = ptr->windowsSinceLastFlash;
+            uint8_t thisWindowsSinceLastFlash = ptr->windowsSinceLastFlash;
 
-            ptr->windowsSinceLastFlash = 0;     // We just got a flash, so start counting over.
+             ptr->windowsSinceLastFlash = 0;     // We just got a flash, so start counting over.
 
+            if (thisWindowsSinceLastFlash<=3) {     // We got a valid bit
 
-            #ifdef IR_DEBUG
-                #warning Output current state for debuging
-                if (bitwalker==0x1) {
-                    sp_serial_tx( statechar[ ptr->state ] );
-                }
-            #endif
+                uint8_t inputBuffer = ptr->inputBuffer;     // Compiler should do this optimization for us, but it don't
 
+                inputBuffer <<= 1;      // Make room for new bit (fills with a 0)
 
-            uint8_t thisInputBuffer = ptr->inputBuffer;
+                if (thisWindowsSinceLastFlash<=1) {     // Saw a 1 bit
 
-            if (state == IRS_WAIT ) {
-
-                // We got the flash we have been waiting for!
-                // This was the first flash so now we can start looking for a bit
-                // that might be the first bit of a preamble.
-
-                thisInputBuffer=0;
-                ptr->state = IRS_PREAMBLE;
-
-            } else {
-
-                // not in WAIT...
-
-                if (state==IRS_IDLE) {
-
-                    // If we are in IDLE, then we did not see the needed 4 idle windows
-                    // yet, so this flash means that the preceding byte was no good
-                    // so we ignore it, but we register this flash because it might be the
-                    // start of a preamble bit
-
-                    thisInputBuffer=0;
-                    ptr->state = IRS_PREAMBLE;
+                    inputBuffer |= 0b00000001;          // Save newly received 1 bit
 
                 }
 
-                // Note that we do not need to check if the windows since last flash
-                // is less than 4 since it MUST be less than 4 if we are in DATA state since
-                // the case that counts the idle windows will bump us back to PREABLE
-                // anytime 4 empty windows are seen.
+                // Here we look for a 1 followed by a 0 in the top two bits. We need this
+                // because there can potentially be a leading 1 in the bit stream if the
+                // first pulse of the 0 start bit happens to come right after an ambient
+                // trigger - this could look like a 1. This can only happen at the first pulse
+                // because after that we are pulsing often enough that there will never be
+                // an ambient trigger.
+                // So we use the pattern '10' as a start because if there is a leading '1'
+                // then there will be '11' at the beginning and the 1st '1' will not have a '0'
+                // after it.
+                // TODO: Explain this better with pictures.
 
-                // Shift up the input buffer to make room for new bit
-                thisInputBuffer >>= 1;
 
-		        if (thisWindowsSinceLastFlash <=1 ) {		    // 1-bit symbol received
-			        thisInputBuffer |= 0b10000000;
-                }
+                if ( (inputBuffer & 0b11000000) == 0b10000000 ) {
 
-                // If not a 1-bit, then it was a 0-bit so the shift will leave the new 0 in the inputBuffer
-                // Note that when we are waiting for the preamble, this will harmlessly
-                // stuff a 0 in the inputBuffer in the first flash
+                    // TODO: check for overrun in lastValue and either flag error or increase buffer size
 
-                // So now inputBuffer has the new bit in it
+                    ptr->inValue = inputBuffer;           // Save the received byte (clobbers old if not read yet)
 
-                if (state == IRS_PREAMBLE) {
+                    inputBuffer =0;                    // Clear out the input buffer to look for next start bit
 
-                    // Remember that we reassemble bits high to low, so the preamble pattern
-                    // of 10 will look like 01 in the inputBuffer
-
-                    if ( (thisInputBuffer & 0b11000000) == 0b01000000 ) {       // Check for preamble
-                        ptr->state = IRS_DATA;
-                        ptr->bitCount =8;                  // Number of bits to read
-                        // No need to clear the input buffer here since it will all get shifted out anyway over the next 8 bits
-                    }
-
-                } else if (state == IRS_DATA) {
-
-                    ptr->bitCount--;
-
-                    // TODO: CHeck flag in ASM is faster
-
-                    if ( ptr->bitCount == 0  ) {
-
-                        // Got full byte
-
-                        ptr->inValue = thisInputBuffer;         // Save the assembled byte
-
-                        ptr->state = IRS_IDLE;                // Wait for the idle period before accepting it as valid
-
-                    }
 
                 }
+
+                ptr->inputBuffer = inputBuffer;
+
+            }  else {
+
+                // Received an invalid bit (too long between last two detected flashes)
+
+                ptr->inputBuffer = 0;                       // Start looking for start bit again.
+
             }
 
-            #ifdef IR_DEBUG
-                #warning Output current state for debuging
-                if (bitwalker==0x1) {
-                    sp_serial_tx( thisInputBuffer );
-                }
-            #endif
+        } else {
 
-            ptr->inputBuffer = thisInputBuffer;         // Save the changes to the inputBuffer
+            ptr->windowsSinceLastFlash++;           // Keep count of how many windows since last flash
 
-        }  else {               // No flash in this last window
-
-            #ifdef IR_DEBUG
-                #warning Output current state for debuging
-                if (bitwalker==0x1) {
-                    sp_serial_tx( statecharlow[ ptr->state ] );
-                }
-            #endif
-
-            // Check if it has been 4 windows since last flash
-            // Since any valid bit is only 3 windows, no need to increment past
-            // 4 anyway, and this is faster and keeps up from ever overflowing.
-
-            if (ptr->windowsSinceLastFlash == 3) {
-
-                if (state == IRS_IDLE ) {
-
-                    // Successfully waited it out, so the data we received is value
-                    // pass it on up...
-
-                    #ifdef IR_DEBUG
-                        #warning Output current state for debuging
-                        if (bitwalker==0x1) {
-                            sp_serial_tx( ptr->inputBuffer );
-
-
-                            if (!debug::test(ptr->inputBuffer)) {
-
-                                SP_PIN_R_SET_1();
-
-                            }
-                        }
-
-                    #endif
-
-
-                    ptr->inValueReady = 1;
-
-                }
-
-                ptr->state = IRS_WAIT;              // Yes, this will get benignly repeated after the 4th idle window. It is ok. It is cheaper than the test to skip it.
-
-            } else {
-
-                ptr->windowsSinceLastFlash++;
-
-            }
+            // Note there here were do not check for overflow on windowsSinceLastFlash.
+            // We assume that an LED will spontaneously fire form ambient light in fewer
+            // than 255 time windows
 
         }
 
-        #ifdef IR_DEBUG
-            #warning debug
-            SP_PIN_R_SET_0();
-        #endif
 
         ptr--;
         bitwalker >>=1;
@@ -369,39 +232,32 @@ struct ir_rx_state_t {
 // Is there a received data ready to be read on this face?
 
 bool irIsReadyOnFace( uint8_t led ) {
-    return( ir_rx_states[led].inValueReady );
+    return( ir_rx_states[led].inValue != 0 );
 }
 
-// Read the most recently received data. (Defaults to 0 on power-up)
-// Requires interrupts to be on
+// Read the most recently received data. Blocks if no data ready
 
 uint8_t irGetData( uint8_t led ) {
 
-    uint8_t data;
-    //uint8_t parity;
-
     ir_rx_state_t volatile *ptr = ir_rx_states + led;        // This turns out to generate much more efficient code than array access. ptr saves 25 bytes. :/   Even so, the emitted ptr dereference code is awful.
 
-    // We need this to be atomic otherwise would could potentially miss an incoming value that arrives
-    // exactly between when we collect the data and clear the inValueReady
+    while (! ptr->inValue );      // Wait for high be to be set to indicate value waiting.
 
-    ATOMIC_BLOCK( ATOMIC_FORCEON ) {
-        data = ptr->inValue;
-        //parity = ptr->parity;
-        ptr->inValueReady=0;        // Clear to indicate we read the value. Doesn't need to be atomic.
-    };
+    // No need to atomic here since these accesses are lockstep, so the data can not be updated until we clear the ready bit
 
+    uint8_t d = ptr->inValue;
 
-    return data ;
+    ptr->inValue=0;       // Clear to indicate we read the value. Doesn't need to be atomic.
+
+    return d & 0b00111111;      // Don't show our internal preamble bits
 
 }
 
 // Simultaneously send data on all faces that have a `1` in bitmask
-// Sends bits in least-significant-bit first order (RS232 style)
 
 void irSendDataBitmask(uint8_t data, uint8_t bitmask) {
 
-    uint8_t bitwalker = 0b00000001;
+    uint8_t bitwalker = 0b00100000;
 
     // Start things up, send initial pulse and start bit (1)
     ir_tx_start( IR_SPACE_TIME_TICKS , bitmask , 1 );
@@ -416,9 +272,9 @@ void irSendDataBitmask(uint8_t data, uint8_t bitmask) {
             ir_tx_sendpulse( 3 ) ;
         }
 
-        bitwalker<<=1;
+        bitwalker>>=1;
 
-    } while (bitwalker);        // 1 bit overflows off top. Would be better if we could test for overflow bit
+    } while (bitwalker);
 
     // TODO: Send a stop bit or some parity bit for error checking? Necessary?
 

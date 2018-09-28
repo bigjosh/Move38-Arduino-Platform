@@ -17,4 +17,4 @@ utils_serialno_t const *utils_serialno(void) {
     // As per "13.6.8.1. SNOBRx - Serial Number Byte 8 to 0"
 
     return ( utils_serialno_t *)   0xF0;
-}    
+}

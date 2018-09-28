@@ -183,6 +183,10 @@
       <SubType>compile</SubType>
       <Link>button.h</Link>
     </Compile>
+    <Compile Include="..\..\..\cores\blinkcore\callbacks.h">
+      <SubType>compile</SubType>
+      <Link>callbacks.h</Link>
+    </Compile>
     <Compile Include="..\..\..\cores\blinkcore\effects.cpp">
       <SubType>compile</SubType>
       <Link>effects.cpp</Link>
@@ -194,6 +198,10 @@
     <Compile Include="..\..\..\cores\blinkcore\ir.h">
       <SubType>compile</SubType>
       <Link>ir.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\cores\blinkcore\ir_callback.h">
+      <SubType>compile</SubType>
+      <Link>ir_callback.h</Link>
     </Compile>
     <Compile Include="..\..\..\cores\blinkcore\main.cpp">
       <SubType>compile</SubType>
