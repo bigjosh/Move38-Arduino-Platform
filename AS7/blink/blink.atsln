@@ -14,8 +14,6 @@ Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "blinkstate", "blinkstate\bl
 		{C03AA8CA-16E3-4A37-9986-EEAA5CBCEFD6} = {C03AA8CA-16E3-4A37-9986-EEAA5CBCEFD6}
 	EndProjectSection
 EndProject
-Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "blinkani", "blinkani\blinkani.cppproj", "{E2A7902A-6B39-45B9-A00D-A47B64A34E20}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|AVR = Debug|AVR
@@ -38,10 +36,6 @@ Global
 		{C7103C5C-377A-4589-89B5-EE449B21A39A}.Debug|AVR.Build.0 = Debug|AVR
 		{C7103C5C-377A-4589-89B5-EE449B21A39A}.Release|AVR.ActiveCfg = Release|AVR
 		{C7103C5C-377A-4589-89B5-EE449B21A39A}.Release|AVR.Build.0 = Release|AVR
-		{E2A7902A-6B39-45B9-A00D-A47B64A34E20}.Debug|AVR.ActiveCfg = Debug|AVR
-		{E2A7902A-6B39-45B9-A00D-A47B64A34E20}.Debug|AVR.Build.0 = Debug|AVR
-		{E2A7902A-6B39-45B9-A00D-A47B64A34E20}.Release|AVR.ActiveCfg = Release|AVR
-		{E2A7902A-6B39-45B9-A00D-A47B64A34E20}.Release|AVR.Build.0 = Release|AVR
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

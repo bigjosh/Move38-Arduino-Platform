@@ -74,6 +74,10 @@
 // IR transceivers
 // There are 6 IR LEDs - one for each face
 
+// IMPORTANT: The design puts these cathodes on PORTC and the top 2 bits of PORC are unused
+// If these cathodes are moved to a different port, or if the upper bits of PORTC are used,
+// then this bits must be masked in ir_test_and_charge() in ir.cpp.
+
 #define IR_CATHODE_PORT PORTC
 #define IR_CATHODE_DDR  DDRC
 #define IR_CATHODE_PIN  PINC
