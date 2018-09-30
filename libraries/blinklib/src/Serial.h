@@ -4,7 +4,7 @@
 
   This serial port lives on the service port on new boards. It is really intended for debugging.
 
-  The port always runs at a fixed 500K baud. Use the blink Dev Candy board to connect to a USB port
+  The port always runs at a fixed 1M baud. Use the blink Dev Candy board to connect to a USB port
   and then use the Arduino IDE's serial monitor to interact with your tile.
 
 */
@@ -24,9 +24,7 @@
         public:
 
         //inline ServicePortSerialSerial(void);
-
         void begin(void);
-        void begin(unsigned long);
         void end();
 
         virtual int available(void);

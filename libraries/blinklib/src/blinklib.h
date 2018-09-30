@@ -12,8 +12,6 @@
 
 #include "ArduinoTypes.h"
 
-#include "chainfunction.h"
-
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -191,9 +189,12 @@ void setColor( Color newColor);
 // NOTE: all color changes are double buffered
 // and the display is updated when loop() returns
 
+void setColorOnFace( Color newColor , byte face );
+
+// DEPREICATED: Use setColorOnFace()
+void setFaceColor( byte face , Color newColor ) __attribute__ ((deprecated));
 void setFaceColor(  byte face, Color newColor );
 
-void setColorOnFace( Color newColor , byte face );
 
 /*
 
@@ -229,9 +230,15 @@ class Timer {
 
 		bool isExpired();
 
-		void set( uint32_t ms );
-
     uint32_t getRemaining();
+
+    void set( uint32_t ms );            // This time will expire ms milliseconds from now
+
+		void add( uint16_t ms );
+
+    void never(void);                   // Make this timer never expire (unless set())
+
+
 };
 
 
@@ -326,10 +333,6 @@ void setup(void);
 // on the tile face are updated
 
 void loop();
-
-// Add a function to be called after each pass though loop()
-
-void addOnLoop( chainfunction_struct *chainfunction );
 
 
 /*

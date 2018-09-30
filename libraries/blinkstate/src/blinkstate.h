@@ -22,15 +22,32 @@
     #error You must #include blinklib.h before blinkstate.h
 #endif
 
+// The value of the data sent and received on faces via IR can be between 0 and IR_DATA_VALUE_MAX
+// If you try to send higher than this, the max value will be sent.
 
-// Manually add our hooks.
-// Must be called before using any other blinkstate functions
-// TODO: Now that blinkstate is the primary game-level API, maybe make this the default?
-
-void blinkStateBegin(void);
+#define IR_DATA_VALUE_MAX 100
 
 
-// Returns the last received state on the indicated face
+// The blinksatate library continuously transmits on all IR LEDs
+// when enabled. If you don't want this, then disable it.
+
+// blinkstate is enabled by default, but you can renable it after you have disabled it.
+void blinkStateEnable(void);
+
+// If called from setup(), then no blinkstate will be transmitted at all
+
+void blinkStateDisable(void);
+
+// Setup the blinkstate layer.
+// Enables blinkstate functionality by default
+void blinkStateSetup(void);
+
+
+// Called once per loop.
+void blinkStateLoop(void);
+
+// Returns the last received value on the indicated face
+// Between 0 and IR_DATA_VALUE_MAX inclusive
 // returns 0 if no neighbor ever seen on this face since power-up
 // so best to only use after checking if face is not expired first.
 
@@ -52,12 +69,17 @@ byte isValueReceivedOnFaceExpired( byte face );
 // Returns false if their has been a neighbor seen recently on any face, returns true otherwise.
 bool isAlone();
 
-// Set value that will be continuously broadcast on all face.
+// Set value that will be continuously broadcast on specified face.
+// Value should be between 0 and IR_DATA_VALUE_MAX inclusive.
+// If a value greater than IR_DATA_VALUE_MAX is specified, IR_DATA_VALUE_MAX will be sent.
 // By default we power up with all faces sending the value 0.
 
-void setValueSentOnAllFaces( byte newState );
-
 void setValueSentOnFace( byte value , byte face );
+
+// Same as setValueSentOnFace(), but sets all faces in one call.
+
+void setValueSentOnAllFaces( byte value );
+
 
 
 #ifndef BLINKSTATE_CANNARY

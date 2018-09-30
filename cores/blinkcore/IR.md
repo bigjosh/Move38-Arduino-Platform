@@ -32,15 +32,17 @@ Note that Anode DDR is always driven so we never touch that after enabling IR sy
 
 #### Receiving 
 
-Higher level code can use `ir_test_and_charge()` to check the digital state of the LEDs to see if they have been discharged since last charged. Any LEDs that have discharged are recharged.  
+Higher level code can use `ir_test_and_charge()` to check the digital state of the LEDs to see if they have been discharged since last charged. Any LEDs that have discharged are recharged so they are ready to receive again.
 
-It is also possible to generate an interrupt when an LED crosses the digital threshold voltage, but this is not currently used.   
+It is also possible to generate an interrupt when an LED crosses the digital threshold voltage, but this is not currently used (except when `RX_DEBUG` is enabled).   
 
 #### Transmitting
 
+Note that with this system, an LED can not receive while it is transmitting, so we depend on a higher level protocol to handshake and make sure both sides take turns sending.  
+
 All transmissions are a series of flashes separated by a number of gaps times called spaces. The space time is typically fixed for a given protocol. 
 
-The gaps are precisely timed and will be accurate to within the latency of interrupts on the system, so keep interrupt disabled for as little time as possible. 
+The gaps are precisely timed and will be accurate to within the latency of interrupts on the system, so keep interrupts disabled for as little time as possible. 
 
 Call `ir_tx_start()` to begin transmitting a pulse train. This sends the first flash.
 
@@ -49,3 +51,8 @@ Then call `ir_tx_sendpulse()` to transmit each of the remaining flashes in the p
 Call `ir_tx_end()` at the end of the train. This will block until the final flash is transmitted. 
 
     
+### Tricky PORTC optimization
+
+We exploit the fact that the upper two bits of PORTC are not used on this chip to save some time. By connecting the IR LED cathodes to PORTC bits 0-5 and forcing bits 6,7 high, we can work with the PORT as a full byte and avoid having to mask the top bits out.
+
+If you were to move the cathodes to a different port, or you were to use a chip that actually had PORTC[6:7], then you would need to mask out these bits.   

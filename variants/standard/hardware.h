@@ -74,6 +74,10 @@
 // IR transceivers
 // There are 6 IR LEDs - one for each face
 
+// IMPORTANT: The design puts these cathodes on PORTC and the top 2 bits of PORC are unused
+// If these cathodes are moved to a different port, or if the upper bits of PORTC are used,
+// then this bits must be masked in ir_test_and_charge() in ir.cpp.
+
 #define IR_CATHODE_PORT PORTC
 #define IR_CATHODE_DDR  DDRC
 #define IR_CATHODE_PIN  PINC
@@ -121,10 +125,9 @@
 */
 
 
-#define IR_PCI     PCIE1
-#define IR_ISR     PCINT1_vect
-#define IR_MASK    PCMSK1           // Each bit here corresponds to 1 pin
-#define IR_PCINT   IR_BITS
+#define IR_PCI_BIT      PCIE1            // Set this bit in PCICR to enable pin change INT on pins PCINT8-14 - the cathode pins on PORTC
+#define IR_ISR          PCINT1_vect      // The vector called when pin change happens on cathode pins
+#define IR_INT_MASK_REG PCMSK1           // Each bit here corresponds to 1 cathode pin
 
 /*** Button ***/
 
