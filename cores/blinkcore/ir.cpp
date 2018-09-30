@@ -81,7 +81,7 @@
 // 'I' on startup initialization
 //
 
-#define RX_DEBUG
+//#define RX_DEBUG
 
 
 #if defined ( TX_DEBUG )  || defined ( RX_DEBUG ) || defined (IR_DEBUG)

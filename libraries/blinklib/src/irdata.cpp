@@ -133,7 +133,7 @@ struct ir_rx_state_t {
 
  volatile uint8_t most_recent_ir_test;
 
-  void timer_256us_callback_cli(void) {
+  void timer_128us_callback_cli(void) {
 	  // Interrupts are off, so get it done as quickly as possible
 	  most_recent_ir_test = ir_test_and_charge_cli();
   }

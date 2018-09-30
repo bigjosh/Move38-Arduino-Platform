@@ -22,12 +22,15 @@
 
 */
 
-// Did the state on any face change since last called?
-// Get the neighbor states with getNeighborState()
+/*
 
-// TODO: State view not implemented yet. You can use irIsReadyOnFace() instead.
+    Button functions
 
-//bool neighborChanged();
+*/
+
+// Debounced view of button state. true if the button currently pressed.
+
+bool buttonDown(void);
 
 // Was the button pressed or lifted since the last time we checked?
 // Note that these register the change the instant the button state changes
@@ -60,16 +63,6 @@ byte buttonClickCount(void);
 // Remember that a long press fires while the button is still down
 bool buttonLongPressed(void);
 
-/*
-
-	This set of functions lets you read the current state of the environment.
-
-*/
-
-// Returns true if the button currently pressed down
-// (Debounced)
-
-bool buttonDown();
 
 
 
@@ -258,23 +251,6 @@ uint16_t rand( uint16_t limit );
 
 
 byte getSerialNumberByte( byte n );
-
-
-/*
-
-    Button functions
-
-*/
-
-
-// Debounced view of button state
-
-bool buttonDown(void);
-
-// Returns true if the button has been pressed since
-// the last time it was called.
-
-bool buttonPressed(void);
 
 
 /*

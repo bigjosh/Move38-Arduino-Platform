@@ -244,7 +244,7 @@ static void pixelTimersOn(void) {
     // The two timers might be slightly unsynchronized by a cycle, but that should not matter since all the action happens at the end of the cycle anyway.
 
     TCCR2B =                                // Turn on clk as soon as possible after setting COM bits to get the outputs into the right state
-        _BV( CS21 );                        // clkI/O/8 (From prescaler)- This line also turns on the Timer0
+        _BV( CS21 );                        // clkI/O/8 (From prescaler)- This line also turns on the Timer2
 
 
     #if TIMER_PRESCALER != 8
@@ -261,7 +261,7 @@ static void setupTimers(void) {
 
 	TIMSK0 = _BV( TOIE0 ) ;                  // The corresponding interrupt is executed if an overflow in Timer/Counter0 occurs
 
-    TIMSK2 = _BV( OCIE2A );                  // Generate an interrupt when OCR2A matches, which happens excatly out of phase with the overflow.
+    TIMSK2 = _BV( OCIE2A );                  // Generate an interrupt when OCR2A matches, which happens exactly out of phase with the overflow.
 
 }
 
@@ -614,8 +614,8 @@ static void pixelTimerOff(void) {
 
 ISR(TIMER0_OVF_vect)
 {
-    timer_256us_callback_cli();       // Do any timing critical double-time stuff with interrupts off
-                                   // Currently used to sample & charge (but not decode) the IR LEDs
+    timer_128us_callback_cli();       // Do any timing critical double-time stuff with interrupts off
+                                      // Currently used to sample & charge (but not decode) the IR LEDs
 
     // We want to turn interrupts back on as quickly as possible here
     // to limit the amount of jitter we add to the space gaps between outgoing
@@ -629,8 +629,8 @@ ISR(TIMER0_OVF_vect)
 
     pixel_isr();
 
-    timer_256us_callback_sei();    // Do the doubletime callback
-    timer_512us_callback_sei();       // Do everything else non-timing sensitive.
+    timer_128us_callback_sei();       // Do the doubletime callback
+    timer_256us_callback_sei();       // Do everything else non-timing sensitive.
     return;
 }
 
@@ -639,7 +639,7 @@ ISR(TIMER2_COMPA_vect)          // Called when OCR2a matches, which we have set 
                                 // exactly out of phase with the TIMER0_OVR to effectively double
                                 // Double the rate we call some callbacks (currently used for IR)
 {
-    timer_256us_callback_cli();    // Do any timing critical stuff with interrupts off
+    timer_128us_callback_cli();    // Do any timing critical stuff with interrupts off
 
     // Currently used to sample & charge (but not decode) the IR LEDs
 
@@ -653,7 +653,7 @@ ISR(TIMER2_COMPA_vect)          // Called when OCR2a matches, which we have set 
     // Deal with the PWM stuff. There is a deadline here since we must get the new values
     // loaded into the double-buffered registers before the next overflow.
 
-    timer_256us_callback_sei();       // Do everything else non-timing sensitive.
+    timer_128us_callback_sei();       // Do everything else non-timing sensitive.
     return;
 }
 
@@ -668,8 +668,6 @@ void pixel_disable(void) {
     // and turn on the next pixel while we are trying to turn them off.
 
     pixelTimerOff();
-
-
 
     // Ok, now all the anodes should be low so all LEDs off
     // and no timer running to turn any anodes back on
