@@ -15,7 +15,7 @@ void button_init(void);
 // Enable pullup on button
 // TODO: We need a way to disable pull-ups in case the button is stuck down in a pocket or drawer.
 
-void button_enable(void);
+void button_enable_pu(void);
 
 // Returns 1 if button is currently down
 
@@ -25,7 +25,7 @@ uint8_t button_down(void);
 // You'd want to do this to save power in the case where the
 // button is stuck down and therefore shorting out the pull-up
 
-void button_disable(void);
+void button_disable_pu(void);
 
 // User supplied callback that is called when the button state changes.
 // Note that you could get multiple consecutive calls with the
