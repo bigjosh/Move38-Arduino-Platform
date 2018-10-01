@@ -279,41 +279,43 @@ byte getSerialNumberByte( byte n ) {
 // If the cycle ends with the button down, then we interpret this that the user wanted to
 // abort the clicks, so we discard the count.
 
-static volatile bool buttonState=0;                     // Current debounced state
+static volatile byte buttonState=0;                     // Current debounced state
 
-static volatile bool buttonPressedFlag=0;               // Has the button been pressed since the last time we checked it?
-static volatile bool buttonReleasedFlag=0;                // Has the button been lifted since the last time we checked it?
+static volatile byte buttonPressedFlag=0;               // Has the button been pressed since the last time we checked it?
+static volatile byte buttonReleasedFlag=0;              // Has the button been lifted since the last time we checked it?
 
 static uint8_t buttonDebounceCountdown=0;               // How long until we are done bouncing. Only touched in the callback
-                                                        // Set to BUTTON_DEBOUNCE_MS every time we see a change, then we ignore everything 
-                                                        // untill it gets tp 0 again
+                                                        // Set to BUTTON_DEBOUNCE_MS every time we see a change, then we ignore everything
+                                                        // until it gets to 0 again
 
 static uint16_t clickWindowCountdown=0;                 // How long until we close the current click window. 0=done TODO: Make this 8bit by reducing scan rate.
 static uint8_t clickPendingcount=0;                     // How many clicks so far int he current click window
 
 static uint16_t longPressCountdown=0;                   // How long until the current press becomes a long press
 
-static volatile bool singleClickedFlag=0;               // single click since the last time we checked it?
-static volatile bool doubleClickedFlag=0;               // double click since the last time we checked it?
-static volatile bool multiClickedFlag=0;                // multi click since the last time we checked it?
+static volatile byte singleClickedFlag=0;               // single click since the last time we checked it?
+static volatile byte doubleClickedFlag=0;               // double click since the last time we checked it?
+static volatile byte multiClickedFlag=0;                // multi click since the last time we checked it?
 
-static volatile bool longPressFlag=0;                   // Has the button been long pressed since the last time we checked it?
+static volatile byte longPressFlag=0;                   // Has the button been long pressed since the last time we checked it?
 
 static volatile uint8_t maxCompletedClickCount=0;       // Remember the most completed clicks to support the clickCount() function
 
 
-static volatile uint8_t buttonChangeFlag = 0;           // Set anytime the button changes state. Used to reset the sleep timer in the forground.
+static volatile uint8_t buttonChangeFlag = 1;           // Set anytime the button changes state. Used to reset the sleep timer in the foreground.
+                                                        // Init to 1 so that we reset the sleep timer on startup. 
 
 // Called once per tick by the timer to check the button position
 // and update the button state variables.
 
 // Note: this runs in Callback context in the timercallback
+// Called every 1ms
 
 
 static void updateButtonState1ms(void) {
-        
+
     bool buttonPositon = button_down();
-    
+
     if ( buttonPositon == buttonState ) {
 
         if (buttonDebounceCountdown) {
@@ -386,8 +388,8 @@ static void updateButtonState1ms(void) {
                     clickPendingcount++;
                 }
 
-                clickWindowCountdown = TIMER_MS_TO_TICKS( BUTTON_CLICK_TIMEOUT_MS );
-                longPressCountdown   = TIMER_MS_TO_TICKS( BUTTON_LONGPRESS_TIME_MS );
+                clickWindowCountdown = BUTTON_CLICK_TIMEOUT_MS ;
+                longPressCountdown   = BUTTON_LONGPRESS_TIME_MS;
 
             } else {
                 buttonReleasedFlag=1;
@@ -396,7 +398,7 @@ static void updateButtonState1ms(void) {
 
         // Restart the countdown anytime the button position changes
 
-        buttonDebounceCountdown = TIMER_MS_TO_TICKS( BUTTON_DEBOUNCE_MS );
+        buttonDebounceCountdown = BUTTON_DEBOUNCE_MS;
 
     }
 
@@ -428,7 +430,7 @@ bool buttonDown(void) {
 55c:	08 95       	ret
 */
 
-bool testAndClearFlag( volatile bool &flag ) {
+bool testAndClearFlag( volatile byte &flag ) {
 
 if ( flag ) {
     flag=false;
@@ -504,7 +506,7 @@ static volatile uint32_t millisCounter=1;           // How many milliseconds sin
 // This "freeze-time" view makes it harder to have race conditions when millis() changes while you are looking at it.
 // The value of millis_snapshot gets reset to 0 after each loop() iteration.
 
-static uint32_t millis_snapshot=0;
+static uint32_t millis_snapshot;
 
 // Need not be atomic since never called from the background.
 
@@ -648,38 +650,25 @@ static void sleep(void) {
 #include "sp.h"
 
 void timer_1000us_callback_sei(void) {
-    
-    static unsigned count=0;
-    
-    count++;
-    
-    if (count==1000) {
-    
-    SP_PIN_A_MODE_OUT();
-    SP_PIN_A_SET_1();
-    SP_PIN_A_SET_0();
-    
-    count=0;
-    }    
-    
+
     incrementMillis1ms();
     updateButtonState1ms();
-    
-}    
+
+}
 
 // This is called by timer ISR about every 512us with interrupts on.
 
 void timer_256us_callback_sei(void) {
-    
-    // Decrementing slightly more efficient because we save a compare. 
+
+    // Decrementing slightly more efficient because we save a compare.
     static unsigned step_us=0;
-    
+
     step_us += 256;                     // 256us between calls
-    
+
     if ( step_us>= 1000 ) {             // 1000us in a 1ms
         timer_1000us_callback_sei();
         step_us-=1000;
-    }        
+    }
 }
 
 // This is called by timer ISR about every 256us with interrupts on.
@@ -726,9 +715,9 @@ void __attribute__ ((weak)) run(void) {
         if (sleepTimer.isExpired()) {
             sleep();
 
-        } 
-        
-        // He we could add a delay rather than call loop() as quickly as possible. This could lower power. 
+        }
+
+        // He we could add a delay rather than call loop() as quickly as possible. This could lower power.
 
     }
 

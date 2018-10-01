@@ -2,13 +2,13 @@
  *  Take on the color of the dominant Blink attached
  */
 
-byte myState = 0;
-Color colors[] = { BLUE, RED, YELLOW, ORANGE, GREEN};
-const byte myState_count = COUNT_OF (colors);
+static byte myState = 0;
+static Color colors[] = { BLUE, RED, YELLOW, ORANGE, GREEN};
+static const byte myState_count = COUNT_OF (colors);
 
-bool errorFlag[ FACE_COUNT ];
+static bool errorFlag[ FACE_COUNT ];
 
-void clearErrors() {
+static void clearErrors() {
   FOREACH_FACE(f) {
     errorFlag[f]=false;
   }
