@@ -58,14 +58,13 @@ void ir_tx_end(void);
 // Returns a 1 in each bit for each LED that was fired.
 // Fired LEDs are recharged.
 
-uint8_t ir_test_and_charge_cli( void );
+uint8_t ir_sample_bits( void );
 
+// Charge the bits set to 1 in 'chargeBits'
+// Probably best to call with ints off so doesn't get interrupted
+// Probably best to call some time after ir_sample_bits() so that a long pulse will not be seen twice.
 
-// Called anytime one of the IR LEDs triggers, which could
-// happen because it received a flash or just because
-// enough ambient light accumulated
-
-void __attribute__((weak)) ir_callback(uint8_t triggered_bits);
+void ir_charge_LEDs( uint8_t chargeBits );
 
 
 #define WAKEON_IR_BITMASK_NONE     0             // Don't wake on any IR change
