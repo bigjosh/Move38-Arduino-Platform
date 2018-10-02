@@ -73,28 +73,7 @@
 
 #define IR_SPACE_TIME_TICKS US_TO_CYCLES( IR_SPACE_TIME_US )
 
-enum IR_RX_STATE {
-
-    IRS_WAIT,           // Waiting fir 1st flash or potential preable
-
-	IRS_PREAMBLE,	    // Reading preamble
-                        // Input buffer has most recently received bits
-                        // When the sequence 0b10 is seen, then exit to DATA
-
-	IRS_DATA,		    // bitcount is number of valid bits remaining
-						// if count==0 -> save received byte to invalue, exit to partity
-						// invalid bit-> exit to PREAMBLE
-
-	IRS_IDLE,			// Wait for guard idle time after byte
-                        // If 4 or more idle windows, signal received byte good and exist to PREAMBLE
-                        // 4 is chosen because the maximum number of windows for a valid bit is 3
-                        // If a flash is seen too soon, exit to preamble.
-};
-
-const char *statechar    = "WPDI";
-const char *statecharlow = "wpdi";
-
-// TODO: Do we need all these volatiles? Probably not...
+// State for each receiving IR LED
 
 struct ir_rx_state_t {
 
@@ -143,7 +122,7 @@ volatile uint8_t most_recent_ir_test;
   }
 
 
-#ifdef IR_DEBUG
+#if defined( TX_DEBUG ) || defined( RX_DEBUG )
 
     #include "sp.h"
 
@@ -196,6 +175,17 @@ volatile uint8_t most_recent_ir_test;
     uint8_t bitwalker = _BV( IRLED_COUNT -1 );
     ir_rx_state_t volatile *ptr = ir_rx_states + IRLED_COUNT -1;
 
+
+    // Recharge the LEDs that were triggered on this last sample
+    // Note we intentionally wait some time after the sample so that we do not see the same
+    // pulse trigger use twice. Two pulses are always separated by more than 1 time window,
+    // so as long as we keep up sampling we should never miss a pulse, and Actually charging the
+    // LED closer to when it will get triggered by a pulse might make it less sensitive since it
+    // will have more residual charge.
+
+    ir_charge_LEDs( most_recent_ir_test );
+
+
     // Loop though each of the IR LED and see if anything happened on each...
 
     do {
@@ -214,14 +204,16 @@ volatile uint8_t most_recent_ir_test;
 
             uint8_t dataBit = 0;        // Potential received data bit
 
-
             switch (samples) {
 
                 // Remember in all of these cases that there is an extra 1 bit at the bottom that we just received.
 
                 case 0b00000001:
                 case 0b00000010:
-                            dataBit =1;
+                            dataBit = 0b10000000;       // We will stuff a 1 in the highest bit of the input buffer
+                                                        // because bits are sent lest significant bit first, so we must
+                                                        // stuff at the top and shift downwards
+
                             // fall though!
 
                 case 0b00000100:
@@ -231,26 +223,62 @@ volatile uint8_t most_recent_ir_test;
                             // If we get here, we saw a good databit pattern.
 
 
+                            #ifdef RX_DEBUG
+                                if (bitwalker==0x01) {
+                                    if (dataBit) {
+                                         SP_SERIAL_TX_NOW('1');
+                                    } else {
+                                         SP_SERIAL_TX_NOW('0');
+                                    }
+                                }
+                            #endif
+
+
                             if (ptr->inputBuffer) {      // Are we currently receiving a byte? If not, ignore everything
                                                             //TODO: Check ASM, might want to cache this
 
-                                uint8_t data =  ptr->inputBuffer<<1 ;     // make room at bottom for new 1 bit
+                                uint8_t data =  ptr->inputBuffer>>1 ;    // make room at top for new 1 bit
+                                                                         // remember data bits are transmitted lest significant first 
 
-                                data |= dataBit;                     // data now holds the data byte in progress with the new bit
+                                data |= dataBit;                         // data now holds the data byte in progress with the new bit in the top bit 
 
-                                if (ptr->inputBuffer & 0b100000000) {     // If the top bit in the input buffer was high, then we just got the last bit of a full byte
+                                if (ptr->inputBuffer & 0b00000001) {     // If the bottom it in the input buffer was high, then we just got the last bit of a full byte
 
                                     // Save the fully received byte, prime for next one
 
                                     ptr->inValue = data;
                                     ptr->inValueReady=1;            // Signal new value received.
 
-                                    ptr->inputBuffer = 0x01;        // prime buffer for next byte to come in. Remember this 1 will fall off the top to indicate a full byte
+                                    ptr->inputBuffer = 0x00;        // Clear input buffer so we need another SYNC to receive next byte
+                                    
+                                    // TODO: Continuous back to back bytes with no sync in between?
+                                    //ptr->inputBuffer = 0b10000000;  // prime buffer for next byte to come in. Remember this 1 will fall off the bottom to indicate a full byte
+
+
+                                    #ifdef RX_DEBUG
+                                        if (bitwalker==0x01) {
+                                            SP_SERIAL_TX_NOW('C');      // Complete byte
+                                            sp_serial_tx( data );
+
+                                            if ( !debug::test( data ) ) {
+                                               SP_PIN_A_SET_1();               // SP pin A goes high any time IR0 is triggered. We clear it when we later process in the polling code.                                               
+                                            }
+                                        }                                            
+
+                                    #endif
+
                                 } else {
 
                                     // Incoming data byte still in progress, save with newly added bit
 
                                     ptr->inputBuffer = data;
+
+                                    #ifdef RX_DEBUG
+                                        if (bitwalker==0x01) {
+                                            SP_SERIAL_TX_NOW('B');  // Buffered bit
+                                            sp_serial_tx( data );
+                                        }                                            
+                                    #endif
 
                                 }
 
@@ -262,8 +290,11 @@ volatile uint8_t most_recent_ir_test;
                 case 0b00010000:
                 case 0b00100000:
 
-                            ptr->inputBuffer = 0x01;            // prime buffer for next byte to come in. Remember this 1 will fall off the top to indicate a full byte
+                            ptr->inputBuffer = 0b10000000;            // prime buffer for next byte to come in. Remember this 1 will fall off the bottom to indicate a full byte
 
+                            #ifdef RX_DEBUG
+                                if (bitwalker==0x01) SP_SERIAL_TX_NOW('Y');      // sYnc
+                            #endif
 
                             // Valid sync - start a new byte
 
@@ -279,8 +310,9 @@ volatile uint8_t most_recent_ir_test;
 
                             ptr->inputBuffer = 0x00;            // Clear buffer. A 0 here means we are waiting for sync
 
-
-                            // Valid sync - start a new byte
+                            #ifdef RX_DEBUG
+                                if (bitwalker==0x01) SP_SERIAL_TX_NOW('E');      // Error
+                            #endif
 
 
                             break;
@@ -295,6 +327,11 @@ volatile uint8_t most_recent_ir_test;
 
             ptr->samples <<= 1;                     // Stuff a 0 at the bottom and shift the rest up
 
+            #ifdef RX_DEBUG
+                //if (bitwalker==0x01) SP_SERIAL_TX_NOW('-');          // Idle sample
+            #endif
+
+
         }
 
         ptr--;
@@ -302,15 +339,6 @@ volatile uint8_t most_recent_ir_test;
 
 
     } while (bitwalker);
-
-    // Recharge the LEDs that were triggered on this last sample
-    // Note we intentionally wait some time after the sample so that we do not see the same
-    // pulse trigger use twice. Two pulses are always separated by more than 1 time window,
-    // so as long as we keep up sampling we should never miss a pulse, and Actually charging the
-    // LED closer to when it will get triggered by a pulse might make it less sensitive since it
-    // will have more residual charge.
-
-    ir_charge_LEDs( most_recent_ir_test );
 
 }
 
@@ -354,7 +382,8 @@ void irSendDataBitmask(uint8_t data, uint8_t bitmask) {
     // Start things up, send initial pulse and start bit (1)
     ir_tx_start( IR_SPACE_TIME_TICKS , bitmask , 1 );
 
-    ir_tx_sendpulse( 3 );           // Guard 0 bit to ensure real start bit is detected and not extraneous leading pulse.
+    // TODO: I thik we do not need the start bit and can instead jump right in with the sync, yes?
+    ir_tx_sendpulse( 5 );           // Send Sync
 
     do {
 

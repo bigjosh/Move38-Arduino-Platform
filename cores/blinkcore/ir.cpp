@@ -29,17 +29,6 @@
 #include "ir.h"
 #include "utils.h"
 
-// These #defines will let you see what is happening on the IR link by connecting an
-// oscilloscope to the service port pins.
-
-// #define TX_DEBUG
-// Pin A will go high when IR pulse sent on IR0
-
-// #define RX_DEBUG
-// Pin A will go high when IR0 is triggered (the charge is drained by light hitting the LED). Note this is dependent on interrupts being on.
-// You might thing you could just put a scope on the LED pin and watch it directly, but the resistance of the probe kills the effect so
-// we have to do it in software. The input pin has very, very high impedance.
-
 
 //TODO: Optimize these to be exact minimum for the distance in the real physical object
 //TODO: This can likely be reduced or eliminated when we increase sampling rate
@@ -161,13 +150,22 @@ void ir_init(void) {
 
     #ifdef RX_DEBUG
 
-        IR_INT_MASK_REG |= _BV(0);      // Enable pin change on IR0 cathode
-        SBI( PCICR , IR_PCI_BIT );      // Enable the pin group to actually generate interrupts
+        //IR_INT_MASK_REG |= _BV(0);      // Enable pin change on IR0 cathode
+        //SBI( PCICR , IR_PCI_BIT );      // Enable the pin group to actually generate interrupts
 
-        SP_PIN_A_MODE_OUT();
+
         sp_serial_init();
+        
+        SP_PIN_R_MODE_OUT();
         sp_serial_tx('I');
-
+            
+        sp_serial_disable_rx();             // Free up the R pin for signaling
+        
+        SP_PIN_A_MODE_OUT();
+        SP_PIN_R_MODE_OUT();
+        
+        SP_PIN_R_SET_0();
+        
     #endif
 
     #ifdef TX_DEBUG
@@ -300,8 +298,17 @@ uint8_t ir_sample_bits( void ) {
    // These will be 0 on the cathode since it got discharged by the flash
 
    uint8_t ir_LED_triggered_bits;
+    
+    #ifdef RX_DEBUG
+        SP_PIN_R_SET_1();               // SP pin R goes high durring sample window
+    #endif    
 
    ir_LED_triggered_bits = IR_CATHODE_PIN;      // A 0 means that the IR LED drained, probably becuase of a flash
+
+    #ifdef RX_DEBUG
+        SP_PIN_R_SET_0();               // SP pin R goes high durring sample window
+    #endif
+
    
    return ~ir_LED_triggered_bits;               // Flip so a 1 in ir_sample_bits() means that LED triggered
    

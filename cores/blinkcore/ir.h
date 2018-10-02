@@ -11,7 +11,18 @@
 #include "shared.h"			// Get FACECOUNT
 #include "bitfun.h"
 
-//#define IR_DEBUG            
+// These #defines will let you see what is happening on the IR link by connecting an
+// oscilloscope to the service port pins.
+
+// #define TX_DEBUG
+// Pin A will go high when IR pulse sent on IR0
+
+#define RX_DEBUG
+// Pin A will go high when IR0 is triggered (the charge is drained by light hitting the LED). Note this is dependent on interrupts being on. In ir.cpp
+// Pin R will go high during each sample window. In ir.cpp
+// You might think you could just put a scope on the LED pin and watch it directly, but the resistance of the probe kills the effect so
+// we have to do it in software. The input pin has very, very high impedance.
+// TX will send chars based on the receive state of IR0. Look in irdata.cpp to see what they are.
 
 #define IRLED_COUNT FACE_COUNT
 

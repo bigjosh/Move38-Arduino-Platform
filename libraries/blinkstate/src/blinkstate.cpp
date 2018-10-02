@@ -280,6 +280,9 @@ bool isAlone() {
 
 void setValueSentOnAllFaces( byte value ) {
 
+#warning tx broken for testing
+// TODO: FIX THIS
+/*
     if (value > IR_DATA_VALUE_MAX ) {
 
         value = IR_DATA_VALUE_MAX;
@@ -287,10 +290,11 @@ void setValueSentOnAllFaces( byte value ) {
     }
 
     if ( !oddParity(value) ) {
-
-        value |= 0b10000000;        // Force it to be odd!
+      // TODO: Fix parity
+      //  value |= 0b10000000;        // Force it to be odd!
 
     }
+*/
 
     FOREACH_FACE(f) {
 

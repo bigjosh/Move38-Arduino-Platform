@@ -205,6 +205,11 @@ void loop() {
   }
 
 
+//  setValueSentOnAllFaces( 0b00001111 );         // TESTING
+//  setValueSentOnAllFaces( 0b00000000 );         // TESTING
+//  setValueSentOnAllFaces( 0b11110000 );         // TESTING
+//  setValueSentOnAllFaces( 0b11110001 );         // TESTING
+
   setValueSentOnAllFaces( encode( myState ) );
 
 }
