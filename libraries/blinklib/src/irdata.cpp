@@ -52,9 +52,9 @@
 
 #include <util/atomic.h>        // ATOMIC_BLOCK
 
-// A bit cycle is one 2x timer tick, currently 256us
+// A bit cycle is one 2x timer tick, currently 128us
 
-#define IR_WINDOW_US 256            // How long is each timing window? Based on timer programming and clock speed.
+#define IR_WINDOW_US 128            // How long is each timing window? Based on timer programming and clock speed.
 
 #define IR_CLOCK_SPREAD_PCT  10     // Max clock spread between TX and RX clocks in percent
 
@@ -65,9 +65,10 @@
 
  //#define IR_SPACE_TIME_US (IR_WINDOW_US + (( ((unsigned long) IR_WINDOW_US * IR_CLOCK_SPREAD_PCT) ) / 100UL ) - TX_PULSE_OVERHEAD )  // Used for sending flashes. Must be longer than one IR timer tick including if this clock is slow and RX is fast.
 
-#define IR_SPACE_TIME_US (150)  // Used for sending flashes.
+#define IR_SPACE_TIME_US ((IR_WINDOW_US * 1.3))  // Used for sending flashes.
                                 // Must be longer than one IR timer tick including if this clock is slow and RX is fast
                                 // Must be shorter than two IR timer ticks including if the sending pulse is delayed by maximum interrupt latency.
+                                // Computed 1.3 * the receive window to be a good compriise here. 
 
 #define TICKS_PER_SECOND (F_CPU)
 
@@ -287,7 +288,7 @@ volatile uint8_t most_recent_ir_test;
 
                             break;
 
-                case 0b00010000:
+                case 0b00010000: 
                 case 0b00100000:
 
                             ptr->inputBuffer = 0b10000000;            // prime buffer for next byte to come in. Remember this 1 will fall off the bottom to indicate a full byte
