@@ -11,7 +11,18 @@
 #include "shared.h"			// Get FACECOUNT
 #include "bitfun.h"
 
-//#define IR_DEBUG            
+// These #defines will let you see what is happening on the IR link by connecting an
+// oscilloscope to the service port pins.
+
+// #define TX_DEBUG
+// Pin A will go high when IR pulse sent on IR0
+
+#define RX_DEBUG
+// Pin A will go high when IR0 is triggered (the charge is drained by light hitting the LED). Note this is dependent on interrupts being on. In ir.cpp
+// Pin R will go high during each sample window. In ir.cpp
+// You might think you could just put a scope on the LED pin and watch it directly, but the resistance of the probe kills the effect so
+// we have to do it in software. The input pin has very, very high impedance.
+// TX will send chars based on the receive state of IR0. Look in irdata.cpp to see what they are.
 
 #define IRLED_COUNT FACE_COUNT
 
@@ -58,14 +69,13 @@ void ir_tx_end(void);
 // Returns a 1 in each bit for each LED that was fired.
 // Fired LEDs are recharged.
 
-uint8_t ir_test_and_charge_cli( void );
+uint8_t ir_sample_bits( void );
 
+// Charge the bits set to 1 in 'chargeBits'
+// Probably best to call with ints off so doesn't get interrupted
+// Probably best to call some time after ir_sample_bits() so that a long pulse will not be seen twice.
 
-// Called anytime one of the IR LEDs triggers, which could
-// happen because it received a flash or just because
-// enough ambient light accumulated
-
-void __attribute__((weak)) ir_callback(uint8_t triggered_bits);
+void ir_charge_LEDs( uint8_t chargeBits );
 
 
 #define WAKEON_IR_BITMASK_NONE     0             // Don't wake on any IR change

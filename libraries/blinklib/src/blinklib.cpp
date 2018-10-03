@@ -279,36 +279,40 @@ byte getSerialNumberByte( byte n ) {
 // If the cycle ends with the button down, then we interpret this that the user wanted to
 // abort the clicks, so we discard the count.
 
-static volatile bool buttonState=0;                     // Current debounced state
+static volatile byte buttonState=0;                     // Current debounced state
 
-static volatile bool buttonPressedFlag=0;               // Has the button been pressed since the last time we checked it?
-static volatile bool buttonReleasedFlag=0;                // Has the button been lifted since the last time we checked it?
+static volatile byte buttonPressedFlag=0;               // Has the button been pressed since the last time we checked it?
+static volatile byte buttonReleasedFlag=0;              // Has the button been lifted since the last time we checked it?
 
 static uint8_t buttonDebounceCountdown=0;               // How long until we are done bouncing. Only touched in the callback
+                                                        // Set to BUTTON_DEBOUNCE_MS every time we see a change, then we ignore everything
+                                                        // until it gets to 0 again
 
 static uint16_t clickWindowCountdown=0;                 // How long until we close the current click window. 0=done TODO: Make this 8bit by reducing scan rate.
 static uint8_t clickPendingcount=0;                     // How many clicks so far int he current click window
 
 static uint16_t longPressCountdown=0;                   // How long until the current press becomes a long press
 
-static volatile bool singleClickedFlag=0;               // single click since the last time we checked it?
-static volatile bool doubleClickedFlag=0;               // double click since the last time we checked it?
-static volatile bool multiClickedFlag=0;                // multi click since the last time we checked it?
+static volatile byte singleClickedFlag=0;               // single click since the last time we checked it?
+static volatile byte doubleClickedFlag=0;               // double click since the last time we checked it?
+static volatile byte multiClickedFlag=0;                // multi click since the last time we checked it?
 
-static volatile bool longPressFlag=0;                   // Has the button been long pressed since the last time we checked it?
+static volatile byte longPressFlag=0;                   // Has the button been long pressed since the last time we checked it?
 
 static volatile uint8_t maxCompletedClickCount=0;       // Remember the most completed clicks to support the clickCount() function
 
 
-static volatile uint8_t buttonChangeFlag = 0;           // Set anytime the button changes state. Used to reset the sleep timer in the forground.
+static volatile uint8_t buttonChangeFlag = 1;           // Set anytime the button changes state. Used to reset the sleep timer in the foreground.
+                                                        // Init to 1 so that we reset the sleep timer on startup. 
 
 // Called once per tick by the timer to check the button position
 // and update the button state variables.
 
 // Note: this runs in Callback context in the timercallback
+// Called every 1ms
 
-static void updateButtonState(void) {
 
+static void updateButtonState1ms(void) {
 
     bool buttonPositon = button_down();
 
@@ -332,7 +336,7 @@ static void updateButtonState(void) {
                 }
             }
 
-            // We can nestle thew click window countdown in here because a click will ALWAYS happen inside a long press...
+            // We can nestle the click window countdown in here because a click will ALWAYS happen inside a long press...
 
             if (clickWindowCountdown) {
 
@@ -373,7 +377,7 @@ static void updateButtonState(void) {
 
         if (!buttonDebounceCountdown) {         // Done bouncing
 
-            buttonChangeFlag = 1;               // Signal ro forground that something happened on the button
+            buttonChangeFlag = 1;               // Signal to foreground that something happened on the button
 
             buttonState = buttonPositon;
 
@@ -384,8 +388,8 @@ static void updateButtonState(void) {
                     clickPendingcount++;
                 }
 
-                clickWindowCountdown = TIMER_MS_TO_TICKS( BUTTON_CLICK_TIMEOUT_MS );
-                longPressCountdown   = TIMER_MS_TO_TICKS( BUTTON_LONGPRESS_TIME_MS );
+                clickWindowCountdown = BUTTON_CLICK_TIMEOUT_MS ;
+                longPressCountdown   = BUTTON_LONGPRESS_TIME_MS;
 
             } else {
                 buttonReleasedFlag=1;
@@ -394,7 +398,7 @@ static void updateButtonState(void) {
 
         // Restart the countdown anytime the button position changes
 
-        buttonDebounceCountdown = TIMER_MS_TO_TICKS( BUTTON_DEBOUNCE_MS );
+        buttonDebounceCountdown = BUTTON_DEBOUNCE_MS;
 
     }
 
@@ -426,7 +430,7 @@ bool buttonDown(void) {
 55c:	08 95       	ret
 */
 
-bool testAndClearFlag( volatile bool &flag ) {
+bool testAndClearFlag( volatile byte &flag ) {
 
 if ( flag ) {
     flag=false;
@@ -484,11 +488,6 @@ uint8_t buttonClickCount(void) {
     return t;
 }
 
-void button_callback_onChange(void) {
-    // Empty since we do not need to do anything in the interrupt with the above timer sampling scheme.
-    // Nice because bounces can come fast and furious.
-}
-
 
 // Will overflow after about 62 days...
 // https://www.google.com/search?q=(2%5E31)*2.5ms&rlz=1C1CYCW_enUS687US687&oq=(2%5E31)*2.5ms
@@ -507,7 +506,7 @@ static volatile uint32_t millisCounter=1;           // How many milliseconds sin
 // This "freeze-time" view makes it harder to have race conditions when millis() changes while you are looking at it.
 // The value of millis_snapshot gets reset to 0 after each loop() iteration.
 
-static uint32_t millis_snapshot=0;
+static uint32_t millis_snapshot;
 
 // Need not be atomic since never called from the background.
 
@@ -573,18 +572,6 @@ void Timer::never(void) {
 }
 
 
-/*
-
-// Delay for `ms` milliseconds
-
-void delay( unsigned long ms ) {
-
-    unsigned long endtime = millis() + ms;
-
-    while (millis() < endtime);
-
-}
-*/
 
 // TODO: This is accurate and correct, but so inefficient.
 // We can do better.
@@ -596,30 +583,14 @@ void delay( unsigned long ms ) {
 
 // __uint24 timer24;
 
-static uint16_t cyclesCounter=0;                    // Accumulate cycles to keep millisCounter accurate
-
 #define BLINKCORE_UINT16_MAX (0xffff)               // I can not get stdint.h to work even with #define __STDC_LIMIT_MACROS, so have to resort to this hack.
 
 
-#if TIMER_CYCLES_PER_TICK >  BLINKCORE_UINT16_MAX
-    #error Overflow on cyclesCounter
-#endif
-
 // Note this runs in callback context
 
-static void incrementMillis(void) {
+static void incrementMillis1ms(void) {
 
-    cyclesCounter+=TIMER_CYCLES_PER_TICK;    // Used for timekeeping. Nice to increment here since this is the least time consuming phase
-
-    while (cyclesCounter >= CYCLES_PER_MS  ) {      // While covers cases where TIMER_CYCLES_PER_TICK >= CYCLES_PER_MILLISECOND * 2
-
-        millisCounter++;
-        cyclesCounter-=CYCLES_PER_MS ;
-
-    }
-
-    // Note that we might have some cycles left. They will accumulate in cycles counter and eventually get folded into a full milli to
-    // avoid errors building up.
+    millisCounter++;
 
 }
 
@@ -660,23 +631,35 @@ static void sleep(void) {
 
 }
 
-// Leave everyhing running, jjust sleep the CPU until the next interrupt.
+// Called about once every 1ms
 
-static void nap(void) {
+#include "sp.h"
+
+void timer_1000us_callback_sei(void) {
+
+    incrementMillis1ms();
+    updateButtonState1ms();
 
 }
 
-
-// This is called by about every 512us with interrupts on.
-
-void timer_512us_callback_sei(void) {
-    incrementMillis();
-    updateButtonState();
-}
-
-// This is called by about every 256us with interrupts on.
+// This is called by timer ISR about every 512us with interrupts on.
 
 void timer_256us_callback_sei(void) {
+
+    // Decrementing slightly more efficient because we save a compare.
+    static unsigned step_us=0;
+
+    step_us += 256;                     // 256us between calls
+
+    if ( step_us>= 1000 ) {             // 1000us in a 1ms
+        timer_1000us_callback_sei();
+        step_us-=1000;
+    }
+}
+
+// This is called by timer ISR about every 256us with interrupts on.
+
+void timer_128us_callback_sei(void) {
     updateIRComs();
 }
 
@@ -718,9 +701,9 @@ void __attribute__ ((weak)) run(void) {
         if (sleepTimer.isExpired()) {
             sleep();
 
-        } else {
-            nap();
         }
+
+        // He we could add a delay rather than call loop() as quickly as possible. This could lower power.
 
     }
 

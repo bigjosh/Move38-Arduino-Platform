@@ -29,17 +29,6 @@
 #include "ir.h"
 #include "utils.h"
 
-// These #defines will let you see what is happening on the IR link by connecting an
-// oscilloscope to the service port pins.
-
-// #define TX_DEBUG
-// Pin A will go high when IR pulse sent on IR0
-
-// #define RX_DEBUG
-// Pin A will go high when IR0 is triggered (the charge is drained by light hitting the LED). Note this is dependent on interrupts being on.
-// You might thing you could just put a scope on the LED pin and watch it directly, but the resistance of the probe kills the effect so
-// we have to do it in software. The input pin has very, very high impedance.
-
 
 //TODO: Optimize these to be exact minimum for the distance in the real physical object
 //TODO: This can likely be reduced or eliminated when we increase sampling rate
@@ -81,7 +70,7 @@
 // 'I' on startup initialization
 //
 
-#define RX_DEBUG
+//#define RX_DEBUG
 
 
 #if defined ( TX_DEBUG )  || defined ( RX_DEBUG ) || defined (IR_DEBUG)
@@ -161,13 +150,24 @@ void ir_init(void) {
 
     #ifdef RX_DEBUG
 
+
+        // These lines enable the IRS that will make SP A pin go high when IR0 is triggered
         IR_INT_MASK_REG |= _BV(0);      // Enable pin change on IR0 cathode
         SBI( PCICR , IR_PCI_BIT );      // Enable the pin group to actually generate interrupts
 
-        SP_PIN_A_MODE_OUT();
-        sp_serial_init();
-        sp_serial_tx('I');
 
+        sp_serial_init();
+        
+        SP_PIN_R_MODE_OUT();
+        sp_serial_tx('I');
+            
+        sp_serial_disable_rx();             // Free up the R pin for signaling
+        
+        SP_PIN_A_MODE_OUT();
+        SP_PIN_R_MODE_OUT();
+        
+        SP_PIN_R_SET_0();
+        
     #endif
 
     #ifdef TX_DEBUG
@@ -289,9 +289,10 @@ static inline void ir_tx_pulse_internal( uint8_t bitmask ) {
 // Measure the IR LEDs to to see if they have been triggered.
 // Must be called when interrupts are off.
 // Returns a 1 in each bit for each LED that was fired.
-// Triggered LEDs are recharged.
+// We break this out into a routing that runs with interrupts off so we can 
+// get consistent timing and not have the window size change frome to frame.
 
-uint8_t ir_test_and_charge_cli( void ) {
+uint8_t ir_sample_bits( void ) {
 
    // ===Time critcal section start===
 
@@ -299,8 +300,27 @@ uint8_t ir_test_and_charge_cli( void ) {
    // These will be 0 on the cathode since it got discharged by the flash
 
    uint8_t ir_LED_triggered_bits;
+    
+    #ifdef RX_DEBUG
+        SP_PIN_R_SET_1();               // SP pin R goes high durring sample window
+    #endif    
 
-   ir_LED_triggered_bits = (~IR_CATHODE_PIN);      // A 1 in ir_led_triggered_bits means that LED triggered
+   ir_LED_triggered_bits = IR_CATHODE_PIN;      // A 0 means that the IR LED drained, probably becuase of a flash
+
+    #ifdef RX_DEBUG
+        SP_PIN_R_SET_0();               // SP pin R goes high durring sample window
+    #endif
+
+   
+   return ~ir_LED_triggered_bits;               // Flip so a 1 in ir_sample_bits() means that LED triggered
+   
+}   
+
+// Charge the bits set to 1 in 'chargeBits'
+// Probably best to call with ints off so doesnt get interrupted
+// Probably best to call some time after ir_sample_bits() so that a long pulse will not be seen twice. 
+
+void ir_charge_LEDs( uint8_t chargeBits ) {
 
    // Note that we are capturing 8 bits here even though there are only 6 IR LEDs connected.
    // We purposely put the cathodes on PORTC since it really only has 6 working pins (PC6 is only connected when RESET is disabled, and PC7 does not have a pin).
@@ -330,9 +350,10 @@ uint8_t ir_test_and_charge_cli( void ) {
         Writing a '1' to PINxn toggles the value of PORTxn, independent on the value of DDRxn.
     */
 
-    IR_CATHODE_PIN =  ir_LED_triggered_bits;       // This enables pull-ups on charge pins. If we set the DDR first, then we would drive the low pins to ground.
+    IR_CATHODE_PIN =  chargeBits;       // This enables pull-ups on charge pins. If we set the DDR first, then we would drive the low pins to ground.
+                                        // REMEBER: Writing a 1 to a PIN register actually toggles the PORT bit!
 
-    IR_CATHODE_DDR =  ir_LED_triggered_bits;       // This will drive the charge pins high
+    IR_CATHODE_DDR =  chargeBits;       // This will drive the charge pins high
 
     // Empirically this is how long it takes to charge
     // and avoid false positive triggers in 1ms window 12" from halogen desk lamp
@@ -351,16 +372,14 @@ uint8_t ir_test_and_charge_cli( void ) {
     IR_CATHODE_DDR = 0;                 // Back to the way we started, charge pins now input, but still pulled-up
 
     #ifdef RX_DEBUG
-        SP_PIN_A_SET_0();       // We set the A output when we see a pin change interrupt on a cathode, so we clear it here to be ready to show the next one.
+        SP_PIN_A_SET_0();               // We set the A output when we see a pin change interrupt on a cathode, so we clear it here to be ready to show the next one.
     #endif
 
-    IR_CATHODE_PIN = ir_LED_triggered_bits;                       // toggle pull-ups off, now cathodes pure inputs
+    IR_CATHODE_PIN = chargeBits;        // toggle pull-ups off, now cathodes pure inputs
+                                        // REMEBER: Writing a 1 to a PIN register actually toggles the PORT bit!
 
     // TODO: Some LEDs seem to fire right after IR0 is charged when connected to programmer?
 
-    // ===Time critcal section end===
-
-    return ir_LED_triggered_bits;
 
 }
 

@@ -20,13 +20,17 @@
 
 
 void button_init(void) {
+
 	// Pin change interrupt setup
 	SBI( PCICR , BUTTON_PCI );          // Enable the pin group
+
+    // Pin group is always enabled, but interrupt will not happen unless that pin is enabled via button_isr_on()
+
 }
 
-// Enable pullup and interrupts on button
+// Enable button pullup
 
-void button_enable(void) {
+void button_enable_pu(void) {
 
 	// GPIO setup
 	SBI( BUTTON_PORT , BUTTON_BIT);     // Leave in input mode, enable pull-up
@@ -37,9 +41,9 @@ void button_enable(void) {
 // Disable pull-up
 // You'd want to do this to save power in the case where the
 // button is stuck down and therefore shorting out the pull-up
+// Be sure to also turn off button ISR or you might get spurious interrupts when the pin floats
 
-void button_disable(void) {
-
+void button_disable_pu(void) {
 
     CBI( BUTTON_PORT , BUTTON_BIT);     // Leave in input mode, disable pull-up
 

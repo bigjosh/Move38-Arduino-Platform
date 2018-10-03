@@ -98,6 +98,9 @@ static uint8_t oddParity(uint8_t b) {
 
 }
 
+/*
+
+// Process recieved Out Of Band data
 
 static void ir_OOB_command( uint8_t c ) {
 
@@ -105,6 +108,7 @@ static void ir_OOB_command( uint8_t c ) {
 
 }
 
+*/
 
 // check and see if any states recently updated....
 
@@ -130,7 +134,7 @@ static void updateIRFaces(uint32_t now) {
 
                 if ( data > IR_DATA_VALUE_MAX ) {
 
-                    ir_OOB_command( data );
+                    //ir_OOB_command( data );
 
                 } else {
 
@@ -276,6 +280,9 @@ bool isAlone() {
 
 void setValueSentOnAllFaces( byte value ) {
 
+#warning tx broken for testing
+// TODO: FIX THIS
+/*
     if (value > IR_DATA_VALUE_MAX ) {
 
         value = IR_DATA_VALUE_MAX;
@@ -283,10 +290,11 @@ void setValueSentOnAllFaces( byte value ) {
     }
 
     if ( !oddParity(value) ) {
-
-        value |= 0b10000000;        // Force it to be odd!
+      // TODO: Fix parity
+      //  value |= 0b10000000;        // Force it to be odd!
 
     }
+*/
 
     FOREACH_FACE(f) {
 
