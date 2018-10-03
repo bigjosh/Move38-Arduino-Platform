@@ -81,7 +81,10 @@ struct ir_rx_state_t {
 
      // These internal variables are only updated in ISR, so don't need to be volatile.
 
-    uint8_t samples;                                // We add new samples to the bottom and shift up.
+    uint8_t windowsSinceLastTrigger;                // How long since we last saw a trigger on this IR LED?
+    
+    
+                                                    // We add new samples to the bottom and shift up.
                                                     // The we look at the pattern to detect data bits
                                                     // This is better than using a counter because with a counter we would need
                                                     // to check for overflow before incrementing. With a shift register like this,
@@ -193,143 +196,136 @@ volatile uint8_t most_recent_ir_test;
 
         const uint8_t lastSample = bits & bitwalker;
 
-        // Keep a local read only copy of state
         // We will directly update the master in cases where it is changed
-        const uint8_t samples = ptr->samples;
+        const uint8_t windowsSinceLastTrigger = ptr->windowsSinceLastTrigger;
 
         // TODO: Make this more efficient.
 
         if (lastSample) {
 
             // The only interesting time to look at samples is after a pulse is received so only bother looking then
+            
+            if (windowsSinceLastTrigger<=4) {
+                
+                // 0,1,2,3,4 windows are data bits....
+                
+                if (ptr->inputBuffer) {      // Are we currently receiving a byte? (That is, did we get a sync?) If not, ignore everything
+                    
+                    //TODO: Check ASM, might want to cache this
+                
+                    uint8_t dataBit = 0;        // Potential received data bit
+                
+                    // 0,1 windows are a '1' data bit
+                
+                    if (windowsSinceLastTrigger<=1) {
 
-            uint8_t dataBit = 0;        // Potential received data bit
-
-            switch (samples) {
-
-                // Remember in all of these cases that there is an extra 1 bit at the bottom that we just received.
-
-                case 0b00000001:
-                case 0b00000010:
-                            dataBit = 0b10000000;       // We will stuff a 1 in the highest bit of the input buffer
-                                                        // because bits are sent lest significant bit first, so we must
-                                                        // stuff at the top and shift downwards
-
-                            // fall though!
-
-                case 0b00000100:
-                case 0b00001000:
-                            // databit = 0;
-
-                            // If we get here, we saw a good databit pattern.
-
-
-                            #ifdef RX_DEBUG
-                                if (bitwalker==0x01) {
-                                    if (dataBit) {
-                                         SP_SERIAL_TX_NOW('1');
-                                    } else {
-                                         SP_SERIAL_TX_NOW('0');
-                                    }
-                                }
-                            #endif
-
-
-                            if (ptr->inputBuffer) {      // Are we currently receiving a byte? If not, ignore everything
-                                                            //TODO: Check ASM, might want to cache this
-
-                                uint8_t data =  ptr->inputBuffer>>1 ;    // make room at top for new 1 bit
-                                                                         // remember data bits are transmitted lest significant first 
-
-                                data |= dataBit;                         // data now holds the data byte in progress with the new bit in the top bit 
-
-                                if (ptr->inputBuffer & 0b00000001) {     // If the bottom it in the input buffer was high, then we just got the last bit of a full byte
-
-                                    // Save the fully received byte, prime for next one
-
-                                    ptr->inValue = data;
-                                    ptr->inValueReady=1;            // Signal new value received.
-
-                                    ptr->inputBuffer = 0x00;        // Clear input buffer so we need another SYNC to receive next byte
-                                    
-                                    // TODO: Continuous back to back bytes with no sync in between?
-                                    //ptr->inputBuffer = 0b10000000;  // prime buffer for next byte to come in. Remember this 1 will fall off the bottom to indicate a full byte
-
-
-                                    #ifdef RX_DEBUG
-                                        if (bitwalker==0x01) {
-                                            SP_SERIAL_TX_NOW('C');      // Complete byte
-                                            sp_serial_tx( data );
-
-                                            if ( !debug::test( data ) ) {
-                                               SP_PIN_A_SET_1();               // SP pin A goes high any time IR0 is triggered. We clear it when we later process in the polling code.                                               
-                                            }
-                                        }                                            
-
-                                    #endif
-
-                                } else {
-
-                                    // Incoming data byte still in progress, save with newly added bit
-
-                                    ptr->inputBuffer = data;
-
-                                    #ifdef RX_DEBUG
-                                        if (bitwalker==0x01) {
-                                            SP_SERIAL_TX_NOW('B');  // Buffered bit
-                                            sp_serial_tx( data );
-                                        }                                            
-                                    #endif
-
-                                }
-
+                        dataBit = 0b10000000;       // We will stuff a 1 in the highest bit of the input buffer
+                                                    // because bits are sent lest significant bit first, so we must
+                                                    // stuff at the top and shift downwards
+                                                
+                    }
+                
+                    // 2,3,4 windows are a '0' data bit
+                                                                
+                    #ifdef RX_DEBUG
+                        if (bitwalker==0x01) {
+                            if (dataBit) {
+                                    SP_SERIAL_TX_NOW('1');
+                            } else {
+                                    SP_SERIAL_TX_NOW('0');
                             }
+                        }
+                    #endif
+
+                    // Here we know we got a data bit. It is either 0 or 1 (decided above) 
+
+                    uint8_t data =  ptr->inputBuffer>>1 ;    // make room at top for new 1 bit
+                                                                // remember data bits are transmitted lest significant first 
+
+                    data |= dataBit;                         // data now holds the data byte in progress with the new bit in the top bit 
+
+                    if (ptr->inputBuffer & 0b00000001) {     // If the bottom it in the input buffer was high, then we just got the last bit of a full byte
+
+                        // Save the fully received byte, prime for next one
+
+                        ptr->inValue = data;
+                        ptr->inValueReady=1;            // Signal new value received.
+
+                        ptr->inputBuffer = 0x00;        // Clear input buffer so we need another SYNC to receive next byte
+                                    
+                        // TODO: Continuous back to back bytes with no sync in between?
+                        //ptr->inputBuffer = 0b10000000;  // prime buffer for next byte to come in. Remember this 1 will fall off the bottom to indicate a full byte
 
 
-                            break;
+                        #ifdef RX_DEBUG
+                            if (bitwalker==0x01) {
+                                SP_SERIAL_TX_NOW('C');      // Complete byte
+                                sp_serial_tx( data );
 
-                case 0b00010000: 
-                case 0b00100000:
+                                if ( !debug::test( data ) ) {
+                                    //SP_PIN_A_SET_1();               // SP pin A goes high any time IR0 is triggered. We clear it when we later process in the polling code.                                               
+                                }
+                            }                                            
 
-                            ptr->inputBuffer = 0b10000000;            // prime buffer for next byte to come in. Remember this 1 will fall off the bottom to indicate a full byte
+                        #endif
 
-                            #ifdef RX_DEBUG
-                                if (bitwalker==0x01) SP_SERIAL_TX_NOW('Y');      // sYnc
-                            #endif
+                    } else {
 
-                            // Valid sync - start a new byte
+                        // Incoming data byte still in progress, save with newly added bit
 
+                        ptr->inputBuffer = data;
 
-                            break;
+                        #ifdef RX_DEBUG
+                            if (bitwalker==0x01) {
+                                SP_SERIAL_TX_NOW('B');  // Buffered bit
+                                sp_serial_tx( data );
+                            }                                            
+                        #endif
 
-                case 0b01000000:
-                case 0b10000000:
-                case 0b00000000:
+                    }
+                    
+                }                    
+                
+            } else if (windowsSinceLastTrigger <=8 ) {
+                
+                // SYNC 
 
-                            // These are invalid patterns, so probably indicate we missed a bit
-                            // Clear out anything we were buffering and wait for new sync
+                ptr->inputBuffer = 0b10000000;            // prime buffer for next byte to come in. Remember this 1 will fall off the bottom to indicate a full byte
 
-                            ptr->inputBuffer = 0x00;            // Clear buffer. A 0 here means we are waiting for sync
+                #ifdef RX_DEBUG
+                    if (bitwalker==0x01) SP_SERIAL_TX_NOW('Y');      // sYnc
+                #endif
+                
+            } else {                 
+                
+                // Been too long since we saw pulse, so reset everything and wait for next sync
 
-                            #ifdef RX_DEBUG
-                                if (bitwalker==0x01) SP_SERIAL_TX_NOW('E');      // Error
-                            #endif
+                ptr->inputBuffer = 0x00;            // Clear buffer. A 0 here means we are waiting for sync
 
+                #ifdef RX_DEBUG
+                    if (bitwalker==0x01) SP_SERIAL_TX_NOW('E');                               // Error
+                    if (bitwalker==0x01) sp_serial_tx('0'+ptr->windowsSinceLastTrigger);      // Error                                
+                #endif
 
-                            break;
 
             }
 
-            ptr->samples = 0b000000001;          // Save this 1 so it can start stepping up for next time
+            ptr->windowsSinceLastTrigger= 0;          // We are here becuase we got a trigger
 
         } else {
 
             // No trigger on this IR on this update cycle
+            
+            // No point in incrementing past 9 since 9 is already an error
+            // and this keeps us form overflowing (although that is very unlikely)
+            if (ptr->windowsSinceLastTrigger<9) {
 
-            ptr->samples <<= 1;                     // Stuff a 0 at the bottom and shift the rest up
+                ptr->windowsSinceLastTrigger++;
+                
+            }                
 
             #ifdef RX_DEBUG
-                //if (bitwalker==0x01) SP_SERIAL_TX_NOW('-');          // Idle sample
+                if (bitwalker==0x01) SP_SERIAL_TX_NOW('-');          // Idle sample
             #endif
 
 
@@ -383,8 +379,8 @@ void irSendDataBitmask(uint8_t data, uint8_t bitmask) {
     // Start things up, send initial pulse and start bit (1)
     ir_tx_start( IR_SPACE_TIME_TICKS , bitmask , 1 );
 
-    // TODO: I thik we do not need the start bit and can instead jump right in with the sync, yes?
-    ir_tx_sendpulse( 5 );           // Send Sync
+    // TODO: I think we do not need the start bit and can instead jump right in with the sync, yes?
+    ir_tx_sendpulse( 6 );           // Send Sync
 
     do {
 
