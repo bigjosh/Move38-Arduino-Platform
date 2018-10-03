@@ -158,7 +158,7 @@ byte test( byte v ) {
 void loop() {
 
   // put your main code here, to run repeatedly:
-  if ( buttonSingleClicked() ) {
+  if ( buttonPressed() ) {
 
     myState++;
     if (myState >= myState_count ) {

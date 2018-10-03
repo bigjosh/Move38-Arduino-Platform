@@ -197,7 +197,7 @@ volatile uint8_t most_recent_ir_test;
         const uint8_t lastSample = bits & bitwalker;
 
         // We will directly update the master in cases where it is changed
-        const uint8_t windowsSinceLastTrigger = ptr->windowsSinceLastTrigger;
+        uint8_t windowsSinceLastTrigger = ptr->windowsSinceLastTrigger;
 
         // TODO: Make this more efficient.
 
@@ -263,7 +263,7 @@ volatile uint8_t most_recent_ir_test;
                                 sp_serial_tx( data );
 
                                 if ( !debug::test( data ) ) {
-                                    //SP_PIN_A_SET_1();               // SP pin A goes high any time IR0 is triggered. We clear it when we later process in the polling code.                                               
+                                    SP_PIN_A_SET_1();               // SP pin A goes high any time IR0 is triggered. We clear it when we later process in the polling code.                                               
                                 }
                             }                                            
 
@@ -312,22 +312,23 @@ volatile uint8_t most_recent_ir_test;
 
             ptr->windowsSinceLastTrigger= 0;          // We are here becuase we got a trigger
 
-        } else {
+        } else {  // No trigger in this sample window
 
             // No trigger on this IR on this update cycle
             
             // No point in incrementing past 9 since 9 is already an error
             // and this keeps us form overflowing (although that is very unlikely)
-            if (ptr->windowsSinceLastTrigger<9) {
+            if (windowsSinceLastTrigger<9) {
+                
+                windowsSinceLastTrigger++;
 
-                ptr->windowsSinceLastTrigger++;
+                ptr->windowsSinceLastTrigger=windowsSinceLastTrigger;
                 
             }                
 
             #ifdef RX_DEBUG
                 if (bitwalker==0x01) SP_SERIAL_TX_NOW('-');          // Idle sample
             #endif
-
 
         }
 
