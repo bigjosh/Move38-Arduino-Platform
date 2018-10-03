@@ -152,8 +152,8 @@ void ir_init(void) {
 
 
         // These lines enable the IRS that will make SP A pin go high when IR0 is triggered
-        IR_INT_MASK_REG |= _BV(0);      // Enable pin change on IR0 cathode
-        SBI( PCICR , IR_PCI_BIT );      // Enable the pin group to actually generate interrupts
+        //IR_INT_MASK_REG |= _BV(0);      // Enable pin change on IR0 cathode
+        //SBI( PCICR , IR_PCI_BIT );      // Enable the pin group to actually generate interrupts
 
 
         sp_serial_init();
