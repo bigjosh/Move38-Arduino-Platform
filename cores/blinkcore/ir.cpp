@@ -44,7 +44,7 @@
 
 #define IR_CHARGE_TIME_US 4         // How long to charge the LED though the pull-up
 
-#define IR_PULSE_TIME_US 10         // How long to turn IR LED on to send a pulse
+#define IR_PULSE_TIME_US 15         // How long to turn IR LED on to send a pulse
 
 
 // Currently chosen empirically to work with some tile cases Jon made 7/28/17
@@ -157,17 +157,17 @@ void ir_init(void) {
 
 
         sp_serial_init();
-        
+
         SP_PIN_R_MODE_OUT();
         sp_serial_tx('I');
-            
+
         sp_serial_disable_rx();             // Free up the R pin for signaling
-        
+
         SP_PIN_A_MODE_OUT();
         SP_PIN_R_MODE_OUT();
-        
+
         SP_PIN_R_SET_0();
-        
+
     #endif
 
     #ifdef TX_DEBUG
@@ -289,7 +289,7 @@ static inline void ir_tx_pulse_internal( uint8_t bitmask ) {
 // Measure the IR LEDs to to see if they have been triggered.
 // Must be called when interrupts are off.
 // Returns a 1 in each bit for each LED that was fired.
-// We break this out into a routing that runs with interrupts off so we can 
+// We break this out into a routing that runs with interrupts off so we can
 // get consistent timing and not have the window size change frome to frame.
 
 uint8_t ir_sample_bits( void ) {
@@ -300,10 +300,10 @@ uint8_t ir_sample_bits( void ) {
    // These will be 0 on the cathode since it got discharged by the flash
 
    uint8_t ir_LED_triggered_bits;
-    
+
     #ifdef RX_DEBUG
         SP_PIN_R_SET_1();               // SP pin R goes high durring sample window
-    #endif    
+    #endif
 
    ir_LED_triggered_bits = IR_CATHODE_PIN;      // A 0 means that the IR LED drained, probably becuase of a flash
 
@@ -311,14 +311,14 @@ uint8_t ir_sample_bits( void ) {
         SP_PIN_R_SET_0();               // SP pin R goes high durring sample window
     #endif
 
-   
+
    return ~ir_LED_triggered_bits;               // Flip so a 1 in ir_sample_bits() means that LED triggered
-   
-}   
+
+}
 
 // Charge the bits set to 1 in 'chargeBits'
 // Probably best to call with ints off so doesnt get interrupted
-// Probably best to call some time after ir_sample_bits() so that a long pulse will not be seen twice. 
+// Probably best to call some time after ir_sample_bits() so that a long pulse will not be seen twice.
 
 void ir_charge_LEDs( uint8_t chargeBits ) {
 
@@ -401,41 +401,21 @@ void ir_charge_LEDs( uint8_t chargeBits ) {
 */
 
 static volatile uint8_t sendpulse_bitmask;      // Which IR LEDs to send on
-static volatile uint8_t sendpulse_spaces;       // Time to delay until next pulse. 0=pulse sent
-static volatile uint8_t sendpulse_spaces_next;  // A one entry deep buffer for spaces so we can try to keep it primed.
 
 // Currently clocks at 23us @ 4Mhz
 
-ISR(TIMER1_CAPT_vect) {
+ISR(TIMER1_COMPA_vect) {
 
-    // Cache because the compiler is not so good here
-    uint8_t sendpulse_spaces_m = sendpulse_spaces;
+    #ifdef TX_DEBUG
+        if (sendpulse_bitmask&0x01) SP_PIN_A_SET_1();
+    #endif
 
-    if (sendpulse_spaces_m) {
-
-        sendpulse_spaces_m--;
-
-        if (sendpulse_spaces_m==0) {
-
-           #ifdef TX_DEBUG
-                if (sendpulse_bitmask&0x01) SP_PIN_A_SET_1();
-           #endif
-
-            ir_tx_pulse_internal( sendpulse_bitmask );     // Flash
-
-            #ifdef TX_DEBUG
-                SP_PIN_A_SET_0();
-            #endif
-
-            sendpulse_spaces_m = sendpulse_spaces_next;
-
-            sendpulse_spaces_next = 0;
-
-        }
-
-        sendpulse_spaces = sendpulse_spaces_m;
-
-    }
+    ir_tx_pulse_internal( sendpulse_bitmask );     // Flash
+//    ir_tx_pulse_internal( IR_ALL_BITS );     // Flash
+           
+    #ifdef TX_DEBUG
+        SP_PIN_A_SET_0();
+    #endif
 
 }
 
@@ -463,35 +443,43 @@ ISR(TIMER1_CAPT_vect) {
   */
 
 // Sends starting a pulse train.
-// Each pulse will have an integer number of delays between it and the previous pulse.
-// Each of those delay windows is spacing_ticks wide.
-// This sets things up and sends the initial pulse.
+// Will send first pulse and then wait initialTicks before sending second pulse.
 // Then continue to call ir_tx_sendpulse() to send subsequent pulses
 // Call ir_tx_end() after last pulse to turn off the ISR (optional but saves CPU and power)
 
-void ir_tx_start(uint16_t spacing_ticks , uint8_t bitmask , uint16_t initialSpaces ) {
+void ir_tx_start(uint8_t bitmask , uint16_t initialTicks ) {
+
+    TCCR1B = _BV( WGM13) | _BV( WGM12);      // clk/0. Timer is now stopped.
+    TCCR1A = 0;                               // Mode 12. THis is a CTC mode, we pick it just so we can directly access OCRA without the buffer.
 
     sendpulse_bitmask = bitmask &  IR_ALL_BITS; // Protect the non-IR LED bits from invalid input
 
-    ICR1 = spacing_ticks;               // We will fire ISR when we hit this, and also roll back to 0.
+    TCNT1 = 0;
+    OCR1A = 1;                            // Prime the gears, send the first pulse right after we start the timer up.
+    TCCR1A = _BV( WGM11 ) | _BV( WGM10);     // Mode 15. Count up to TOP=OCRA. Load new OCRA at BOTTOM.
 
-    TCNT1 = spacing_ticks-1;            // Grease the wheels. This will make the 1st pulse go out as soon as we turn on the timer
+    // Now that we are in a buffered mode, we can go ahead and update OCR1A to initial delay value
 
-    SBI( TIFR1 , ICF1 );                // Clear TOP match flag in case it is set.
-                                        // "ICF can be cleared by writing a logic one to its bit location."
+    OCR1A = initialTicks;               // We will fire ISR when we hit this, and also roll back to 0.
+
+    SBI( TIFR1 , OCF1A );               // Clear match flag in case it is set.
+                                        // After this, it will automatically be cleared by calling the ISR
+                                        // TODO: We probably never need to do this manually
 
 
-    TIMSK1 |= _BV(ICIE1);                // Enable the ISR when we hit ICR1
-                                         // TODO: Do this only once at startup
+    SBI( TIFR1 , TOV1 );                // Clear Top OVerflow flag in case it is set.
+                                        // We will use this to see when the timer fired and the last pulse is away
+                                        // so we know when to buffer up the next delay value into OCRA 
+                                        // We will manually clear this each time we buffer a new value
 
-    sendpulse_spaces_next=initialSpaces; // Get our first space into the buffer so it is ready before we start
-    sendpulse_spaces=1;                  // Will send as soon as called (immediately after next line).
 
-    // Start clock in mode 12 with /1 prescaller (one timer tick per clock tick)
-    TCCR1B = _BV( WGM12) | _BV( WGM13) | _BV( CS10);            // clk/1
+    TIMSK1 |= _BV(OCIE1A);                // Enable the ISR when we hit OCR1 as TOP
+                                          // TODO: Do this only once at startup
 
+    TCCR1B = _BV( WGM13) | _BV( WGM12) |_BV( CS10);   // clk/1. Starts timer.
+        
     // ISR will trigger immediately and send the 1st pulse
-
+    
 }
 
 // leadingSpaces is the number of spaces to wait between the previous pulse and this pulse.
@@ -499,15 +487,12 @@ void ir_tx_start(uint16_t spacing_ticks , uint8_t bitmask , uint16_t initialSpac
 
 // TODO: single buffer this in case sender has a hiccup or is too slow to keep up?
 
-void ir_tx_sendpulse( uint8_t leadingSpaces ) {
-    while (sendpulse_spaces_next) {           // Wait for previous entry to buffer to pulse to get sent
-
-        // TODO: This should be a sleep_cpu() and the inetrrupt will wake us.
-
-        //sleep_cpu();                         // Don't burn power, the timer interrupt will wake us
-    }
-    sendpulse_spaces_next=leadingSpaces;     // ISR trigger will end a pulse after specified number of spaces
-
+void ir_tx_sendpulse( uint16_t delay_cycles) {    
+    while ( !TBI( TIFR1 , TOV1) );             // Wait for current cycle to finish
+    OCR1A = delay_cycles;                     // Buffer the next delay value
+    SBI( TIFR1 , TOV1 );                      // Writing a 1 to the bit clears it    
+    
+    
 }
 
 // Turn off the pulse sending ISR
@@ -515,8 +500,10 @@ void ir_tx_sendpulse( uint8_t leadingSpaces ) {
 
 void ir_tx_end(void) {
 
-    while (sendpulse_spaces);       // Wait for all previous pulses to get sent (buffered and immediate complete)
-
+    while ( !TBI( TIFR1 , TOV1) );             // Wait for current cycle to finish
+    SBI( TIFR1 , TOV1 );                      // Writing a 1 to the bit clears it
+    while ( !TBI( TIFR1 , TOV1) );             // Wait final cycle to finish
+    
     // stop timer (not more ISR)
     TCCR1B = 0;             // Sets prescaler to 0 which stops the timer.
 

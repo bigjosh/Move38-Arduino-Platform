@@ -43,20 +43,18 @@ void ir_enable(void);
 void ir_disable(void);
 
 // Sends starting a pulse train.
-// Each pulse will have an integer number of delays between it and the previous pulse.
-// Each of those delay windows is spacing_ticks wide.
-// This sets things up and sends the initial pulse.
+// Will send first pulse and then wait initialTicks before sending second pulse.
 // Then continue to call ir_tx_sendpulse() to send subsequent pulses
 // Call ir_tx_end() after last pulse to turn off the ISR (optional but saves CPU and power)
 
-void ir_tx_start(uint16_t spacing_ticks , uint8_t bitmask , uint16_t initialSpaces );
-
+void ir_tx_start(uint8_t bitmask , uint16_t initialTicks );
+    
 // Send next pulse int this pulse train.
 // leadingSpaces is the number of spaces to wait between the previous pulse and this pulse.
 // 0 doesn't really make any sense
 // Note that you must called ir_tx_sendpuse fast enough that the buffer doesn't run dry
 
-void ir_tx_sendpulse( uint8_t leadingSpaces );
+void ir_tx_sendpulse( uint16_t delay_cycles);
 
 // Turn off the pulse sending ISR
 // Blocks until final pulse transmitted

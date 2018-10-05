@@ -56,19 +56,27 @@
 
 #define IR_WINDOW_US 128            // How long is each timing window? Based on timer programming and clock speed.
 
-#define IR_CLOCK_SPREAD_PCT  10     // Max clock spread between TX and RX clocks in percent
+#define IR_CLOCK_SPREAD_PCT  5      // Max clock spread between TX and RX clocks in percent
 
 #define TX_PULSE_OVERHEAD_US 25     // How long does ir_tx_pulse() take?
 
 // Time between consecutive bit flashes
 // Must be long enough that receiver can detect 2 distinct consecutive flashes even at maximum interrupt latency
 
- //#define IR_SPACE_TIME_US (IR_WINDOW_US + (( ((unsigned long) IR_WINDOW_US * IR_CLOCK_SPREAD_PCT) ) / 100UL ) - TX_PULSE_OVERHEAD )  // Used for sending flashes. Must be longer than one IR timer tick including if this clock is slow and RX is fast.
 
-#define IR_SPACE_TIME_US ((IR_WINDOW_US * 1.3))  // Used for sending flashes.
+#define SQUARE(n) ((n)*(n))
+
+//#define IR_SPACE_TIME_US (IR_WINDOW_US + (( ((unsigned long) IR_WINDOW_US * IR_CLOCK_SPREAD_PCT) ) / 100UL ) - TX_PULSE_OVERHEAD )  // Used for sending flashes. Must be longer than one IR timer tick including if this clock is slow and RX is fast.
+
+//#define IR_SPACE_TIME_US (IR_WINDOW_US *  SQUARE(1 + (IR_CLOCK_SPREAD_PCT/100.0) ) )  // Used for sending flashes.
+
+//#define IR_SPACE_TIME_US (145) )   // Used for sending flashes.
+
+// We calculate these transmit window sizes individually in the sending code.
+
+                                // Calculated to be just long enough that TX window will be longer than RX sample window when clocks mismatch by 5%
                                 // Must be longer than one IR timer tick including if this clock is slow and RX is fast
                                 // Must be shorter than two IR timer ticks including if the sending pulse is delayed by maximum interrupt latency.
-                                // Computed 1.3 * the receive window to be a good compriise here. 
 
 #define TICKS_PER_SECOND (F_CPU)
 
@@ -370,18 +378,48 @@ uint8_t irGetData( uint8_t led ) {
 
 }
 
+// So we need the TX window to always be longer than the sample window or else
+// two TX pulses could happen in the same sample window and only one we be seen.
+
+// Here we compute the longest sample window assuming worst case that the
+// RX clock is slow. Note this is an actual real time us.
+
+#define MINIUM_TX_WINDOW_RT_US  (IR_WINDOW_US * (1.0 + (IR_CLOCK_SPREAD_PCT/100.00) ))
+
+// Next we compute how long each TX delay for each transmitted symbol in accurate us
+
+#define IR_TX_1_BIT_DELAY_RT_US ( 1.0 * MINIUM_TX_WINDOW_RT_US ) 
+#define IR_TX_0_BIT_DELAY_RT_US ( 3.0 * MINIUM_TX_WINDOW_RT_US )
+#define IR_TX_S_BIT_DELAY_RT_US ( 5.0 * MINIUM_TX_WINDOW_RT_US )      // Sync
+
+// Next we have to determine how long each delay should be in local clock time in the worst case
+// where the local clock is fast. 
+
+// MIN_DELAY_RT * 1 + ( (IR_CLOCK_SPREAD_PCT) ) = MIN_DELAY_LT
+
+#define MIN_DELAY_LT( MIN_DELAY_RT , CLOCK_SPREAD_PCT ) ( MIN_DELAY_RT * ( 1.0 + ( CLOCK_SPREAD_PCT / 100.00) ) ) 
+
 // Simultaneously send data on all faces that have a `1` in bitmask
 // Sends bits in least-significant-bit first order (RS232 style)
 
 void irSendDataBitmask(uint8_t data, uint8_t bitmask) {
+    
+    ir_tx_start( bitmask , US_TO_CYCLES( 200 ) ) ;
+    ir_tx_sendpulse( US_TO_CYCLES( 300 ) );
+    ir_tx_sendpulse( US_TO_CYCLES( 400 ) );
+    ir_tx_sendpulse( US_TO_CYCLES( 500 ) );
+    ir_tx_sendpulse( US_TO_CYCLES( 300 ) );
+    ir_tx_sendpulse( US_TO_CYCLES( 400 ) );
+    ir_tx_sendpulse( US_TO_CYCLES( 500 ) );
+    
+    ir_tx_end();
+    
+    return;
 
     uint8_t bitwalker = 0b00000001;
 
-    // Start things up, send initial pulse and start bit (1)
-    ir_tx_start( IR_SPACE_TIME_TICKS , bitmask , 1 );
-
-    // TODO: I think we do not need the start bit and can instead jump right in with the sync, yes?
-    ir_tx_sendpulse( 6 );           // Send Sync
+    // Start things up, send initial pulse and sync frame
+    ir_tx_start( bitmask , US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_S_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  );
 
     do {
 
