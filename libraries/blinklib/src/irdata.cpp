@@ -58,7 +58,7 @@
 
 #define IR_CLOCK_SPREAD_PCT  5      // Max clock spread between TX and RX clocks in percent
 
-#define TX_PULSE_OVERHEAD_US 25     // How long does ir_tx_pulse() take?
+#define IR_CHARGE_OVERHEAD 25       // How long does take to fully charge IR after it has triggered?
 
 // Time between consecutive bit flashes
 // Must be long enough that receiver can detect 2 distinct consecutive flashes even at maximum interrupt latency
@@ -130,7 +130,7 @@ volatile uint8_t most_recent_ir_test;
 
   void timer_128us_callback_cli(void) {
 	  // Interrupts are off, so get it done as quickly as possible
-	  most_recent_ir_test = ir_sample_bits();
+	  most_recent_ir_test = ir_sample_and_charge_LEDs();
   }
 
 
@@ -178,6 +178,13 @@ volatile uint8_t most_recent_ir_test;
 
     uint8_t bits = most_recent_ir_test;
 
+    // Recharge the LEDs that were triggered on this last sample
+    // Note we intentionally wait some time after the sample so that we do not see the same
+    // pulse trigger use twice. Two pulses are always separated by more than 1 time window,
+    // so as long as we keep up sampling we should never miss a pulse, and Actually charging the
+    // LED closer to when it will get triggered by a pulse might make it less sensitive since it
+    // will have more residual charge.
+        
     // Loop though and process each IR LED (which corresponds to one bit in `bits`)
     // Start at IR5 and work out way down to IR0.
     // Going down is faster than up because we can test bitwalker == 0 for free
@@ -186,18 +193,7 @@ volatile uint8_t most_recent_ir_test;
 
     uint8_t bitwalker = _BV( IRLED_COUNT -1 );
     ir_rx_state_t volatile *ptr = ir_rx_states + IRLED_COUNT -1;
-
-
-    // Recharge the LEDs that were triggered on this last sample
-    // Note we intentionally wait some time after the sample so that we do not see the same
-    // pulse trigger use twice. Two pulses are always separated by more than 1 time window,
-    // so as long as we keep up sampling we should never miss a pulse, and Actually charging the
-    // LED closer to when it will get triggered by a pulse might make it less sensitive since it
-    // will have more residual charge.
-
-    ir_charge_LEDs( most_recent_ir_test );
-
-
+    
     // Loop though each of the IR LED and see if anything happened on each...
 
     do {
@@ -213,7 +209,7 @@ volatile uint8_t most_recent_ir_test;
 
             // The only interesting time to look at samples is after a pulse is received so only bother looking then
             
-            if (windowsSinceLastTrigger<=4) {
+            if (windowsSinceLastTrigger<4) {
                 
                 // 0,1,2,3,4 windows are data bits....
                 
@@ -294,7 +290,7 @@ volatile uint8_t most_recent_ir_test;
                     
                 }                    
                 
-            } else if (windowsSinceLastTrigger <=8 ) {
+            } else if (windowsSinceLastTrigger <=6 ) {
                 
                 // SYNC 
 
@@ -318,7 +314,7 @@ volatile uint8_t most_recent_ir_test;
 
             }
 
-            ptr->windowsSinceLastTrigger= 0;          // We are here becuase we got a trigger
+            ptr->windowsSinceLastTrigger= 0;          // We are here because we got a trigger
 
         } else {  // No trigger in this sample window
 
@@ -388,9 +384,9 @@ uint8_t irGetData( uint8_t led ) {
 
 // Next we compute how long each TX delay for each transmitted symbol in accurate us
 
-#define IR_TX_1_BIT_DELAY_RT_US ( 1.0 * MINIUM_TX_WINDOW_RT_US ) 
-#define IR_TX_0_BIT_DELAY_RT_US ( 3.0 * MINIUM_TX_WINDOW_RT_US )
-#define IR_TX_S_BIT_DELAY_RT_US ( 5.0 * MINIUM_TX_WINDOW_RT_US )      // Sync
+#define IR_TX_1_BIT_DELAY_RT_US (( 1.0 * MINIUM_TX_WINDOW_RT_US ) + IR_CHARGE_OVERHEAD ) 
+#define IR_TX_0_BIT_DELAY_RT_US (( 3.0 * MINIUM_TX_WINDOW_RT_US ) + IR_CHARGE_OVERHEAD )
+#define IR_TX_S_BIT_DELAY_RT_US (( 5.0 * MINIUM_TX_WINDOW_RT_US ) + IR_CHARGE_OVERHEAD )     // Sync
 
 // Next we have to determine how long each delay should be in local clock time in the worst case
 // where the local clock is fast. 
@@ -404,18 +400,6 @@ uint8_t irGetData( uint8_t led ) {
 
 void irSendDataBitmask(uint8_t data, uint8_t bitmask) {
     
-    ir_tx_start( bitmask , US_TO_CYCLES( 200 ) ) ;
-    ir_tx_sendpulse( US_TO_CYCLES( 300 ) );
-    ir_tx_sendpulse( US_TO_CYCLES( 400 ) );
-    ir_tx_sendpulse( US_TO_CYCLES( 500 ) );
-    ir_tx_sendpulse( US_TO_CYCLES( 300 ) );
-    ir_tx_sendpulse( US_TO_CYCLES( 400 ) );
-    ir_tx_sendpulse( US_TO_CYCLES( 500 ) );
-    
-    ir_tx_end();
-    
-    return;
-
     uint8_t bitwalker = 0b00000001;
 
     // Start things up, send initial pulse and sync frame
@@ -424,9 +408,9 @@ void irSendDataBitmask(uint8_t data, uint8_t bitmask) {
     do {
 
         if (data & bitwalker) {
-            ir_tx_sendpulse( 1 ) ;
+            ir_tx_sendpulse( US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_1_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  ) ;
         } else {
-            ir_tx_sendpulse( 3 ) ;
+            ir_tx_sendpulse( US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_0_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  ) ;
         }
 
         bitwalker<<=1;

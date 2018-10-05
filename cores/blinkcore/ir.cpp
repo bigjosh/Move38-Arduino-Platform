@@ -38,13 +38,13 @@
 // You need the pulse time to be short enough that a single pulse does not trigger two adjacent RX windows. One pulse should trigger one window.
 
 // You want the charge time to be long enough to fully charge the capacitance of the LED. It is possible that using shorter times could make the RX more sensitive
-// because there would be less charge to bleed off, but I have not playted with that much.
+// because there would be less charge to bleed off, but I have not played with that much.
 // Having the charge time too long is not a big concern since one it is fully charged that's it. Maybe the only concern is that it can not receive
 // a new pulse while charging, so you might mask an RX if the total of the charge time and everything else is longer than the time between pulses (including clock skew).
 
 #define IR_CHARGE_TIME_US 4         // How long to charge the LED though the pull-up
 
-#define IR_PULSE_TIME_US 15         // How long to turn IR LED on to send a pulse
+#define IR_PULSE_TIME_US 10         // How long to turn IR LED on to send a pulse
 
 
 // Currently chosen empirically to work with some tile cases Jon made 7/28/17
@@ -292,7 +292,11 @@ static inline void ir_tx_pulse_internal( uint8_t bitmask ) {
 // We break this out into a routing that runs with interrupts off so we can
 // get consistent timing and not have the window size change frome to frame.
 
-uint8_t ir_sample_bits( void ) {
+// Charge the bits set to 1 in 'chargeBits'
+// Probably best to call with ints off so doesnt get interrupted
+// Probably best to call some time after ir_sample_bits() so that a long pulse will not be seen twice.
+
+uint8_t ir_sample_and_charge_LEDs() {
 
    // ===Time critcal section start===
 
@@ -301,26 +305,11 @@ uint8_t ir_sample_bits( void ) {
 
    uint8_t ir_LED_triggered_bits;
 
-    #ifdef RX_DEBUG
-        SP_PIN_R_SET_1();               // SP pin R goes high durring sample window
-    #endif
+   #ifdef RX_DEBUG
+       SP_PIN_R_SET_1();               // SP pin R goes high during sample window
+   #endif
 
    ir_LED_triggered_bits = IR_CATHODE_PIN;      // A 0 means that the IR LED drained, probably becuase of a flash
-
-    #ifdef RX_DEBUG
-        SP_PIN_R_SET_0();               // SP pin R goes high durring sample window
-    #endif
-
-
-   return ~ir_LED_triggered_bits;               // Flip so a 1 in ir_sample_bits() means that LED triggered
-
-}
-
-// Charge the bits set to 1 in 'chargeBits'
-// Probably best to call with ints off so doesnt get interrupted
-// Probably best to call some time after ir_sample_bits() so that a long pulse will not be seen twice.
-
-void ir_charge_LEDs( uint8_t chargeBits ) {
 
    // Note that we are capturing 8 bits here even though there are only 6 IR LEDs connected.
    // We purposely put the cathodes on PORTC since it really only has 6 working pins (PC6 is only connected when RESET is disabled, and PC7 does not have a pin).
@@ -349,6 +338,8 @@ void ir_charge_LEDs( uint8_t chargeBits ) {
         19.2.2. Toggling the Pin
         Writing a '1' to PINxn toggles the value of PORTxn, independent on the value of DDRxn.
     */
+    
+    uint8_t chargeBits = ~ir_LED_triggered_bits;
 
     IR_CATHODE_PIN =  chargeBits;       // This enables pull-ups on charge pins. If we set the DDR first, then we would drive the low pins to ground.
                                         // REMEBER: Writing a 1 to a PIN register actually toggles the PORT bit!
@@ -372,13 +363,15 @@ void ir_charge_LEDs( uint8_t chargeBits ) {
     IR_CATHODE_DDR = 0;                 // Back to the way we started, charge pins now input, but still pulled-up
 
     #ifdef RX_DEBUG
-        SP_PIN_A_SET_0();               // We set the A output when we see a pin change interrupt on a cathode, so we clear it here to be ready to show the next one.
+        SP_PIN_R_SET_0();               // We set the A output when we see a pin change interrupt on a cathode, so we clear it here to be ready to show the next one.
     #endif
 
     IR_CATHODE_PIN = chargeBits;        // toggle pull-ups off, now cathodes pure inputs
                                         // REMEBER: Writing a 1 to a PIN register actually toggles the PORT bit!
 
     // TODO: Some LEDs seem to fire right after IR0 is charged when connected to programmer?
+
+   return chargeBits;               // Flip so a 1 in ir_sample_bits() means that LED triggered
 
 
 }
