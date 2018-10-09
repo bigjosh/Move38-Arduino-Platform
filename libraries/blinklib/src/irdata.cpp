@@ -268,6 +268,7 @@ volatile uint8_t most_recent_ir_test;
 
                                 if ( !debug::test( data ) ) {
                                     SP_PIN_A_SET_1();               // SP pin A goes high any time IR0 is triggered. We clear it when we later process in the polling code.                                               
+                                    SP_PIN_A_SET_0();                                    
                                 }
                             }                                            
 
@@ -402,8 +403,17 @@ void irSendDataBitmask(uint8_t data, uint8_t bitmask) {
     
     uint8_t bitwalker = 0b00000001;
 
-    // Start things up, send initial pulse and sync frame
+    // Start things up, send initial pulses
+    // We send two to cover the case where an ambient trigger happens *just* before the sync pulse
+    // starts, which causes the real sync to start right in the middle of the charging, so now the 
+    // LED is partially discharged and predisposed to trigger again off ambient.
+    // If we pre-trigger the RX led, then it will not be able ot trigger on ambient in the
+    // time span of the sync pulse. So this 1 bit is really meaningless, it just makes sure the
+    // RX LED is starting up charged when the leading pulse of the sync comes in.
+    // We don't need to worry about that 1 getting seen as a real bit since the sync comes after it 
+    // and a long idle window came before it. 
     ir_tx_start( bitmask , US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_S_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  );
+    ir_tx_sendpulse( US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_S_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  ) ;
 
     do {
 
