@@ -42,7 +42,7 @@
 // Having the charge time too long is not a big concern since one it is fully charged that's it. Maybe the only concern is that it can not receive
 // a new pulse while charging, so you might mask an RX if the total of the charge time and everything else is longer than the time between pulses (including clock skew).
 
-#define IR_CHARGE_TIME_US 4         // How long to charge the LED though the pull-up
+#define IR_CHARGE_TIME_US 10         // How long to charge the LED though the pull-up
 
 #define IR_PULSE_TIME_US 10         // How long to turn IR LED on to send a pulse
 

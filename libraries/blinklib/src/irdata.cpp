@@ -58,7 +58,7 @@
 
 #define IR_CLOCK_SPREAD_PCT  5      // Max clock spread between TX and RX clocks in percent
 
-#define IR_CHARGE_OVERHEAD 25       // How long does take to fully charge IR after it has triggered?
+#define IR_CHARGE_OVERHEAD 50       // How long does take to fully charge IR after it has triggered?
 
 // Time between consecutive bit flashes
 // Must be long enough that receiver can detect 2 distinct consecutive flashes even at maximum interrupt latency
