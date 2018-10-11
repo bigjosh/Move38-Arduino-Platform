@@ -82,7 +82,7 @@
 
 #define IR_SPACE_TIME_TICKS US_TO_CYCLES( IR_SPACE_TIME_US )
 
-#define IR_RX_PACKET_SIZE     34  // Maximum IR packet size. Larger values more efficient for large block transfers, but use more memory. 
+#define IR_RX_PACKET_SIZE     34  // Maximum IR packet size. Larger values more efficient for large block transfers, but use more memory.
 
 // State for each receiving IR LED
 
@@ -92,8 +92,8 @@ struct ir_rx_state_t {
      // These internal variables are only updated in ISR, so don't need to be volatile.
 
     uint8_t windowsSinceLastTrigger;                // How long since we last saw a trigger on this IR LED?
-    
-    
+
+
                                                     // We add new samples to the bottom and shift up.
                                                     // The we look at the pattern to detect data bits
                                                     // This is better than using a counter because with a counter we would need
@@ -118,9 +118,9 @@ struct ir_rx_state_t {
     // This struct should be even power of 2 long.
 
  } ;
- 
+
  #define INVALUESTATE_NONE      0           // Waiting for sync and 1st byte
-  
+
 // We keep these in together in a a struct to get faster access via
 // Data Indirect with Displacement opcodes
 
@@ -189,7 +189,7 @@ volatile uint8_t most_recent_ir_test;
     // so as long as we keep up sampling we should never miss a pulse, and Actually charging the
     // LED closer to when it will get triggered by a pulse might make it less sensitive since it
     // will have more residual charge.
-        
+
     // Loop though and process each IR LED (which corresponds to one bit in `bits`)
     // Start at IR5 and work out way down to IR0.
     // Going down is faster than up because we can test bitwalker == 0 for free
@@ -198,7 +198,7 @@ volatile uint8_t most_recent_ir_test;
 
     uint8_t bitwalker = _BV( IRLED_COUNT -1 );
     ir_rx_state_t volatile *ptr = ir_rx_states + IRLED_COUNT -1;
-    
+
     // Loop though each of the IR LED and see if anything happened on each...
 
     do {
@@ -213,29 +213,29 @@ volatile uint8_t most_recent_ir_test;
         if (lastSample) {
 
             // The only interesting time to look at samples is after a pulse is received so only bother looking then
-            
+
             if (windowsSinceLastTrigger<4) {
-                
+
                 // 0,1,2,3,4 windows are data bits....
-                
+
                 if (ptr->byteBuffer) {      // Are we currently receiving a byte? (That is, did we get a sync?) If not, ignore everything
-                    
+
                     //TODO: Check ASM, might want to cache this
-                
+
                     uint8_t dataBit = 0;        // Potential received data bit
-                
+
                     // 0,1 windows are a '1' data bit
-                
+
                     if (windowsSinceLastTrigger<=1) {
 
                         dataBit = 0b10000000;       // We will stuff a 1 in the highest bit of the input buffer
                                                     // because bits are sent lest significant bit first, so we must
                                                     // stuff at the top and shift downwards
-                                                
+
                     }
-                
+
                     // 2,3,4 windows are a '0' data bit
-                                                                
+
                     #ifdef RX_DEBUG
                         if (bitwalker==0x01) {
                             if (dataBit) {
@@ -246,12 +246,12 @@ volatile uint8_t most_recent_ir_test;
                         }
                     #endif
 
-                    // Here we know we got a data bit. It is either 0 or 1 (decided above) 
+                    // Here we know we got a data bit. It is either 0 or 1 (decided above)
 
                     uint8_t data =  ptr->byteBuffer>>1 ;    // make room at top for new 1 bit
-                                                                // remember data bits are transmitted lest significant first 
+                                                                // remember data bits are transmitted lest significant first
 
-                    data |= dataBit;                         // data now holds the data byte in progress with the new bit in the top bit 
+                    data |= dataBit;                         // data now holds the data byte in progress with the new bit in the top bit
 
                     if (ptr->byteBuffer & 0b00000001) {     // If the bottom it in the input buffer was high, then we just got the last bit of a full byte
 
@@ -261,7 +261,7 @@ volatile uint8_t most_recent_ir_test;
                         ptr->inValueState=1;            // Signal new value received.
 
                         ptr->byteBuffer = 0x00;        // Clear input buffer so we need another SYNC to receive next byte
-                                    
+
                         // TODO: Continuous back to back bytes with no sync in between?
                         //ptr->inputBuffer = 0b10000000;  // prime buffer for next byte to come in. Remember this 1 will fall off the bottom to indicate a full byte
 
@@ -272,10 +272,10 @@ volatile uint8_t most_recent_ir_test;
                                 sp_serial_tx( data );
 
                                 if ( !debug::test( data ) ) {
-                                    SP_PIN_A_SET_1();               // SP pin A goes high any time IR0 is triggered. We clear it when we later process in the polling code.                                               
-                                    SP_PIN_A_SET_0();                                    
+                                    SP_PIN_A_SET_1();               // SP pin A goes high any time IR0 is triggered. We clear it when we later process in the polling code.
+                                    SP_PIN_A_SET_0();
                                 }
-                            }                                            
+                            }
 
                         #endif
 
@@ -289,32 +289,32 @@ volatile uint8_t most_recent_ir_test;
                             if (bitwalker==0x01) {
                                 SP_SERIAL_TX_NOW('B');  // Buffered bit
                                 sp_serial_tx( data );
-                            }                                            
+                            }
                         #endif
 
                     }
-                    
-                }                    
-                
+
+                }
+
             } else if (windowsSinceLastTrigger <=6 ) {
-                
-                // SYNC 
+
+                // SYNC
 
                 ptr->byteBuffer = 0b10000000;            // prime buffer for next byte to come in. Remember this 1 will fall off the bottom to indicate a full byte
 
                 #ifdef RX_DEBUG
                     if (bitwalker==0x01) SP_SERIAL_TX_NOW('Y');      // sYnc
                 #endif
-                
-            } else {                 
-                
+
+            } else {
+
                 // Been too long since we saw pulse, so reset everything and wait for next sync
 
                 ptr->byteBuffer = 0x00;            // Clear buffer. A 0 here means we are waiting for sync
 
                 #ifdef RX_DEBUG
                     if (bitwalker==0x01) SP_SERIAL_TX_NOW('E');                               // Error
-                    if (bitwalker==0x01) sp_serial_tx('0'+ptr->windowsSinceLastTrigger);      // Error                                
+                    if (bitwalker==0x01) sp_serial_tx('0'+ptr->windowsSinceLastTrigger);      // Error
                 #endif
 
 
@@ -325,16 +325,16 @@ volatile uint8_t most_recent_ir_test;
         } else {  // No trigger in this sample window
 
             // No trigger on this IR on this update cycle
-            
+
             // No point in incrementing past 9 since 9 is already an error
             // and this keeps us form overflowing (although that is very unlikely)
             if (windowsSinceLastTrigger<9) {
-                
+
                 windowsSinceLastTrigger++;
 
                 ptr->windowsSinceLastTrigger=windowsSinceLastTrigger;
-                
-            }                
+
+            }
 
             #ifdef RX_DEBUG
                 if (bitwalker==0x01) SP_SERIAL_TX_NOW('-');          // Idle sample
@@ -390,33 +390,33 @@ uint8_t irGetData( uint8_t led ) {
 
 // Next we compute how long each TX delay for each transmitted symbol in accurate us
 
-#define IR_TX_1_BIT_DELAY_RT_US (( 1.0 * MINIUM_TX_WINDOW_RT_US ) + IR_CHARGE_OVERHEAD ) 
+#define IR_TX_1_BIT_DELAY_RT_US (( 1.0 * MINIUM_TX_WINDOW_RT_US ) + IR_CHARGE_OVERHEAD )
 #define IR_TX_0_BIT_DELAY_RT_US (( 3.0 * MINIUM_TX_WINDOW_RT_US ) + IR_CHARGE_OVERHEAD )
 #define IR_TX_S_BIT_DELAY_RT_US (( 5.0 * MINIUM_TX_WINDOW_RT_US ) + IR_CHARGE_OVERHEAD )     // Sync
 
 // Next we have to determine how long each delay should be in local clock time in the worst case
-// where the local clock is fast. 
+// where the local clock is fast.
 
 // MIN_DELAY_RT * 1 + ( (IR_CLOCK_SPREAD_PCT) ) = MIN_DELAY_LT
 
-#define MIN_DELAY_LT( MIN_DELAY_RT , CLOCK_SPREAD_PCT ) ( MIN_DELAY_RT * ( 1.0 + ( CLOCK_SPREAD_PCT / 100.00) ) ) 
+#define MIN_DELAY_LT( MIN_DELAY_RT , CLOCK_SPREAD_PCT ) ( MIN_DELAY_RT * ( 1.0 + ( CLOCK_SPREAD_PCT / 100.00) ) )
 
 // Simultaneously send data on all faces that have a `1` in bitmask
 // Sends bits in least-significant-bit first order (RS232 style)
 
 void irSendDataBitmask(uint8_t data, uint8_t bitmask) {
-    
+
     uint8_t bitwalker = 0b00000001;
 
     // Start things up, send initial pulses
     // We send two to cover the case where an ambient trigger happens *just* before the sync pulse
-    // starts, which causes the real sync to start right in the middle of the charging, so now the 
+    // starts, which causes the real sync to start right in the middle of the charging, so now the
     // LED is partially discharged and predisposed to trigger again off ambient.
     // If we pre-trigger the RX led, then it will not be able ot trigger on ambient in the
     // time span of the sync pulse. So this 1 bit is really meaningless, it just makes sure the
     // RX LED is starting up charged when the leading pulse of the sync comes in.
-    // We don't need to worry about that 1 getting seen as a real bit since the sync comes after it 
-    // and a long idle window came before it. 
+    // We don't need to worry about that 1 getting seen as a real bit since the sync comes after it
+    // and a long idle window came before it.
     ir_tx_start( bitmask , US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_S_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  );
     ir_tx_sendpulse( US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_S_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  ) ;
 
