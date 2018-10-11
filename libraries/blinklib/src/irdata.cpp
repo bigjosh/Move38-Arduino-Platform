@@ -82,6 +82,8 @@
 
 #define IR_SPACE_TIME_TICKS US_TO_CYCLES( IR_SPACE_TIME_US )
 
+#define IR_RX_PACKET_SIZE     34  // Maximum IR packet size. Larger values more efficient for large block transfers, but use more memory. 
+
 // State for each receiving IR LED
 
 struct ir_rx_state_t {
@@ -98,24 +100,27 @@ struct ir_rx_state_t {
                                                     // to check for overflow before incrementing. With a shift register like this,
                                                     // 1's just fall off the top automatically and We can keep shifting 0's forever.
 
-    uint8_t inputBuffer;                            // Buffer for RX in progress. Data bits shift up until full byte received.
+    uint8_t byteBuffer;                             // Buffer for RX byte in progress. Data bits shift up until full byte received.
                                                     // We prime with a '1' in the bottom bit when we get a valid start.
                                                     // This way we can test for 0 to see if currently receiving a byte, and
                                                     // we can also test for '1' in top position to see if full byte received.
 
+
+    uint8_t paketBuffer[ IR_RX_PACKET_SIZE];        // Assemble incoming packet here
     // TODO: Deeper data buffer here?
 
     // Visible to outside world
      volatile uint8_t inValue;              // Last successfully decoded RX value. 1 in high bit means valid and unread. 0= empty.
 
-     volatile uint8_t inValueReady;         // Newly decoded value in inValue. Could be a bitflag - that would save a byte but cost a cycle.
+     volatile uint8_t inValueState;         // Newly decoded value in inValue. Could be a bitflag - that would save a byte but cost a cycle.
      //volatile uint8_t parity;               // Top bit is received parity for value in inValue. Up to foreground to test. Could be a bitflag - that would save a byte but cost a cycle.
 
     // This struct should be even power of 2 long.
 
  } ;
-
-
+ 
+ #define INVALUESTATE_NONE      0           // Waiting for sync and 1st byte
+  
 // We keep these in together in a a struct to get faster access via
 // Data Indirect with Displacement opcodes
 
@@ -213,7 +218,7 @@ volatile uint8_t most_recent_ir_test;
                 
                 // 0,1,2,3,4 windows are data bits....
                 
-                if (ptr->inputBuffer) {      // Are we currently receiving a byte? (That is, did we get a sync?) If not, ignore everything
+                if (ptr->byteBuffer) {      // Are we currently receiving a byte? (That is, did we get a sync?) If not, ignore everything
                     
                     //TODO: Check ASM, might want to cache this
                 
@@ -243,19 +248,19 @@ volatile uint8_t most_recent_ir_test;
 
                     // Here we know we got a data bit. It is either 0 or 1 (decided above) 
 
-                    uint8_t data =  ptr->inputBuffer>>1 ;    // make room at top for new 1 bit
+                    uint8_t data =  ptr->byteBuffer>>1 ;    // make room at top for new 1 bit
                                                                 // remember data bits are transmitted lest significant first 
 
                     data |= dataBit;                         // data now holds the data byte in progress with the new bit in the top bit 
 
-                    if (ptr->inputBuffer & 0b00000001) {     // If the bottom it in the input buffer was high, then we just got the last bit of a full byte
+                    if (ptr->byteBuffer & 0b00000001) {     // If the bottom it in the input buffer was high, then we just got the last bit of a full byte
 
                         // Save the fully received byte, prime for next one
 
                         ptr->inValue = data;
-                        ptr->inValueReady=1;            // Signal new value received.
+                        ptr->inValueState=1;            // Signal new value received.
 
-                        ptr->inputBuffer = 0x00;        // Clear input buffer so we need another SYNC to receive next byte
+                        ptr->byteBuffer = 0x00;        // Clear input buffer so we need another SYNC to receive next byte
                                     
                         // TODO: Continuous back to back bytes with no sync in between?
                         //ptr->inputBuffer = 0b10000000;  // prime buffer for next byte to come in. Remember this 1 will fall off the bottom to indicate a full byte
@@ -278,7 +283,7 @@ volatile uint8_t most_recent_ir_test;
 
                         // Incoming data byte still in progress, save with newly added bit
 
-                        ptr->inputBuffer = data;
+                        ptr->byteBuffer = data;
 
                         #ifdef RX_DEBUG
                             if (bitwalker==0x01) {
@@ -295,7 +300,7 @@ volatile uint8_t most_recent_ir_test;
                 
                 // SYNC 
 
-                ptr->inputBuffer = 0b10000000;            // prime buffer for next byte to come in. Remember this 1 will fall off the bottom to indicate a full byte
+                ptr->byteBuffer = 0b10000000;            // prime buffer for next byte to come in. Remember this 1 will fall off the bottom to indicate a full byte
 
                 #ifdef RX_DEBUG
                     if (bitwalker==0x01) SP_SERIAL_TX_NOW('Y');      // sYnc
@@ -305,7 +310,7 @@ volatile uint8_t most_recent_ir_test;
                 
                 // Been too long since we saw pulse, so reset everything and wait for next sync
 
-                ptr->inputBuffer = 0x00;            // Clear buffer. A 0 here means we are waiting for sync
+                ptr->byteBuffer = 0x00;            // Clear buffer. A 0 here means we are waiting for sync
 
                 #ifdef RX_DEBUG
                     if (bitwalker==0x01) SP_SERIAL_TX_NOW('E');                               // Error
@@ -348,7 +353,7 @@ volatile uint8_t most_recent_ir_test;
 // Is there a received data ready to be read on this face?
 
 bool irIsReadyOnFace( uint8_t led ) {
-    return( ir_rx_states[led].inValueReady );
+    return( ir_rx_states[led].inValueState );
 }
 
 // Read the most recently received data. (Defaults to 0 on power-up)
@@ -367,7 +372,7 @@ uint8_t irGetData( uint8_t led ) {
     ATOMIC_BLOCK( ATOMIC_FORCEON ) {
         data = ptr->inValue;
         //parity = ptr->parity;
-        ptr->inValueReady=0;        // Clear to indicate we read the value. Doesn't need to be atomic.
+        ptr->inValueState=0;        // Clear to indicate we read the value. Doesn't need to be atomic.
     };
 
 
