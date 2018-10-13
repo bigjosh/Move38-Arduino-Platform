@@ -131,10 +131,10 @@ struct ir_rx_state_t {
 
     Note that the byteBuffer will never be 0 if we are currently reading in a packet. This is because we stuff a 1 bit in the top slot when we start a valid byte reception.
     This makes the byteBuffer a good flag to see if we are currently receiving, and setting byteBuffer to 0 will abort anything in progress and wait for next SYNC.
-    
-    Note that a packet must be at least 1 byte long, or else we would see two syncs in a row as a zero byte packet. This is valid, but would waste the buffer until the 
+
+    Note that a packet must be at least 1 byte long, or else we would see two syncs in a row as a zero byte packet. This is valid, but would waste the buffer until the
     zero byte packet was marked as read. Byte requiring at least 1 good byte, we add the constraint that there must be at least 8 (or multipule of 8) will formed bits
-    between the syncs, which greatly increases error rejection. 
+    between the syncs, which greatly increases error rejection.
 
  */
 
@@ -167,9 +167,9 @@ volatile uint8_t most_recent_ir_test;
 
 
         inline byte test( byte v ) {
-    
+
             return ( v & 0x0f ) == ( ( (~v) >> 4 ) & 0x0f) ;
-    
+
         }
 
     }
@@ -270,7 +270,7 @@ volatile uint8_t most_recent_ir_test;
                         if ( ptr->packetBufferLen < IR_RX_PACKET_SIZE ) { // Check that there is room in the buffer to store this byte
 
                             ptr->packetBuffer[ptr->packetBufferLen] = data;
-                            
+
                             ptr->packetBufferLen++;
 
                             ptr->byteBuffer = 0b10000000;            // prime buffer for next byte to come in. Remember this 1 will fall off the bottomm after 8 bits to indicate a full byte
@@ -293,8 +293,8 @@ volatile uint8_t most_recent_ir_test;
                                     SP_PIN_A_SET_1();               // SP pin A goes high any time IR0 is triggered. We clear it when we later process in the polling code.
                                     SP_PIN_A_SET_0();
                                 }
-                                
-*/                                
+
+*/
                             }
                         #endif
 
@@ -325,32 +325,32 @@ volatile uint8_t most_recent_ir_test;
                     // since packets should always contain full bytes between the SYNCs
 
                     if (ptr->packetBufferLen) {
-                        
+
                         // Only save non-zero length packets because otherwise we would see two consecutive syncs
-                        // as a zero byte packet and there is just not enough error rejection, so a waste to use up 
-                        // the buffer on these. 
-                        
+                        // as a zero byte packet and there is just not enough error rejection, so a waste to use up
+                        // the buffer on these.
+
                         ptr->packetBufferReady = 1;     // Signal to the foreground that there is data ready in the packet buffer
-                        ptr->byteBuffer =0;             // stop reading until we get a new sync 
-                        
+                        ptr->byteBuffer =0;             // stop reading until we get a new sync
+
                         #ifdef RX_DEBUG
                             if (bitwalker==0x01) {
                                 SP_SERIAL_TX_NOW('R');      // sYnc
                                 sp_serial_tx( ptr->packetBufferLen );
-                            }                                
-                        #endif                        
-                        
+                            }
+                        #endif
+
                     } else {
-                        
+
                         // Got a sync, but nothing in packet buffer so treat it as a starting sync
                         // We are already reading so don't need to reset anything
 
                         #ifdef RX_DEBUG
                             if (bitwalker==0x01) {
                                 SP_SERIAL_TX_NOW('y');      // sYnc
-                            }                                                             
+                            }
                         #endif
-                    }                        
+                    }
 
 
                 } else {
@@ -487,18 +487,18 @@ void irSendDataPacket(uint8_t bitmask, const uint8_t *packetBuffer, uint8_t len 
     // RX LED is starting up charged when the leading pulse of the sync comes in.
     // We don't need to worry about that 1 getting seen as a real bit since the sync comes after it
     // and a long idle window came before it.
-    
-    // TODO: Slightly faster to send a 1-bit here rather than a sync. 
-    
-    ir_tx_start( bitmask , US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_S_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  );
-    
+
+    // TODO: Slightly faster to send a 1-bit here rather than a sync.
+
+    ir_tx_start( bitmask , US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_1_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  );
+
     ir_tx_sendpulse( US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_S_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  ) ;
 
 
     while (len) {
 
         uint8_t bitwalker = 0b00000001;
-        
+
         uint8_t currentByte = *packetBuffer;
 
         do {
@@ -510,16 +510,16 @@ void irSendDataPacket(uint8_t bitmask, const uint8_t *packetBuffer, uint8_t len 
             }
 
             bitwalker<<=1;
-            
+
             // TODO: Faster to do in ASM and check carry bit?
 
         } while (bitwalker);        // 1 bit overflows off top. Would be better if we could test for overflow bit
-        
+
         packetBuffer++;
-        
+
         len--;
-        
-    }        
+
+    }
 
     // Send final SYNC
     ir_tx_sendpulse( US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_S_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  ) ;
@@ -532,9 +532,9 @@ void irSendDataPacket(uint8_t bitmask, const uint8_t *packetBuffer, uint8_t len 
 // I put destination (face) first to mirror the stdio.h functions like fprintf().
 
 void irSendData(  uint8_t face , const uint8_t *data , uint8_t len ) {
-       
+
     irSendDataPacket( 1 << face  , data , len );
-    
+
 }
 
 

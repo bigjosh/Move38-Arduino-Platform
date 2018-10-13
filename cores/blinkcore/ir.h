@@ -30,6 +30,11 @@
 #define RX_DEBUG
 
 
+// If defined, we keep some extra error counters for diagnostics. 
+// Otherwise IR errors don't really show up anywhere except maybe decreased performance. 
+// TODO: Implement these counters so we have a way of seeing errors. 
+//#define RX_TRACK_ERRORS
+
 #define IRLED_COUNT FACE_COUNT
 
 #define IR_ALL_BITS (0b00111111)        // All six IR LEDs
