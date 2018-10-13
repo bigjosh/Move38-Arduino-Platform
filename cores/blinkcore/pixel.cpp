@@ -463,7 +463,7 @@ static void pixel_isr(void) {
             // If the blue led is on for this pixel, then in the previous phase we
             // enabled the sink and connected the PWM pin.
 
-            // Now we blinkly disable the sink since we don't want it anymore no matter what
+            // Now we blindly disable the sink since we don't want it anymore no matter what
 
             CBI( BLUE_SINK_DDR , BLUE_SINK_BIT);    // Turn off blue sink (make it input) if we were charging
                                                     // Might already be off, but faster to blindly turn off again rather than test
@@ -473,14 +473,14 @@ static void pixel_isr(void) {
 
             // Now the sink is off, we are safe to activate the anode.
             // Remember that the PWM pin is still high and connected if there is blue in this pixel.
-            // A little current will flow now though the capactor, but that ok.
+            // A little current will flow now though the capacitor, but that ok.
             // when the PWM goes low, then the boost will kick in and make the BLUE really light
 
             activateAnode( currentPixelIndex );
 
             // Ok, now we are ready for all the PWMing to happen on this pixel
 
-            // Load up the blue PWM to go low and show blue (if the pump and PWM were activeated in phase #0)....
+            // Load up the blue PWM to go low and show blue (if the pump and PWM were activated in phase #0)....
 
             OCR2B=currentPixel->rawValueB;             // Load OCR to turn on blue at next overflow
 
@@ -506,7 +506,7 @@ static void pixel_isr(void) {
             // We are now done with BLUE, so we need to disconnect it to avoid
             // dimly lighting the next LED.
 
-            // TODO: Pushg this forward a phase for more brightness?
+            // TODO: Push this forward a phase for more brightness?
 
             // Float the BLUE LED drive pin.
             // This cuts off a path for current though the pump cap
@@ -527,8 +527,7 @@ static void pixel_isr(void) {
             TCCR2A =
               _BV( WGM01) | _BV( WGM00);             // Mode 3 - Fast PWM TOP=0xFF
 
-            // BLue LED is no completely disconnected form everything so should be off.
-
+            // BLue LED is now completely disconnected form everything so should be off.
 
             OCR0A = 255;                        // Load OCR to turn off red at next overflow
             OCR0B = currentPixel->rawValueG;    // Load OCR to turn on green at next overflow
@@ -606,6 +605,8 @@ static void pixelTimerOff(void) {
 }
 
 
+
+
 // Called when Timer0 overflows, which happens at the end of the PWM cycle for each pixel. We advance to the next pixel.
 
 // This fires every 500us (2Khz)
@@ -629,7 +630,7 @@ ISR(TIMER0_OVF_vect)
 
     pixel_isr();
 
-    timer_128us_callback_sei();       // Do the doubletime callback
+    timer_128us_callback_sei();       // Do the double-time callback
     timer_256us_callback_sei();       // Do everything else non-timing sensitive.
     return;
 }

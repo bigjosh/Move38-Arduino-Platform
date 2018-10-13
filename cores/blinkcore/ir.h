@@ -14,15 +14,26 @@
 // These #defines will let you see what is happening on the IR link by connecting an
 // oscilloscope to the service port pins.
 
-// #define TX_DEBUG
-// Pin A will go high when IR pulse sent on IR0
+// If defined, TX_DEBUG will output HIGH on pin A on a Dev Candy board anytime
+// an IR pulse is sent on IR0. The pulse is high for the duration of the IR on time.
+
+//#define TX_DEBUG
+
+
+// If defined, RX_DEBUG will output HIGH on pin A on a dev candy board anytime
+// an IR pulse is received on IR0. The pulse is high from the moment the pin changes,
+// to the moment it is read by the timer polling routine.
+// The ServicePort serial will transmit at 1Mpbs the following...
+// 'I' on startup initialization
+//
 
 #define RX_DEBUG
-// Pin A will go high when IR0 is triggered (the charge is drained by light hitting the LED). Note this is dependent on interrupts being on. In ir.cpp
-// Pin R will go high during each sample window. In ir.cpp
-// You might think you could just put a scope on the LED pin and watch it directly, but the resistance of the probe kills the effect so
-// we have to do it in software. The input pin has very, very high impedance.
-// TX will send chars based on the receive state of IR0. Look in irdata.cpp to see what they are.
+
+
+// If defined, we keep some extra error counters for diagnostics. 
+// Otherwise IR errors don't really show up anywhere except maybe decreased performance. 
+// TODO: Implement these counters so we have a way of seeing errors. 
+//#define RX_TRACK_ERRORS
 
 #define IRLED_COUNT FACE_COUNT
 
@@ -43,20 +54,18 @@ void ir_enable(void);
 void ir_disable(void);
 
 // Sends starting a pulse train.
-// Each pulse will have an integer number of delays between it and the previous pulse.
-// Each of those delay windows is spacing_ticks wide.
-// This sets things up and sends the initial pulse.
+// Will send first pulse and then wait initialTicks before sending second pulse.
 // Then continue to call ir_tx_sendpulse() to send subsequent pulses
 // Call ir_tx_end() after last pulse to turn off the ISR (optional but saves CPU and power)
 
-void ir_tx_start(uint16_t spacing_ticks , uint8_t bitmask , uint16_t initialSpaces );
-
+void ir_tx_start(uint8_t bitmask , uint16_t initialTicks );
+    
 // Send next pulse int this pulse train.
 // leadingSpaces is the number of spaces to wait between the previous pulse and this pulse.
 // 0 doesn't really make any sense
 // Note that you must called ir_tx_sendpuse fast enough that the buffer doesn't run dry
 
-void ir_tx_sendpulse( uint8_t leadingSpaces );
+void ir_tx_sendpulse( uint16_t delay_cycles);
 
 // Turn off the pulse sending ISR
 // Blocks until final pulse transmitted
@@ -69,13 +78,7 @@ void ir_tx_end(void);
 // Returns a 1 in each bit for each LED that was fired.
 // Fired LEDs are recharged.
 
-uint8_t ir_sample_bits( void );
-
-// Charge the bits set to 1 in 'chargeBits'
-// Probably best to call with ints off so doesn't get interrupted
-// Probably best to call some time after ir_sample_bits() so that a long pulse will not be seen twice.
-
-void ir_charge_LEDs( uint8_t chargeBits );
+uint8_t ir_sample_and_charge_LEDs();
 
 
 #define WAKEON_IR_BITMASK_NONE     0             // Don't wake on any IR change

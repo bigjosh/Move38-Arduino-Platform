@@ -20,11 +20,12 @@ static void clearErrors() {
 void setup() {
   // put your setup code here, to run once:
   clearErrors();
-             SP_PIN_A_MODE_OUT();
-             sp_serial_init();
-             sp_serial_disable_rx();
-             SP_PIN_R_MODE_OUT();
-             sp_serial_tx('h');
+  
+    SP_PIN_A_MODE_OUT();
+    sp_serial_init();
+    sp_serial_disable_rx();
+    SP_PIN_R_MODE_OUT();
+    sp_serial_tx('h');
 
 }
 
@@ -124,34 +125,22 @@ long map_m(long x, long in_min, long in_max, long out_min, long out_max)
 // Breaks if (myState_count^2) > IR_DATA_VALUE_MAX
 
 byte encode( byte v ) {
-
-    byte inverted =  ( myState_count -1 -v ) ;
-
-    byte invertedTruncated = inverted % 8;
-
-    return( v + ( invertedTruncated * myState_count) );
+    
+    return v | ( (v % 2) <<3 ); 
 
 }
 
 byte decode( byte v ) {
 
-    return( v % myState_count );
+    return v & 0b00000111;
 
 }
 
 
 byte test( byte v ) {
-
-    byte orginal = decode( v ) ;
-
-    byte inverted =  ( myState_count -1 - orginal ) ;
-
-    byte calculatedInvertedTruncated = inverted % 8;
-
-    byte recoveredInvertedTruncated = v / myState_count ;
-
-    return calculatedInvertedTruncated == recoveredInvertedTruncated;
-
+        
+    return ( (decode( v ) % 2 ) == (  v >> 3 ) ) ;
+    
 }
 
 
@@ -210,6 +199,9 @@ void loop() {
 //  setValueSentOnAllFaces( 0b11110000 );         // TESTING
 //  setValueSentOnAllFaces( 0b11110001 );         // TESTING
 
-  setValueSentOnAllFaces( encode( myState ) );
+  byte s = encode( myState); 
+  
+ //  setValueSentOnAllFaces( encode( myState ) );
+  setValueSentOnAllFaces( s );
 
 }

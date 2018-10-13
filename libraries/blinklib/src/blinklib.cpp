@@ -303,7 +303,7 @@ static volatile uint8_t maxCompletedClickCount=0;       // Remember the most com
 
 
 static volatile uint8_t buttonChangeFlag = 1;           // Set anytime the button changes state. Used to reset the sleep timer in the foreground.
-                                                        // Init to 1 so that we reset the sleep timer on startup. 
+                                                        // Init to 1 so that we reset the sleep timer on startup.
 
 // Called once per tick by the timer to check the button position
 // and update the button state variables.
@@ -660,7 +660,7 @@ void timer_256us_callback_sei(void) {
 // This is called by timer ISR about every 256us with interrupts on.
 
 void timer_128us_callback_sei(void) {
-    updateIRComs();
+    IrDataPeriodicUpdateComs();
 }
 
 // This is the entry point where the blinkcore platform will pass control to
