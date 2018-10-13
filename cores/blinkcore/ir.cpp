@@ -56,22 +56,7 @@
 
 #endif
 
-
-// If defined, TX_DEBUG will output HIGH on pin A on a Dev Candy board anytime
-// an IR pulse is sent on IR0. The pulse is high for the duration of the IR on time.
-
-//#define TX_DEBUG
-
-
-// If defined, RX_DEBUG will output HIGH on pin A on a dev candy board anytime
-// an IR pulse is received on IR0. The pulse is high from the moment the pin changes,
-// to the moment it is read by the timer polling routine.
-// The ServicePort serial will transmit at 1Mpbs the follwoing...
-// 'I' on startup initialization
-//
-
-#define RX_DEBUG
-
+// Debug flags can be uncommented in ir.h
 
 #if defined ( TX_DEBUG )  || defined ( RX_DEBUG ) || defined (IR_DEBUG)
 

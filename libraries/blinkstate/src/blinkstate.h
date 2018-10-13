@@ -25,7 +25,7 @@
 // The value of the data sent and received on faces via IR can be between 0 and IR_DATA_VALUE_MAX
 // If you try to send higher than this, the max value will be sent.
 
-#define IR_DATA_VALUE_MAX 100
+#define IR_DATA_VALUE_MAX UINT8_MAX
 
 
 // The blinksatate library continuously transmits on all IR LEDs

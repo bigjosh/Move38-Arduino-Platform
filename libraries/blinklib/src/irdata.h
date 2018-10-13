@@ -1,12 +1,18 @@
+ // Called from timer on every click to process newly received IR LED levels
+ 
+ 
+ // IR Packet functions
+ // Note that there is no error checking on packet data. Packets must be well formed, which means that 
+ // they must start and end with SYNC and have only a multiple of 8 valid bits in between the SYNCs.
+ // If there is any structural error while receiving a potential packet, then it is aborted and we 
+ // start looking for a new one. 
 
 // Maximum IR packet size. Larger values more efficient for large block transfers, but use more memory.
 // Packets larger than this are silently discarded.
 // Note that we allocate 6 of these, so memory usage goes up fast with bigger packets sizes.
 
 #define IR_RX_PACKET_SIZE     35
-
-
- // Called from timer on every click to process newly received IR LED levels
+ 
 
 void IrDataPeriodicUpdateComs(void);
 
@@ -26,7 +32,7 @@ uint8_t irDataPacketLen( uint8_t led );
 const uint8_t *irDataPacketBuffer( uint8_t led );
 
 
-// Mark most recently recieved packet as read, freeing up the buffer to receive the next packet.
+// Mark most recently received packet as read, freeing up the buffer to receive the next packet.
 // Note that new packets that start coming in before this is called are sileintly discarded.
 
 void irDataMarkPacketRead( uint8_t led );

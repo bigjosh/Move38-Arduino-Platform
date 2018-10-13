@@ -24,6 +24,8 @@
 
 #include <stddef.h>
 
+#include "irdata.h"
+
 #include "blinklib.h"
 
 // Tell blinkstate.h to save the IR functions just for us...
@@ -64,52 +66,6 @@ static uint32_t neighboorSendTime[FACE_COUNT];      // inits to 0 on startup, so
 static const uint16_t sendprobeDurration_ms = 200;
 
 
-// The low level IR code handles 8 bits of data per value, but
-// at this layer we break that out.
-// We use the top bit as a parity bit, and then out of the bottom
-// 7 bits (max value 127), we save the values 100-127 to use
-// for out-of-band communications for platform level stuff
-
-
-
-// Count number of 1 bits, return true if it is odd
-
-static uint8_t oddParity(uint8_t b) {
-
-      uint8_t p=0;
-
-      // Count number of odd bits
-
-      while (b) {
-
-          if (b & 0x01) {
-
-               p++;
-
-          }
-
-          b>>=1;
-
-      }
-
-      return true;
-
-      return p & 0x01;      // If the bottom bit is 1, then there were an odd number of 1 bits in b
-
-}
-
-/*
-
-// Process recieved Out Of Band data
-
-static void ir_OOB_command( uint8_t c ) {
-
-    // Watch this space!
-
-}
-
-*/
-
 // check and see if any states recently updated....
 
 static void updateIRFaces(uint32_t now) {
@@ -117,8 +73,8 @@ static void updateIRFaces(uint32_t now) {
     FOREACH_FACE(f) {
 
         // Check for anything new coming in...
-
-        if (irIsReadyOnFace(f)) {
+        
+        if (irDataIsPacketReady(f)) {
 
             // Got something, so we know there is someone out there
             expireTime[f] = now + expireDurration_ms;
@@ -126,22 +82,11 @@ static void updateIRFaces(uint32_t now) {
             // Clear to send on this face immediately to ping-pong messages at max speed without collisions
             neighboorSendTime[f] = 0;
 
-            byte receivedMessage = irGetData(f);
+            byte receivedMessage = *irDataPacketBuffer(f);
 
-            if (oddParity(receivedMessage)) {       // CHeck that incoming message has odd parity
-
-                byte data = receivedMessage & 0b01111111;   // Mask away the parity bit
-
-                if ( data > IR_DATA_VALUE_MAX ) {
-
-                    //ir_OOB_command( data );
-
-                } else {
-
-                    inValue[f] = data ;
-
-                }
-            }
+            inValue[f] = receivedMessage ;
+            
+            irDataMarkPacketRead( f );
 
         }
 
@@ -280,22 +225,6 @@ bool isAlone() {
 
 void setValueSentOnAllFaces( byte value ) {
 
-#warning tx broken for testing
-// TODO: FIX THIS
-/*
-    if (value > IR_DATA_VALUE_MAX ) {
-
-        value = IR_DATA_VALUE_MAX;
-
-    }
-
-    if ( !oddParity(value) ) {
-      // TODO: Fix parity
-      //  value |= 0b10000000;        // Force it to be odd!
-
-    }
-*/
-
     FOREACH_FACE(f) {
 
         outValue[f] = value;
@@ -310,18 +239,6 @@ void setValueSentOnAllFaces( byte value ) {
 // By default we power up in state 0.
 
 void setValueSentOnFace( byte value , byte face ) {
-
-    if (value > IR_DATA_VALUE_MAX ) {
-
-        value = IR_DATA_VALUE_MAX;
-
-    }
-
-    if ( !oddParity(value) ) {
-
-        value |= 0b10000000;        // Force it to be odd!
-
-    }
 
     outValue[face] = value;
 
