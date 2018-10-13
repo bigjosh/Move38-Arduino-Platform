@@ -74,7 +74,7 @@ bool buttonLongPressed(void);
 // Send data on a single face.
 // Data is 6-bits wide, top bits are ignored.
 
-void irSendData( uint8_t face , uint8_t data   );
+void irSendData( uint8_t face , const uint8_t *data , uint8_t len  );
 
 // Simultaneously send data on all faces that have a `1` in bitmask
 // Data is 6-bits wide, top bits are ignored.
@@ -259,9 +259,6 @@ byte getSerialNumberByte( byte n );
 
 */
 
-// Send data on a single face. Data is 6-bits wide (0-63 value).
-
-void irSendDataBitmask( uint8_t face , uint8_t data );
 
 // Broadcast data on all faces. Data is 6-bits wide (0-63 value).
 

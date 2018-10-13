@@ -68,6 +68,10 @@ static const uint16_t sendprobeDurration_ms = 200;
 
 // check and see if any states recently updated....
 
+#if IR_DATA_VALUE_MAX >= (1<<6)
+    #error You cant change the max value without changing the code below to not use the top two bits for multiplexing packet types!
+#endif
+
 static void updateIRFaces(uint32_t now) {
 
     FOREACH_FACE(f) {
@@ -77,24 +81,66 @@ static void updateIRFaces(uint32_t now) {
         if (irDataIsPacketReady(f)) {
 
             // Got something, so we know there is someone out there
+            // TODO: Should we require the received packet to pass error checks?
             expireTime[f] = now + expireDurration_ms;
+            
+            const byte *packetBuffer = irDataPacketBuffer(f);
+            
+            
+            if ( packetBuffer[0] <= IR_DATA_VALUE_MAX ) {
+                
+                // If the top two bits of the packet header byte are 0, then this is a user face value
+                // We special case this out to keep the refresh rates up.
+                // In this case, the packet should only be 2 bytes long
+                // and the 2nd byte is the invert of the first for error checking
 
-            // Clear to send on this face immediately to ping-pong messages at max speed without collisions
-            neighboorSendTime[f] = 0;
 
-            byte receivedMessage = *irDataPacketBuffer(f);
-
-            inValue[f] = receivedMessage ;
+                // If packet is not 2 bytes long then we have a problem
+                
+                if ( irDataPacketLen( f ) == 2 ) {
+                    
+                    // We error check these special packets by sending the 2nd byte as the invert of the first
+                    
+                    byte data = packetBuffer[0];
+                    byte invert = packetBuffer[1];
+                    
+                    if ( data == ((byte) (~invert)) ) {
+                        
+                        // OK, everything checks out, we got a good face value!
+                        
+                        inValue[f] = data;
+                        
+                        // Clear to send on this face immediately to ping-pong messages at max speed without collisions
+                        neighboorSendTime[f] = 0;                                                
+                        
+                    }                                
+                    
+                }                    
+                                
+            } else {
+                
+                // Some other kind of packet received
+                               
+                
+            }                                
             
             irDataMarkPacketRead( f );
 
         }
 
-        // Send out if it is time....
+        // Send one out too if it is time....
 
         if ( neighboorSendTime[f] <= now ) {        // Time to send on this face?
+            
+            byte packetBuffer[2];
+            
+            byte data = outValue[f];
+                       
+            // TODO: Check the asm on this casted inversion
+            packetBuffer[0] = data;            
+            packetBuffer[1] = (byte) (~data);          // Invert byte as an error check for face values 
 
-            irSendData( f , outValue[f]  );
+            irSendData( f , packetBuffer , 2 );
 
             // Here we set a timeout to keep periodically probing on this face, but
             // if there is a neighbor, they will send back to us as soon as they get what we
@@ -224,6 +270,12 @@ bool isAlone() {
 // By default we power up in state 0.
 
 void setValueSentOnAllFaces( byte value ) {
+    
+     if (value > IR_DATA_VALUE_MAX ) {
+
+         value = IR_DATA_VALUE_MAX;
+
+     }    
 
     FOREACH_FACE(f) {
 
@@ -239,6 +291,12 @@ void setValueSentOnAllFaces( byte value ) {
 // By default we power up in state 0.
 
 void setValueSentOnFace( byte value , byte face ) {
+
+     if (value > IR_DATA_VALUE_MAX ) {
+
+         value = IR_DATA_VALUE_MAX;
+
+     }
 
     outValue[face] = value;
 

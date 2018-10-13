@@ -126,20 +126,20 @@ long map_m(long x, long in_min, long in_max, long out_min, long out_max)
 
 byte encode( byte v ) {
     
-    return v | ( (~v) <<4 ); 
+    return v | ( (v % 2) <<3 ); 
 
 }
 
 byte decode( byte v ) {
 
-    return v & 0x0f;
+    return v & 0b00000111;
 
 }
 
 
 byte test( byte v ) {
         
-    return ( v & 0x0f ) == ( ( (~v) >> 4 ) & 0x0f) ;
+    return ( (decode( v ) % 2 ) == (  v >> 3 ) ) ;
     
 }
 

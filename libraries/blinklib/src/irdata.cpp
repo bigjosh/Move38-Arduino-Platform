@@ -288,11 +288,13 @@ volatile uint8_t most_recent_ir_test;
                             if (bitwalker==0x01) {
                                 SP_SERIAL_TX_NOW('C');      // Complete byte
                                 sp_serial_tx( data );
-
+/*
                                 if ( !debug::test( data ) ) {
                                     SP_PIN_A_SET_1();               // SP pin A goes high any time IR0 is triggered. We clear it when we later process in the polling code.
                                     SP_PIN_A_SET_0();
                                 }
+                                
+*/                                
                             }
                         #endif
 
@@ -514,6 +516,7 @@ void irSendDataPacket(uint8_t bitmask, const uint8_t *packetBuffer, uint8_t len 
         } while (bitwalker);        // 1 bit overflows off top. Would be better if we could test for overflow bit
         
         packetBuffer++;
+        
         len--;
         
     }        
@@ -528,14 +531,10 @@ void irSendDataPacket(uint8_t bitmask, const uint8_t *packetBuffer, uint8_t len 
 // Send data on specified face
 // I put destination (face) first to mirror the stdio.h functions like fprintf().
 
-void irSendData(  uint8_t face , uint8_t data  ) {
+void irSendData(  uint8_t face , const uint8_t *data , uint8_t len ) {
+       
+    irSendDataPacket( 1 << face  , data , len );
     
-    uint8_t packetBuffer[2];
-    
-    packetBuffer[0]=data;
-    packetBuffer[1]=~data;
-    
-    irSendDataPacket( 1 << face  , packetBuffer , 2 );
 }
 
 
