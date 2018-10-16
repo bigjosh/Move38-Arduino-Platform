@@ -60,10 +60,8 @@ uint8_t button_down(void) {
 
 
 
-ISR(BUTTON_ISR)
-{
-    // More to come here
-}
+EMPTY_INTERRUPT(BUTTON_ISR);
+
 
 // Enable callback to button_callback_onChange on button change interrupt
 // Typically used to wake from sleep, but could also be used for low latency

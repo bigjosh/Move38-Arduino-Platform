@@ -1,19 +1,60 @@
 /*
- * blink.h
+ * blinkstate.h
  *
- * This defines a high-level interface to the blinks tile hardware.
+ * This defines a statefull view of the blinks tile interactions with neighbors.
+ *
+ * In this view, each tile has a "state" that is represented by a number between 1 and 127.
+ * This state value is continuously broadcast on all of its faces.
+ * Each tile also remembers the most recently received state value from he neighbor on each of its faces.
+ *
+ * Note that this library depends on the blinklib library for communications with neighbors. The blinklib
+ * IR read functions are not available when using the blinkstate library.
+ *
+ * Note that the beacon transmissions only occur when the loop() function returns, so it is important
+ * that sketches using this model return from loop() frequently.
  *
  */
 
 #ifndef BLINKLIB_H_
 #define BLINKLIB_H_
 
-//#include "blinkcore.h"
+// The value of the data sent and received on faces via IR can be between 0 and IR_DATA_VALUE_MAX
+// If you try to send higher than this, the max value will be sent.
 
-#include "ArduinoTypes.h"
+#define IR_DATA_VALUE_MAX 63
 
-#include <stdbool.h>
-#include <stdint.h>
+// Returns the last received value on the indicated face
+// Between 0 and IR_DATA_VALUE_MAX inclusive
+// returns 0 if no neighbor ever seen on this face since power-up
+// so best to only use after checking if face is not expired first.
+
+byte getLastValueReceivedOnFace( byte face );
+
+// Did the neighborState value on this face change since the
+// last time we checked?
+
+// Note the a face expiring has no effect on the last value
+
+byte didValueOnFaceChange( byte face );
+
+// false if messages have been recently received on the indicated face
+// (currently configured to 100ms timeout in `expireDurration_ms` )
+
+byte isValueReceivedOnFaceExpired( byte face );
+
+// Returns false if their has been a neighbor seen recently on any face, returns true otherwise.
+bool isAlone();
+
+// Set value that will be continuously broadcast on specified face.
+// Value should be between 0 and IR_DATA_VALUE_MAX inclusive.
+// If a value greater than IR_DATA_VALUE_MAX is specified, IR_DATA_VALUE_MAX will be sent.
+// By default we power up with all faces sending the value 0.
+
+void setValueSentOnFace( byte value , byte face );
+
+// Same as setValueSentOnFace(), but sets all faces in one call.
+
+void setValueSentOnAllFaces( byte value );
 
 
 /*
@@ -62,37 +103,6 @@ byte buttonClickCount(void);
 
 // Remember that a long press fires while the button is still down
 bool buttonLongPressed(void);
-
-
-
-
-/*
-    IR communications functions
-*/
-
-
-// Send data on a single face.
-// Data is 6-bits wide, top bits are ignored.
-
-void irSendData( uint8_t face , const uint8_t *data , uint8_t len  );
-
-// Simultaneously send data on all faces that have a `1` in bitmask
-// Data is 6-bits wide, top bits are ignored.
-void irSendDataBitmask(uint8_t data, uint8_t bitmask);
-
-// Broadcast data on all faces.
-// Data is 6-bits wide, top bits are ignored.
-
-void irBroadcastData( uint8_t data );
-
-// Is there a received data ready to be read on the indicated face? Returns 0 if none.
-
-bool irIsReadyOnFace( uint8_t face );
-
-// Read the most recently received data. Value 0-127. Blocks if no data ready.
-
-uint8_t irGetData( uint8_t led );
-
 
 /*
 
@@ -209,8 +219,6 @@ unsigned long millis(void);
 
 #define NEVER ( (uint32_t)-1 )          // UINT32_MAX would be correct here, but generates a Symbol Not Found.
 
-
-
 class Timer {
 
 	private:
@@ -310,7 +318,7 @@ void loop();
 
 /*
 
-	Some syntactic sugar to make our progrmas look not so ugly.
+	Some syntactic sugar to make our programs look not so ugly.
 
 */
 
@@ -322,7 +330,6 @@ void loop();
 
 // Get the number of elements in an array.
 #define COUNT_OF(x) ((sizeof(x)/sizeof(x[0])))
-
 
 
 #endif /* BLINKLIB_H_ */

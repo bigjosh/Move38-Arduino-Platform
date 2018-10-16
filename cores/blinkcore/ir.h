@@ -27,7 +27,7 @@
 // 'I' on startup initialization
 //
 
-#define RX_DEBUG
+#define IR_RX_DEBUG
 
 
 // If defined, we keep some extra error counters for diagnostics. 

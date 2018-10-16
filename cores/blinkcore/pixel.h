@@ -9,13 +9,9 @@
 #ifndef RGB_PIXELS_H_
 #define RGB_PIXELS_H_
 
-#include "shared.h"
-
-#include <avr/io.h>
-
 // True today, but could imagine a blinks with 1 pixel or one with with 18 pixels...
 
-#define PIXEL_COUNT FACE_COUNT
+#define PIXEL_COUNT 6
 
 // Setup pins, interrupts. Call once at power up.
 
@@ -59,11 +55,6 @@ void pixel_displayBufferedPixels(void);
 // phases in the pixel ISR handler
 
 #define PIXEL_CYCLES_PER_FRAME (8 * 256 * 5)
-
-// Called at the end of each display frame, which is currently
-// about 66Hz
-
-void pixel_callback_onFrame(void) __attribute__((weak));
 
 // Update the pixel buffer with raw PWM register values.
 // Larger pwm values map to shorter PWM cycles (255=off) so for red and green

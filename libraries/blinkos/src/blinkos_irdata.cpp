@@ -37,14 +37,17 @@
 
 */
 
-#include "blinklib.h"
+#include "blinkos.h"
 
 #include "ir.h"
 #include "utils.h"
 #include "timer.h"          // get US_TO_CYCLES()
 
+#if defined(IR_TX_DEBUG) || defined(IR_RX_DEBUG)
+    #include "sp.h"                                     // We use the SP port for deugging Stuff
+#endif
 
-#include "irdata.h"
+#include "blinkos_irdata.h"
 
 #include <util/delay.h>         // Must come after F_CPU definition
 
@@ -109,7 +112,7 @@ struct ir_rx_state_t {
 
     uint8_t packetBufferLen;                         // How many bytes currently in the packet buffer?
 
-    volatile uint8_t packetBufferReady;                       // 1 if we got the trailing sync byte. Foreground reader will set this back to 0 to enable next read.
+    volatile uint8_t packetBufferReady;              // 1 if we got the trailing sync byte. Foreground reader will set this back to 0 to enable next read.
 
     // This struct should be even power of 2 in length for more efficient array indexing.
 
@@ -155,25 +158,6 @@ volatile uint8_t most_recent_ir_test;
 	  // Interrupts are off, so get it done as quickly as possible
 	  most_recent_ir_test = ir_sample_and_charge_LEDs();
   }
-
-// Debug flags can be uncommented in ir.h
-
-#if defined( TX_DEBUG ) || defined( RX_DEBUG )
-
-    #include "sp.h"
-
-    namespace debug {
-        const uint8_t myState_count = 5;
-
-
-        inline byte test( byte v ) {
-
-            return ( v & 0x0f ) == ( ( (~v) >> 4 ) & 0x0f) ;
-
-        }
-
-    }
-#endif
 
 // The updateIRComs() function is probably the most optimized in this code base
 // because it iterated 8 times every tick so must be fast. I also tried making it
@@ -244,7 +228,7 @@ volatile uint8_t most_recent_ir_test;
 
                     // 2,3,4 windows are a '0' data bit - do nothing because we preloaded `dataBit` with `0`
 
-                    #ifdef RX_DEBUG
+                    #ifdef IR_RX_DEBUG
                         if (bitwalker==0x01) {
                             if (dataBit) {
                                     SP_SERIAL_TX_NOW('1');
@@ -284,7 +268,7 @@ volatile uint8_t most_recent_ir_test;
 
                         }
 
-                        #ifdef RX_DEBUG
+                        #ifdef IR_RX_DEBUG
                             if (bitwalker==0x01) {
                                 SP_SERIAL_TX_NOW('C');      // Complete byte
                                 sp_serial_tx( data );
@@ -333,7 +317,7 @@ volatile uint8_t most_recent_ir_test;
                         ptr->packetBufferReady = 1;     // Signal to the foreground that there is data ready in the packet buffer
                         ptr->byteBuffer =0;             // stop reading until we get a new sync
 
-                        #ifdef RX_DEBUG
+                        #ifdef IR_RX_DEBUG
                             if (bitwalker==0x01) {
                                 SP_SERIAL_TX_NOW('R');      // sYnc
                                 sp_serial_tx( ptr->packetBufferLen );
@@ -345,7 +329,7 @@ volatile uint8_t most_recent_ir_test;
                         // Got a sync, but nothing in packet buffer so treat it as a starting sync
                         // We are already reading so don't need to reset anything
 
-                        #ifdef RX_DEBUG
+                        #ifdef IR_RX_DEBUG
                             if (bitwalker==0x01) {
                                 SP_SERIAL_TX_NOW('y');      // sYnc
                             }
@@ -364,7 +348,7 @@ volatile uint8_t most_recent_ir_test;
 
                     }
 
-                    #ifdef RX_DEBUG
+                    #ifdef IR_RX_DEBUG
                         if (bitwalker==0x01) SP_SERIAL_TX_NOW('Y');      // sYnc
                     #endif
 
@@ -376,7 +360,7 @@ volatile uint8_t most_recent_ir_test;
 
                 ptr->byteBuffer = 0x00;            // Clear byte buffer. A 0 here means we are waiting for sync
 
-                #ifdef RX_DEBUG
+                #ifdef IR_RX_DEBUG
                     if (bitwalker==0x01) SP_SERIAL_TX_NOW('E');                               // Error
                     if (bitwalker==0x01) sp_serial_tx('0'+ptr->windowsSinceLastTrigger);      // Error
                 #endif
@@ -400,7 +384,7 @@ volatile uint8_t most_recent_ir_test;
 
             }
 
-            #ifdef RX_DEBUG
+            #ifdef IR_RX_DEBUG
                 if (bitwalker==0x01) SP_SERIAL_TX_NOW('-');          // Idle sample
             #endif
 
@@ -538,10 +522,3 @@ void irSendData(  uint8_t face , const uint8_t *data , uint8_t len ) {
 }
 
 
-// Send data on all faces
-
-void irBroadcastData( uint8_t data ) {
-
-    irSendDataBitmask( data , IR_ALL_BITS );
-
-}

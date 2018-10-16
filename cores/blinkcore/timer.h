@@ -1,7 +1,7 @@
 /*
  * timer.h
  *
- * Timer related functions
+ * Timer related constants. Used in pixel.cpp which controls the hardware timers.
  *
  * Note that the RGB pixel PWM uses timer0 and timer2, so we piggy back on timer0 overflow to
  * provide the timer callback. That means all this code lives in pixel.h
@@ -11,33 +11,9 @@
 #ifndef TIMER_H_
 #define TIMER_H_
 
-#include "shared.h"
-
 // These values are based on how we actually program the timer registers in timer_enable()
 // There are checked with assertion there, so don't change these without changing the actual registers first
 
-
-// There are two timer callback speeds - every 256us and every 512us.
-// The 256us timer callback is broken into two parts. One is called with interrupts off
-// and should complete any atomic operations very quickly and return. Then the interrupts
-// on callback is called and can take longer but must comeplete before the next firing.
-
-// User supplied callback. Called every 256us with interrupts off. Should complete work as
-// quickly as possible!!!
-// Actually called from pixel.cpp since we also use the pixel timer for time keeping
-
-void timer_128us_callback_cli(void);
-
-
-// User supplied callback. Called every 256us with interrupts on. Should complete work in <<256us.
-// Actually called form pixel.cpp since we also use the pixel timer for time keeping
-
-void timer_128us_callback_sei(void);
-
-// User supplied callback. Called every 512us with interrupts on. Should complete work in <<256us.
-// Actually called from pixel.cpp since we also use the pixel timer for time keeping
-
-void timer_256us_callback_sei(void);
 
 #define TIMER_PRESCALER 8       // How much we divide the F_CPU by to get the timer0 frequency
 

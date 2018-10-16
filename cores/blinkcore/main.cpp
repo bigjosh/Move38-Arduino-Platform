@@ -19,7 +19,7 @@
 #include "adc.h"
 #include "power.h"
 
-#include "run.h"				// Prototype for the run function we will hand off to
+#include "callbacks.h"          // External callback to next higher software layer (here we use `run()`)
 
 // Change clock prescaler to run at 8Mhz.
 // By default the CLKDIV fuse boots us at 8Mhz osc /8 so 1Mhz clock
@@ -46,22 +46,20 @@ static void mhz_init(void) {
 }
 
 
+
 static void init(void) {
 
-    mhz_init();				// switch to 4Mhz. TODO: Some day it would be nice to go back to 1Mhz for FCC, but lets just get things working now.
+    mhz_init();				// switch to 8Mhz. TODO: Some day it would be nice to go back to 1Mhz for FCC, but lets just get things working now.
 
     power_init();
+    
+
+        
     button_init();
 
     adc_init();			    // Init ADC to start measuring battery voltage
     pixel_init();
     ir_init();
-
-    ir_enable();
-
-    pixel_enable();
-
-    button_enable_pu();
 
     sei();					// Let interrupts happen. For now, this is the timer overflow that updates to next pixel.
 

@@ -34,17 +34,23 @@
 // TODO: Really nail down the gamma mapping and maybe switch everything to 5 bit per channel
 // TODO: Really nail down the blue booster
 
+
+
 #include "hardware.h"
 #include "bitfun.h"
+
 
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
 #include <string.h>             // memcpy()
 
 #include "pixel.h"
+
 #include "utils.h"
 
 #include "timer.h"      // We piggyback actual timer callback in pixel since we are using that clock for PWM
+
+#include "callbacks.h"      // External callbacks to the next higher layer
 
 // Here are the raw compare register values for each pixel
 // These are precomputed from brightness values because we read them often from inside an ISR
