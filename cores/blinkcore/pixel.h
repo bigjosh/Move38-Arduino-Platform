@@ -9,6 +9,8 @@
 #ifndef RGB_PIXELS_H_
 #define RGB_PIXELS_H_
 
+#include "pixelcolor.h"
+
 // True today, but could imagine a blinks with 1 pixel or one with with 18 pixels...
 
 #define PIXEL_COUNT 6
@@ -29,14 +31,6 @@ void pixel_disable(void);
 
 /** Display interface ***/
 
-// Each pixel has 32 brightness levels for each of the three colors (red,green,blue)
-// These brightness levels are normalized to be visually linear with 0=off and 31=max brightness
-
-typedef struct {
-    uint8_t r:5;
-    uint8_t g:5;
-    uint8_t b:5;
-} pixelColor_t;
 
 // Update the pixel buffer.
 

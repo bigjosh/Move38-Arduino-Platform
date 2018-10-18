@@ -30,9 +30,9 @@
 
 // Keep these handy 
 
-loopstate_in const *m_loopstate_in; 
+loopstate_in_t const *m_loopstate_in; 
 
-loopstate_out *m_loopstate_ou;
+loopstate_out_t *m_loopstate_out;
 
 // Last time we saw a message on this face so
 // we know if there is a neighbor there.
@@ -277,7 +277,7 @@ void setValueSentOnFace( byte value , byte face ) {
 
 
 void setupEntry() {
-    
+        
     // Call up to the userland code
     setup();    
     
