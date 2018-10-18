@@ -23,7 +23,7 @@ void loopEntry( loopstate_in_t const *loopstate_in , loopstate_out_t *loopstate_
     
     if ( nextstep <= loopstate_in->millis ) {
         
-        loopstate_out->colors[step] =  pixelColor_t( 0 , 0 , 0 );
+        loopstate_out->colors[step] =  pixelColor_t( 0 , 0 , 0 , 1 );
                 
         step++;
         
@@ -31,7 +31,7 @@ void loopEntry( loopstate_in_t const *loopstate_in , loopstate_out_t *loopstate_
             step=0;
         }            
 
-        loopstate_out->colors[step] = pixelColor_t( 13 , 0 , 0 );
+        loopstate_out->colors[step] = pixelColor_t( 23 , 0 , 0 , 1 );
 
         nextstep = loopstate_in->millis + 200;
     }        
