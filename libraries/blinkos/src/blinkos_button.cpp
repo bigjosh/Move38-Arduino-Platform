@@ -28,18 +28,19 @@
 // If the cycle ends with the button down, then we interpret this that the user wanted to
 // abort the clicks, so we discard the count.
 
-static volatile uint8_t debouncedButtonPosition=0;                     // Current debounced state
+static uint8_t debouncedButtonPosition=0;                     // Current debounced state
 
 static uint8_t buttonDebounceCountdown=0;               // How long until we are done bouncing. Only touched in the callback
 // Set to BUTTON_DEBOUNCE_MS every time we see a change, then we ignore everything
 // until it gets to 0 again
 
 static uint16_t clickWindowCountdown=0;                 // How long until we close the current click window. 0=done TODO: Make this 8bit by reducing scan rate.
+
 static uint8_t clickPendingcount=0;                     // How many clicks so far int he current click window
 
 static uint16_t longPressCountdown=0;                   // How long until the current press becomes a long press
 
-static volatile uint8_t maxCompletedClickCount=0;       // Remember the most completed clicks to support the clickCount() function
+static uint8_t maxCompletedClickCount=0;       // Remember the most completed clicks to support the clickCount() function
 
 
 // Called once per tick by the timer to check the button position
@@ -116,7 +117,7 @@ uint8_t updateButtonState1ms(buttonstate_t &buttonstate) {
             if (buttonPositon) {            // Button just pressed?
                 
                 buttonstate.bitflags |= BUTTON_BITFLAG_PRESSED;
-                                
+                                               
                 if (clickPendingcount<255) {        // Don't overflow
                     clickPendingcount++;
                 }
@@ -140,7 +141,17 @@ uint8_t updateButtonState1ms(buttonstate_t &buttonstate) {
 
     }
     
+    #warning
     buttonstate.down = debouncedButtonPosition;
+    
+    static uint8_t c=0;
+    
+    if (c == 128 ) {
+        
+        //buttonstate.bitflags |= BUTTON_BITFLAG_PRESSED;
+    } 
+    
+    c++;
     
     return buttonChangeFlag;
 }

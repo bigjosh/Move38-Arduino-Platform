@@ -35,6 +35,8 @@ typedef uint32_t millis_t;
 #define BUTTON_BITFLAG_SINGLECLICKED    0b00001000
 #define BUTTON_BITFLAG_DOUBECLICKED     0b00010000
 #define BUTTON_BITFLAG_MULITCLICKED     0b00100000
+#define BUTTON_BITFLAG_DUMMY            0b01000000
+
 
 struct buttonstate_t {
 

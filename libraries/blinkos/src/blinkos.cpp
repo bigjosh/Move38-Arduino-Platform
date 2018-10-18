@@ -83,6 +83,20 @@ void timer_1000us_callback_sei(void) {
 
 }
 
+// Atomically copy button state from source to destination, then clear flags in source.
+
+void grabAndClearButtonState(  buttonstate_t &d ) {
+    
+    ATOMIC_BLOCK( ATOMIC_FORCEON ) {
+        
+        d.bitflags = buttonstate.bitflags;
+        d.clickcount = buttonstate.clickcount;
+        d.down = buttonstate.down;
+        buttonstate.bitflags =0;                      // Clear the flags we just grabbed (this is a one shot deal)
+        
+    }
+    
+}
 
 // Below are the callbacks we provide to blinkcore
 
@@ -199,20 +213,6 @@ void processPendingIRPackets() {
 
 }    
 
-// Atomically copy button state from source to destination, then clear flags in source. 
-
-void grabAndClearButtonState(  buttonstate_t &d , buttonstate_t &s ) {
-    
-    ATOMIC_BLOCK( ATOMIC_FORCEON ) {
-        
-        d.bitflags = s.bitflags;
-        d.clickcount = s.clickcount;
-        d.down = s.down;
-        s.bitflags =0;                      // Clear the flags we just grabed (this is a one shot deal)
-        
-    }        
-    
-}    
 
 // This is the entry point where the blinkcore platform will pass control to
 // us after initial power-up is complete
@@ -256,10 +256,9 @@ void run(void) {
                                             // I wish this didn't directly access the loopstate_in buffers, but the abstraction would 
                                             // cost lots of unnecessary coping
         
-        grabAndClearButtonState( loopstate_in.buttonstate,  buttonstate  );     // Make a local copy of the instant button state to pass to userland. Also clears the flags for next time. 
+        grabAndClearButtonState( loopstate_in.buttonstate );     // Make a local copy of the instant button state to pass to userland. Also clears the flags for next time. 
         
         loopstate_in.millis = millis_snapshot;
-
 
         loopEntry( &loopstate_in , &loopstate_out );
         

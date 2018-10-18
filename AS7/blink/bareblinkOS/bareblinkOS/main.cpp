@@ -21,8 +21,8 @@ millis_t nextstep;
 void loopEntry( loopstate_in_t const *loopstate_in , loopstate_out_t *loopstate_out) {
     
     
-    if ( nextstep <= loopstate_in->millis ) {
-        
+    if ( loopstate_in->buttonstate.bitflags & BUTTON_BITFLAG_DOUBECLICKED ) {
+                
         loopstate_out->colors[step] =  pixelColor_t( 0 , 0 , 0 , 1 );
                 
         step++;
@@ -31,7 +31,7 @@ void loopEntry( loopstate_in_t const *loopstate_in , loopstate_out_t *loopstate_
             step=0;
         }            
 
-        loopstate_out->colors[step] = pixelColor_t( 23 , 0 , 0 , 1 );
+        loopstate_out->colors[step] = pixelColor_t( 23 , 10, 0 , 1 );
 
         nextstep = loopstate_in->millis + 200;
     }        
