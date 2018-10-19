@@ -43,7 +43,7 @@ void irDataMarkPacketRead( uint8_t led );
  // Note that you must not dilly dally between begin, sending bytes, and ending. You don't have much time to think
  // so get everything set up beforehand.
 
- void irSendBegin( uint8_t bitmask );
+ void irSendBegin( uint8_t face );
 
  void irSendByte( uint8_t b );
 

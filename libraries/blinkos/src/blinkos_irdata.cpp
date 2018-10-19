@@ -398,6 +398,26 @@ volatile uint8_t most_recent_ir_test;
 
 }
 
+// Is there potentially an RX in progress on this LED?
+// Used to hold off sending while RX in progress to avoid a collisions that would clobber both transmissions
+
+uint8_t irDataRXinProgress( uint8_t led ) {
+    
+    ir_rx_state_t *ptr = ir_rx_states + led;
+    
+    // This seams cure, but I think it always works and is conservative - it will even 
+    // test true right after a trigger before we know if it was a real trigger or just ambient light
+    // As soon as enough time has passed that it can no be a real data trigger, then this automatically will
+    // return clear. I promise I did not plan design for this case, but man it works out nicely!
+    
+    if (ptr->windowsSinceLastTrigger <= 6 ) {
+        return 1;
+    } else {
+        return 0;
+    }                
+    
+}    
+
 // Is there a received data ready to be read on this face?
 
 bool irDataIsPacketReady( uint8_t led ) {
@@ -461,7 +481,7 @@ void irDataMarkPacketRead( uint8_t led ) {
 // Note that you must not dilly dally between begin, sending bytes, and ending. You don't have much time to think
 // so get everything set up beforehand. 
 
-void irSendBegin( uint8_t bitmask ) {
+void irSendBegin( uint8_t face ) {
 
     // Start things up, send initial pulses
     // We send two to cover the case where an ambient trigger happens *just* before the sync pulse
@@ -475,7 +495,9 @@ void irSendBegin( uint8_t bitmask ) {
 
     // TODO: Slightly faster to send a 1-bit here rather than a sync.
 
-    ir_tx_start( bitmask , US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_1_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  );
+    while (irDataRXinProgress(face));       // Wait for coast to be clear - which is when there have been more than 6 time windows with no trigger
+
+    ir_tx_start( 1 << face , US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_1_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  );
 
     ir_tx_sendpulse( US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_S_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  ) ;
     
@@ -510,66 +532,5 @@ void irSendComplete() {
     
 }    
 
-void irSendDataPacket(uint8_t bitmask, const uint8_t *packetBuffer, uint8_t len ) {
-
-
-    // Start things up, send initial pulses
-    // We send two to cover the case where an ambient trigger happens *just* before the sync pulse
-    // starts, which causes the real sync to start right in the middle of the charging, so now the
-    // LED is partially discharged and predisposed to trigger again off ambient.
-    // If we pre-trigger the RX led, then it will not be able to trigger on ambient in the
-    // time span of the sync pulse. So this 1 bit is really meaningless, it just makes sure the
-    // RX LED is starting up charged when the leading pulse of the sync comes in.
-    // We don't need to worry about that 1 getting seen as a real bit since the sync comes after it
-    // and a long idle window came before it.
-
-    // TODO: Slightly faster to send a 1-bit here rather than a sync.
-
-    ir_tx_start( bitmask , US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_1_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  );
-
-    ir_tx_sendpulse( US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_S_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  ) ;
-
-
-    while (len) {
-
-        uint8_t bitwalker = 0b00000001;
-
-        uint8_t currentByte = *packetBuffer;
-
-        do {
-
-            if ( currentByte & bitwalker) {
-                ir_tx_sendpulse( US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_1_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  ) ;
-            } else {
-                ir_tx_sendpulse( US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_0_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  ) ;
-            }
-
-            bitwalker<<=1;
-
-            // TODO: Faster to do in ASM and check carry bit?
-
-        } while (bitwalker);        // 1 bit overflows off top. Would be better if we could test for overflow bit
-
-        packetBuffer++;
-
-        len--;
-
-    }
-
-    // Send final SYNC
-    ir_tx_sendpulse( US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_S_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  ) ;
-
-    ir_tx_end();
-
-}
-
-// Send data on specified face
-// I put destination (face) first to mirror the stdio.h functions like fprintf().
-
-void irSendData(  uint8_t face , const uint8_t *data , uint8_t len ) {
-
-    irSendDataPacket( 1 << face  , data , len );
-
-}
 
 

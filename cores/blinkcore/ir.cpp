@@ -426,7 +426,7 @@ ISR(TIMER1_COMPA_vect) {
 // Call ir_tx_end() after last pulse to turn off the ISR (optional but saves CPU and power)
 
 void ir_tx_start(uint8_t bitmask , uint16_t initialTicks ) {
-
+      
     TCCR1B = _BV( WGM13) | _BV( WGM12);      // clk/0. Timer is now stopped.
     TCCR1A = 0;                               // Mode 12. THis is a CTC mode, we pick it just so we can directly access OCRA without the buffer.
 
