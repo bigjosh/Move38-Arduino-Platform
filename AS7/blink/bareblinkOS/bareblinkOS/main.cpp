@@ -21,6 +21,8 @@ millis_t nextstep;
 millis_t nextsend;
 
 uint8_t message[] = { 'J' , 'o' , 's' , 'h' };
+    
+uint8_t errorFlag[ IR_FACE_COUNT];    
 
 void loopEntry( loopstate_in_t const *loopstate_in , loopstate_out_t *loopstate_out) {
 
@@ -37,6 +39,8 @@ void loopEntry( loopstate_in_t const *loopstate_in , loopstate_out_t *loopstate_
         }
 
         loopstate_out->colors[step] = pixelColor_t( 23 , 10, 0 , 1 );
+        
+        errorFlag[step]=0;
 
         nextstep = loopstate_in->millis + 200;
     }
@@ -56,20 +60,32 @@ void loopEntry( loopstate_in_t const *loopstate_in , loopstate_out_t *loopstate_
                     loopstate_out->colors[f] = pixelColor_t( 0 , 20, 0 , 1 );
 
                 } else {
-
-                    // Good length, bad data!
-                    loopstate_out->colors[f] = pixelColor_t( 20 , 0, 0 , 1 );
+                    
+                    errorFlag[f] = 2;
 
                 }
 
             } else {
-
                 // Bad len
-                loopstate_out->colors[f] = pixelColor_t( 0 , 0, 20 , 1 );
+                
+                errorFlag[f] = 1;
+
 
             }
 
         }
+        
+        if (errorFlag[f]==1) {
+            
+            loopstate_out->colors[f] = pixelColor_t( 20 , 0, 0 , 1 );
+
+
+        } else if (errorFlag[f]==2) {
+         
+         
+            loopstate_out->colors[f] = pixelColor_t( 0 , 0, 20 , 1 );
+            
+        }                    
 
     }
     
