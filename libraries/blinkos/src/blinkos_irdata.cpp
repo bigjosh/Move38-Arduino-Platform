@@ -456,8 +456,59 @@ void irDataMarkPacketRead( uint8_t led ) {
 
 #define MIN_DELAY_LT( MIN_DELAY_RT , CLOCK_SPREAD_PCT ) ( MIN_DELAY_RT * ( 1.0 + ( CLOCK_SPREAD_PCT / 100.00) ) )
 
-// Simultaneously send data on all faces that have a `1` in bitmask
 // Sends bits in least-significant-bit first order (RS232 style)
+
+// Note that you must not dilly dally between begin, sending bytes, and ending. You don't have much time to think
+// so get everything set up beforehand. 
+
+void irSendBegin( uint8_t bitmask ) {
+
+    // Start things up, send initial pulses
+    // We send two to cover the case where an ambient trigger happens *just* before the sync pulse
+    // starts, which causes the real sync to start right in the middle of the charging, so now the
+    // LED is partially discharged and predisposed to trigger again off ambient.
+    // If we pre-trigger the RX led, then it will not be able to trigger on ambient in the
+    // time span of the sync pulse. So this 1 bit is really meaningless, it just makes sure the
+    // RX LED is starting up charged when the leading pulse of the sync comes in.
+    // We don't need to worry about that 1 getting seen as a real bit since the sync comes after it
+    // and a long idle window came before it.
+
+    // TODO: Slightly faster to send a 1-bit here rather than a sync.
+
+    ir_tx_start( bitmask , US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_1_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  );
+
+    ir_tx_sendpulse( US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_S_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  ) ;
+    
+}
+
+void irSendByte( uint8_t b ) {
+
+    uint8_t bitwalker = 0b00000001;
+
+    do {
+
+        if ( b & bitwalker) {
+            ir_tx_sendpulse( US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_1_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  ) ;
+        } else {
+            ir_tx_sendpulse( US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_0_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  ) ;
+        }
+
+        bitwalker<<=1;
+
+        // TODO: Faster to do in ASM and check carry bit?
+
+    } while (bitwalker);        // 1 bit overflows off top. Would be better if we could test for overflow bit
+    
+}
+
+void irSendComplete() {    
+    
+    // Send final SYNC
+    ir_tx_sendpulse( US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_S_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  ) ;
+
+    ir_tx_end();    
+    
+}    
 
 void irSendDataPacket(uint8_t bitmask, const uint8_t *packetBuffer, uint8_t len ) {
 

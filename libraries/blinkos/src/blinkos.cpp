@@ -16,17 +16,17 @@
 #include <avr/pgmspace.h>
 #include <stddef.h>     // NULL
 
-#include <util/crc16.h>     // For IR checksums 
+#include <util/crc16.h>     // For IR checksums
 #include <util/atomic.h>         // ATOMIC_BLOCK
 
 #include "blinkos.h"
 #include "blinkos_button.h"
-#include "blinkos_timer.h"          // Class Timer 
+#include "blinkos_timer.h"          // Class Timer
 
 #include "callbacks.h"              // From blinkcore, which will call into us via these
 
 // TODO: Put this at a known fixed address to save registers
-// Will require a new .section in the linker file. Argh. 
+// Will require a new .section in the linker file. Argh.
 
 loopstate_in_t loopstate_in;
 loopstate_out_t loopstate_out;
@@ -68,34 +68,34 @@ static void sleep(void) {
 
 
 void postponeSleep() {
-    sleepTimer.set( SLEEP_TIMEOUT_MS );    
-}    
+    sleepTimer.set( SLEEP_TIMEOUT_MS );
+}
 
 buttonstate_t buttonstate;
 
 void timer_1000us_callback_sei(void) {
 
     incrementMillis1ms();
-    
-    if (updateButtonState1ms( buttonstate )) {        
+
+    if (updateButtonState1ms( buttonstate )) {
         postponeSleep();
-    }        
+    }
 
 }
 
 // Atomically copy button state from source to destination, then clear flags in source.
 
 void grabAndClearButtonState(  buttonstate_t &d ) {
-    
+
     ATOMIC_BLOCK( ATOMIC_FORCEON ) {
-        
+
         d.bitflags = buttonstate.bitflags;
         d.clickcount = buttonstate.clickcount;
         d.down = buttonstate.down;
         buttonstate.bitflags =0;                      // Clear the flags we just grabbed (this is a one shot deal)
-        
+
     }
-    
+
 }
 
 // Below are the callbacks we provide to blinkcore
@@ -122,97 +122,153 @@ void timer_128us_callback_sei(void) {
 }
 
 
-uint8_t  crccheck(uint8_t const * data, uint8_t len )
-{
-    uint8_t c = 0xFF;                          // Start CRC at 0xFF
-             
-    while (--len) {           // Count 1 less than total length
-                 
-        c=_crc8_ccitt_update( c , *data );
-                 
+#define IR_CRC_INIT    0xff         // Initial value for CRC calculation for IR packets
+
+uint8_t crcupdate( uint8_t const *data , uint8_t len , uint8_t crc) {
+
+    while (len) {
+
+        crc = _crc8_ccitt_update( *data , crc );
+
         data++;
-                 
+        len--;
+
+
     }
-             
-    // d now points to final byte, which should be CRC
-             
-    return *data == c;
-        
+
+    return crc;
+
 }
+
+// Test that a buffer full of data has the right CRC at the end
+
+uint8_t crccheck(uint8_t const * data, uint8_t len )
+{
+    uint8_t c = IR_CRC_INIT;                          // Start CRC at 0xFF
+
+    while (--len) {           // Count 1 less than total length
+
+        c=_crc8_ccitt_update( c , *data );
+
+        data++;
+
+    }
+
+    // d now points to final byte, which should be CRC
+
+    return *data == c;
+
+}
+
+#define IR_PACKET_HEADER_OOB      0x01      // Internal blinkOS messaging
+#define IR_PACKET_HEADER_USERDATA 0x02      // Pass up to userland
 
 void processPendingIRPackets() {
 
     // First process any IR data that came in
-        
+
     for( uint8_t f=0; f< IR_FACE_COUNT; f++ ) {
-            
+
         if (irDataIsPacketReady(f)) {
-                
+
             uint8_t packetLen = irDataPacketLen(f);
-                
+
             if ( packetLen < 2 ) {
-                    
+
                 // Packet to short to even consider
-                    
+
                 // TODO: Error counting?
-                    
+
                 irDataMarkPacketRead( f );
-                    
+
             } else {
-                    
+
                 // IR data packet received and at least 2 bytes long
-                    
+
                 uint8_t const *data = irDataPacketBuffer(f);
-                    
+
                 // TODO: Maybe have super simple inversion check for single byte commands?
-                    
+
                 // TODO: Maybe have an extra "out-of-band" header bit so we can let userland have simple 1 byte packets?
-                    
+
                 if (crccheck(data,packetLen)) {
-                        
+
                     // Got a good ir data packet!
-                        
+
                     // route based on header byte
-                        
-                    if (*data==0x01) {  
-                        // Userland data
-                        
-                        loopstate_in.ir_data_buffers[f].len=  packetLen-1;
-                        loopstate_in.ir_data_buffers[f].ready_flag = 1;
-                        
-                        // TODO: Where do we mark these as read? User responsibility or ours?
-                        
-                        
-                    } else if (*data==0x02) {
-                        
+
+                    if (*data== IR_PACKET_HEADER_OOB ) {
+
                         // blinkOS packet
                         irDataMarkPacketRead(f);
-                        
+
+
+                    } else if (*data== IR_PACKET_HEADER_USERDATA ) {
+
+                        // Userland data
+                        loopstate_in.ir_data_buffers[f].len=  packetLen-2;      // Account for the header byte and the CRC byte/ Note that we checked above to make sure it was at least 2 long so no underflow issues here.
+                        loopstate_in.ir_data_buffers[f].ready_flag = 1;
+                        // Note that these will get marked read after the loop call
+                        // so that the userland can read from the buffer without worring about it getting
+                        // overwritten
+
+
                     } else {
-                        
+
                         // Thats's unexpected.
                         // Lets at least consume it so a new packet can come in
-                        
-                        irDataMarkPacketRead(f); 
-                        
-                    }                        
-                        
-                        
+
+                        irDataMarkPacketRead(f);
+
+                    }
+
+
                 } else {
-                        
+
                     // Packet failed CRC check
                     // TODO: Error counting?
-                        
+
                     irDataMarkPacketRead( f );
-                        
+
                 } // if (crccheck(data,packetLen))
-                    
+
             }
         }  // irIsdataPacketReady(f)
     }    // for( uint8_t f=0; f< IR_FACE_COUNT; f++ )
 
-}    
+}
 
+// This sends a user data packet, which has a header byte and a CRC checksum
+
+void ir_send_userdata( uint8_t face, const uint8_t *data , uint8_t len ) {
+
+    // We figure out the CRC first so there are no undue delays while transmitting the data
+
+    // TODO: Do we have time between bits to calculate the CRC as we go? A 1 bit gives us like 150us, so probably. Even with interrupts?
+
+    uint8_t crc = IR_CRC_INIT;
+
+    crc = _crc8_ccitt_update( IR_PACKET_HEADER_USERDATA , crc );
+
+    crc = crcupdate( data , len , crc );
+
+    // Ok, now we are ready to start sending!
+
+    irSendBegin( 1<< face );
+
+    irSendByte( IR_PACKET_HEADER_USERDATA );
+
+    while (len--) {
+
+        irSendByte( *data++ );
+
+    }
+
+    irSendByte( crc );
+
+    irSendComplete();
+
+}
 
 // This is the entry point where the blinkcore platform will pass control to
 // us after initial power-up is complete
@@ -222,59 +278,76 @@ void processPendingIRPackets() {
 extern void setupEntry();
 
 void run(void) {
-    
-    // Set the buffer pointers 
-    
+
+    // Set the buffer pointers
+
     for( uint8_t f=0; f< IR_FACE_COUNT; f++ ) {
-        
-        loopstate_in.ir_data_buffers[f].data = irDataPacketBuffer( f ) +1 ;     // We use 1st byte for routing, so we give userland everything after that 
-        loopstate_in.ir_data_buffers[f].ready_flag = 0; 
-        
-    }        
-    
+
+        loopstate_in.ir_data_buffers[f].data = irDataPacketBuffer( f ) +1 ;     // We use 1st byte for routing, so we give userland everything after that
+        loopstate_in.ir_data_buffers[f].ready_flag = 0;
+
+    }
+
     ir_enable();
 
     pixel_enable();
 
     button_enable_pu();
-    
+
     // Call user setup code
-           
+
     setupEntry();
-    
+
     postponeSleep();            // We just turned on, so restart sleep timer
 
     while (1) {
-        
+
         updateMillisSnapshot();             // Use the snapshot do we don't have to turn off interrupts
                                             // every time we want to check this multibyte value
-        
-        
+
+
         // Let's get loopstate_in all set up for the call into the user process
-        
+
         processPendingIRPackets();          // Sets the irdatabuffers in loopstate_in. Also processes any received IR blinkOS commands
-                                            // I wish this didn't directly access the loopstate_in buffers, but the abstraction would 
+                                            // I wish this didn't directly access the loopstate_in buffers, but the abstraction would
                                             // cost lots of unnecessary coping
-        
-        grabAndClearButtonState( loopstate_in.buttonstate );     // Make a local copy of the instant button state to pass to userland. Also clears the flags for next time. 
-        
+
+        grabAndClearButtonState( loopstate_in.buttonstate );     // Make a local copy of the instant button state to pass to userland. Also clears the flags for next time.
+
         loopstate_in.millis = millis_snapshot;
 
         loopEntry( &loopstate_in , &loopstate_out );
-        
+
         for( uint8_t f = 0; f < PIXEL_FACE_COUNT ; f++ ) {
-            
+
             pixelColor_t color = loopstate_out.colors[f];
-            
+
             if (  color.reserved ) {          // Did the color change on the last pass? (We used the reserved bit to tell in the blnkOS API)
-                                
-                pixel_bufferedSetPixel( f,  color  );           // TODO: Do we need to clear that top bit? 
-            }                
-            
-        }            
+
+                pixel_bufferedSetPixel( f,  color  );           // TODO: Do we need to clear that top bit?
+            }
+
+        }
 
         pixel_displayBufferedPixels();      // show all display updates that happened in last loop()
                                             // Also currently blocks until new frame actually starts
+
+
+        for( uint8_t f = 0; f < IR_FACE_COUNT ; f++ ) {
+
+            // Go though and mark any of the buffers we just passed into to the app as clear
+            // Note that we don't have to worry about any races here because we set the ready flag
+            // ourselves in this very loop
+
+            if ( loopstate_in.ir_data_buffers[f].ready_flag) {
+
+                irDataMarkPacketRead( f ) ;
+                loopstate_in.ir_data_buffers[f].ready_flag =0;
+
+            }
+
+        }
+
 
         if (sleepTimer.isExpired()) {
             sleep();

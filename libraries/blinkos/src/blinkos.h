@@ -56,6 +56,12 @@ struct ir_data_buffer_t {
 
 };
 
+
+// Sends immediately. Blocks until send is complete.
+// Higher level should provide some collision control.
+
+void ir_send_userdata( uint8_t face, const uint8_t *data , uint8_t len );
+
 struct loopstate_in_t {
 
     ir_data_buffer_t ir_data_buffers[IR_FACE_COUNT];
