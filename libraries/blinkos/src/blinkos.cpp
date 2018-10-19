@@ -13,6 +13,12 @@
 
 */
 
+// TODO: TEST RX in progress by having one side TX rapidly wiht short breaks and see if other side fits into the break.
+// TODO: Maybe make 1st bit of IR high be a "short 1 byte user message" where next 7 are checksum of the 2nd byte"?
+// TODO: Must check for a reboot command at ISR level. After reboot send an "I just rebooted" message" and wait a sec for a download firmware request.
+//       This blocks allows downloads even when user code blocks in loop(). Also always give downlaod fresh slate for machine state.
+//       Maybe must do something like this also for sleeping?
+
 #include <avr/pgmspace.h>
 #include <stddef.h>     // NULL
 
@@ -160,8 +166,12 @@ uint8_t crccheck(uint8_t const * data, uint8_t len )
 
 }
 
-#define IR_PACKET_HEADER_OOB      0x01      // Internal blinkOS messaging
-#define IR_PACKET_HEADER_USERDATA 0x02      // Pass up to userland
+// These header bytes are chosen to try and give some error robustness. 
+// So, for example, a header with a repeating pattern would be less robust
+// because it is possible something blinking in the environment might replicate it
+
+#define IR_PACKET_HEADER_OOB      0b01001110      // Internal blinkOS messaging
+#define IR_PACKET_HEADER_USERDATA 0b11010011      // Pass up to userland
 
 void processPendingIRPackets() {
 
@@ -172,76 +182,73 @@ void processPendingIRPackets() {
         if (irDataIsPacketReady(f)) {
 
             uint8_t packetLen = irDataPacketLen(f);
+            
+            // Note that IrDataPeriodicUpdateComs() will not save a 0-byte packet, so we know 
+            // the buffer has at least 1 byte in it
 
-            if ( packetLen < 2 ) {
+            // IR data packet received and at least 2 bytes long
 
-                // Packet to short to even consider
+            uint8_t const *data = irDataPacketBuffer(f);
+            
+            // TODO: What packet type should be fastest check (doesn;t really matter THAT much, only a few cycles)            
 
-                // TODO: Error counting?
+            if (*data== IR_PACKET_HEADER_OOB ) {
 
-                irDataMarkPacketRead( f );
+                // blinkOS packet
+                irDataMarkPacketRead(f);
+
+
+            } else if (*data== IR_PACKET_HEADER_USERDATA ) {
+                
+
+                // Userland data
+                loopstate_in.ir_data_buffers[f].len=  packetLen-1;      // Account for the header byte 
+                loopstate_in.ir_data_buffers[f].ready_flag = 1;
+                // Note that these will get marked read after the loop call
+                // so that the userland can read from the buffer without worring about it getting
+                // overwritten
 
             } else {
 
-                // IR data packet received and at least 2 bytes long
+                // Thats's unexpected.
+                // Could be a data error that messed up bits in the header byte,
+                // which is why we picked interesting bit patterns for header bytes
+                
+                // Consume the mangled packet it so a new packet can come in
 
-                uint8_t const *data = irDataPacketBuffer(f);
-
-                // TODO: Maybe have super simple inversion check for single byte commands?
-
-                // TODO: Maybe have an extra "out-of-band" header bit so we can let userland have simple 1 byte packets?
-
-                if (crccheck(data,packetLen)) {
-
-                    // Got a good ir data packet!
-
-                    // route based on header byte
-
-                    if (*data== IR_PACKET_HEADER_OOB ) {
-
-                        // blinkOS packet
-                        irDataMarkPacketRead(f);
-
-
-                    } else if (*data== IR_PACKET_HEADER_USERDATA ) {
-
-                        // Userland data
-                        loopstate_in.ir_data_buffers[f].len=  packetLen-2;      // Account for the header byte and the CRC byte/ Note that we checked above to make sure it was at least 2 long so no underflow issues here.
-                        loopstate_in.ir_data_buffers[f].ready_flag = 1;
-                        // Note that these will get marked read after the loop call
-                        // so that the userland can read from the buffer without worring about it getting
-                        // overwritten
-
-
-                    } else {
-
-                        // Thats's unexpected.
-                        // Lets at least consume it so a new packet can come in
-
-                        irDataMarkPacketRead(f);
-
-                    }
-
-
-                } else {
-
-                    // Packet failed CRC check
-                    // TODO: Error counting?
-
-                    irDataMarkPacketRead( f );
-
-                } // if (crccheck(data,packetLen))
-
-            }
+                irDataMarkPacketRead(f);
+                
+            }   // sort out packet types                
+           
         }  // irIsdataPacketReady(f)
     }    // for( uint8_t f=0; f< IR_FACE_COUNT; f++ )
 
 }
 
-// This sends a user data packet, which has a header byte and a CRC checksum
+// This sends a user data packet. No error checked so you are responsible to do it yourself
 
 void ir_send_userdata( uint8_t face, const uint8_t *data , uint8_t len ) {
 
+    // Ok, now we are ready to start sending!
+
+    irSendBegin( face );
+
+    irSendByte( IR_PACKET_HEADER_USERDATA );
+
+    while (len) {
+
+        irSendByte( *data++ );
+        len--;
+
+    }
+
+    irSendComplete();
+
+}
+
+
+void sendUserDataCRC( uint8_t face, const uint8_t *data , uint8_t len ) {
+    
     // We figure out the CRC first so there are no undue delays while transmitting the data
 
     // TODO: Do we have time between bits to calculate the CRC as we go? A 1 bit gives us like 150us, so probably. Even with interrupts?
@@ -254,7 +261,7 @@ void ir_send_userdata( uint8_t face, const uint8_t *data , uint8_t len ) {
 
     // Ok, now we are ready to start sending!
 
-    irSendBegin( 1<< face );
+    irSendBegin( face );
 
     irSendByte( IR_PACKET_HEADER_USERDATA );
 
@@ -269,6 +276,7 @@ void ir_send_userdata( uint8_t face, const uint8_t *data , uint8_t len ) {
     irSendComplete();
 
 }
+
 
 // This is the entry point where the blinkcore platform will pass control to
 // us after initial power-up is complete
@@ -287,8 +295,12 @@ void run(void) {
         loopstate_in.ir_data_buffers[f].ready_flag = 0;
 
     }
+    
+
 
     ir_enable();
+    
+    irDataInit();       // Really only called to init IR_RX_DEBUG
 
     pixel_enable();
 

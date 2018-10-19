@@ -49,3 +49,4 @@ void irDataMarkPacketRead( uint8_t led );
 
  void irSendComplete();
  
+ void irDataInit();   // Really only called to init IR_RX_DEBUG

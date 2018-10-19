@@ -26,8 +26,7 @@ void loopEntry( loopstate_in_t const *loopstate_in , loopstate_out_t *loopstate_
 
     millis_t now = loopstate_in->millis;
 
-
-    if ( loopstate_in->buttonstate.bitflags & BUTTON_BITFLAG_DOUBECLICKED ) {
+    if ( loopstate_in->buttonstate.bitflags & BUTTON_BITFLAG_PRESSED ) {
 
         loopstate_out->colors[step] =  pixelColor_t( 0 , 0 , 0 , 1 );
 
@@ -73,6 +72,8 @@ void loopEntry( loopstate_in_t const *loopstate_in , loopstate_out_t *loopstate_
         }
 
     }
+    
+ 
 
     if ( nextsend < now ) {
 
@@ -80,7 +81,6 @@ void loopEntry( loopstate_in_t const *loopstate_in , loopstate_out_t *loopstate_
 
         nextsend = now + 200;
     }
-
 
 
 }    

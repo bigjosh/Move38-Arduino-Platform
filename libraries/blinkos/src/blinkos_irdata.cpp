@@ -374,7 +374,7 @@ volatile uint8_t most_recent_ir_test;
             // No trigger on this IR on this update cycle
 
             // No point in incrementing past 9 since 9 is already an error
-            // and this keeps us form overflowing (although that is very unlikely)
+            // and this keeps us form overflowing at 255 (although that is very unlikely)
             if (windowsSinceLastTrigger<9) {
 
                 windowsSinceLastTrigger++;
@@ -402,21 +402,41 @@ volatile uint8_t most_recent_ir_test;
 // Used to hold off sending while RX in progress to avoid a collisions that would clobber both transmissions
 
 uint8_t irDataRXinProgress( uint8_t led ) {
-    
+
     ir_rx_state_t *ptr = ir_rx_states + led;
-    
-    // This seams cure, but I think it always works and is conservative - it will even 
+
+    // This seams cure, but I think it always works and is conservative - it will even
     // test true right after a trigger before we know if it was a real trigger or just ambient light
     // As soon as enough time has passed that it can no be a real data trigger, then this automatically will
     // return clear. I promise I did not plan design for this case, but man it works out nicely!
-    
-    if (ptr->windowsSinceLastTrigger <= 6 ) {
-        return 1;
-    } else {
-        return 0;
-    }                
-    
-}    
+
+    #ifdef IR_RX_DEBUG
+        if (led==4) {
+
+                SP_PIN_A_SET_1();               // SP pin A goes high any time IR0 is triggered. We clear it when we later process in the polling code.
+                SP_PIN_A_SET_0();
+
+                SP_SERIAL_TX_NOW('P');          // Idle sample
+                sp_serial_tx(ptr->windowsSinceLastTrigger + '0');
+        }
+    #endif
+
+
+    return ptr->byteBuffer;     // If bytebuffer != 0 then we are currently receiving valid data into the buffer
+
+    // A more conservative test would be...
+
+    /*
+        if (ptr->windowsSinceLastTrigger <= 6 ) {
+            return 1;
+        } else {
+            return 0;
+        }
+    */
+
+    //... since it would even stop us from sending if we were in the middle of a leading sync pulse,
+    // but this has a chance that it could lock up in very bright ambient light when we were just triggering nonstop.
+}
 
 // Is there a received data ready to be read on this face?
 
@@ -479,7 +499,7 @@ void irDataMarkPacketRead( uint8_t led ) {
 // Sends bits in least-significant-bit first order (RS232 style)
 
 // Note that you must not dilly dally between begin, sending bytes, and ending. You don't have much time to think
-// so get everything set up beforehand. 
+// so get everything set up beforehand.
 
 void irSendBegin( uint8_t face ) {
 
@@ -500,7 +520,7 @@ void irSendBegin( uint8_t face ) {
     ir_tx_start( 1 << face , US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_1_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  );
 
     ir_tx_sendpulse( US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_S_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  ) ;
-    
+
 }
 
 void irSendByte( uint8_t b ) {
@@ -520,17 +540,23 @@ void irSendByte( uint8_t b ) {
         // TODO: Faster to do in ASM and check carry bit?
 
     } while (bitwalker);        // 1 bit overflows off top. Would be better if we could test for overflow bit
-    
+
 }
 
-void irSendComplete() {    
-    
+void irSendComplete() {
+
     // Send final SYNC
     ir_tx_sendpulse( US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_S_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  ) ;
 
-    ir_tx_end();    
-    
-}    
+    ir_tx_end();
 
+}
+
+
+void irDataInit() {
+    #ifdef IR_RX_DEBUG
+        sp_serial_init();
+    #endif
+}
 
 

@@ -40,8 +40,6 @@ static uint8_t clickPendingcount=0;                     // How many clicks so fa
 
 static uint16_t longPressCountdown=0;                   // How long until the current press becomes a long press
 
-static uint8_t maxCompletedClickCount=0;       // Remember the most completed clicks to support the clickCount() function
-
 
 // Called once per tick by the timer to check the button position
 // and update the button state variables.
@@ -96,6 +94,7 @@ uint8_t updateButtonState1ms(buttonstate_t &buttonstate) {
                         } else {
                             buttonstate.bitflags |= BUTTON_BITFLAG_MULITCLICKED;
                             buttonstate.clickcount = clickPendingcount;                                
+                            // Note this could overwrite a previous multiclick count if more than 1 happens per loop cycle. 
                         }
                         
                         
@@ -141,17 +140,7 @@ uint8_t updateButtonState1ms(buttonstate_t &buttonstate) {
 
     }
     
-    #warning
     buttonstate.down = debouncedButtonPosition;
-    
-    static uint8_t c=0;
-    
-    if (c == 128 ) {
-        
-        //buttonstate.bitflags |= BUTTON_BITFLAG_PRESSED;
-    } 
-    
-    c++;
     
     return buttonChangeFlag;
 }
