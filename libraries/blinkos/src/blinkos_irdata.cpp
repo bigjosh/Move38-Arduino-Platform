@@ -259,6 +259,13 @@ volatile uint8_t most_recent_ir_test;
 
                             ptr->byteBuffer = 0b10000000;            // prime buffer for next byte to come in. Remember this 1 will fall off the bottomm after 8 bits to indicate a full byte
 
+                            #ifdef IR_RX_DEBUG
+                                if (bitwalker== _BV(IR_RX_DEBUG_LED) ) {
+                                    SP_SERIAL_TX_NOW('B');          // Buffered byte
+                                    sp_serial_tx( data );
+                                }
+                            #endif
+
                         } else {
 
                             // Packet received was too large for buffer so abort this reception.
@@ -266,21 +273,15 @@ volatile uint8_t most_recent_ir_test;
                             ptr->byteBuffer = 0;                // this blocks any more bits from coming
                             ptr->packetBufferLen =0;            // We will need a new SYNC to start a new packet being received
 
+                            #ifdef IR_RX_DEBUG
+                                if (bitwalker== _BV(IR_RX_DEBUG_LED) ) {
+                                    SP_SERIAL_TX_NOW('V');      // Overflow
+                                    sp_serial_tx( data );
+                                }
+                            #endif
+
                         }
 
-                        #ifdef IR_RX_DEBUG
-                            if (bitwalker==_BV(IR_RX_DEBUG_LED)) {
-                                // This seems to be long enough after the above 1/0 that is does not clobber the serial register
-                                SP_SERIAL_TX_NOW( data );
-/*
-                                if ( !debug::test( data ) ) {
-                                    SP_PIN_A_SET_1();               // SP pin A goes high any time IR0 is triggered. We clear it when we later process in the polling code.
-                                    SP_PIN_A_SET_0();
-                                }
-
-*/
-                            }
-                        #endif
 
                     } else {
 
@@ -288,16 +289,18 @@ volatile uint8_t most_recent_ir_test;
 
                         ptr->byteBuffer = data;         // Remember that we stuffed the new bit into `data` above
 
-                        #ifdef RX_DEBUG
-                            if (bitwalker==0x01) {
-                                SP_SERIAL_TX_NOW('B');  // Buffered bit
-                                sp_serial_tx( data );
-                            }
-                        #endif
-
                     }
 
-                } // if (ptr->byteBuffer) - if we get something that looks like a bit but byteBuffer==0, then we never got a starting sync
+                } else { // if (!ptr->byteBuffer) - if we get something that looks like a bit but byteBuffer==0, then we never got a starting sync
+
+                    #ifdef IR_RX_DEBUG
+                        if (bitwalker == _BV(IR_RX_DEBUG_LED) ) {
+                            SP_SERIAL_TX_NOW('+');                  // got a bit outside of a frame
+                        }                    
+                    #endif
+                    
+                }                    
+                    
 
             } else if (windowsSinceLastTrigger <=6 ) {
 
@@ -307,7 +310,7 @@ volatile uint8_t most_recent_ir_test;
                 // since packets should always contain full bytes between the SYNCs
 
                 if (ptr->byteBuffer==0b10000000) {
-                    
+
                     // Ok, this new sync is a trailing sync since we are actively receiving and are on an 8-bit boundary
 
                     if (ptr->packetBufferLen) {
@@ -363,7 +366,7 @@ volatile uint8_t most_recent_ir_test;
                 // To get here, we already aborted anything in progress when the windowsSincelastTrigger was incremented to 7
 
                 #ifdef IR_RX_DEBUG
-                    if (bitwalker==_BV(IR_RX_DEBUG_LED)) SP_SERIAL_TX_NOW('I');                           
+                    if (bitwalker==_BV(IR_RX_DEBUG_LED)) SP_SERIAL_TX_NOW('I');
                     //if (bitwalker==_BV(IR_RX_DEBUG_LED)) sp_serial_tx('0'+ptr->windowsSinceLastTrigger);      // Error
                 #endif
 
@@ -378,32 +381,32 @@ volatile uint8_t most_recent_ir_test;
             // No point in incrementing past 7 since 7 is already an error
             // and this keeps us form overflowing at 255 (although that is very unlikely)
             // This check also lets us immediately abort any RX in progress as soon as
-            // it is clear that we can not make a good packet anymore. 
-            
+            // it is clear that we can not make a good packet anymore.
+
             if (windowsSinceLastTrigger<=7) {
 
                 windowsSinceLastTrigger++;
                 ptr->windowsSinceLastTrigger=windowsSinceLastTrigger;
 
                 // Note that we do not need to look for errors here, they will show up when the trigger finally happens.
-                
+
                 #ifdef IR_RX_DEBUG
                     if (bitwalker==_BV(IR_RX_DEBUG_LED)) SP_SERIAL_TX_NOW('-');          // Idle sample
                 #endif
-                
+
             } else {
-                
+
                 // We have waited long enough that this can not be a sync pulse
-                // We really only need to clear this so that irDataRXinProgress() will know that 
+                // We really only need to clear this so that irDataRXinProgress() will know that
                 // any RX that ws in progress is now aborted
-                
+
                 #ifdef IR_RX_DEBUG
                     if (bitwalker==_BV(IR_RX_DEBUG_LED)) SP_SERIAL_TX_NOW('A');          // Abort any RX in progress
                 #endif
-                
+
                 ptr->byteBuffer = 0x00;            // Clear byte buffer. A 0 here means we are waiting for sync
-                
-            }                            
+
+            }
 
 
         }
@@ -422,9 +425,6 @@ volatile uint8_t most_recent_ir_test;
 inline uint8_t irDataRXinProgress( uint8_t led ) {
 
     ir_rx_state_t *ptr = ir_rx_states + led;
-    
-    SP_SERIAL_TX_NOW( 'B' );
-    sp_serial_tx(ptr->byteBuffer );
 
     return ptr->byteBuffer;     // If bytebuffer != 0 then we are currently receiving valid data into the buffer
 
@@ -517,21 +517,12 @@ void irSendBegin( uint8_t face ) {
     // We don't need to worry about that 1 getting seen as a real bit since the sync comes after it
     // and a long idle window came before it.
 
-    // TODO: Slightly faster to send a 1-bit here rather than a sync.
+    // TODO: We need a timeout here or else a continuous stream of SYNCs could lock us out here...
 
-    while (irDataRXinProgress(face)) {       // Wait for coast to be clear - which is when there have been more than 6 time windows with no trigger
-                       
-        #ifdef IR_RX_DEBUG
-        
-//            SP_PIN_A_SET_1();               // SP pin A goes high any time IR0 is triggered. We clear it when we later process in the polling code.
-//            SP_PIN_A_SET_0();
-        
-            if (face== IR_RX_DEBUG_LED) {
-                SP_SERIAL_TX_NOW('W');          // Waiting for clear-to-send
-            }                
-        #endif        
-        
-    }        
+    while (irDataRXinProgress(face));        // Wait for coast to be clear - which is when there have been more than 6 time windows with no trigger
+                                             // Note that this is self terminating since either will will over run the buffer if we get too many good bits,
+                                             // We will see an error.
+                                             // I guess the only time this can lock up is if we see consecutive SYNCs. Hmmm.
 
     ir_tx_start( 1 << face , US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_1_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  );
 

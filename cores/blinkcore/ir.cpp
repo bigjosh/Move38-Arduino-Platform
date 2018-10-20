@@ -387,7 +387,7 @@ static volatile uint8_t sendpulse_bitmask;      // Which IR LEDs to send on
 ISR(TIMER1_COMPA_vect) {
 
     #ifdef TX_DEBUG
-        if (sendpulse_bitmask&0x01) SP_PIN_A_SET_1();
+        if (sendpulse_bitmask & _BV(IR_RX_DEBUG_LED) ) SP_PIN_A_SET_1(); 
     #endif
 
     ir_tx_pulse_internal( sendpulse_bitmask );     // Flash
