@@ -23,8 +23,6 @@ typedef uint32_t millis_t;
 // loopstate is passed in and out of the user program on each pass
 // through the main event loop
 
-
-
 // I know this is ugly, but keeping them in a single byte lets us pass them by value
 // and also lets us OR them together. Efficiency in the updater trumps since it
 // runs every millisecond.
@@ -57,11 +55,6 @@ struct ir_data_buffer_t {
 
 };
 
-// Sends immediately. Blocks until send is complete.
-// Higher level should provide some collision control.
-
-void ir_send_userdata( uint8_t face, const uint8_t *data , uint8_t len );
-
 
 struct loopstate_in_t {
 
@@ -87,10 +80,19 @@ struct loopstate_out_t {
 
 };
 
+// Sends immediately. Blocks until send is complete.
+// Higher level should provide some collision control.
+// No error checking except the intrinsic robustnesses of the framing and the header byte.
+// Higher level can decide if it is worth adding more
+
+void ir_send_userdata( uint8_t face, const uint8_t *data , uint8_t len );
+
 // The state record we are sending to userland
 extern loopstate_in_t loopstate_in;
 
 // These are provided by blinklib
+// Will soon be jump vectors
 
-//void setupEntry();
+void setupEntry();
+
 void loopEntry( loopstate_in_t const *loopstate_in , loopstate_out_t *loopstate_out);

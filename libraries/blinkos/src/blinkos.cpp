@@ -363,7 +363,6 @@ void run(void) {
 
         if (sleepTimer.isExpired()) {
             sleep();
-
         }
 
 
