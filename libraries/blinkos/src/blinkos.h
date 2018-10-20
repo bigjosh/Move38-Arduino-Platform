@@ -23,6 +23,7 @@ typedef uint32_t millis_t;
 // loopstate is passed in and out of the user program on each pass
 // through the main event loop
 
+void toggle_SP_pin_A();
 
 
 // I know this is ugly, but keeping them in a single byte lets us pass them by value

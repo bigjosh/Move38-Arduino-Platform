@@ -69,7 +69,9 @@
 // hit it and discharged the capacitance, so the pin goes from high to low. We initialize each pin at high, and we charge it
 // back to high everything it drops low, so we should in practice only ever see high to low transitions here.
 
-// TOOD: We will use this for waking from nap.
+// Normally we leave this ISR off so only used for debugging. The timer ISR actually checks the IR LEDs at regular intervals. 
+// This is better than interrupting on change since bright light could cause lots of ISRs and lock us out. 
+
 
 ISR(IR_ISR,ISR_NAKED) {
 
@@ -389,7 +391,6 @@ ISR(TIMER1_COMPA_vect) {
     #endif
 
     ir_tx_pulse_internal( sendpulse_bitmask );     // Flash
-//    ir_tx_pulse_internal( IR_ALL_BITS );     // Flash
            
     #ifdef TX_DEBUG
         SP_PIN_A_SET_0();

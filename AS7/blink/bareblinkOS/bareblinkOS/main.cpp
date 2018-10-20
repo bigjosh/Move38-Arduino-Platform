@@ -9,17 +9,22 @@
 #include "blinkos.h"
 
 
+#include <string.h>     // memcmp()
+
+
 void setupEntry() {
 
     // Blank
 
 };
 
-#define COOKIE_BYTE 0b10110111             // Non repeating bit pattern to detect errors. 
+//uint8_t *cookie = (uint8_t *) "Josh is a *very* nice, good guy.";      // 32 bytes long (includes trailing null)
+//#define COOKIE_SIZE 32
 
-uint8_t cookie_byte_buffer = COOKIE_BYTE;         // Must be allocated in RAM so we can pass a pointer to it to senddata()
+uint8_t cookie[] = {0b10110111};                                         // Non repeating bit pattern to detect errors. 
+#define COOKIE_SIZE 1
 
-#define TX_BLIND_SEND_TIME_MS      250     // How often to do a blind send when no RX has happened recently to trigger ping pong
+#define TX_PROBE_TIME_MS           250     // How often to do a blind send when no RX has happened recently to trigger ping pong
 
 #define MISSED_RX_SHOW_TIME_MS     500     // How long to show blue when a RX timeout happens
 #define RX_TIMEOUT_RX              200     // If we do not see a message in this long, then show a timeout
@@ -63,7 +68,7 @@ void loopEntry( loopstate_in_t const *loopstate_in , loopstate_out_t *loopstate_
 
         if ( loopstate_in->ir_data_buffers[f].ready_flag ) {
 
-            if ( (loopstate_in->ir_data_buffers[f].len == 1 ) &&  loopstate_in->ir_data_buffers[f].data[0] == COOKIE_BYTE ) {
+            if ( (loopstate_in->ir_data_buffers[f].len == COOKIE_SIZE ) &&  !memcmp( loopstate_in->ir_data_buffers[f].data , cookie , COOKIE_SIZE) ) {
                     
                 // Got a good packet!
                     
@@ -98,6 +103,8 @@ void loopEntry( loopstate_in_t const *loopstate_in , loopstate_out_t *loopstate_
                 loopstate_out->colors[f] = pixelColor_t( 0 , 20, 0 , 1 );
                 
             } else if ( elapsed_ms < 500 ) {
+                
+                //toggle_SP_pin_A();
 
                 // More then 200ms since last good RX, so show red for 300ms
                 loopstate_out->colors[f] = pixelColor_t( 0 , 0, 20 , 1 );
@@ -117,12 +124,15 @@ void loopEntry( loopstate_in_t const *loopstate_in , loopstate_out_t *loopstate_
             
             // Time to send on this face
             
-            ir_send_userdata( f , &cookie_byte_buffer , 1 );
+            ir_send_userdata( f , cookie , COOKIE_SIZE );
             
             // Schedule a blind send in case we don't see a ping soon
-            faces[f].next_tx_ms = now_ms + TX_BLIND_SEND_TIME_MS;
+            faces[f].next_tx_ms = now_ms + TX_PROBE_TIME_MS;
         
         }    // for(f)    
+
+       //ir_send_userdata( 4 , long_buffer ,  sizeof( long_buffer ) );
+       //loopstate_out->colors[4] = pixelColor_t( 20 , 20, 0 , 1 );
                     
     }    
     

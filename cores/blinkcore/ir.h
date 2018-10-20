@@ -28,6 +28,8 @@
 //
 
 #define IR_RX_DEBUG
+#define IR_RX_DEBUG_LED 4       // Which IR LED should we watch? (0-5)
+                                // 4 is nice because you can monitor the LED anode on the square pin of the ISP port
 
 
 // If defined, we keep some extra error counters for diagnostics. 

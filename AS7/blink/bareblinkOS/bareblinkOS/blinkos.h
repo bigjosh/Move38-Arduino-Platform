@@ -27,6 +27,8 @@ typedef uint32_t millis_t;
 // and also lets us OR them together. Efficiency in the updater trumps since it
 // runs every millisecond.
 
+void toggle_SP_pin_A();
+
 #define BUTTON_BITFLAG_PRESSED          0b00000001
 #define BUTTON_BITFLAG_LONGPRESSED      0b00000010
 #define BUTTON_BITFLAG_RELEASED         0b00000100
