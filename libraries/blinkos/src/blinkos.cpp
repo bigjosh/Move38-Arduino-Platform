@@ -361,7 +361,6 @@ void run(void) {
             // ourselves in this very loop
 
             if ( loopstate_in.ir_data_buffers[f].ready_flag) {
-
                 irDataMarkPacketRead( f ) ;
                 loopstate_in.ir_data_buffers[f].ready_flag =0;
 

@@ -442,6 +442,7 @@ inline uint8_t irDataRXinProgress( uint8_t led ) {
     // but this has a chance that it could lock up in very bright ambient light when we were just triggering nonstop.
 }
 
+
 // Is there a received data ready to be read on this face?
 
 bool irDataIsPacketReady( uint8_t led ) {

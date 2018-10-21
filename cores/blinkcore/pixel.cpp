@@ -742,10 +742,6 @@ static const uint8_t PROGMEM gamma8B[32] = {
 
 void pixel_bufferedSetPixel( uint8_t pixel, pixelColor_t newColor) {
 
-    // TODO: OMG, this could be so much more efficient by reducing the size of the gamma table
-    // to 32 entries per color and having direct mapping to raw values.
-    // We will do that when we normalize the colors.
-
     rawpixel_t *rawpixel = &(bufferedRawPixelSet->rawpixels[pixel]);
 
     rawpixel->rawValueR= pgm_read_byte(&gamma8R[newColor.r]);

@@ -32,15 +32,15 @@
     <EraseKey />
     <AsfFrameworkConfig>
       <framework-data xmlns="">
-  <options />
-  <configurations />
-  <files />
-  <documentation help="" />
-  <offline-documentation help="" />
-  <dependencies>
-    <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.40.0" />
-  </dependencies>
-</framework-data>
+        <options />
+        <configurations />
+        <files />
+        <documentation help="" />
+        <offline-documentation help="" />
+        <dependencies>
+          <content-extension eid="atmel.asf" uuidref="Atmel.ASF" version="3.40.0" />
+        </dependencies>
+      </framework-data>
     </AsfFrameworkConfig>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
@@ -172,17 +172,13 @@
       <SubType>compile</SubType>
       <Link>blinklib.h</Link>
     </Compile>
-    <Compile Include="..\..\..\libraries\blinklib\src\Print.cpp">
+    <Compile Include="..\..\..\libraries\blinklib\src\blinkos.h">
       <SubType>compile</SubType>
-      <Link>Print.cpp</Link>
+      <Link>blinkos.h</Link>
     </Compile>
-    <Compile Include="..\..\..\libraries\blinklib\src\Print.h">
+    <Compile Include="..\..\..\libraries\blinklib\src\pixelcolor.h">
       <SubType>compile</SubType>
-      <Link>Print.h</Link>
-    </Compile>
-    <Compile Include="..\..\..\libraries\blinklib\src\Serial.cpp">
-      <SubType>compile</SubType>
-      <Link>Serial.cpp</Link>
+      <Link>pixelcolor.h</Link>
     </Compile>
     <Compile Include="..\..\..\libraries\blinklib\src\Serial.h">
       <SubType>compile</SubType>
@@ -193,6 +189,11 @@
     <ProjectReference Include="..\..\blinkos\blinkos\blinkos.cppproj">
       <Name>blinkos</Name>
       <Project>{75c30a81-edd6-4de5-8d7e-d379aa89f81a}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\blinkcore\blinkcore.cppproj">
+      <Name>blinkcore</Name>
+      <Project>{dce6c7e3-ee26-4d79-826b-08594b9ad897}</Project>
       <Private>True</Private>
     </ProjectReference>
   </ItemGroup>
