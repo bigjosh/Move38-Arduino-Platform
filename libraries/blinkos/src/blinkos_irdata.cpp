@@ -506,7 +506,9 @@ void irDataMarkPacketRead( uint8_t led ) {
 // Note that you must not dilly dally between begin, sending bytes, and ending. You don't have much time to think
 // so get everything set up beforehand.
 
-void irSendBegin( uint8_t face ) {
+// Returns 1 if the send was successfully started, 0 if there was an RX in progroess (you should then try again)
+
+uint8_t irSendBegin( uint8_t face ) {
 
     // Start things up, send initial pulses
     // We send two to cover the case where an ambient trigger happens *just* before the sync pulse
@@ -520,14 +522,15 @@ void irSendBegin( uint8_t face ) {
 
     // TODO: We need a timeout here or else a continuous stream of SYNCs could lock us out here...
 
-    while (irDataRXinProgress(face));        // Wait for coast to be clear - which is when there have been more than 6 time windows with no trigger
-                                             // Note that this is self terminating since either will will over run the buffer if we get too many good bits,
-                                             // We will see an error.
-                                             // I guess the only time this can lock up is if we see consecutive SYNCs. Hmmm.
-
+    if (irDataRXinProgress(face)) {
+        return 0;
+    }                                        
+    
     ir_tx_start( 1 << face , US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_1_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  );
 
     ir_tx_sendpulse( US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_S_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  ) ;
+    
+    return 1;
 
 }
 

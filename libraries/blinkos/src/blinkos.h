@@ -60,8 +60,9 @@ struct ir_data_buffer_t {
 
 // Sends immediately. Blocks until send is complete.
 // Higher level should provide some collision control.
+// Returns 0 if it was not able to send because there was already an RX in progress on this face
 
-void ir_send_userdata( uint8_t face, const uint8_t *data , uint8_t len );
+uint8_t ir_send_userdata( uint8_t face, const uint8_t *data , uint8_t len );
 
 struct loopstate_in_t {
 

@@ -203,5 +203,6 @@ void loop() {
   
  //  setValueSentOnAllFaces( encode( myState ) );
   setValueSentOnAllFaces( s );
-
+  
+ 
 }

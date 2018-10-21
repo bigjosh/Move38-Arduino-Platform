@@ -193,7 +193,7 @@
   <avrgcccpp.compiler.optimization.DebugLevel>Default (-g2)</avrgcccpp.compiler.optimization.DebugLevel>
   <avrgcccpp.compiler.warnings.AllWarnings>True</avrgcccpp.compiler.warnings.AllWarnings>
   <avrgcccpp.compiler.warnings.Undefined>True</avrgcccpp.compiler.warnings.Undefined>
-  <avrgcccpp.compiler.miscellaneous.OtherFlags>-include Arduino.h</avrgcccpp.compiler.miscellaneous.OtherFlags>
+  <avrgcccpp.compiler.miscellaneous.OtherFlags>-include Arduino.h -include blinklib.h</avrgcccpp.compiler.miscellaneous.OtherFlags>
   <avrgcccpp.linker.libraries.Libraries>
     <ListValues>
       <Value>libm</Value>
@@ -217,6 +217,16 @@
     <ProjectReference Include="..\..\blinklib\blinklib\blinklib.cppproj">
       <Name>blinklib</Name>
       <Project>{1d617d28-32b2-45ab-ba7f-ee884b221598}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\..\blinkos\blinkos\blinkos.cppproj">
+      <Name>blinkos</Name>
+      <Project>{75c30a81-edd6-4de5-8d7e-d379aa89f81a}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\blinkcore\blinkcore.cppproj">
+      <Name>blinkcore</Name>
+      <Project>{dce6c7e3-ee26-4d79-826b-08594b9ad897}</Project>
       <Private>True</Private>
     </ProjectReference>
   </ItemGroup>

@@ -43,7 +43,9 @@ void irDataMarkPacketRead( uint8_t led );
  // Note that you must not dilly dally between begin, sending bytes, and ending. You don't have much time to think
  // so get everything set up beforehand.
 
- void irSendBegin( uint8_t face );
+ // Returns 1 if the send was successfully started, 0 if there was an RX in progroess (you should then try again)
+
+ uint8_t irSendBegin( uint8_t face );
 
  void irSendByte( uint8_t b );
 

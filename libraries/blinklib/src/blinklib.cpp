@@ -39,10 +39,7 @@
 
 // Keep these handy 
 
-loopstate_in_t const *m_loopstate_in; 
-
 loopstate_out_t *m_loopstate_out;
-
 
 // This is a parity check that I came up with that I think is robust to close together bitflips and
 // also efficient to calculate. 
@@ -205,6 +202,10 @@ static face_t faces[FACE_COUNT];
 // Grab once from loopstate
 millis_t now;
 
+unsigned long millis() {
+    return now;
+}    
+
 static void updateIRFaces( const ir_data_buffer_t *ir_data_buffers ) {
     
     //  Use these pointers to step though the arrays   
@@ -255,14 +256,18 @@ static void updateIRFaces( const ir_data_buffer_t *ir_data_buffers ) {
 
             uint8_t data = parityEncode( face->outValue );
 
-            ir_send_userdata( f , &data  , sizeof(data) );
+            if (ir_send_userdata( f , &data  , sizeof(data) ) ) {
 
-            // Here we set a timeout to keep periodically probing on this face, but
-            // if there is a neighbor, they will send back to us as soon as they get what we
-            // just transmitted, which will make us immediately send again. So the only case
-            // when this probe timeout will happen is if there is no neighbor there.
+                // Here we set a timeout to keep periodically probing on this face, but
+                // if there is a neighbor, they will send back to us as soon as they get what we
+                // just transmitted, which will make us immediately send again. So the only case
+                // when this probe timeout will happen is if there is no neighbor there.
+                
+                // If ir_send_userdata() returns 0, then we could not send becuase there was an RX in progress on this face.
+                // Becuase we do not reset the sentTime in that case, we will automatically try again next pass.
             
-            face->sendTime = now + TX_PROBE_TIME_MS;
+                face->sendTime = now + TX_PROBE_TIME_MS;
+            }            
             
         } // if ( face->sendTime <= now ) 
 
@@ -410,6 +415,46 @@ bool buttonLongPressed(void) {
     grabandclearbuttonflag( BUTTON_BITFLAG_LONGPRESSED );
 }    
 
+
+// --- Pixel functions
+
+// Make a new color in the HSB colorspace. All values are 0-255.
+
+Color makeColorHSB( byte hue, byte saturation, byte brightness );
+
+// Change the tile to the specified color
+// NOTE: all color changes are double buffered
+// and the display is updated when loop() returns
+
+
+// Set the pixel on the specified face (0-5) to the specified color
+// NOTE: all color changes are double buffered
+// and the display is updated when loop() returns
+
+void setColorOnFace( Color newColor , byte face ) {
+ 
+    m_loopstate_out->colors[face] =  pixelColor_t( GET_5BIT_R( newColor ) , GET_5BIT_G( newColor) , GET_5BIT_B( newColor ) , 1 );   
+    
+}    
+
+
+void setColor( Color newColor) {
+    
+    FOREACH_FACE(f) {
+        setColorOnFace( newColor , f );
+    }        
+    
+}
+
+
+// DEPREICATED: Use setColorOnFace()
+void setFaceColor(  byte face, Color newColor ) {
+    
+    setColorOnFace( newColor , face );
+    
+}    
+
+
 void setupEntry() {
         
     // Call up to the userland code
@@ -418,13 +463,14 @@ void setupEntry() {
 }    
 
 void loopEntry( loopstate_in_t const *loopstate_in , loopstate_out_t *loopstate_out) {
-
+    
+    m_loopstate_out = loopstate_out;            // Save for use by the pixel setting functions above
     
     now = loopstate_in->millis;  
     
     updateIRFaces( loopstate_in->ir_data_buffers );
     
-    // Capture the incoming button state. We OR in the flags becuase in blinklib model we clear the flags only when read.
+    // Capture the incoming button state. We OR in the flags because in blinklib model we clear the flags only when read.
     buttonstate.bitflags |= loopstate_in->buttonstate.bitflags;
     buttonstate.clickcount = loopstate_in->buttonstate.clickcount;
     buttonstate.down = loopstate_in->buttonstate.down;
@@ -432,6 +478,6 @@ void loopEntry( loopstate_in_t const *loopstate_in , loopstate_out_t *loopstate_
     // Call the user program
 
     loop();
-    
+        
 }    
 

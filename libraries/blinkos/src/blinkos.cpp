@@ -234,29 +234,36 @@ void processPendingIRPackets() {
 
 }
 
-// This sends a user data packet. No error checked so you are responsible to do it yourself
+// This sends a user data packet. No error checking so you are responsible to do it yourself
+// Returns 0 if it was not able to send because there was already an RX in progress on this face
 
-void ir_send_userdata( uint8_t face, const uint8_t *data , uint8_t len ) {
+uint8_t ir_send_userdata( uint8_t face, const uint8_t *data , uint8_t len ) {
 
     // Ok, now we are ready to start sending!
 
-    irSendBegin( face );
+    if (irSendBegin( face )) {
 
-    irSendByte( IR_PACKET_HEADER_USERDATA );
+        irSendByte( IR_PACKET_HEADER_USERDATA );
 
-    while (len) {
+        while (len) {
 
-        irSendByte( *data++ );
-        len--;
+            irSendByte( *data++ );
+            len--;
 
-    }
+        }
 
-    irSendComplete();
+        irSendComplete();
 
+        return 1;
+    } 
+    
+    return 0;
+               
 }
 
+// Returns 0 if could not send becuase RX already in progress on this face (try again later)
 
-void sendUserDataCRC( uint8_t face, const uint8_t *data , uint8_t len ) {
+uint8_t sendUserDataCRC( uint8_t face, const uint8_t *data , uint8_t len ) {
     
     // We figure out the CRC first so there are no undue delays while transmitting the data
 
@@ -270,19 +277,25 @@ void sendUserDataCRC( uint8_t face, const uint8_t *data , uint8_t len ) {
 
     // Ok, now we are ready to start sending!
 
-    irSendBegin( face );
+    if (irSendBegin( face ) ) {
 
-    irSendByte( IR_PACKET_HEADER_USERDATA );
+        irSendByte( IR_PACKET_HEADER_USERDATA );
 
-    while (len--) {
+        while (len--) {
 
-        irSendByte( *data++ );
+            irSendByte( *data++ );
 
+        }
+
+        irSendByte( crc );
+
+        irSendComplete();
+        
+        return 1;
+        
     }
-
-    irSendByte( crc );
-
-    irSendComplete();
+    
+    return 0;        
 
 }
 

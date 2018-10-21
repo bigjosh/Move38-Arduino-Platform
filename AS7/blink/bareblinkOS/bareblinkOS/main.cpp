@@ -124,11 +124,11 @@ void loopEntry( loopstate_in_t const *loopstate_in , loopstate_out_t *loopstate_
             
             // Time to send on this face
             
-            ir_send_userdata( f , cookie , COOKIE_SIZE );
+            if (ir_send_userdata( f , cookie , COOKIE_SIZE )) {
             
-            // Schedule a blind send in case we don't see a ping soon
-            faces[f].next_tx_ms = now_ms + TX_PROBE_TIME_MS;
-        
+                // Schedule a blind send in case we don't see a ping soon
+                faces[f].next_tx_ms = now_ms + TX_PROBE_TIME_MS;
+            }            
         }    // for(f)    
 
                     
