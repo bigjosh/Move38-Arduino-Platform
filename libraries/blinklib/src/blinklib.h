@@ -1,5 +1,5 @@
 /*
- * blinkstate.h
+ * blkinklib.h
  *
  * This defines a statefull view of the blinks tile interactions with neighbors.
  *

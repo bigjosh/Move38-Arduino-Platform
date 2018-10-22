@@ -88,6 +88,8 @@
 	// manual #include in their sketches would be to throw all the library code into one giant
 	// directory... and that is even uglier, right?
 
+	#include "blinkos.h"
 	#include "blinklib.h"
-
+	
+	
 #endif
