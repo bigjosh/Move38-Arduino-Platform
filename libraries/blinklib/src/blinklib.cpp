@@ -27,7 +27,7 @@
 
 #include "blinklib.h"
 
-#include "blinkos.h"
+#include "blinkos-stub.h"
 
 
 #define TX_PROBE_TIME_MS           150     // How often to do a blind send when no RX has happened recently to trigger ping pong
