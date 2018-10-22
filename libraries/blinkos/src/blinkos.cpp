@@ -54,7 +54,7 @@ loopstate_out_t loopstate_out;
 #define SLEEP_TIMEOUT_MS ( (millis_t) SLEEP_TIMEOUT_SECONDS  * MILLIS_PER_SECOND) // Must cast up because otherwise will overflow
 
 // When we should fall sleep from inactivity
-Timer sleepTimer;
+OS_Timer sleepTimer;
 
 // Turn off everything and goto to sleep
 

@@ -6,7 +6,7 @@
 
 extern millis_t millis_snapshot;
 
-class Timer {
+class OS_Timer {
 
     private:
 
@@ -14,7 +14,7 @@ class Timer {
 
     public:
 
-        Timer() : m_expireTime(0) {};		// Timers come into this world pre-expired.
+        OS_Timer() : m_expireTime(0) {};		// Timers come into this world pre-expired.
 
         bool isExpired();
 
@@ -30,15 +30,15 @@ class Timer {
 };
 
 
-inline bool Timer::isExpired() {
+inline bool OS_Timer::isExpired() {
     return millis_snapshot >= m_expireTime;
 }
 
-inline void Timer::set( millis_t ms ) {
+inline void OS_Timer::set( millis_t ms ) {
     m_expireTime= millis_snapshot+ms;
 }
 
-inline millis_t Timer::getRemaining() {
+inline millis_t OS_Timer::getRemaining() {
 
     millis_t timeRemaining;
 
@@ -56,7 +56,7 @@ inline millis_t Timer::getRemaining() {
 
 }
 
-inline void Timer::add( uint16_t ms ) {
+inline void OS_Timer::add( uint16_t ms ) {
 
     // Check to avoid overflow
 
@@ -73,7 +73,7 @@ inline void Timer::add( uint16_t ms ) {
     }
 }
 
-inline void Timer::never(void) {
+inline void OS_Timer::never(void) {
     m_expireTime=NEVER;
 }
 

@@ -204,6 +204,10 @@
       <SubType>compile</SubType>
       <Link>sp.h</Link>
     </Compile>
+    <Compile Include="..\..\..\libraries\blinklib\src\Timer.cpp">
+      <SubType>compile</SubType>
+      <Link>Timer.cpp</Link>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\blinkos\blinkos\blinkos.cppproj">
