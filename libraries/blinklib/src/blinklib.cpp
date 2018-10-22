@@ -217,9 +217,7 @@ static void RX_IRFaces( const ir_data_buffer_t *ir_data_buffers ) {
             // Check for anything new coming in...
 
         if ( ir_data_buffer->ready_flag ) {
-                        
-            PORTE |= _BV(2);            
-            
+
             // Got something, so we know there is someone out there
             // TODO: Should we require the received packet to pass error checks?
             face->expireTime = now + RX_EXPIRE_TIME_MS;
@@ -253,9 +251,6 @@ static void RX_IRFaces( const ir_data_buffer_t *ir_data_buffers ) {
             // If we don't do this, then we might miss the response to our ping
 
             ir_mark_packet_read( f ) ;
-            
-            PORTE &= ~_BV(2);
-
 
         }  // if ( ir_data_buffer->ready_flag )
 
@@ -438,6 +433,151 @@ bool buttonLongPressed(void) {
     return grabandclearbuttonflag( BUTTON_BITFLAG_LONGPRESSED );
 }
 
+// --- Utility functions
+
+Color makeColorHSB( uint8_t hue, uint8_t saturation, uint8_t brightness ) {
+
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+
+    if (saturation == 0)
+    {
+        // achromatic (grey)
+        r =g = b= brightness;
+    }
+    else
+    {
+        unsigned int scaledHue = (hue * 6);
+        unsigned int sector = scaledHue >> 8; // sector 0 to 5 around the color wheel
+        unsigned int offsetInSector = scaledHue - (sector << 8);  // position within the sector
+        unsigned int p = (brightness * ( 255 - saturation )) >> 8;
+        unsigned int q = (brightness * ( 255 - ((saturation * offsetInSector) >> 8) )) >> 8;
+        unsigned int t = (brightness * ( 255 - ((saturation * ( 255 - offsetInSector )) >> 8) )) >> 8;
+
+        switch( sector ) {
+            case 0:
+            r = brightness;
+            g = t;
+            b = p;
+            break;
+            case 1:
+            r = q;
+            g = brightness;
+            b = p;
+            break;
+            case 2:
+            r = p;
+            g = brightness;
+            b = t;
+            break;
+            case 3:
+            r = p;
+            g = q;
+            b = brightness;
+            break;
+            case 4:
+            r = t;
+            g = p;
+            b = brightness;
+            break;
+            default:    // case 5:
+            r = brightness;
+            g = p;
+            b = q;
+            break;
+        }
+    }
+
+    return( Color( r , g  , b ) );
+}
+
+// OMG, the Ardiuno rand() function is just a mod! We at least want a uniform distibution.
+
+// Here we implement the SimpleRNG pseudo-random number generator based on this code...
+// https://www.johndcook.com/SimpleRNG.cpp
+
+#define GETNEXTRANDUINT_MAX ( (word) -1 )
+
+static word GetNextRandUint(void) {
+
+    // These values are not magical, just the default values Marsaglia used.
+    // Any unit should work.
+
+    // We make them local static so that we only consume the storage if the random()
+    // functions are actually ever called.
+
+    static unsigned long u = 521288629UL;
+    static unsigned long v = 362436069UL;
+
+    v = 36969*(v & 65535) + (v >> 16);
+    u = 18000*(u & 65535) + (u >> 16);
+
+    return (v << 16) + u;
+
+}
+
+// return a random number between 0 and limit inclusive.
+// TODO: Use entropy from the button or decaying IR LEDs
+// https://stackoverflow.com/a/2999130/3152071
+
+uint16_t rand( uint16_t limit ) {
+
+    word divisor = GETNEXTRANDUINT_MAX/(limit+1);
+    word retval;
+
+    do {
+        retval = GetNextRandUint() / divisor;
+    } while (retval > limit);
+
+    return retval;
+}
+
+
+// Returns the device's unique 8-byte serial number
+// TODO: This should this be in the core for portability with an extra "AVR" byte at the front.
+
+// 0xF0 points to the 1st of 8 bytes of serial number data
+// As per "13.6.8.1. SNOBRx - Serial Number Byte 8 to 0"
+
+
+const byte * const serialno_addr = ( const byte *)   0xF0;
+
+
+// Read the unique serial number for this blink tile
+// There are 9 bytes in all, so n can be 0-8
+
+
+byte getSerialNumberByte( byte n ) {
+
+    if (n>8) return(0);
+
+    return serialno_addr[n];
+
+}
+
+// We keep a local copy since blinkos clears on each call
+// but blinklib model is latching
+
+uint8_t local_woke_flag;
+
+// Returns 1 if we have slept and woken since last time we checked
+// Best to check as last test at the end of loop() so you can
+// avoid intermediate display upon waking.
+
+uint8_t hasWoken(void) {
+
+    if (local_woke_flag) {
+
+        local_woke_flag =0;
+        return 1;
+
+    }
+
+
+    return 0;
+
+}
 
 // --- Pixel functions
 
@@ -497,6 +637,9 @@ void loopEntry( loopstate_in_t const *loopstate_in , loopstate_out_t *loopstate_
     buttonstate.bitflags |= loopstate_in->buttonstate.bitflags;
     buttonstate.clickcount = loopstate_in->buttonstate.clickcount;
     buttonstate.down = loopstate_in->buttonstate.down;
+
+    // Latch woke_flag
+    local_woke_flag |= loopstate_in->woke_flag;
 
     // Call the user program
 
