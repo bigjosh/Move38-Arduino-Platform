@@ -14,7 +14,7 @@
 #include "utils.h"
 #include "ir.h"
 #include "pixel.h"
-#include "timer.h"
+#include "timers.h"
 #include "button.h"
 #include "adc.h"
 #include "power.h"

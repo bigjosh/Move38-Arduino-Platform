@@ -38,7 +38,7 @@ loopstate_in_t loopstate_in;
 loopstate_out_t loopstate_out;
 
 #include "pixel.h"
-#include "timer.h"
+#include "timers.h"
 #include "utils.h"
 #include "power.h"
 #include "button.h"

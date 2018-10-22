@@ -48,7 +48,7 @@
 
 #include "utils.h"
 
-#include "timer.h"      // We piggyback actual timer callback in pixel since we are using that clock for PWM
+#include "timers.h"      // We piggyback actual timer callback in pixel since we are using that clock for PWM
 
 #include "callbacks.h"      // External callbacks to the next higher layer
 

@@ -41,7 +41,7 @@
 
 #include "ir.h"
 #include "utils.h"
-#include "timer.h"          // get US_TO_CYCLES()
+#include "timers.h"          // get US_TO_CYCLES()
 
 #if defined(IR_TX_DEBUG) || defined(IR_RX_DEBUG)
     #include "debug.h"                                     // We use the SP port for deugging Stuff
