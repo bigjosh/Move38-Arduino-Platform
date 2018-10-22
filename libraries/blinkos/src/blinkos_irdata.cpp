@@ -352,11 +352,19 @@ volatile uint8_t most_recent_ir_test;
                         ptr->byteBuffer = 0b10000000;            // prime buffer for next byte to come in. Remember this 1 will fall off the bottom to indicate a full byte
                         ptr->packetBufferLen=0;                  // Ready to start filling the packet buffer with new packet
 
-                    }
 
-                    #ifdef IR_RX_DEBUG
-                        if (bitwalker==_BV(IR_RX_DEBUG_LED)) SP_SERIAL_TX_NOW('Y');      // sYnc
-                    #endif
+                        #ifdef IR_RX_DEBUG
+                            if (bitwalker==_BV(IR_RX_DEBUG_LED)) SP_SERIAL_TX_NOW('Y');      // sYnc
+                        #endif
+
+                    } else {
+
+                        #ifdef IR_RX_DEBUG
+                            if (bitwalker==_BV(IR_RX_DEBUG_LED)) SP_SERIAL_TX_NOW('o');      // sYnc ignored becuase of buffer overflow
+                        #endif
+                       
+                    }                        
+
 
                 }
 
@@ -426,20 +434,16 @@ inline uint8_t irDataRXinProgress( uint8_t led ) {
 
     ir_rx_state_t *ptr = ir_rx_states + led;
 
-    return ptr->byteBuffer;     // If bytebuffer != 0 then we are currently receiving valid data into the buffer
-
-    // A more conservative test would be...
-
-    /*
-        if (ptr->windowsSinceLastTrigger <= 6 ) {
-            return 1;
-        } else {
-            return 0;
-        }
-    */
-
-    //... since it would even stop us from sending if we were in the middle of a leading sync pulse,
-    // but this has a chance that it could lock up in very bright ambient light when we were just triggering nonstop.
+    // Anytime we are actively receiving a message, all value windows are less than 7
+    // This will even hold iff in the case where we just triggered and are still waiting to 
+    // see if it was a valid pramble. 
+ 
+    if (ptr->windowsSinceLastTrigger <= 6 ) {
+        return 1;
+    } else {
+        return 0;
+    }
+  
 }
 
 

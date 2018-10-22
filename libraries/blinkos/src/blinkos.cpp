@@ -126,7 +126,7 @@ void timer_256us_callback_sei(void) {
 
     if ( step_us>= 1000 ) {             // 1000us in a 1ms
         timer_1000us_callback_sei();
-        step_us-=1000;
+        step_us-=1000;                  // Will never underflow because we checked that it is >1000
     }
 }
 
@@ -213,8 +213,13 @@ void processPendingIRPackets() {
                 // Userland data
                 loopstate_in.ir_data_buffers[f].len=  packetLen-1;      // Account for the header byte 
                 loopstate_in.ir_data_buffers[f].ready_flag = 1;
-                // Note that these will get marked read after the loop call
-                // so that the userland can read from the buffer without worring about it getting
+                
+                // Note that these will get cleared after the loop call
+                // We need this extra ready flag on top of the one in the irdata system because we share the
+                // input buffer between system uses and userland, and so we only tell userland about packets
+                // meant for them - and we hide the header byte from them too. 
+                // this is messy, but these buffers are the biggest thing in RAM. 
+                // so that the userland can read from the buffer without worrying about it getting
                 // overwritten
 
             } else {
@@ -260,6 +265,13 @@ uint8_t ir_send_userdata( uint8_t face, const uint8_t *data , uint8_t len ) {
     return 0;
                
 }
+
+void ir_mark_packet_read( uint8_t face ) {
+    
+    irDataMarkPacketRead( face ); 
+    loopstate_in.ir_data_buffers[face].ready_flag=0;
+    
+}    
 
 // Returns 0 if could not send becuase RX already in progress on this face (try again later)
 
@@ -319,7 +331,6 @@ void run(void) {
     }
     
 
-
     ir_enable();
     
     irDataInit();       // Really only called to init IR_RX_DEBUG
@@ -344,7 +355,7 @@ void run(void) {
 
         processPendingIRPackets();          // Sets the irdatabuffers in loopstate_in. Also processes any received IR blinkOS commands
                                             // I wish this didn't directly access the loopstate_in buffers, but the abstraction would
-                                            // cost lots of unnecessary coping
+                                            // cost lots of unnecessary memory and coping
 
         grabAndClearButtonState( loopstate_in.buttonstate );     // Make a local copy of the instant button state to pass to userland. Also clears the flags for next time.
 
@@ -372,22 +383,27 @@ void run(void) {
             // Go though and mark any of the buffers we just passed into to the app as clear
             // Note that we don't have to worry about any races here because we set the ready flag
             // ourselves in this very loop
-
-            if ( loopstate_in.ir_data_buffers[f].ready_flag) {
+            
+            // We have to do this or else an errant user program could leave a buffer full forever
+            // and then we would never see any incoming control messages.
+            
+            if ( loopstate_in.ir_data_buffers[f].ready_flag ) {
+            
                 irDataMarkPacketRead( f ) ;
+            
+                // Also clear out the ready flag shown to userland so they don't keep seeing the same packet over and over again. 
+
                 loopstate_in.ir_data_buffers[f].ready_flag =0;
-
-            }
-
+                
+            }                
         }
-
 
         if (sleepTimer.isExpired()) {
             sleep();
         }
 
 
-        // TODO: Possible sleep util next timer tick?
+        // TODO: Possible sleep until next timer tick?
     }
 
 }

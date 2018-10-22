@@ -57,7 +57,12 @@ struct ir_data_buffer_t {
 
 };
 
+// Mark a packet as consumed so the buffer can receive the next one.
+// Done automatically each time loopEntry() returns, but this can let you free up the packet sooner
+// for better throughput
 
+void ir_mark_packet_read( uint8_t face );
+    
 // Sends immediately. Blocks until send is complete.
 // Higher level should provide some collision control.
 // Returns 0 if it was not able to send because there was already an RX in progress on this face

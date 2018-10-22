@@ -53,10 +53,9 @@ struct ir_data_buffer_t {
 
     const uint8_t *data;
     uint8_t len;
-    uint8_t ready_flag;              // 1 if new packet received
+    uint8_t ready_flag;              // 1 if new packet received. Call markread_data_buffer();
 
 };
-
 
 // Sends immediately. Blocks until send is complete.
 // Higher level should provide some collision control.
@@ -79,6 +78,12 @@ struct loopstate_in_t {
 
 };
 
+// Mark a packet as consumed so the buffer can receive the next one. 
+// Done automatically each time loopEntry() returns, but this can let you free up the packet sooner
+// for better thoughput 
+
+void irDataMarkPacketRead( uint8_t face ) ;
+
 struct loopstate_out_t {
 
     pixelColor_t colors[PIXEL_FACE_COUNT];  // Current RGB colors of all faces. 5 bits each.
@@ -88,8 +93,6 @@ struct loopstate_out_t {
 
 };
 
-// The state record we are sending to userland
-extern loopstate_in_t loopstate_in;
 
 // These are provided by blinklib
 

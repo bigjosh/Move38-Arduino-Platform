@@ -2,7 +2,7 @@
  *
  *  This library lives in userland and acts as a shim to th blinkos layer
  *
- *  This view tailored to be idiomatic Arduino-y. There are probably better views of the interface if you are not an Arduinohead. 
+ *  This view tailored to be idiomatic Arduino-y. There are probably better views of the interface if you are not an Arduinohead.
  *
  * In this view, each tile has a "state" that is represented by a number between 1 and 127.
  * This state value is continuously broadcast on all of its faces.
@@ -11,8 +11,8 @@
  * You supply setup() and loop().
  *
  * While in loop(), the world is frozen. All changes you make to the pixels and to data on the faces
- * is buffered until loop returns. 
- * 
+ * is buffered until loop returns.
+ *
  */
 
 #include <limits.h>
@@ -33,23 +33,23 @@
 #define TX_PROBE_TIME_MS           150     // How often to do a blind send when no RX has happened recently to trigger ping pong
                                            // Nice to have probe time shorter than expire time so you have to miss 2 messages
                                            // before the face will expire
-    
+
 #define RX_EXPIRE_TIME_MS         200      // If we do not see a message in this long, then show that face as expired
 
 
-// Keep these handy 
+// Keep these handy
 
 loopstate_out_t *m_loopstate_out;
 
 // This is a parity check that I came up with that I think is robust to close together bitflips and
-// also efficient to calculate. 
+// also efficient to calculate.
 // We keep the 6 data bits in the middle of the byte, and then send parity bits at the top and bottom
-// that cover alternating data bits. This should catch any 1 or 2 consecutive flips. 
-// Top parity is even, bottom is odd. The idea here is that a string of all 1's or 0's will fail. 
+// that cover alternating data bits. This should catch any 1 or 2 consecutive flips.
+// Top parity is even, bottom is odd. The idea here is that a string of all 1's or 0's will fail.
 
-// A hamming code would have been better, but we need 6 data bits rather than 4. 
+// A hamming code would have been better, but we need 6 data bits rather than 4.
 
-// Commented code below generates the output parity checked bytes for all 63 valid input values. 
+// Commented code below generates the output parity checked bytes for all 63 valid input values.
 // https://www.onlinegdb.com/online_c++_compiler
 
 /*
@@ -59,23 +59,23 @@ loopstate_out_t *m_loopstate_out;
 using namespace std;
 
 uint8_t paritygenerator( uint8_t d ) {
-    
+
     // TODO: We are only counting the bottom 6 bits, so could replace popcount()
     //       with some asm that only counts those with 5 shifts
     //       https://www.avrfreaks.net/forum/avr-gcc-de-optimizing-my-code
-    
+
     uint8_t topbits   = d & 0b00010101;
     uint8_t topbitcount = __builtin_popcount( topbits );
     uint8_t topparitybit = !(topbitcount & 0b00000001 );
-    
-    
+
+
     uint8_t bottombits = d & 0b00101010;
     uint8_t bottombitcount = __builtin_popcount( bottombits );
     uint8_t bottomparitybit = (bottombitcount & 0b00000001 );
-    
-    
+
+
     return ( ( topparitybit << 7 ) | ( d << 1 ) | ( bottomparitybit ) );
-    
+
 }
 
 #include <iostream>
@@ -85,14 +85,14 @@ uint8_t paritygenerator( uint8_t d ) {
 using std::setw;
 
 void generateParityTable( void ) {
-    
+
     for( uint8_t d =0; d < 64 ; d++ ) {
-        
+
         std::bitset<8> x(paritygenerator( d ) );
         std::cout << "    0b" << x << ",   // " << setw(2) << (int) d << "\n";
-        
+
     }
-    
+
 }
 
 
@@ -105,11 +105,11 @@ int main()
 }
 */
 
-// We precompute the parity table for efficiency 
+// We precompute the parity table for efficiency
 // Look how nicely those bits encode! Try and change two bits in a row - bet you can't! Good hamming!
 
 static const uint8_t PROGMEM parityTable[] = {
-    
+
     0b10000000,   //  0
     0b00000010,   //  1
     0b10000101,   //  2
@@ -143,7 +143,7 @@ static const uint8_t PROGMEM parityTable[] = {
     0b10111100,   // 30
     0b00111110,   // 31
     0b11000001,   // 32
-    0b01000011,   // 33    
+    0b01000011,   // 33
     0b01000110,   // 35
     0b01001001,   // 36
     0b11001011,   // 37
@@ -177,24 +177,24 @@ static const uint8_t PROGMEM parityTable[] = {
 
 static uint8_t parityEncode( uint8_t d ) {
     return pgm_read_byte_near( parityTable+ d );
-}    
+}
 
 static uint8_t parityDecode( uint8_t d ) {
 
-    return (d & 0b01111110) >> 1 ;     
-    
-}    
+    return (d & 0b01111110) >> 1 ;
+
+}
 
 
 // TODO: These struct even better if they are padded to a power of 2 like https://stackoverflow.com/questions/1239855/pad-a-c-structure-to-a-power-of-two
 
 struct face_t {
-    
+
     uint8_t inValue;           // Last received value on this face, or 0 if no neighbor ever seen since startup
     uint8_t outValue;          // Value we send out on this face
     millis_t expireTime;    // When this face will be consider to be expired (no neighboor there)
     millis_t sendTime;      // Next time we will transmit on this face (set to 0 everytime we get a good message so we ping-pong across the link)
-    
+
 };
 
 static face_t faces[FACE_COUNT];
@@ -204,38 +204,40 @@ millis_t now;
 
 unsigned long millis() {
     return now;
-}    
+}
 
-static void updateIRFaces( const ir_data_buffer_t *ir_data_buffers ) {
-    
-    //  Use these pointers to step though the arrays   
+static void RX_IRFaces( const ir_data_buffer_t *ir_data_buffers ) {
+
+    //  Use these pointers to step though the arrays
     face_t *face = faces;
     const ir_data_buffer_t *ir_data_buffer = ir_data_buffers;
-    
+
     for( uint8_t f=0; f < FACE_COUNT ; f++ ) {
 
             // Check for anything new coming in...
 
         if ( ir_data_buffer->ready_flag ) {
-
+                        
+            PORTE |= _BV(2);            
+            
             // Got something, so we know there is someone out there
             // TODO: Should we require the received packet to pass error checks?
             face->expireTime = now + RX_EXPIRE_TIME_MS;
 
             if ( ir_data_buffer->len == 1 ) {
-                
+
                 const uint8_t *packetBuffer = ir_data_buffer->data;
-                                
+
                 // We only deal with 1 byte long packets in blinklib so anything else is an error
-                
+
                 uint8_t receivedByte = packetBuffer[0];
-                
+
                 uint8_t decodedByte = parityDecode( receivedByte );
-                
+
                 if ( receivedByte == parityEncode( decodedByte ) ) {
-                    
+
                     // This looks like a valid value!
-                
+
                         // OK, everything checks out, we got a good face value!
 
                         face->inValue = decodedByte;
@@ -246,10 +248,31 @@ static void updateIRFaces( const ir_data_buffer_t *ir_data_buffers ) {
                 } //  if ( receivedByte == parityEncode( decodedByte ) )
 
             }   // if ( ir_data_buffer->len == 1 )
-                
-        }  // if ( ir_data_buffer->ready_flag )            
+
+            // Mark the databuffer as consumed. This clears it out so it will be ready to receive the next packet
+            // If we don't do this, then we might miss the response to our ping
+
+            ir_mark_packet_read( f ) ;
+            
+            PORTE &= ~_BV(2);
 
 
+        }  // if ( ir_data_buffer->ready_flag )
+
+        face++;
+        ir_data_buffer++;
+
+    } // for( uint8_t f=0; f < FACE_COUNT ; f++ )
+
+}
+
+
+static void TX_IRFaces() {
+
+    //  Use these pointers to step though the arrays
+    face_t *face = faces;
+
+    for( uint8_t f=0; f < FACE_COUNT ; f++ ) {
         // Send one out too if it is time....
 
         if ( face->sendTime <= now ) {        // Time to send on this face?
@@ -262,21 +285,21 @@ static void updateIRFaces( const ir_data_buffer_t *ir_data_buffers ) {
                 // if there is a neighbor, they will send back to us as soon as they get what we
                 // just transmitted, which will make us immediately send again. So the only case
                 // when this probe timeout will happen is if there is no neighbor there.
-                
+
                 // If ir_send_userdata() returns 0, then we could not send becuase there was an RX in progress on this face.
-                // Becuase we do not reset the sentTime in that case, we will automatically try again next pass.
-            
+                // Because we do not reset the sentTime in that case, we will automatically try again next pass.
+
                 face->sendTime = now + TX_PROBE_TIME_MS;
-            }            
-            
-        } // if ( face->sendTime <= now ) 
+            }
+
+        } // if ( face->sendTime <= now )
 
         face++;
-        ir_data_buffer++;
 
     } // for( uint8_t f=0; f < FACE_COUNT ; f++ )
 
 }
+
 
 // Returns the last received state on the indicated face
 // Remember that getNeighborState() starts at 0 on powerup.
@@ -376,44 +399,44 @@ static buttonstate_t buttonstate;
 
 bool buttonDown(void) {
     return buttonstate.down;
-}    
+}
 
 static bool grabandclearbuttonflag( uint8_t flagbit ) {
     bool r = buttonstate.bitflags & flagbit;
     buttonstate.bitflags &= ~ flagbit;
     return r;
-}    
-    
+}
+
 bool buttonPressed(void) {
     return grabandclearbuttonflag( BUTTON_BITFLAG_PRESSED );
 }
-    
+
 bool buttonReleased(void) {
     return grabandclearbuttonflag( BUTTON_BITFLAG_RELEASED );
-}    
+}
 
 bool buttonSingleClicked() {
     return grabandclearbuttonflag( BUTTON_BITFLAG_SINGLECLICKED );
-}    
+}
 
 bool buttonDoubleClicked() {
     return grabandclearbuttonflag( BUTTON_BITFLAG_DOUBECLICKED );
-}    
+}
 
 bool buttonMultiClicked() {
     return grabandclearbuttonflag( BUTTON_BITFLAG_MULITCLICKED );
-}    
+}
 
 
 // The number of clicks in the longest consecutive valid click cycle since the last time called.
 byte buttonClickCount(void) {
     return buttonstate.clickcount;
-}    
+}
 
 // Remember that a long press fires while the button is still down
 bool buttonLongPressed(void) {
-    grabandclearbuttonflag( BUTTON_BITFLAG_LONGPRESSED );
-}    
+    return grabandclearbuttonflag( BUTTON_BITFLAG_LONGPRESSED );
+}
 
 
 // --- Pixel functions
@@ -432,52 +455,57 @@ Color makeColorHSB( byte hue, byte saturation, byte brightness );
 // and the display is updated when loop() returns
 
 void setColorOnFace( Color newColor , byte face ) {
- 
-    m_loopstate_out->colors[face] =  pixelColor_t( GET_5BIT_R( newColor ) , GET_5BIT_G( newColor) , GET_5BIT_B( newColor ) , 1 );   
-    
-}    
+
+    m_loopstate_out->colors[face] =  pixelColor_t( GET_5BIT_R( newColor ) , GET_5BIT_G( newColor) , GET_5BIT_B( newColor ) , 1 );
+
+}
 
 
 void setColor( Color newColor) {
-    
+
     FOREACH_FACE(f) {
         setColorOnFace( newColor , f );
-    }        
-    
+    }
+
 }
 
 
 // DEPREICATED: Use setColorOnFace()
 void setFaceColor(  byte face, Color newColor ) {
-    
+
     setColorOnFace( newColor , face );
-    
-}    
+
+}
 
 
 void setupEntry() {
-        
+
     // Call up to the userland code
-    setup();    
-    
-}    
+    setup();
+
+}
 
 void loopEntry( loopstate_in_t const *loopstate_in , loopstate_out_t *loopstate_out) {
-    
+
     m_loopstate_out = loopstate_out;            // Save for use by the pixel setting functions above
-    
-    now = loopstate_in->millis;  
-    
-    updateIRFaces( loopstate_in->ir_data_buffers );
-    
+
+    now = loopstate_in->millis;
+
+    RX_IRFaces( loopstate_in->ir_data_buffers );
+
     // Capture the incoming button state. We OR in the flags because in blinklib model we clear the flags only when read.
     buttonstate.bitflags |= loopstate_in->buttonstate.bitflags;
     buttonstate.clickcount = loopstate_in->buttonstate.clickcount;
     buttonstate.down = loopstate_in->buttonstate.down;
-    
+
     // Call the user program
 
-    loop();
-        
-}    
+     loop();
+
+
+     // Transmit any IR packets waiting to go out
+     // Note that we do this after loop had a chance to update them.
+     TX_IRFaces();
+
+}
 

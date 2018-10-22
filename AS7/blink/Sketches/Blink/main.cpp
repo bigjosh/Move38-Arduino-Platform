@@ -40,9 +40,11 @@ float sin_d( uint16_t degrees ) {
 
 const word throb_duration_ms=500;    // How long one throb takes
 
+static unsigned long throb_starttime =0; 
+
 byte throbbing(void) {
 
-  word offset_ms = millis() % throb_duration_ms;
+  unsigned long offset_ms =   ( millis() - throb_starttime ) % throb_duration_ms;
 
   // offset range [0,throb_duration_ms)
 
@@ -153,6 +155,9 @@ void loop() {
     if (myState >= myState_count ) {
       myState = 0;
     }
+    
+    throb_starttime = millis();
+    
     clearErrors();
 
   }
@@ -167,7 +172,15 @@ void loop() {
 
       if ( test(neighborValue)) {
 
-        myState = circularMax( decode(neighborValue) , myState , myState_count );
+        uint8_t newState = circularMax( decode(neighborValue) , myState , myState_count );
+        
+        if (myState != newState ) {
+            
+            throb_starttime = millis();   // Go full brightness everytime we change color for effect and to sync throbbing
+            
+            myState = newState;
+            
+        }            
 
       } else {
 
