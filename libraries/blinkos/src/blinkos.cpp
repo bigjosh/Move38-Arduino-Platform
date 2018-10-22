@@ -169,7 +169,7 @@ uint8_t crccheck(uint8_t const * data, uint8_t len )
 
 }
 
-// These header bytes are chosen to try and give some error robustness. 
+// These header bytes are chosen to try and give some error robustness.
 // So, for example, a header with a repeating pattern would be less robust
 // because it is possible something blinking in the environment might replicate it
 
@@ -185,15 +185,15 @@ void processPendingIRPackets() {
         if (irDataIsPacketReady(f)) {
 
             uint8_t packetLen = irDataPacketLen(f);
-            
-            // Note that IrDataPeriodicUpdateComs() will not save a 0-byte packet, so we know 
+
+            // Note that IrDataPeriodicUpdateComs() will not save a 0-byte packet, so we know
             // the buffer has at least 1 byte in it
 
             // IR data packet received and at least 2 bytes long
 
             uint8_t const *data = irDataPacketBuffer(f);
-            
-            // TODO: What packet type should be fastest check (doesn;t really matter THAT much, only a few cycles)            
+
+            // TODO: What packet type should be fastest check (doesn;t really matter THAT much, only a few cycles)
 
             if (*data== IR_PACKET_HEADER_OOB ) {
 
@@ -202,17 +202,17 @@ void processPendingIRPackets() {
 
 
             } else if (*data== IR_PACKET_HEADER_USERDATA ) {
-                
+
 
                 // Userland data
-                loopstate_in.ir_data_buffers[f].len=  packetLen-1;      // Account for the header byte 
+                loopstate_in.ir_data_buffers[f].len=  packetLen-1;      // Account for the header byte
                 loopstate_in.ir_data_buffers[f].ready_flag = 1;
-                
+
                 // Note that these will get cleared after the loop call
                 // We need this extra ready flag on top of the one in the irdata system because we share the
                 // input buffer between system uses and userland, and so we only tell userland about packets
-                // meant for them - and we hide the header byte from them too. 
-                // this is messy, but these buffers are the biggest thing in RAM. 
+                // meant for them - and we hide the header byte from them too.
+                // this is messy, but these buffers are the biggest thing in RAM.
                 // so that the userland can read from the buffer without worrying about it getting
                 // overwritten
 
@@ -221,13 +221,13 @@ void processPendingIRPackets() {
                 // Thats's unexpected.
                 // Could be a data error that messed up bits in the header byte,
                 // which is why we picked interesting bit patterns for header bytes
-                
+
                 // Consume the mangled packet it so a new packet can come in
 
                 irDataMarkPacketRead(f);
-                
-            }   // sort out packet types                
-           
+
+            }   // sort out packet types
+
         }  // irIsdataPacketReady(f)
     }    // for( uint8_t f=0; f< IR_FACE_COUNT; f++ )
 
@@ -254,23 +254,23 @@ uint8_t ir_send_userdata( uint8_t face, const uint8_t *data , uint8_t len ) {
         irSendComplete();
 
         return 1;
-    } 
-    
+    }
+
     return 0;
-               
+
 }
 
 void ir_mark_packet_read( uint8_t face ) {
-    
-    irDataMarkPacketRead( face ); 
+
+    irDataMarkPacketRead( face );
     loopstate_in.ir_data_buffers[face].ready_flag=0;
-    
-}    
+
+}
 
 // Returns 0 if could not send becuase RX already in progress on this face (try again later)
 
 uint8_t sendUserDataCRC( uint8_t face, const uint8_t *data , uint8_t len ) {
-    
+
     // We figure out the CRC first so there are no undue delays while transmitting the data
 
     // TODO: Do we have time between bits to calculate the CRC as we go? A 1 bit gives us like 150us, so probably. Even with interrupts?
@@ -296,12 +296,12 @@ uint8_t sendUserDataCRC( uint8_t face, const uint8_t *data , uint8_t len ) {
         irSendByte( crc );
 
         irSendComplete();
-        
+
         return 1;
-        
+
     }
-    
-    return 0;        
+
+    return 0;
 
 }
 
@@ -315,6 +315,7 @@ extern void setupEntry();
 
 void run(void) {
 
+
     // Set the buffer pointers
 
     for( uint8_t f=0; f< IR_FACE_COUNT; f++ ) {
@@ -323,10 +324,10 @@ void run(void) {
         loopstate_in.ir_data_buffers[f].ready_flag = 0;
 
     }
-    
+
 
     ir_enable();
-    
+
     irDataInit();       // Really only called to init IR_RX_DEBUG
 
     pixel_enable();
@@ -377,19 +378,19 @@ void run(void) {
             // Go though and mark any of the buffers we just passed into to the app as clear
             // Note that we don't have to worry about any races here because we set the ready flag
             // ourselves in this very loop
-            
+
             // We have to do this or else an errant user program could leave a buffer full forever
             // and then we would never see any incoming control messages.
-            
+
             if ( loopstate_in.ir_data_buffers[f].ready_flag ) {
-            
+
                 irDataMarkPacketRead( f ) ;
-            
-                // Also clear out the ready flag shown to userland so they don't keep seeing the same packet over and over again. 
+
+                // Also clear out the ready flag shown to userland so they don't keep seeing the same packet over and over again.
 
                 loopstate_in.ir_data_buffers[f].ready_flag =0;
-                
-            }                
+
+            }
         }
 
         if (sleepTimer.isExpired()) {
