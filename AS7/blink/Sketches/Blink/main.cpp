@@ -14,19 +14,9 @@ static void clearErrors() {
   }
 }
 
-#warning
-#include "sp.h"
-
 void setup() {
   // put your setup code here, to run once:
   clearErrors();
-  
-    SP_PIN_A_MODE_OUT();
-    sp_serial_init();
-    sp_serial_disable_rx();
-    SP_PIN_R_MODE_OUT();
-    sp_serial_tx('h');
-
 }
 
 // Sin in degrees ( standard sin() takes radians )

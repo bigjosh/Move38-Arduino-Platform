@@ -43,7 +43,7 @@ loopstate_out_t loopstate_out;
 #include "power.h"
 #include "button.h"
 
-#include "sp.h"
+#include "debug.h"
 
 #include "ir.h"
 #include "blinkos_irdata.h"
@@ -78,12 +78,6 @@ static void sleep(void) {
 void postponeSleep() {
     sleepTimer.set( SLEEP_TIMEOUT_MS );
 }
-
-void toggle_SP_pin_A() {
-    SP_PIN_A_MODE_OUT();
-    SP_PIN_A_SET_1();
-    SP_PIN_A_SET_0();
-}    
 
 
 buttonstate_t buttonstate;

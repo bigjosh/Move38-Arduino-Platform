@@ -44,7 +44,7 @@
 #include "timer.h"          // get US_TO_CYCLES()
 
 #if defined(IR_TX_DEBUG) || defined(IR_RX_DEBUG)
-    #include "sp.h"                                     // We use the SP port for deugging Stuff
+    #include "debug.h"                                     // We use the SP port for deugging Stuff
 #endif
 
 #include "blinkos_irdata.h"
@@ -231,9 +231,9 @@ volatile uint8_t most_recent_ir_test;
                     #ifdef IR_RX_DEBUG
                         if (bitwalker==  _BV(IR_RX_DEBUG_LED) ) {
                             if (dataBit) {
-                                    SP_SERIAL_TX_NOW('1');
+                                    Debug::tx_now('1');
                             } else {
-                                    SP_SERIAL_TX_NOW('0');
+                                    Debug::tx_now('0');
                             }
                         }
                     #endif
@@ -261,8 +261,8 @@ volatile uint8_t most_recent_ir_test;
 
                             #ifdef IR_RX_DEBUG
                                 if (bitwalker== _BV(IR_RX_DEBUG_LED) ) {
-                                    SP_SERIAL_TX_NOW('B');          // Buffered byte
-                                    sp_serial_tx( data );
+                                    Debug::tx_now('B');          // Buffered byte
+                                    Debug::tx( data );
                                 }
                             #endif
 
@@ -275,8 +275,8 @@ volatile uint8_t most_recent_ir_test;
 
                             #ifdef IR_RX_DEBUG
                                 if (bitwalker== _BV(IR_RX_DEBUG_LED) ) {
-                                    SP_SERIAL_TX_NOW('V');      // Overflow
-                                    sp_serial_tx( data );
+                                    Debug::tx_now('V');      // Overflow
+                                    Debug::tx( data );
                                 }
                             #endif
 
@@ -295,7 +295,7 @@ volatile uint8_t most_recent_ir_test;
 
                     #ifdef IR_RX_DEBUG
                         if (bitwalker == _BV(IR_RX_DEBUG_LED) ) {
-                            SP_SERIAL_TX_NOW('+');                  // got a bit outside of a frame
+                            Debug::tx_now('+');                  // got a bit outside of a frame
                         }                    
                     #endif
                     
@@ -325,7 +325,7 @@ volatile uint8_t most_recent_ir_test;
 
                         #ifdef IR_RX_DEBUG
                             if (bitwalker==_BV(IR_RX_DEBUG_LED)) {
-                                SP_SERIAL_TX_NOW('R');      // Packet received and buffered successfully
+                                Debug::tx_now('R');      // Packet received and buffered successfully
                             }
                         #endif
 
@@ -337,7 +337,7 @@ volatile uint8_t most_recent_ir_test;
 
                         #ifdef IR_RX_DEBUG
                             if (bitwalker==_BV(IR_RX_DEBUG_LED)) {
-                                SP_SERIAL_TX_NOW('y');      // sYnc
+                                Debug::tx_now('y');      // sYnc
                             }
                         #endif
                     }
@@ -354,13 +354,13 @@ volatile uint8_t most_recent_ir_test;
 
 
                         #ifdef IR_RX_DEBUG
-                            if (bitwalker==_BV(IR_RX_DEBUG_LED)) SP_SERIAL_TX_NOW('Y');      // sYnc
+                            if (bitwalker==_BV(IR_RX_DEBUG_LED)) Debug::tx_now('Y');      // sYnc
                         #endif
 
                     } else {
 
                         #ifdef IR_RX_DEBUG
-                            if (bitwalker==_BV(IR_RX_DEBUG_LED)) SP_SERIAL_TX_NOW('o');      // sYnc ignored becuase of buffer overflow
+                            if (bitwalker==_BV(IR_RX_DEBUG_LED)) Debug::tx_now('o');      // sYnc ignored becuase of buffer overflow
                         #endif
                        
                     }                        
@@ -374,7 +374,7 @@ volatile uint8_t most_recent_ir_test;
                 // To get here, we already aborted anything in progress when the windowsSincelastTrigger was incremented to 7
 
                 #ifdef IR_RX_DEBUG
-                    if (bitwalker==_BV(IR_RX_DEBUG_LED)) SP_SERIAL_TX_NOW('I');
+                    if (bitwalker==_BV(IR_RX_DEBUG_LED)) Debug::tx_now('I');
                     //if (bitwalker==_BV(IR_RX_DEBUG_LED)) sp_serial_tx('0'+ptr->windowsSinceLastTrigger);      // Error
                 #endif
 
@@ -399,7 +399,7 @@ volatile uint8_t most_recent_ir_test;
                 // Note that we do not need to look for errors here, they will show up when the trigger finally happens.
 
                 #ifdef IR_RX_DEBUG
-                    if (bitwalker==_BV(IR_RX_DEBUG_LED)) SP_SERIAL_TX_NOW('-');          // Idle sample
+                    if (bitwalker==_BV(IR_RX_DEBUG_LED)) Debug::tx_now('-');          // Idle sample
                 #endif
 
             } else {
@@ -409,7 +409,7 @@ volatile uint8_t most_recent_ir_test;
                 // any RX that ws in progress is now aborted
 
                 #ifdef IR_RX_DEBUG
-                    if (bitwalker==_BV(IR_RX_DEBUG_LED)) SP_SERIAL_TX_NOW('A');          // Abort any RX in progress
+                    if (bitwalker==_BV(IR_RX_DEBUG_LED)) Debug::tx_now('A');          // Abort any RX in progress
                 #endif
 
                 ptr->byteBuffer = 0x00;            // Clear byte buffer. A 0 here means we are waiting for sync
@@ -570,7 +570,7 @@ void irSendComplete() {
 
 void irDataInit() {
     #ifdef IR_RX_DEBUG
-        sp_serial_init();
+        Debug::init();
     #endif
 }
 

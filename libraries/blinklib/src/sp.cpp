@@ -8,38 +8,21 @@
  *
  */
 
-#include "hardware.h"
-
-#include "utils.h"
 
 #include "sp.h"
 
+#include <avr/io.h>
 
-// Read the analog voltage on service port pin A
-// Returns 0-255 for voltage between 0 and Vcc
-// Handy to connect a potentiometer here and use to tune params
-// like rightness or speed
+// Serial port hardware on service port
 
-uint8_t sp_aux_analogRead(void) {
+#define SP_SERIAL_CTRL_REG      UCSR0A
+#define SP_SERIAL_DATA_REG      UDR0
+#define SP_SERIAL_READY_BIT     RXC0
 
-	ADMUX =
-	_BV(REFS0)   |                  // Reference AVcc voltage
-	_BV( ADLAR ) |                  // Left adjust result so only one 8 bit read of the high register needed
-	_BV( MUX2 )  | _BV( MUX1 )      // Select ADC6
-	;
-
-	ADCSRA =
-	_BV( ADEN )  |                  // Enable ADC
-	_BV( ADSC )                     // Start a conversion
-	;
-
-
-	while (TBI(ADCSRA,ADSC)) ;       // Wait for conversion to complete
-
-	return( ADCH );
-
-}
-
+// Bit manipulation macros
+#define SBI(x,b) (x|= (1<<b))           // Set bit in IO reg
+#define CBI(x,b) (x&=~(1<<b))           // Clear bit in IO reg
+#define TBI(x,b) (x&(1<<b))             // Test bit in IO reg
 
 // Initialize the serial on the service port.
 // Overrides digital mode for service port pins T and R respectively.
@@ -55,33 +38,16 @@ void sp_serial_init(void) {
 
     SBI( UCSR0B , TXEN0 );                  // Enable transmitter (disables digital mode on T pin)
 
-    SP_PIN_R_SET_1();                       // Enable pull-up on RX pin so we can use an open-collector to drive it
     SBI( UCSR0B , RXEN0);                   // Enable receiver    (disables digital mode on R pin)
-
-    #if F_CPU!=8000000
-        #error Serial port calculation in debug.cpp must be updated if not 4Mhz CPU clock.
-    #endif
 
     UBRR0 = 0;                  // 1Mbd. This is as fast as we can go at 8Mhz, and happens to be 0% error and supported by the Arduino serial monitor.
                                 // See datasheet table 25-7.
 }
 
-// Free up service port pin R for digital IO again
-
-void sp_serial_disable_rx(void) {
-    CBI( UCSR0B , RXEN0 );                  // Enable transmitter (disables digital mode on T pin)
-}
-
-// Free up service port pin T for digital IO again
-
-void sp_serial_disable_tx(void) {
-    CBI( UCSR0B , TXEN0 );                  // Enable transmitter (disables digital mode on T pin)
-}
-
 
 // Send a byte out the serial port. DebugSerialInit() must be called first. Blocks unitl buffer free if TX already in progress.
 
-void sp_serial_tx(uint8_t b) {
+void sp_serial_tx(unsigned char b) {
 
     while (!TBI(SP_SERIAL_CTRL_REG,UDRE0));         // Wait for buffer to be clear so we don't overwrite in progress
 
@@ -101,7 +67,7 @@ void sp_serial_flush(void) {
 
 // Is there a char ready to read?
 
-uint8_t sp_serial_rx_ready(void) {
+unsigned char sp_serial_rx_ready(void) {
 
     return TBI( SP_SERIAL_CTRL_REG , SP_SERIAL_READY_BIT );
 
@@ -109,7 +75,7 @@ uint8_t sp_serial_rx_ready(void) {
 
 // Read byte from service port serial. Blocks if nothing received yet.
 
-uint8_t sp_serial_rx(void) {
+unsigned char sp_serial_rx(void) {
 
     while ( !TBI( SP_SERIAL_CTRL_REG , SP_SERIAL_READY_BIT ) );
 

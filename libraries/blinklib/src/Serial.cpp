@@ -14,11 +14,12 @@
 #include <string.h>
 #include <inttypes.h>
 
-//#include "Serial.h"
+#include "sp.h"
+
+#include "Serial.h"
 
 #include "ArduinoTypes.h"
 
-//#include "sp.h"
 
 // Public Methods //////////////////////////////////////////////////////////////
 

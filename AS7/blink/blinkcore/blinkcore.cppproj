@@ -185,6 +185,10 @@
       <SubType>compile</SubType>
       <Link>callbacks.h</Link>
     </Compile>
+    <Compile Include="..\..\..\cores\blinkcore\debug.h">
+      <SubType>compile</SubType>
+      <Link>debug.h</Link>
+    </Compile>
     <Compile Include="..\..\..\cores\blinkcore\ir.cpp">
       <SubType>compile</SubType>
       <Link>ir.cpp</Link>
@@ -220,14 +224,6 @@
     <Compile Include="..\..\..\cores\blinkcore\shared.h">
       <SubType>compile</SubType>
       <Link>shared.h</Link>
-    </Compile>
-    <Compile Include="..\..\..\cores\blinkcore\sp.cpp">
-      <SubType>compile</SubType>
-      <Link>sp.cpp</Link>
-    </Compile>
-    <Compile Include="..\..\..\cores\blinkcore\sp.h">
-      <SubType>compile</SubType>
-      <Link>sp.h</Link>
     </Compile>
     <Compile Include="..\..\..\cores\blinkcore\timer.cpp">
       <SubType>compile</SubType>

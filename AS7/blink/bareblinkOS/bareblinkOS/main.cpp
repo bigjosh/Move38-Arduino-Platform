@@ -104,8 +104,6 @@ void loopEntry( loopstate_in_t const *loopstate_in , loopstate_out_t *loopstate_
                 
             } else if ( elapsed_ms < 500 ) {
                 
-                toggle_SP_pin_A();
-
                 // More then 200ms since last good RX, so show red for 300ms
                 loopstate_out->colors[f] = pixelColor_t( 0 , 0, 20 , 1 );
 
