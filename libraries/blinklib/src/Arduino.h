@@ -87,8 +87,13 @@
 	// I know this is so ugly, but only other way to make it so people do not need to do a
 	// manual #include in their sketches would be to throw all the library code into one giant
 	// directory... and that is even uglier, right?
-
-	#include "blinkos.h"
+    
+    #ifdef ARDUINO
+        // This is only here to trick the Arduino IDE into compiling and linking the blinkOS library
+        // We do not use (or want!) any of these functions!
+	    #include "blinkos.h"
+    #endif
+    
 	#include "blinklib.h"
 	
 	
