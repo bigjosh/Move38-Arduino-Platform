@@ -130,6 +130,8 @@ uint8_t updateButtonState1ms(buttonstate_t &buttonstate) {
 
             }
             
+            debouncedButtonPosition = buttonPositon;
+            
             buttonChangeFlag =1 ;
             
         }
@@ -139,7 +141,7 @@ uint8_t updateButtonState1ms(buttonstate_t &buttonstate) {
         buttonDebounceCountdown = BUTTON_DEBOUNCE_MS;
 
     }
-    
+
     buttonstate.down = debouncedButtonPosition;
     
     return buttonChangeFlag;
