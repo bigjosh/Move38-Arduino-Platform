@@ -11,6 +11,8 @@
 // Packets larger than this are silently discarded.
 // Note that we allocate 6 of these, so memory usage goes up fast with bigger packets sizes.
 
+// We picked 35 here to have room for 32 bytes of program data, 1 byte header, 2 bytes block number.
+
 #define IR_RX_PACKET_SIZE     35
 
 

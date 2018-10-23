@@ -50,18 +50,58 @@ void pixel_displayBufferedPixels(void);
 
 #define PIXEL_CYCLES_PER_FRAME (8 * 256 * 5)
 
-// Update the pixel buffer with raw PWM register values.
-// Larger pwm values map to shorter PWM cycles (255=off) so for red and green
-// there is an inverse but very non linear relation between raw value and brightness.
-// For blue is is more complicated because of the charge pump. The peak brightness is somewhere
-// in the middle.
 
-// Values set here will be shown on the next hardware reload in the ISR - no buffering
-// except for the hardware buffering.
+// Here are the raw compare register values for each pixel
+// These are precomputed from brightness values because we read them often from inside an ISR
+// Note that for red & green, 255 corresponds to OFF and 0 is full on
 
-// This is mostly useful for utilities to find the pwm -> brightness mapping to be used
-// in the gamma lookup table below.
+struct  rawpixel_t {
+    uint8_t rawValueR;
+    uint8_t rawValueG;
+    uint8_t rawValueB;
+    //uint8_t paddng;           // Adding this padding save about 10 bytes since double-doubling is faster than adding 3. 
+                                // Would be even better to precache the pointer to the next pixel, but we also need an index
+                                // to turn off the anode, so benefits lost. Wish there was a good way to turn off the cathode 
+                                // based on the pointer... Could compare the bottom byte of the pointer to known list, but so hacky.
+                                
+    rawpixel_t( uint8_t in_raw_r , uint8_t in_raw_g , uint8_t in_raw_b ) {
+        rawValueR = in_raw_r;        
+        rawValueG = in_raw_g;
+        rawValueB = in_raw_b;
+        
+    }        
+        
+    rawpixel_t() {
+        
+        // We initialize to all 0's so that the buffer can be placed in the uninizialzed variable pool
+        // if we preinitialized to all 0xff (which would be nice), then it would use up flash
+        // so instead we provide the pixel_init_rawpixelset() function to efficiently initialize the whole set of 
+        // pixels to 0xff.
+        //rawValueR = 0xff;
+        //rawValueG = 0xff;
+        //rawValueB = 0xff;        
+    }
+                                                
+};
 
-void pixel_bufferedSetPixelRaw( uint8_t pixel, uint8_t r_pwm , uint8_t g_pwm , uint8_t b_pwm );
+
+const rawpixel_t RAW_PIXEL_OFF( 0xff , 0xff, 0xff );
+
+// We need these struct gymnastics because C fixed array typedefs do not work
+// as you (I?) think they would...
+// https://stackoverflow.com/questions/4523497/typedef-fixed-length-array
+
+typedef struct {
+    rawpixel_t rawpixels[PIXEL_COUNT];
+} rawpixelset_t;
+
+
+extern rawpixelset_t displayedRawPixelSet;        // Currently being displayed. You can have direct access to this to save memory, 
+                                                  // but use the vertical retrace to avoid visual tearing on updates
+
+// Set all pixels to 0xff (off)
+
+void pixel_init_rawpixelset( rawpixelset_t *s );
+
 
 #endif /* RGB_PIXELS_H_ */

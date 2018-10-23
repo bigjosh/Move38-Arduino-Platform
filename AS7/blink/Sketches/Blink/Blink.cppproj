@@ -26,20 +26,20 @@
     <OverrideVtorValue>exception_table</OverrideVtorValue>
     <BootSegment>2</BootSegment>
     <eraseonlaunchrule>0</eraseonlaunchrule>
-    <avrtool>com.atmel.avrdbg.tool.avrdragon</avrtool>
-    <avrtoolserialnumber>00A200031957</avrtoolserialnumber>
+    <avrtool>com.atmel.avrdbg.tool.ispmk2</avrtool>
+    <avrtoolserialnumber>0000B3020609</avrtoolserialnumber>
     <avrdeviceexpectedsignature>0x1E9415</avrdeviceexpectedsignature>
     <avrtoolinterface>ISP</avrtoolinterface>
-    <avrtoolinterfaceclock>125000</avrtoolinterfaceclock>
+    <avrtoolinterfaceclock>250000</avrtoolinterfaceclock>
     <com_atmel_avrdbg_tool_ispmk2>
       <ToolOptions>
         <InterfaceProperties>
-          <IspClock>0</IspClock>
+          <IspClock>250000</IspClock>
         </InterfaceProperties>
         <InterfaceName>ISP</InterfaceName>
       </ToolOptions>
       <ToolType>com.atmel.avrdbg.tool.ispmk2</ToolType>
-      <ToolNumber>0000B0022024</ToolNumber>
+      <ToolNumber>0000B3020609</ToolNumber>
       <ToolName>AVRISP mkII</ToolName>
     </com_atmel_avrdbg_tool_ispmk2>
     <AAFDebugger>
