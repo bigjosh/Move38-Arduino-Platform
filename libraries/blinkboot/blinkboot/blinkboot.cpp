@@ -1,23 +1,20 @@
 /*
 
-    This library provides the operating system for the Move38 Blinks platform.
+    This is the bootloader for the Move38 Blinks platform.
     More info at http://Move38.com
-
-    This sits on top of the hardware abstraction layer and handles functions like
-
-       *Startup and loading new games
-       *Sleeping
-       *Time keeping
-
-    ...basically all things that a game can not do.
-
+    
+    It is VERY tight to fit into the 2K bootload space on the ATMEGA168PB chip.
+    
+    It has one job- look for an incoming "flash pull request" and, if seen, start downloading
+    and programming the received code into the active area, and starts the new game when received.
+    
+    It is very streamlined to do just this. 
+    
+    If it does not see the pull request, then it copies the built-in game down to the active
+    game area at the bottom of the flash and starts it. 
+    
 */
 
-// TODO: TEST RX in progress by having one side TX rapidly wiht short breaks and see if other side fits into the break.
-// TODO: Maybe make 1st bit of IR high be a "short 1 byte user message" where next 7 are checksum of the 2nd byte"?
-// TODO: Must check for a reboot command at ISR level. After reboot send an "I just rebooted" message" and wait a sec for a download firmware request.
-//       This blocks allows downloads even when user code blocks in loop(). Also always give downlaod fresh slate for machine state.
-//       Maybe must do something like this also for sleeping?
 
 #include <avr/pgmspace.h>
 #include <stddef.h>     // NULL
@@ -25,6 +22,10 @@
 
 #include <util/crc16.h>     // For IR checksums
 #include <util/atomic.h>         // ATOMIC_BLOCK
+
+#include <avr/boot.h>           // Bootloader support
+
+#include <avr/sleep.h>          // TODO: Only for development. Remove. 
 
 // TODO: Put this at a known fixed address to save registers
 // Will require a new .section in the linker file. Argh.
@@ -41,9 +42,24 @@
 #include "ir.h"
 #include "blinkboot_irdata.h"
 
-#define US_PER_TICK 250
+#define US_PER_TICK        256
+#define MS_PER_SECOND     1000
+#define MS_TO_TICKS( milliseconds ) ( milliseconds *  (MS_PER_SECOND / US_PER_TICK ) )
 
-uint16_t tickcounter;
+// This buys us 16 seconds of timer time
+// https://www.google.com/search?q=(2%5E16+*+250us)&rlz=1C1CYCW_enUS687US687&oq=(2%5E16+*+250us)&aqs=chrome..69i57j6.21078j0j4&sourceid=chrome&ie=UTF-8
+
+#define MS_PER_PULL_RETRY 250
+
+uint16_t countdown_until_next_pull;
+
+uint8_t retry_count;               // How many pulls have went sent without any answer?
+                                   // Note that while still in listen mode we do not actually send any pulls
+                                   // so if we do not get a pull request at all, then we also abort
+
+
+#define GIVEUP_RETRY_COUNT 10     // Comes out to 2.5 secs. Give up if we do not see a good push in this amount of time. 
+
 
 // Below are the callbacks we provide to blinkcore
 
@@ -51,8 +67,10 @@ uint16_t tickcounter;
 
 void timer_256us_callback_sei(void) {
     
-    tickcounter++;
-
+    if (countdown_until_next_pull) {
+        countdown_until_next_pull--;
+    }        
+    
 }
 
 // This is called by timer ISR about every 256us with interrupts on.
@@ -61,59 +79,35 @@ void timer_128us_callback_sei(void) {
     IrDataPeriodicUpdateComs();
 }
 
-#define IR_CRC_INIT    0xff         // Initial value for CRC calculation for IR packets
+#define PAGE_SIZE 128                // Flash pages size for ATMEGA168PB
 
-uint8_t crcupdate( uint8_t const *data , uint8_t len , uint8_t crc) {
+#define MODE_LISTENING      0        // We have not yet seen a pull request
+#define MODE_DOWNLOADING    1        // We are currently downloading on faces. gamechecksum is the checksum we are looking for. 
 
-    while (len) {
+uint8_t mode = MODE_LISTENING;       // This changes to downloading the first time we get a pull request
 
-        crc = _crc8_ccitt_update( *data , crc );
+uint8_t download_face;            // The face that we saw the PR on
 
-        data++;
-        len--;
+#define DOWLONAD_MAX_LEN_PAGES 128  // The maximum length of a downloaded game
 
-
-    }
-
-    return crc;
-
-}
-
-// Test that a buffer full of data has the right CRC at the end
-
-uint8_t crccheck(uint8_t const * data, uint8_t len )
-{
-    uint8_t c = IR_CRC_INIT;                          // Start CRC at 0xFF
-
-    while (--len) {           // Count 1 less than total length
-
-        c=_crc8_ccitt_update( c , *data );
-
-        data++;
-
-    }
-
-    // d now points to final byte, which should be CRC
-
-    return *data == c;
-
-}
+uint16_t download_checksum;           // The expected checksum of the game we are downloading. Set by first pull request.
+uint8_t download_total_pages;         // The length of the game we are downloading in pages. Set by 1st pull request.
+uint8_t download_next_page;           // Next page we want to get (starts at 0)
 
 // These header bytes are chosen to try and give some error robustness.
 // So, for example, a header with a repeating pattern would be less robust
 // because it is possible something blinking in the environment might replicate it
 
-#define IR_PACKET_HEADER_OOB      0b01001110      // Internal blinkOS messaging
-#define IR_PACKET_HEADER_USERDATA 0b11010011      // Pass up to userland
+#define IR_PACKET_HEADER_PULLREQUEST     0b01101010      // If you get this, then the other side is saying they want to send you a game
+#define IR_PACKET_HEADER_PULLFLASH       0b01011101      // You send this to request the next block of a game
+#define IR_PACKET_HEADER_PUSHFLASH       0b01011101      // This contains a block of flash code to be programmed into the active area
 
 void processPendingIRPackets() {
-
-    // First process any IR data that came in
 
     for( uint8_t f=0; f< IRLED_COUNT ; f++ ) {
 
         if (irDataIsPacketReady(f)) {
-
+            
             uint8_t packetLen = irDataPacketLen(f);
 
             // Note that IrDataPeriodicUpdateComs() will not save a 0-byte packet, so we know
@@ -125,109 +119,158 @@ void processPendingIRPackets() {
 
             // TODO: What packet type should be fastest check (doesn;t really matter THAT much, only a few cycles)
 
-            if (*data== IR_PACKET_HEADER_OOB ) {
+            if (*data== IR_PACKET_HEADER_PUSHFLASH ) {
+                
+                if (packetLen== (PAGE_SIZE + 5 ) ) {        // Just an extra check that this is a valid packet
+                    
+                    uint16_t packet_game_checksum = data[1] | ( data[2]<<8 );
+                    
+                    if (packet_game_checksum == download_checksum ) {       // make sure we are downloading the right game
+                        
+                        uint8_t packet_page_number = data[3];
+                        
+                        if ( packet_page_number == download_next_page) {        // Is this the one we are waiting for?
+                            
+                            uint16_t packet_page_checksum_computed=0;
+                            
+                            for(uint8_t i=4; i<4+PAGE_SIZE;i++ ) {
+                                
+                                packet_page_checksum_computed += data[i];
+                                
+                            }   
+                            
+                            uint8_t packet_page_checksum_received = data[ 4 + PAGE_SIZE ];
+                            
+                            if (packet_page_checksum_received == packet_page_checksum_computed ) {
+                                
+                                // We got a good packet, and it was the one we needed, and it is the right game!!!
+                                
+                                download_next_page++;
+                                
+                                if (download_next_page == download_total_pages ) {
+                                    
+                                    // TODO: Check the game checksum here
+                                    
+                                    // We are down downloading!
+                                    // Here we would launch the downloaded game in the active area
+                                    // and somehow tell it to start sending pull requests on all faces but this one                                    
+                                    
+                                }                                    
+                                    
+                                
+                            }                                
+                            
+                            // Force next pull to happen immediately and also start retry counting again since we just got a good packet. 
+                            cli();
+                            countdown_until_next_pull=0;
+                            sei();
+                            retry_count=0;                                                         
+                            
+                        }                            
+                        
+                    }                        
+                    
+                }                    
+                
 
-                // blinkOS packet
-                irDataMarkPacketRead(f);
-
-
-            } else if (*data== IR_PACKET_HEADER_USERDATA ) {
-
-
-                // Userland data
-                //loopstate_in.ir_data_buffers[f].len=  packetLen-1;      // Account for the header byte
-                //loopstate_in.ir_data_buffers[f].ready_flag = 1;
-
-                // Note that these will get cleared after the loop call
-                // We need this extra ready flag on top of the one in the irdata system because we share the
-                // input buffer between system uses and userland, and so we only tell userland about packets
-                // meant for them - and we hide the header byte from them too.
-                // this is messy, but these buffers are the biggest thing in RAM.
-                // so that the userland can read from the buffer without worrying about it getting
-                // overwritten
-
-            } else {
-
-                // Thats's unexpected.
-                // Could be a data error that messed up bits in the header byte,
-                // which is why we picked interesting bit patterns for header bytes
-
-                // Consume the mangled packet it so a new packet can come in
-
-                irDataMarkPacketRead(f);
-
-            }   // sort out packet types
-
+            } else if (*data== IR_PACKET_HEADER_PULLREQUEST ) {
+                
+                if (packetLen==5) {     // Extra check that it is valid
+                
+                    if ( mode==MODE_LISTENING ) {
+                    
+                        download_total_pages = data[1]; 
+                        // highestblock this face = data[2];
+                        download_checksum    = data[3] | (data[4]<<8);
+                        
+                        download_face = f;
+                        //download_next_page=0;         // It inits to zero so we don't need this explicit assignment
+                        mode = MODE_DOWNLOADING;
+                    }
+                    
+                }
+                
+            }  // Case out packet types                                                                   
+                    
+            irDataMarkPacketRead(f);
+            
         }  // irIsdataPacketReady(f)
+        
     }    // for( uint8_t f=0; f< IR_FACE_COUNT; f++ )
 
 }
 
-// This sends a user data packet. No error checking so you are responsible to do it yourself
-// Returns 0 if it was not able to send because there was already an RX in progress on this face
+inline void copy_built_in_game() {
+    
+    // TODO: implement
+    // Copy the built in game to the active area in flash
+    
+}    
 
-uint8_t ir_send_userdata( uint8_t face, const uint8_t *data , uint8_t len ) {
 
-    // Ok, now we are ready to start sending!
+inline void sendNextPullPacket() {
+    
+    // Note that if we are blocked from sending becuase there is an incoming packet, we just ignore it 
+    // hopefully it is the packet we are waiting for. If not, we will time out and retry. 
 
-    if (irSendBegin( face )) {
+    if (irSendBegin( download_face )) {
 
-        irSendByte( IR_PACKET_HEADER_USERDATA );
-
-        while (len) {
-
-            irSendByte( *data++ );
-            len--;
-
-        }
+        irSendByte( IR_PACKET_HEADER_PULLFLASH );
+                    
+        irSendByte( download_next_page );
 
         irSendComplete();
-
-        return 1;
+                    
     }
-
-    return 0;
 
 }
 
-// Returns 0 if could not send because RX already in progress on this face (try again later)
-
-uint8_t sendUserDataCRC( uint8_t face, const uint8_t *data , uint8_t len ) {
-
-    // We figure out the CRC first so there are no undue delays while transmitting the data
-
-    // TODO: Do we have time between bits to calculate the CRC as we go? A 1 bit gives us like 150us, so probably. Even with interrupts?
-
-    uint8_t crc = IR_CRC_INIT;
-
-    crc = _crc8_ccitt_update( IR_PACKET_HEADER_USERDATA , crc );
-
-    crc = crcupdate( data , len , crc );
-
-    // Ok, now we are ready to start sending!
-
-    if (irSendBegin( face ) ) {
-
-        irSendByte( IR_PACKET_HEADER_USERDATA );
-
-        while (len--) {
-
-            irSendByte( *data++ );
-
+inline void try_to_download() {
+    
+    while (1) {
+        
+        processPendingIRPackets();       // Read any incoming packets looking for pulls & pull requests
+        
+        if ( countdown_until_next_pull ==0 ) {
+            
+            // Time to send next pull ?
+            
+            retry_count++;
+            
+            if (retry_count >= GIVEUP_RETRY_COUNT ) {
+                
+                // Too long. Abort to the built-in game and launch
+                
+                copy_built_in_game();
+                
+                return;
+                
+            }                
+            
+            // We actually only do pulls if we have already seen a pull request that put us into download mode
+            // if not, we do nothing and just wait for a pull request until the rety counter runs out. 
+            
+            if (mode==MODE_DOWNLOADING) {       // Are we actively downloading?
+                
+                // Try sending a pull packet on the face we got the pull request from
+                
+                sendNextPullPacket(); 
+                               
+            }            
+            
+            // Set up counter to trigger next pull packet
+            
+            cli();
+            countdown_until_next_pull = MS_TO_TICKS( MS_PER_PULL_RETRY );
+            sei();
+            
         }
 
-        irSendByte( crc );
-
-        irSendComplete();
-
-        return 1;
 
     }
-
-    return 0;
-
-}
-
+        
+      
+}    
 
 // This is the entry point where the blinkcore platform will pass control to
 // us after initial power-up is complete
@@ -241,16 +284,18 @@ void run(void) {
     ir_enable();
 
     pixel_enable();
+    
+    displayedRawPixelSet.rawpixels[0] = rawpixel_t( 0xff , 0 , 0 );
+    displayedRawPixelSet.rawpixels[2] = rawpixel_t( 0 , 0xff , 0 );
+    displayedRawPixelSet.rawpixels[4] = rawpixel_t( 0 , 0 , 0xff );
+    
+    try_to_download();
 
-    while (1) {
+    // TODO: Lanuch the active game (it will either be the newly downloaded game or the built in one)
+    
+    set_sleep_mode( SLEEP_MODE_PWR_DOWN );
+    sleep_enable();
+    sleep_cpu();
 
-        // Let's get loopstate_in all set up for the call into the user process
-
-        processPendingIRPackets();          // Sets the irdatabuffers in loopstate_in. Also processes any received IR blinkOS commands
-                                            // I wish this didn't directly access the loopstate_in buffers, but the abstraction would
-                                            // cost lots of unnecessary memory and coping
-
-
-    }
-
+    //TODO: Jump to active game
 }

@@ -552,6 +552,8 @@ const byte * const serialno_addr = ( const byte *)   0xF0;
 byte getSerialNumberByte( byte n ) {
 
     if (n>8) return(0);
+    
+    
 
     return serialno_addr[n];
 

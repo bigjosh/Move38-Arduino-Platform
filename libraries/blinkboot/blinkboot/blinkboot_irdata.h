@@ -11,8 +11,7 @@
 // Packets larger than this are silently discarded.
 // Note that we allocate 6 of these, so memory usage goes up fast with bigger packets sizes.
 
-#define IR_RX_PACKET_SIZE     28
-
+#define IR_RX_PACKET_SIZE     133
 
 void IrDataPeriodicUpdateComs(void);
 

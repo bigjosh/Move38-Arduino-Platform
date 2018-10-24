@@ -47,3 +47,78 @@ If a "game push" is not seen, then the blink copies the built-in game into the a
 
 The `blinkos` starts the active game by jumping to `0x000`.
 
+## IR game load sequence
+
+A blink initiates sending a game by transmitting a IR_PACKET_HEADER_PULLRERQUEST packet. For error detection, the 2nd byte of this packet contains the same bits as the header just inverted. 
+
+When you get a pull request, you should reboot which will cause the bootloader to run.
+
+The bootloader starts listing on the IR LEDs and if it hears a pull, request then it goes into download mode.
+
+In download mode, you repeatedly request blocks using the IR_PACKET_HEADER_PULLFLASH. The 2nd byte indicates the requested block. No error check is needed here since if the sending tile happens to miss the request because of a corruption then we will time out and ask again. If it happens to send the wrong block, that is ok too since the block number is protected by CRC in the push packet, so if we get the wrong block we can still use it. 
+
+There are 2 timeouts. If we time out waiting for a block after a pull, in which case we request the block again. There is also a longer timeout that if we don't see any blocks that get us closer to our goal (or some other metric that things are not progessing), then the bootloader copies the built-in game from upper flash down to the active area starting at 0x0000. 
+
+Once an active applicatiuon is loaded (either by completing the IR, or from coping the built-in one), then the bootloader clears `IVSEL` so that the interrupt vector is back to the application, and then jumps to the application reset vector at 0x000. 
+
+
+The active game flash area is
+
+## Flash layout
+
+We need as big a bootloader as we can get, so we set the bootloader to fill the entire NRWW flash area. Note that only code running in this area can run while flash is being written to , so we really want to fit the whole bootloader up here so we don't have to worry about parts of is getting touch while programming.    
+
+The bootloader the starts at flash address 0x1C00 by setting the fuse BOOTSZ=00. This gives us 1024 words (2048 bytes) of flash for the bootloader. 
+
+At the very bottom of the bootloader is the reset vector, which points to the start of the bootload code. We set the BOOTRST=0 fuse to make the chip jump to this vector on reset (rather than starting the application code reset vector at 0x000).   
+
+The bootloader sets `IVSEL`, which activates the bootloader's ISR table rather than the one at the bottom of flash memory where the active game will live. This is important so that the bootloader can use these interrupts.
+
+Note that the bootloader does not need all the ISR vectors, so it can use a shortened table to get a few more bytes of code to work with.   
+
+The actual program memory that holds the games starts at flash address 0x000. There is a total of 16K bytes of flash on the ATMEGA168PB, which is organized into 128 pages of 64 words (128 bytes) each. 
+
+This flash space is shared by...
+
+| What | Starts | Ends | Length |
+| - | -:| -:| -:|
+| Active game | 0x0000 | 0x06ff | 7Kb | 
+| Built-in game | 0x7000 | 0x1bff | 7Kb | 
+| Bootloader | 0x1c00 | 0x1fff | 2Kb |
+
+The active game is the game that will actually get executed. The built-in game must be copied down to the active game area before it can be played (in which was there are two copied of the built-in game in flash). You can't 
+
+Note that the built-in game must be copied into the active 
+
+The active game starts at at 0x000 and can be up to 7Kb long. Each game is self sufficient and can be started without the bootloader present (this helps with development).  
+
+## Packet formats
+
+### IR_PACKET_HEADER_PULLREQUEST
+    
+| `0b01101010` | length in blocks | highest available block | game checksum  low byte | game checksum high byte | 
+
+This is transmitted by a tile that is in game sending mode. 
+
+When we get this, we reboot into the bootloader. If the bootloader sees this before the time out then it will go into game download mode.
+
+The checksum is a simple mod 0xffff checksum of the full game. We use this rather than a CRC becuase the checksum works even if blocks are received out of order. 
+
+ ### IR_PACKET_HEADER_PULLFLASH       
+
+| `0b01011101` | requested block |
+
+Once we are in game download mode, we repeatedly ask out neighbors for new blocks using this packet. We only ask neighbors who we've seen a pull request from that matches the checksum we are downloading. 
+
+### IR_PACKET_HEADER_PUSHFLASH
+
+| 0b01011101 |  game checksum low byte | game checksum high byte | block number | 128 bytes of flash page | block checksum byte |   
+
+A game in sending mode will reply to a pull packet with a push packet. The game checksum is included so the receipt can verify it is for the correct game. The total length of this packet is 133 bytes.  
+
+## Compiling
+
+We need all the space we can get so we pass gcc the `-Os` and `-flto`  and we pass the linker `-fwhole-program`. This gets us about 20 extra bytes.
+
+You can read about Link Time Optimization here...
+https://github.com/arduino/Arduino/issues/660

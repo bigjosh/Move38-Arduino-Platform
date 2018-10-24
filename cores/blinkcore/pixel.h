@@ -65,7 +65,7 @@ struct  rawpixel_t {
                                 // based on the pointer... Could compare the bottom byte of the pointer to known list, but so hacky.
                                 
     rawpixel_t( uint8_t in_raw_r , uint8_t in_raw_g , uint8_t in_raw_b ) {
-        rawValueR = in_raw_r;        
+        rawValueR =  in_raw_r;        
         rawValueG = in_raw_g;
         rawValueB = in_raw_b;
         
