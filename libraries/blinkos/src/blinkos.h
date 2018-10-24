@@ -99,3 +99,14 @@ struct loopstate_out_t {
 
 //void setupEntry();
 void loopEntry( loopstate_in_t const *loopstate_in , loopstate_out_t *loopstate_out);
+
+
+// Handy
+
+#define OS_FACE_COUNT PIXEL_FACE_COUNT
+
+// 'Cause C ain't got iterators and all those FOR loops are too ugly.
+#define OS_FOREACH_FACE(x) for(int x = 0; x < OS_FACE_COUNT ; ++ x)       // Pretend this is a real language with iterators
+
+// Get the number of elements in an array.
+#define OS_COUNT_OF(x) ((sizeof(x)/sizeof(x[0])))

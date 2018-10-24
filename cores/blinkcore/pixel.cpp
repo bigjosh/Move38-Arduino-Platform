@@ -41,8 +41,6 @@
 
 
 #include <avr/interrupt.h>
-#include <avr/pgmspace.h>
-#include <string.h>             // memcpy()
 
 #include "pixel.h"
 
@@ -51,12 +49,6 @@
 #include "timers.h"      // We piggyback actual timer callback in pixel since we are using that clock for PWM
 
 #include "callbacks.h"      // External callbacks to the next higher layer
-
-// init the raw pixel buffers to all 0xff (off)
-
-void pixel_init_rawpixelset( rawpixelset_t *s ) {
-    memset( s , 0xff , sizeof( rawpixelset_t ) );
-}
 
 rawpixelset_t displayedRawPixelSet;        // Currently being displayed
 
@@ -251,9 +243,7 @@ static void setupTimers(void) {
 }
 
 void pixel_init(void) {
-
-    pixel_init_rawpixelset( &displayedRawPixelSet );
-
+    
 	setupPixelPins();
 	setupTimers();
 }
@@ -350,7 +340,7 @@ static uint8_t phase=0;
 
 // We picked to clear this rather than set to 1 becuase in the ISR is is faster to set to 0 since R1 is always loaded with 0
 
-static volatile uint8_t vertical_blanking_interval;
+volatile uint8_t vertical_blanking_interval;
 
 // Need to compute timekeeping based off the pixel interrupt
 
@@ -398,10 +388,10 @@ static void pixel_isr(void) {
     // the next time the timer overflows.
 
     asm("nop");
-    
+
     rawpixel_t *currentPixel = &(displayedRawPixelSet.rawpixels[currentPixelIndex]);
-    
-   
+
+
     switch (phase) {
 
 
@@ -679,72 +669,3 @@ void pixel_enable(void) {
 }
 
 
-// Display the buffered pixels by swapping the buffer. Blocks until next frame starts.
-
-void pixel_updateDisplayBuffer( const rawpixelset_t *newRawPixelSet ) {
-
-    vertical_blanking_interval=1;
-
-    while (vertical_blanking_interval);   // The pixel ISR will set this bit after it finishes the last pixel of the current refresh cycle
-
-    displayedRawPixelSet = *newRawPixelSet;     // Copy new data into the display buffer
-
-}
-
-// TODO: Move this out of core...
-
-rawpixelset_t rawPixelBufferSet = {
-    RAW_PIXEL_OFF,
-    RAW_PIXEL_OFF,
-    RAW_PIXEL_OFF,
-    RAW_PIXEL_OFF,
-    RAW_PIXEL_OFF,
-    RAW_PIXEL_OFF,    
-};
-
-
-// Update the pixel buffer with raw PWM register values.
-// Larger pwm values map to shorter PWM cycles (255=off) so for red and green
-// there is an inverse but very non linear relation between raw value and brightness.
-// For blue is is more complicated because of the charge pump. The peak brightness is somewhere
-// in the middle.
-
-// Values set here are buffered into next call to pixel_displayBufferedPixels()
-
-
-// Gamma table courtesy of adafruit...
-// https://learn.adafruit.com/led-tricks-gamma-correction/the-quick-fix
-// Compressed down to 32 entries, normalized for our raw values that start at 255 off.
-
-// TODO: Possible that green and red are similar enough that we can combine them into one table and save some flash space
-
-static const uint8_t PROGMEM gamma8R[32] = {
-    255,254,253,251,250,248,245,242,238,234,230,224,218,211,204,195,186,176,165,153,140,126,111,95,78,59,40,19,13,9,3,1
-};
-
-static const uint8_t PROGMEM gamma8G[32] = {
-    255,254,253,251,250,248,245,242,238,234,230,224,218,211,204,195,186,176,165,153,140,126,111,95,78,59,40,19,13,9,3,1
-};
-
-static const uint8_t PROGMEM gamma8B[32] = {
-    255,254,253,251,250,248,245,242,238,234,230,224,218,211,204,195,186,176,165,153,140,126,111,95,78,59,40,19,13,9,3,1
-};
-
-
-
-void pixel_bufferedSetPixel( uint8_t pixel, pixelColor_t newColor) {
-
-    rawpixel_t *rawpixel = &(rawPixelBufferSet.rawpixels[pixel]);
-
-    rawpixel->rawValueR= pgm_read_byte(&gamma8R[newColor.r]);
-    rawpixel->rawValueG= pgm_read_byte(&gamma8G[newColor.g]);
-    rawpixel->rawValueB= pgm_read_byte(&gamma8B[newColor.b]);
-
-}
-
-void pixel_displayBufferedPixels(void) {
-
-    //displayedRawPixelSet.rawpixels[0].rawValueR=5;
-    pixel_updateDisplayBuffer( &rawPixelBufferSet );
-
-}

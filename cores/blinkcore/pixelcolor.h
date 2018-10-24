@@ -6,8 +6,8 @@
  *
  */
 
-#ifndef RGB_PIXELCOLOR_H_
-#define RGB_PIXELCOLOR_H_
+#ifndef PIXELCOLOR_H_
+#define PIXELCOLOR_H_
 // Each pixel has 32 brightness levels for each of the three colors (red,green,blue)
 // These brightness levels are normalized to be visually linear with 0=off and 31=max brightness
 

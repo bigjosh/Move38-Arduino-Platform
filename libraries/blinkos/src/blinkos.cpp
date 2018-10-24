@@ -28,6 +28,8 @@
 #include "blinkos.h"
 #include "blinkos_button.h"
 #include "blinkos_timer.h"          // Class Timer
+#include "blinkos_pixel.h"
+#include "blinkos_viral.h"
 
 #include "callbacks.h"              // From blinkcore, which will call into us via these
 
@@ -42,6 +44,7 @@ loopstate_out_t loopstate_out;
 #include "utils.h"
 #include "power.h"
 #include "button.h"
+#include "adc.h"
 
 #include "debug.h"
 
@@ -68,6 +71,9 @@ static void sleep(void) {
 
     button_ISR_off();       // Set everything back to thew way it was before we slept
     ir_enable();
+
+
+    blinkos_pixel_displayBufferedPixels();          // init the display buffer to avoid ugly colors showing up between when we enable pixels and send out first update
     pixel_enable();
 
     loopstate_in.woke_flag= 1;
@@ -316,6 +322,24 @@ extern void setupEntry();
 void run(void) {
 
 
+    power_init();
+
+    button_init();
+
+    adc_init();			    // Init ADC to start measuring battery voltage
+
+    pixel_init();
+
+    ir_init();
+
+    ir_enable();
+
+    irDataInit();       // Really only called to init IR_RX_DEBUG
+
+    pixel_enable();
+    
+    button_enable_pu();
+
     // Set the buffer pointers
 
     for( uint8_t f=0; f< IR_FACE_COUNT; f++ ) {
@@ -326,19 +350,17 @@ void run(void) {
     }
 
 
-    ir_enable();
-
-    irDataInit();       // Really only called to init IR_RX_DEBUG
-
-    pixel_enable();
-
-    button_enable_pu();
 
     // Call user setup code
+
+    #warning
+    sleep();
 
     setupEntry();
 
     postponeSleep();            // We just turned on, so restart sleep timer
+    
+    blinkos_transmit_self();
 
     while (1) {
 
@@ -364,12 +386,12 @@ void run(void) {
 
             if (  color.reserved ) {          // Did the color change on the last pass? (We used the reserved bit to tell in the blnkOS API)
 
-                pixel_bufferedSetPixel( f,  color  );           // TODO: Do we need to clear that top bit?
+                blinkos_pixel_bufferedSetPixel( f,  color  );           // TODO: Do we need to clear that top bit?
             }
 
         }
 
-        pixel_displayBufferedPixels();      // show all display updates that happened in last loop()
+        blinkos_pixel_displayBufferedPixels();      // show all display updates that happened in last loop()
                                             // Also currently blocks until new frame actually starts
 
 

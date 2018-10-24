@@ -80,10 +80,12 @@ The actual program memory that holds the games starts at flash address 0x000. Th
 
 This flash space is shared by...
 
-| What | Starts | Ends | Length |
+(Remember all these flash addresses are in WORDs not BYTEs!)
+
+| What | Starts | Ends | Length (Bytes) |
 | - | -:| -:| -:|
-| Active game | 0x0000 | 0x06ff | 7Kb | 
-| Built-in game | 0x7000 | 0x1bff | 7Kb | 
+| Active game | 0x0000 | 0x0dff | 7Kb | 
+| Built-in game | 0x0d00 | 0x1bff | 7Kb | 
 | Bootloader | 0x1c00 | 0x1fff | 2Kb |
 
 The active game is the game that will actually get executed. The built-in game must be copied down to the active game area before it can be played (in which was there are two copied of the built-in game in flash). You can't 
@@ -102,7 +104,8 @@ This is transmitted by a tile that is in game sending mode.
 
 When we get this, we reboot into the bootloader. If the bootloader sees this before the time out then it will go into game download mode.
 
-The checksum is a simple mod 0xffff checksum of the full game. We use this rather than a CRC becuase the checksum works even if blocks are received out of order. 
+The checksum is a simple mod 0xffff checksum of the full game. We use this rather than a CRC becuase the checksum works even if blocks are received out of order.
+
 
  ### IR_PACKET_HEADER_PULLFLASH       
 
@@ -115,6 +118,9 @@ Once we are in game download mode, we repeatedly ask out neighbors for new block
 | 0b01011101 |  game checksum low byte | game checksum high byte | block number | 128 bytes of flash page | block checksum byte |   
 
 A game in sending mode will reply to a pull packet with a push packet. The game checksum is included so the receipt can verify it is for the correct game. The total length of this packet is 133 bytes.  
+
+Since FLASH pages are 128 bytes long on this chip and we send a full page in each packet, it will ideally take [56 push packets](https://www.google.com/search?rlz=1C1CYCW_enUS687US687&ei=FpzQW_7XMuuMggevqb_YDw&q=%28%280x0e00*2%29+%2F+128+%29+in+decmial&oq=%28%280x0e00*2%29+%2F+128+%29+in+decmial&gs_l=psy-ab.3...9892.17114..17387...0.0..0.67.544.9......0....1..gws-wiz.......0i71j33i10.rIT_Mh01HY4) to send a full game (assuming no errors or dropped packets).  
+
 
 ## Compiling
 

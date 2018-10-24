@@ -50,17 +50,7 @@ static void mhz_init(void) {
 static void init(void) {
 
     mhz_init();				// switch to 8Mhz. TODO: Some day it would be nice to go back to 1Mhz for FCC, but lets just get things working now.
-
-    power_init();
     
-
-        
-    button_init();
-
-    adc_init();			    // Init ADC to start measuring battery voltage
-    pixel_init();
-    ir_init();
-
     sei();					// Let interrupts happen. For now, this is the timer overflow that updates to next pixel.
 
 }

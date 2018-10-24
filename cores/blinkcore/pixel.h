@@ -9,7 +9,7 @@
 #ifndef RGB_PIXELS_H_
 #define RGB_PIXELS_H_
 
-#include "pixelcolor.h"
+
 
 // True today, but could imagine a blinks with 1 pixel or one with with 18 pixels...
 
@@ -31,14 +31,6 @@ void pixel_disable(void);
 
 /** Display interface ***/
 
-
-// Update the pixel buffer.
-
-void pixel_bufferedSetPixel( uint8_t pixel, pixelColor_t newColor );
-
-// Display the buffered pixels. Blocks until next frame starts.
-
-void pixel_displayBufferedPixels(void);
 
 /** Callback interface **/
 
@@ -98,10 +90,16 @@ typedef struct {
 
 extern rawpixelset_t displayedRawPixelSet;        // Currently being displayed. You can have direct access to this to save memory, 
                                                   // but use the vertical retrace to avoid visual tearing on updates
+                                                  
+                                                  
+// This is cleared when we are done displaying the current buffer values and about to reset and start again
+// Once this is cleared, you have one pixel interrupt period to get your new data into the pixel buffer
+// before the next refresh cycle starts.
 
-// Set all pixels to 0xff (off)
+// We picked to clear this rather than set to 1 becuase in the ISR is is faster to set to 0 since R1 is always loaded with 0
 
-void pixel_init_rawpixelset( rawpixelset_t *s );
+extern volatile uint8_t vertical_blanking_interval;
+
 
 
 #endif /* RGB_PIXELS_H_ */

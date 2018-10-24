@@ -181,6 +181,14 @@
       <SubType>compile</SubType>
       <Link>blinkos_irdata.h</Link>
     </Compile>
+    <Compile Include="..\..\..\libraries\blinkos\src\blinkos_pixel.cpp">
+      <SubType>compile</SubType>
+      <Link>blinkos_pixel.cpp</Link>
+    </Compile>
+    <Compile Include="..\..\..\libraries\blinkos\src\blinkos_pixel.h">
+      <SubType>compile</SubType>
+      <Link>blinkos_pixel.h</Link>
+    </Compile>
     <Compile Include="..\..\..\libraries\blinkos\src\blinkos_timer.cpp">
       <SubType>compile</SubType>
       <Link>blinkos_timer.cpp</Link>
@@ -188,6 +196,14 @@
     <Compile Include="..\..\..\libraries\blinkos\src\blinkos_timer.h">
       <SubType>compile</SubType>
       <Link>blinkos_timer.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\libraries\blinkos\src\blinkos_viral.cpp">
+      <SubType>compile</SubType>
+      <Link>blinkos_viral.cpp</Link>
+    </Compile>
+    <Compile Include="..\..\..\libraries\blinkos\src\blinkos_viral.h">
+      <SubType>compile</SubType>
+      <Link>blinkos_viral.h</Link>
     </Compile>
   </ItemGroup>
   <ItemGroup>

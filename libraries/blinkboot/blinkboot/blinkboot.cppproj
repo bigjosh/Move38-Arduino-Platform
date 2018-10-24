@@ -189,9 +189,13 @@
       <SubType>compile</SubType>
       <Link>blinkboot_irdata.h</Link>
     </Compile>
-    <Compile Include="pixelcolor.h">
+    <Compile Include="coarsepixelcolor.cpp">
       <SubType>compile</SubType>
-      <Link>pixelcolor.h</Link>
+      <Link>coarsepixelcolor.cpp</Link>
+    </Compile>
+    <Compile Include="coarsepixelcolor.h">
+      <SubType>compile</SubType>
+      <Link>coarsepixelcolor.h</Link>
     </Compile>
   </ItemGroup>
   <ItemGroup>
