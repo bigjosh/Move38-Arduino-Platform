@@ -44,18 +44,10 @@ void updateDisplayColors() {
 
 }
 
-
-
 void setup() {
     //splat();
     updateDisplayColors();
 }
-
-// Packet handshaking
-// The blink that wants to send a packet starts sending the PACKET_READY_TO_GO
-// The blink that sees the PACKET_READY_TO_GO replies with a SEND_ME_THE_PACKET
-// The original sending packet now replies with the actual packet. Note that you want to do this as soon as you see the SEND_ME_THE_PACKET come in.
-// Once the receiving blink gets the packet, it stops sending the SEND_ME_THE_PACKET and the transfer is complete!
 
 // You might not need to have explicit command for this if the game happens to already have state changes that are natural places
 // to send and ACK the packets, but in this demo they are needed to keep the transmissions ping ponging.
@@ -65,6 +57,10 @@ void setup() {
 
 /*
 
+    A handshake is nessisary to account for missed messages in either direction, which can potentially happen at any time
+    over the IR link. We could, for example, just blind send the new data but what if that packet was missed? How would we
+    know to resend it? That's what the I_GOT_THE_PACKET dance is for, so we can keep resending until we know the other side got it. 
+
     Here is how the packet send dance works...
 
     T wants to send a packet to R.
@@ -72,7 +68,8 @@ void setup() {
     T sends the packet until it gets an I_GOT_THE_PACKET from R.
 
     When R gets a packet, it sends I_GOT_THE_PACKET until it sees something that is not a packet from T.
-
+    
+    
     Since this API presents a state-based model, the right way to do this would be to treat the packets like all other face vales.
     You could call setValueOnFace() with a byte, or an array of bytes and the blink would continuously send whatever you set and the other side
     we see with getLastValueReceivedonFace().
