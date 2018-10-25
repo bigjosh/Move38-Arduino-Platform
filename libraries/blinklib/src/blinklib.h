@@ -18,7 +18,7 @@
 #ifndef BLINKLIB_H_
 #define BLINKLIB_H_
 
-#include "pixelcolor-stub.h"
+#include "pixelcolor.h"
 
 // The value of the data sent and received on faces via IR can be between 0 and IR_DATA_VALUE_MAX
 // If you try to send higher than this, the max value will be sent.
@@ -57,6 +57,37 @@ void setValueSentOnFace( byte value , byte face );
 // Same as setValueSentOnFace(), but sets all faces in one call.
 
 void setValueSentOnAllFaces( byte value );
+
+/* --- Long packet processing */
+
+// Note that long packets have a 1 byte checksum added by blinklib. Packets with the wrong checksum are tossed.
+
+#define IR_LONG_PACKET_MAX_LEN 32
+
+// Returns the number of bytes waiting in the data buffer, or 0 if no packet ready.
+byte getPacketLengthOnFace( uint8_t face );
+
+// Returns true if a packet is available in the buffer
+boolean isPacketReadyOnFace( uint8_t face );
+
+ // Returns a pointer to the actual received data
+ // This should really be a (void *) so it can be assigned to any pointer type,
+ // but in C++ you can not case a (void *) into something else so it doesn't really work there
+ // and I think too ugly to have these functions that are inverses of each other to take/return different types.
+ // Thanks, Stroustrup.
+const byte *getPacketDataOnFace( uint8_t face );
+
+// Frees up the buffer holding the long packet. This is not necessary because the
+// buffer will be automatically released when loop() returns, but it is good
+// practice to manually release it as soon as you are done with to to make room
+// for new incoming data.
+void markLongPacketRead( uint8_t face );
+
+// Send a long data packet.  Packet is protected by checksum.
+// Return 1 if sent.
+// Returns 0 if not able to send because (1) there is currently data being received on that face, (2) the len exceeds IR_LONG_PACKET_MAX_LEN
+
+uint8_t sendPacketOnFace( uint8_t face , byte *data, byte len );
 
 
 /*

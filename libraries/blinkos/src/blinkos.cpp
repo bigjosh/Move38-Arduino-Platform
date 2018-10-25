@@ -321,7 +321,6 @@ extern void setupEntry();
 
 void run(void) {
 
-
     power_init();
 
     button_init();
@@ -388,7 +387,7 @@ void run(void) {
         }
 
         blinkos_pixel_displayBufferedPixels();      // show all display updates that happened in last loop()
-                                            // Also currently blocks until new frame actually starts
+                                                    // Also currently blocks until new frame actually starts
 
 
         for( uint8_t f = 0; f < IR_FACE_COUNT ; f++ ) {

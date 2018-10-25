@@ -172,13 +172,9 @@
       <SubType>compile</SubType>
       <Link>blinklib.h</Link>
     </Compile>
-    <Compile Include="..\..\..\libraries\blinklib\src\blinkos-stub.h">
+    <Compile Include="..\..\..\libraries\blinklib\src\pixelcolor.h">
       <SubType>compile</SubType>
-      <Link>blinkos-stub.h</Link>
-    </Compile>
-    <Compile Include="..\..\..\libraries\blinklib\src\pixelcolor-stub.h">
-      <SubType>compile</SubType>
-      <Link>pixelcolor-stub.h</Link>
+      <Link>pixelcolor.h</Link>
     </Compile>
     <Compile Include="..\..\..\libraries\blinklib\src\Print.cpp">
       <SubType>compile</SubType>

@@ -27,7 +27,7 @@
 
 #include "blinklib.h"
 
-#include "blinkos-stub.h"
+#include "blinkos.h"
 
 
 #define TX_PROBE_TIME_MS           150     // How often to do a blind send when no RX has happened recently to trigger ping pong
@@ -176,6 +176,12 @@ static const uint8_t PROGMEM parityTable[] = {
     0b01111111,   // 63
 };
 
+// This is a special byte that signals that this is a long data packet
+// It must appear twice, and the final byte is a checksum of all bytes including the two header bytes
+
+#define LONG_DATA_PACKET_HEADER0 0b10101010
+#define LONG_DATA_PACKET_HEADER1 0b01010101
+
 static uint8_t parityEncode( uint8_t d ) {
     return pgm_read_byte_near( parityTable+ d );
 }
@@ -207,6 +213,98 @@ unsigned long millis() {
     return now;
 }
 
+// Returns the checksum of all bytes
+
+uint8_t computeChecksum( const uint8_t *buffer , uint8_t len ) {
+
+    uint8_t computedChecksum = 0;
+
+    for( uint8_t l=0; l < len ; l++ ) {
+
+        computedChecksum += *buffer++;
+
+    }
+
+    return computedChecksum;
+
+}
+
+#if  ( ( IR_LONG_PACKET_MAX_LEN + 3  ) > IR_RX_PACKET_SIZE )
+
+    #error There has to be enough room in the blinkos packet buffer to hold the user packet plus 2 header bytes and one checksum byte
+
+#endif
+
+// The length of the long packet in each face buffer
+// The packet starts at byte 3 because there are 2 header bytes
+// This len already has the header bytes deducted and also the checksum at the end.
+// TODO: If we share the static packetbuffers directly up from blinkOS then this could all be shorted and sweeter
+static byte  longPacketLen[FACE_COUNT];
+static byte *longPacketData[FACE_COUNT];
+
+byte getPacketLengthOnFace( uint8_t face ) {
+    asm("nop");
+    return longPacketLen[ face ];
+
+}
+
+boolean isPacketReadyOnFace( uint8_t face ) {
+    return getPacketLengthOnFace(face) != 0;
+}
+
+const byte *getPacketDataOnFace( uint8_t face ) {
+
+    return longPacketData[face];
+
+}
+
+void markLongPacketRead( uint8_t face ) {
+
+    // We don't want to mark it read if it is not actually pending becuase then we might be throwing away an unread packet
+    if ( longPacketLen[face] ) {
+        longPacketLen[face]=0;
+        ir_mark_packet_read( face );
+    }
+}
+
+// This is the easy way to do this, but uses RAM unnessisarily. 
+// TODO: Make a scatter version of this to save RAM & time
+
+static uint8_t ir_send_packet_buffer[ IR_LONG_PACKET_MAX_LEN + 3 ];
+
+uint8_t sendPacketOnFace( uint8_t face , const byte *data, uint8_t len ) {
+    
+    if ( len > IR_LONG_PACKET_MAX_LEN ) {
+        
+        return 0;
+        
+    }        
+    
+    const uint8_t *s = (const uint8_t *) data ;           // Just to convert from void to uint8_t
+    
+    uint8_t *b = ir_send_packet_buffer;
+    
+    // Build up the packet in the buffer
+    
+    *b++= LONG_DATA_PACKET_HEADER0;
+    *b++= LONG_DATA_PACKET_HEADER1;
+    
+    uint8_t computedChecksum=0;
+    
+    while (len--) {
+        
+        computedChecksum += *s;
+        
+        *b++= *s++;
+                
+    }        
+    
+    *b = computedChecksum;
+    
+    return ir_send_userdata( face , ir_send_packet_buffer , len + 3 );
+    
+}    
+
 static void RX_IRFaces( const ir_data_buffer_t *ir_data_buffers ) {
 
     //  Use these pointers to step though the arrays
@@ -223,9 +321,10 @@ static void RX_IRFaces( const ir_data_buffer_t *ir_data_buffers ) {
             // TODO: Should we require the received packet to pass error checks?
             face->expireTime = now + RX_EXPIRE_TIME_MS;
 
-            if ( ir_data_buffer->len == 1 ) {
+            const uint8_t *packetBuffer = ir_data_buffer->data;
+            const uint8_t packetLen = ir_data_buffer->len;
 
-                const uint8_t *packetBuffer = ir_data_buffer->data;
+            if ( packetLen == 1 ) {
 
                 // We only deal with 1 byte long packets in blinklib so anything else is an error
 
@@ -246,12 +345,32 @@ static void RX_IRFaces( const ir_data_buffer_t *ir_data_buffers ) {
 
                 } //  if ( receivedByte == parityEncode( decodedByte ) )
 
-            }   // if ( ir_data_buffer->len == 1 )
+                // Mark the data buffer as consumed. This clears it out so it will be ready to receive the next packet
+                // If we don't do this, then we might miss the response to our ping
 
-            // Mark the databuffer as consumed. This clears it out so it will be ready to receive the next packet
-            // If we don't do this, then we might miss the response to our ping
+                ir_mark_packet_read( f ) ;
 
-            ir_mark_packet_read( f ) ;
+            }   else { // if ( ir_data_buffer->len == 1 )
+
+                if (packetLen>=4 && packetBuffer[0] == LONG_DATA_PACKET_HEADER0 && packetBuffer[1] == LONG_DATA_PACKET_HEADER1 && computeChecksum( packetBuffer , packetLen-1)  ==  packetBuffer[ packetLen - 1 ] ) {       // A packet must have at least 2 header bytes and one data byte and check sum byte
+
+                    // Ok this packet checks out folks!
+
+                    longPacketLen[ f ] = packetLen-3;           // We deduct 3 from he length to account for the 2 header bytes and the trailing checksum byte
+                    longPacketData[f] = (byte *) (packetBuffer + 2);       // Skip the header bytes
+
+                    // NOTE that we do not mark this packet as read! This will give the suer a chance to read it directly from the IR buffer.
+
+                } else {
+
+                    // Packet too short so consume it to make room for next.
+
+                    ir_mark_packet_read( f ) ;
+
+                }
+
+            }
+
 
         }  // if ( ir_data_buffer->ready_flag )
 
@@ -552,8 +671,8 @@ const byte * const serialno_addr = ( const byte *)   0xF0;
 byte getSerialNumberByte( byte n ) {
 
     if (n>8) return(0);
-    
-    
+
+
 
     return serialno_addr[n];
 
@@ -648,6 +767,11 @@ void loopEntry( loopstate_in_t const *loopstate_in , loopstate_out_t *loopstate_
 
      loop();
 
+     // Go ahead an release any packets that the loop() forgot to mark as read
+     // We count on the fact that markLongPacketRead() here will only release pending packets
+     FOREACH_FACE(f) {
+        markLongPacketRead(f);
+     }
 
      // Transmit any IR packets waiting to go out
      // Note that we do this after loop had a chance to update them.

@@ -14,6 +14,15 @@
 #define IR_FACE_COUNT 6
 #define PIXEL_FACE_COUNT 6
 
+// Maximum IR packet size. Larger values more efficient for large block transfers, but use more memory.
+// Packets larger than this are silently discarded.
+// Note that we allocate 6 of these, so memory usage goes up fast with bigger packets sizes.
+
+// We picked 35 here to have room for 32 bytes of program data, 1 byte header, 2 bytes block number.
+
+#define IR_RX_PACKET_SIZE     35
+
+
 // TODO: Change time to uint24 _t
 // Supported!!! https://gcc.gnu.org/wiki/avr-gcc#types
 // typedef __uint24 millis_t;
