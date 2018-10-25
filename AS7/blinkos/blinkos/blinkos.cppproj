@@ -205,6 +205,10 @@
       <SubType>compile</SubType>
       <Link>blinkos_viral.h</Link>
     </Compile>
+    <Compile Include="..\..\..\libraries\blinkos\src\pixelcolor.h">
+      <SubType>compile</SubType>
+      <Link>pixelcolor.h</Link>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\blinkcore\blinkcore.cppproj">

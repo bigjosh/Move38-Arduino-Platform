@@ -209,10 +209,6 @@
       <SubType>compile</SubType>
       <Link>pixel.h</Link>
     </Compile>
-    <Compile Include="..\..\..\cores\blinkcore\pixelcolor.h">
-      <SubType>compile</SubType>
-      <Link>pixelcolor.h</Link>
-    </Compile>
     <Compile Include="..\..\..\cores\blinkcore\power.cpp">
       <SubType>compile</SubType>
       <Link>power.cpp</Link>

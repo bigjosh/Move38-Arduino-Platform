@@ -9,7 +9,7 @@
 // Gets us uintx_t
 // Not sure why, but it MUST be in the header and not the cpp
 #include <stdint.h>
-#include "pixelcolor-stub.h"
+//#include "pixelcolor-stub.h"
 
 #define IR_FACE_COUNT 6
 #define PIXEL_FACE_COUNT 6

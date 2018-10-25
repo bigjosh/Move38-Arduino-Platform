@@ -352,15 +352,11 @@ void run(void) {
 
 
     // Call user setup code
-
-    #warning
-    sleep();
-
     setupEntry();
 
     postponeSleep();            // We just turned on, so restart sleep timer
     
-    blinkos_transmit_self();
+    //blinkos_transmit_self();
 
     while (1) {
 
