@@ -87,7 +87,7 @@ void markLongPacketRead( uint8_t face );
 // Return 1 if sent.
 // Returns 0 if not able to send because (1) there is currently data being received on that face, (2) the len exceeds IR_LONG_PACKET_MAX_LEN
 
-uint8_t sendPacketOnFace( uint8_t face , byte *data, byte len );
+uint8_t sendPacketOnFace( byte face , const byte *data, byte len );
 
 
 /*

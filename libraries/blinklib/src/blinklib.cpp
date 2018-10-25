@@ -267,43 +267,45 @@ void markLongPacketRead( uint8_t face ) {
     }
 }
 
-// This is the easy way to do this, but uses RAM unnessisarily. 
+// This is the easy way to do this, but uses RAM unnessisarily.
 // TODO: Make a scatter version of this to save RAM & time
 
 static uint8_t ir_send_packet_buffer[ IR_LONG_PACKET_MAX_LEN + 3 ];
 
-uint8_t sendPacketOnFace( uint8_t face , const byte *data, uint8_t len ) {
-    
+uint8_t sendPacketOnFace( byte face , const byte *data, byte len ) {
+
     if ( len > IR_LONG_PACKET_MAX_LEN ) {
-        
+
         return 0;
-        
-    }        
-    
+
+    }
+
     const uint8_t *s = (const uint8_t *) data ;           // Just to convert from void to uint8_t
-    
+
     uint8_t *b = ir_send_packet_buffer;
-    
+
     // Build up the packet in the buffer
-    
+
     *b++= LONG_DATA_PACKET_HEADER0;
     *b++= LONG_DATA_PACKET_HEADER1;
-    
+
+    uint8_t packetLen = len+3;
+
     uint8_t computedChecksum=0;
-    
+
     while (len--) {
-        
+
         computedChecksum += *s;
-        
+
         *b++= *s++;
-                
-    }        
-    
+
+    }
+
     *b = computedChecksum;
-    
-    return ir_send_userdata( face , ir_send_packet_buffer , len + 3 );
-    
-}    
+
+    return ir_send_userdata( face , ir_send_packet_buffer , packetLen );
+
+}
 
 static void RX_IRFaces( const ir_data_buffer_t *ir_data_buffers ) {
 
