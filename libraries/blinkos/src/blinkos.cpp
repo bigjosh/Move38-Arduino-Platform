@@ -72,8 +72,6 @@ static void sleep(void) {
     button_ISR_off();       // Set everything back to thew way it was before we slept
     ir_enable();
 
-
-    blinkos_pixel_displayBufferedPixels();          // init the display buffer to avoid ugly colors showing up between when we enable pixels and send out first update
     pixel_enable();
 
     loopstate_in.woke_flag= 1;

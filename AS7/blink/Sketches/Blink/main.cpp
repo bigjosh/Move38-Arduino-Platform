@@ -136,14 +136,11 @@ void loop() {
         splat();
         updateDisplayColors();
 
-        FOREACH_FACE(f) pending_packet_send_on_face[f]=false;        // Clear any pending sends so we don't send intermediate updates while still scrambling
-
-
     }
 
     if (buttonReleased()) {
 
-        // When they release the button, now is the time to send the update out
+        // When the button is released, the scramble stops and it is time to send the update out
 
         FOREACH_FACE(f) pending_packet_send_on_face[f]=true;        // This will trigger a send on all faces
 
@@ -159,17 +156,15 @@ void loop() {
 
                 Color *receivedColors = (Color *) getPacketDataOnFace( f ) ;
 
-                FOREACH_FACE( f ) {
+                FOREACH_FACE( g ) {
 
-                    colors[f] = receivedColors[f];
+                    colors[g] = receivedColors[g];
 
                 }
 
                 updateDisplayColors();
 
             }
-
-            markLongPacketRead( f );
 
             pending_ack_send_on_face[f]=true;           // Tell other side that we got it so they can stop sending it
 
@@ -188,7 +183,6 @@ void loop() {
         } else {
 
             setValueSentOnFace( current_game_state , f );
-
 
         }
     }       // FOREACH_FACE
