@@ -30,12 +30,6 @@
 #include "blinkos.h"
 
 
-#warning
-#include "Serial.h"
-#warning
-ServicePortSerial sp;
-
-
 #define TX_PROBE_TIME_MS           150     // How often to do a blind send when no RX has happened recently to trigger ping pong
                                            // Nice to have probe time shorter than expire time so you have to miss 2 messages
                                            // before the face will expire
@@ -289,9 +283,8 @@ static uint8_t ir_send_packet_buffer[ IR_LONG_PACKET_MAX_LEN + 3 ];
 uint8_t sendPacketOnFace( byte face , const byte *data, byte len ) {
 
     if ( len > IR_LONG_PACKET_MAX_LEN ) {
-
-        if (face==4) sp.println("packet too long");
-
+        
+        // Ignore request to send oversized packet
 
         return 0;
 
@@ -301,8 +294,6 @@ uint8_t sendPacketOnFace( byte face , const byte *data, byte len ) {
         // We never blind send a packet. Instead we wait for a normal (short) value message to come in
         // and then we reply with the packet to avoid collisions. We depend on the value messages to
         // do handshaking and also to discover when there is a neighbor on the other side.
-
-        if (face==4) sp.println("packet no CTS");
 
         // The caller should see this 0 and then try to send again until they hit a moment when we know it is save to send
         return 0;
@@ -332,8 +323,6 @@ uint8_t sendPacketOnFace( byte face , const byte *data, byte len ) {
 
     *b = computedChecksum;
 
-    if (face==4) sp.println("psending packet");
-    
     uint8_t sent_flag = ir_send_userdata( face , ir_send_packet_buffer , packetLen );
     
     if (sent_flag) {
@@ -399,9 +388,6 @@ static void RX_IRFaces( const ir_data_buffer_t *ir_data_buffers ) {
 
                 if (packetLen>=4 && packetBuffer[0] == LONG_DATA_PACKET_HEADER0 && packetBuffer[1] == LONG_DATA_PACKET_HEADER1 && computeChecksum( packetBuffer , packetLen-1)  ==  packetBuffer[ packetLen - 1 ] ) {       // A packet must have at least 2 header bytes and one data byte and check sum byte
 
-                    #warning
-                    if (f==4) sp.write('G');
-
                     // Ok this packet checks out folks!
 
                     longPacketLen[ f ] = packetLen-3;           // We deduct 3 from he length to account for the 2 header bytes and the trailing checksum byte
@@ -413,18 +399,6 @@ static void RX_IRFaces( const ir_data_buffer_t *ir_data_buffers ) {
                     face->sendTime = 0;
 
                 } else {
-
-                    #warning
-                    if (f==4) {
-                        sp.println( (int) packetLen);
-                        sp.println( (int) packetBuffer[0], BIN );
-                        sp.println( (int) packetBuffer[1], BIN );
-                        sp.println( (int) computeChecksum( packetBuffer , packetLen-1)    );
-                        sp.println( (int) packetBuffer[ packetLen - 1 ] );
-                        sp.println( 'X' );
-
-                    }
-
 
                     // Note that we do not clear to send on this face. There was some kind of problem, maybe corruption
                     // so there might still be stuff in flight and we don't want to step on it.
@@ -812,14 +786,8 @@ void setFaceColor(  byte face, Color newColor ) {
 
 
 void setupEntry() {
-
     // Call up to the userland code
     setup();
-
-    #warning
-    sp.begin();
-    sp.write('S');
-
 }
 
 void loopEntry() {

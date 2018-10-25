@@ -1,14 +1,7 @@
 
-#warning
-#include "DummySerial.h"
-
-extern ServicePortSerial sp;
-
 // Our currently displayed colors and also the colors we send/receive in a packet to share
 
 static Color colors[FACE_COUNT] = { RED, GREEN, BLUE, ORANGE , YELLOW , CYAN };
-
-ServicePortSerial s;
 
 byte randomByte() {
 
@@ -108,22 +101,13 @@ void loop() {
 
             byte value_received=getLastValueReceivedOnFace(f);
 
-            if (f==4 && value_received ){
-                    sp.print("value:");
-                    sp.println((int) value_received);
-            }
-
             if ( value_received == I_GOT_THE_PACKET ) {
 
                 pending_packet_send_on_face[f] = false;
 
-                if (f==4) if (f==4) sp.println("clear pending send");
-
             } else {
 
-                if (f==4 && pending_ack_send_on_face[f]) if (f==4) sp.println("clear pending ACK");
                 pending_ack_send_on_face[f] = false;
-
 
             }
 
@@ -132,12 +116,10 @@ void loop() {
                 // Note that we do not care if this succeeded or not since we will keep sending until
                 // we get an ACK back.
 
-                sendPacketOnFace( f , (byte *) colors , 2 * FACE_COUNT );
-
-                if (f==4) if (f==4) sp.println("Sent packet");
+                sendPacketOnFace( f , (byte *) colors , sizeof(colors) );
 
                 // Keep in mind that we do not change the value send here, so in case the other side misses this packet
-                // then we will send again when we get thier next SEND_ME_THE_PACKET in reponse to seeing our I_HAVE_A_PACKET_4_U
+                // then we will send again when we get their next SEND_ME_THE_PACKET in response to seeing our I_HAVE_A_PACKET_4_U
 
             }
 
@@ -149,7 +131,7 @@ void loop() {
 
     if ( buttonDown() ) {
 
-        // Keep scambling while button is down
+        // Keep scrambling while button is down
 
         splat();
         updateDisplayColors();
@@ -164,7 +146,6 @@ void loop() {
         // When they release the button, now is the time to send the update out
 
         FOREACH_FACE(f) pending_packet_send_on_face[f]=true;        // This will trigger a send on all faces
-        sp.println("Sent pending");
 
     }
 
@@ -174,11 +155,7 @@ void loop() {
 
         if ( isPacketReadyOnFace( f ) )  {
 
-            if (f==4) sp.println("Got packet");
-
             if ( getPacketLengthOnFace(f) == sizeof ( colors ) ) {      // Just a double check to make sure the packet is the right length. Just stops corrupt packets or packets from other games from getting into our headspace.
-
-                if (f==4) sp.println("packet good.");
 
                 Color *receivedColors = (Color *) getPacketDataOnFace( f ) ;
 
@@ -195,14 +172,10 @@ void loop() {
             markLongPacketRead( f );
 
             pending_ack_send_on_face[f]=true;           // Tell other side that we got it so they can stop sending it
-            if (f==4) sp.println("set pending ack");
-
 
         }       // if ( isPacketReadyOnFace( f ) )  {
 
     }            //  FOREACH_FACE(f) {
-
-
 
     // Now finally set the outgoing values on each face to reflect the packet state when nessisary
 
