@@ -30,6 +30,12 @@
 #include "blinkos.h"
 
 
+#warning
+#include "Serial.h"
+#warning
+ServicePortSerial sp;
+
+
 #define TX_PROBE_TIME_MS           150     // How often to do a blind send when no RX has happened recently to trigger ping pong
                                            // Nice to have probe time shorter than expire time so you have to miss 2 messages
                                            // before the face will expire
@@ -260,14 +266,26 @@ const byte *getPacketDataOnFace( uint8_t face ) {
 
 void markLongPacketRead( uint8_t face ) {
 
-    // We don't want to mark it read if it is not actually pending becuase then we might be throwing away an unread packet
+    // We don't want to mark it read if it is not actually pending because then we might be throwing away an unread packet
     if ( longPacketLen[face] ) {
         longPacketLen[face]=0;
         ir_mark_packet_read( face );
     }
 }
 
-// This is the easy way to do this, but uses RAM unnessisarily.
+
+#define SBI(x,b) (x|= (1<<b))           // Set bit
+#define CBI(x,b) (x&=~(1<<b))           // Clear bit
+#define TBI(x,b) (x&(1<<b))             // Test bit
+
+uint8_t rx_buffer_fresh_bitflag;    // One bit per IR LED indicates that we just got a new state update packet on this face
+                                    // Needed to know when it is clear to send on that face to keep up the ping-pong
+                                    // when packets are involved
+                                    // We could also expose a "valueOnFaceJustRefreshed()" function but we are getting so far
+                                    // away from the original blink state model here! Really packets do not even fit in this model
+                                    // but give the people what they want!
+
+// This is the easy way to do this, but uses RAM unnecessarily.
 // TODO: Make a scatter version of this to save RAM & time
 
 static uint8_t ir_send_packet_buffer[ IR_LONG_PACKET_MAX_LEN + 3 ];
@@ -276,6 +294,21 @@ uint8_t sendPacketOnFace( byte face , const byte *data, byte len ) {
 
     if ( len > IR_LONG_PACKET_MAX_LEN ) {
 
+        if (face==4) sp.println("packet too long");
+
+
+        return 0;
+
+    }
+
+    if ( ! TBI( rx_buffer_fresh_bitflag , face ) ) {
+        // We never blind send a packet. Instead we wait for a normal (short) value message to come in
+        // and then we reply with the packet to avoid collisions. We depend on the value messages to
+        // do handshaking and also to discover when there is a neighbor on the other side.
+
+        if (face==4) sp.println("packet no CTS");
+
+        // The caller should see this 0 and then try to send again until they hit a moment when we know it is save to send
         return 0;
 
     }
@@ -291,7 +324,7 @@ uint8_t sendPacketOnFace( byte face , const byte *data, byte len ) {
 
     uint8_t packetLen = len+3;
 
-    uint8_t computedChecksum=0;
+    uint8_t computedChecksum= LONG_DATA_PACKET_HEADER0+LONG_DATA_PACKET_HEADER1;    // The header bytes are included in the checksum
 
     while (len--) {
 
@@ -302,6 +335,8 @@ uint8_t sendPacketOnFace( byte face , const byte *data, byte len ) {
     }
 
     *b = computedChecksum;
+
+    if (face==4) sp.println("psending packet");
 
     return ir_send_userdata( face , ir_send_packet_buffer , packetLen );
 
@@ -328,6 +363,7 @@ static void RX_IRFaces( const ir_data_buffer_t *ir_data_buffers ) {
 
             if ( packetLen == 1 ) {
 
+
                 // We only deal with 1 byte long packets in blinklib so anything else is an error
 
                 uint8_t receivedByte = packetBuffer[0];
@@ -338,12 +374,15 @@ static void RX_IRFaces( const ir_data_buffer_t *ir_data_buffers ) {
 
                     // This looks like a valid value!
 
-                        // OK, everything checks out, we got a good face value!
+                    // OK, everything checks out, we got a good face value!
 
-                        face->inValue = decodedByte;
+                    face->inValue = decodedByte;
 
-                        // Clear to send on this face immediately to ping-pong messages at max speed without collisions
-                        face->sendTime = 0;
+                    // Clear to send on this face immediately to ping-pong messages at max speed without collisions
+                    face->sendTime = 0;
+
+
+                    SBI( rx_buffer_fresh_bitflag , f );     // Mark that we just got a valid message on this face so we can ping pong with packets. Code smell!
 
                 } //  if ( receivedByte == parityEncode( decodedByte ) )
 
@@ -356,6 +395,9 @@ static void RX_IRFaces( const ir_data_buffer_t *ir_data_buffers ) {
 
                 if (packetLen>=4 && packetBuffer[0] == LONG_DATA_PACKET_HEADER0 && packetBuffer[1] == LONG_DATA_PACKET_HEADER1 && computeChecksum( packetBuffer , packetLen-1)  ==  packetBuffer[ packetLen - 1 ] ) {       // A packet must have at least 2 header bytes and one data byte and check sum byte
 
+                    #warning
+                    if (f==4) sp.write('G');
+
                     // Ok this packet checks out folks!
 
                     longPacketLen[ f ] = packetLen-3;           // We deduct 3 from he length to account for the 2 header bytes and the trailing checksum byte
@@ -363,7 +405,27 @@ static void RX_IRFaces( const ir_data_buffer_t *ir_data_buffers ) {
 
                     // NOTE that we do not mark this packet as read! This will give the suer a chance to read it directly from the IR buffer.
 
+                    // Clear to send on this face immediately to ping-pong messages at max speed without collisions
+                    face->sendTime = 0;
+
                 } else {
+
+                    #warning
+                    if (f==4) {
+                        sp.println( (int) packetLen);
+                        sp.println( (int) packetBuffer[0], BIN );
+                        sp.println( (int) packetBuffer[1], BIN );
+                        sp.println( (int) computeChecksum( packetBuffer , packetLen-1)    );
+                        sp.println( (int) packetBuffer[ packetLen - 1 ] );
+                        sp.println( 'X' );
+
+                    }
+
+
+                    // Note that we do not clear to send on this face. There was some kind of problem, maybe corruption
+                    // so there might still be stuff in flight and we don't want to step on it.
+                    // Instead we let the timer take over and let things cool down until one side blinks sends to
+                    // start things up again.
 
                     // Packet too short so consume it to make room for next.
 
@@ -393,6 +455,9 @@ static void TX_IRFaces() {
         // Send one out too if it is time....
 
         if ( face->sendTime <= now ) {        // Time to send on this face?
+                                              // Note that we do not use the rx_fresh flag here because we want the timeout
+                                              // to do automatic retries to kickstart things when a new neighbor shows up or
+                                              // when an IR message gets missed
 
             uint8_t data = parityEncode( face->outValue );
 
@@ -747,6 +812,10 @@ void setupEntry() {
     // Call up to the userland code
     setup();
 
+    #warning
+    sp.begin();
+    sp.write('S');
+
 }
 
 void loopEntry( loopstate_in_t const *loopstate_in , loopstate_out_t *loopstate_out) {
@@ -771,6 +840,10 @@ void loopEntry( loopstate_in_t const *loopstate_in , loopstate_out_t *loopstate_
 
      // Go ahead an release any packets that the loop() forgot to mark as read
      // We count on the fact that markLongPacketRead() here will only release pending packets
+     // If we did not do this, then if the game forgot to clear a buffer then that face would be blocked
+     // From OS messages forever. We could work around that by having separate user and OS buffers, but more memory
+     // and complexity.
+
      FOREACH_FACE(f) {
         markLongPacketRead(f);
      }
@@ -778,6 +851,9 @@ void loopEntry( loopstate_in_t const *loopstate_in , loopstate_out_t *loopstate_
      // Transmit any IR packets waiting to go out
      // Note that we do this after loop had a chance to update them.
      TX_IRFaces();
+
+     rx_buffer_fresh_bitflag = 0;      //We missed our change to send on the messages received on this pass.
+                                    // RX_IRfaces() will set these again for messages received on the next pass.
 
 }
 
