@@ -337,8 +337,16 @@ uint8_t sendPacketOnFace( byte face , const byte *data, byte len ) {
     *b = computedChecksum;
 
     if (face==4) sp.println("psending packet");
+    
+    uint8_t sent_flag = ir_send_userdata( face , ir_send_packet_buffer , packetLen );
+    
+    if (sent_flag) {
+        
+          faces[face].sendTime = now + TX_PROBE_TIME_MS;
+         
+    }         
 
-    return ir_send_userdata( face , ir_send_packet_buffer , packetLen );
+    return sent_flag ;
 
 }
 

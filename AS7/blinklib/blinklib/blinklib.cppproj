@@ -172,6 +172,10 @@
       <SubType>compile</SubType>
       <Link>blinklib.h</Link>
     </Compile>
+    <Compile Include="..\..\..\libraries\blinklib\src\DummySerial.h">
+      <SubType>compile</SubType>
+      <Link>DummySerial.h</Link>
+    </Compile>
     <Compile Include="..\..\..\libraries\blinklib\src\pixelcolor.h">
       <SubType>compile</SubType>
       <Link>pixelcolor.h</Link>
