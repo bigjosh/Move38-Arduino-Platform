@@ -373,7 +373,7 @@ void run(void) {
 
         loopstate_in.millis = millis_snapshot;
 
-        loopEntry( &loopstate_in , &loopstate_out );
+        loopEntry();
 
         for( uint8_t f = 0; f < PIXEL_FACE_COUNT ; f++ ) {
 

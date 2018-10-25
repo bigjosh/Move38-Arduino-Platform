@@ -43,10 +43,6 @@ ServicePortSerial sp;
 #define RX_EXPIRE_TIME_MS         200      // If we do not see a message in this long, then show that face as expired
 
 
-// Keep these handy
-
-loopstate_out_t *m_loopstate_out;
-
 // This is a parity check that I came up with that I think is robust to close together bitflips and
 // also efficient to calculate.
 // We keep the 6 data bits in the middle of the byte, and then send parity bits at the top and bottom
@@ -793,7 +789,7 @@ Color makeColorHSB( byte hue, byte saturation, byte brightness );
 
 void setColorOnFace( Color newColor , byte face ) {
 
-    m_loopstate_out->colors[face] =  pixelColor_t( GET_5BIT_R( newColor ) , GET_5BIT_G( newColor) , GET_5BIT_B( newColor ) , 1 );
+    loopstate_out.colors[face] =  pixelColor_t( GET_5BIT_R( newColor ) , GET_5BIT_G( newColor) , GET_5BIT_B( newColor ) , 1 );
 
 }
 
@@ -826,21 +822,19 @@ void setupEntry() {
 
 }
 
-void loopEntry( loopstate_in_t const *loopstate_in , loopstate_out_t *loopstate_out) {
+void loopEntry() {
+   
+    now = loopstate_in.millis;
 
-    m_loopstate_out = loopstate_out;            // Save for use by the pixel setting functions above
-
-    now = loopstate_in->millis;
-
-    RX_IRFaces( loopstate_in->ir_data_buffers );
+    RX_IRFaces( loopstate_in.ir_data_buffers );
 
     // Capture the incoming button state. We OR in the flags because in blinklib model we clear the flags only when read.
-    buttonstate.bitflags |= loopstate_in->buttonstate.bitflags;
-    buttonstate.clickcount = loopstate_in->buttonstate.clickcount;
-    buttonstate.down = loopstate_in->buttonstate.down;
+    buttonstate.bitflags |= loopstate_in.buttonstate.bitflags;
+    buttonstate.clickcount = loopstate_in.buttonstate.clickcount;
+    buttonstate.down = loopstate_in.buttonstate.down;
 
     // Latch woke_flag
-    local_woke_flag |= loopstate_in->woke_flag;
+    local_woke_flag |= loopstate_in.woke_flag;
 
     // Call the user program
 

@@ -52,9 +52,6 @@ void setup() {
     updateDisplayColors();
 }
 
-// Do we need to send?
-boolean sendFlag;
-
 // Packet handshaking
 // The blink that wants to send a packet starts sending the PACKET_READY_TO_GO
 // The blink that sees the PACKET_READY_TO_GO replies with a SEND_ME_THE_PACKET
