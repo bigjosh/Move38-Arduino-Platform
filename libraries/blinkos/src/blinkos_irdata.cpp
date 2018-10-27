@@ -563,24 +563,14 @@ uint8_t irSendBegin( uint8_t face ) {
 
     // TODO: We need a timeout here or else a continuous stream of SYNCs could lock us out here...
     
-    if (face==4) {
-                Debug::tx( 'T' );
-    }        
 
     if (irDataRXinProgress(face)) {
-            if (face==4) {
-                Debug::tx( 'F' );
-            }
         return 0;
     }
-
+    
     ir_tx_start( 1 << face , US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_1_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  );
 
     ir_tx_sendpulse( US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_S_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  ) ;
-
-    if (face==4) {
-        Debug::tx( 'G' );
-    }
 
 
     return 1;
@@ -588,9 +578,6 @@ uint8_t irSendBegin( uint8_t face ) {
 }
 
 void irSendByte( uint8_t b ) {
-
-    Debug::pin_a_1();
-    Debug::tx( 'W' );
 
     uint8_t bitwalker = 0b00000001;
 
@@ -608,24 +595,14 @@ void irSendByte( uint8_t b ) {
 
     } while (bitwalker);        // 1 bit overflows off top. Would be better if we could test for overflow bit
 
-
-    Debug::tx( b );
-    Debug::tx( 'S' );
-    Debug::pin_a_0();
-
-
 }
 
 void irSendComplete() {
-
-    Debug::tx('C');
 
     // Send final SYNC
     ir_tx_sendpulse( US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_S_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  ) ;
 
     ir_tx_end();
-
-    Debug::tx('D');
 
 }
 

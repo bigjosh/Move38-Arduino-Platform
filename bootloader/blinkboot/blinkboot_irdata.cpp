@@ -37,8 +37,8 @@
 
 */
 
-#define IR_RX_DEBUG
-#define IR_RX_DEBUG_LED 4
+//#define IR_RX_DEBUG
+//#define IR_RX_DEBUG_LED 4
 
 #include <stdint.h>     // uintX_t
 
@@ -49,7 +49,8 @@
 #if defined(IR_TX_DEBUG) || defined(IR_RX_DEBUG)
     #include "debug.h"                                     // We use the SP port for deugging Stuff
 #endif
-
+#warning
+#include "debug.h"   
 #include "blinkboot_irdata.h"
 
 #include <util/delay.h>         // Must come after F_CPU definition
@@ -242,6 +243,11 @@ volatile uint8_t most_recent_ir_test;
 
                     if (ptr->byteBuffer & 0b00000001) {     // If the bottom it in the input buffer was high, then we just got the last bit of a full byte
 
+                            if (bitwalker==_BV(4)) {
+                                Debug::tx_now(ptr->packetBufferLen);      // Packet received and buffered successfully
+                            }
+
+
                         // Save the fully received byte, prime for next one
 
                         if ( ptr->packetBufferLen < IR_RX_PACKET_SIZE ) { // Check that there is room in the buffer to store this byte
@@ -257,8 +263,8 @@ volatile uint8_t most_recent_ir_test;
                                     Debug::tx_now('B');          // Buffered byte
                                     Debug::tx( ptr->packetBufferLen );
                                     Debug::tx( data );
-                                    
-                                    
+
+
                                 }
                             #endif
 
@@ -272,7 +278,7 @@ volatile uint8_t most_recent_ir_test;
                             #ifdef IR_RX_DEBUG
                                 if (bitwalker== _BV(IR_RX_DEBUG_LED) ) {
                                     Debug::tx_now('V');      // Overflow
-                                    Debug::tx( ptr->packetBufferLen );                                    
+                                    Debug::tx( ptr->packetBufferLen );
                                     Debug::tx( data );
                                 }
                             #endif
@@ -369,7 +375,7 @@ volatile uint8_t most_recent_ir_test;
 
                 // Been too long since we saw pulse, so nothing happening
                 // To get here, we already aborted anything in progress when the windowsSincelastTrigger was incremented to 7
-                
+
             }
 
             ptr->windowsSinceLastTrigger= 0;          // We are here because we got a trigger
@@ -424,9 +430,9 @@ inline uint8_t irDataRXinProgress( uint8_t led ) {
 
     ir_rx_state_t *ptr = ir_rx_states + led;
 
-    // This uses the fact that anytime we are activel recieving a byte, the byte buffer will 
+    // This uses the fact that anytime we are activel recieving a byte, the byte buffer will
     // be nonzero. Even if we are getting an all-0 byte, the top bit will be marching up.
-    // This is handy, but it does allow a collision during the leading sync. See below. 
+    // This is handy, but it does allow a collision during the leading sync. See below.
 
     return ptr->byteBuffer;
 
@@ -435,11 +441,11 @@ inline uint8_t irDataRXinProgress( uint8_t led ) {
     // Below is a very conservative collision detection scheme that even detects a preamble.
     // Unfortunately with current RX code, it will see a collision for the first 7 windows
     // after a valid packet is received because the final pulse of the trailing sync
-    // is in fact a pulse and could be seen as a leading pulse of a new sync. 
-    
+    // is in fact a pulse and could be seen as a leading pulse of a new sync.
+
     // We could add an extra rx_in_progess flag or something like that, or find a way to force
-    // the windowsSinceLastTrigger to be 7 at the end of a valid packet. 
-    // Or just require there always be at least 7 windows between a valid TX and a follow up TX. 
+    // the windowsSinceLastTrigger to be 7 at the end of a valid packet.
+    // Or just require there always be at least 7 windows between a valid TX and a follow up TX.
     // We should do this, but not now.
 
     // Anytime we are actively receiving a message, all value windows are less than 7
@@ -450,14 +456,14 @@ inline uint8_t irDataRXinProgress( uint8_t led ) {
 
         Debug::tx('F');
         Debug::tx( ptr->windowsSinceLastTrigger );
-                
-        
+
+
         return 1;
     } else {
         return 0;
     }
-    
-*/    
+
+*/
 
 }
 

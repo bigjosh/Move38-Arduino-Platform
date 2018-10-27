@@ -128,9 +128,7 @@ void processPendingIRPackets() {
     for( uint8_t f=0; f< IRLED_COUNT ; f++ ) {
         
         if (irDataIsPacketReady(f)) {
-            
-            Debug::tx('E');
-            
+                       
             uint8_t packetLen = irDataPacketLen(f);
 
             // Note that IrDataPeriodicUpdateComs() will not save a 0-byte packet, so we know
@@ -141,23 +139,14 @@ void processPendingIRPackets() {
             // TODO: Dig straight into the ir data structure and save these calls?
             
             const  blinkboot_packet *data = (const blinkboot_packet *) irDataPacketBuffer(f);
-            
-            Debug::tx( *(uint8_t *)data);
-            
-            Debug::tx( data->header );
-            
+                        
             // TODO: What packet type should be fastest check (doesn;t really matter THAT much, only a few cycles)
             
             if (data->header == IR_PACKET_HEADER_PUSHFLASH ) {                                
 
-                 Debug::tx('P');
-                
                 // This is a packet of flash data
 
                 if (packetLen== sizeof( push_payload_t ) + 1  ) {        // Push packet payload plus header byte. Just an extra check that this is a valid packet.
-
-                    Debug::tx('S');
-
 
                     // Note we do not check for program checksum while downloading. If we somehow start downloading a different game, it should result
                     // in a bad total checksum when we get to the last block so We can do something other than jumping into the mangled flash image. 
@@ -169,6 +158,8 @@ void processPendingIRPackets() {
                     uint8_t packet_page_number = data->push_payload.page;
                    
                     if ( packet_page_number == download_next_page) {        // Is this the one we are waiting for?
+                        
+                        Debug::tx( packet_page_number );
                         
                         // Compute the checksum on the data in the packet just received. 
                         
@@ -186,11 +177,6 @@ void processPendingIRPackets() {
                         
                         packet_checksum_computed+=packet_page_number;               // Add in the page number
                         
-                        Debug::tx('c');
-                        Debug::tx(packet_page_number );                        
-                        Debug::tx( packet_checksum_computed );
-                        Debug::tx( data->push_payload.packet_checksum );
-
                         if ( ( packet_checksum_computed ^ 0xff ) == data->push_payload.packet_checksum) {     // We invert the page checksum on both sides. This protects against all 0's being seen as OK. 
                             
                             program_computed_checksum += packet_checksum_computed + download_next_page ;            // At this point, download_page_next == packet_page_number. We use it cause maybe then it will be warm for the increment that comes next...
@@ -243,9 +229,7 @@ void processPendingIRPackets() {
             } else if (data->header == IR_PACKET_HEADER_PULLREQUEST ) {             // This is other side telling us to start pulling new game from him
                 
                 if ( mode==MODE_LISTENING ) {
-                                
-                    Debug::tx( 'r' );
-
+                                                   
                     if ( packetLen== (sizeof( pull_request_payload_t ) + 1 ) ) {         // Pull request plus header byte
                         
                         download_total_pages = data->pull_request_payload.pages;
@@ -304,14 +288,11 @@ inline void sendNextPullPacket() {
         irSendByte( download_next_page );
 
         irSendComplete();
-        Debug::tx('P');
 
     } else {
         
         // Send failed.
-        
-        Debug::tx('f');
-        
+                
     }        
 
 }
@@ -324,8 +305,6 @@ inline void try_to_download() {
 
         if ( countdown_until_next_pull ==0 ) {
             
-            Debug::tx('T');
-
             // Time to send next pull ?
 
             #warning
@@ -347,8 +326,6 @@ inline void try_to_download() {
             if (mode==MODE_DOWNLOADING) {       // Are we actively downloading?
 
                 // Try sending a pull packet on the face we got the pull request from
-                Debug::tx('L');
-
                 sendNextPullPacket();
 
             }

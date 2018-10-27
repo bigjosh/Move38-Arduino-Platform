@@ -199,7 +199,7 @@ void processPendingIRPackets() {
 
             if (*data==  IR_PACKET_HEADER_PULLFLASH) {
                 
-                Debug::tx( 'Z' );
+                Debug::tx( 'L' );
 
                 // This is a request for us to send some of our active game. It should only come when we are in seed mode.
 
