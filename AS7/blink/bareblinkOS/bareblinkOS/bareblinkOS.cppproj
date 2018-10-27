@@ -169,10 +169,6 @@
     </ToolchainSettings>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\..\..\..\libraries\common\blinkos.h">
-      <SubType>compile</SubType>
-      <Link>blinkos.h</Link>
-    </Compile>
     <Compile Include="main.cpp">
       <SubType>compile</SubType>
     </Compile>

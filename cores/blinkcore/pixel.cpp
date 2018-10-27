@@ -248,13 +248,12 @@ void pixel_init(void) {
 	setupTimers();
 }
 
-// Note that LINE is 0-5 whereas the pixels are labeled p1-p6 on the board.
 
-static void activateAnode( uint8_t line ) {
+static void activateAnode( uint8_t led ) {
 
     // TODO: These could probably be compressed with some bit hacking
 
-    switch (line) {
+    switch (led) {
 
         case 0:
             SBI( PIXEL0_PORT , PIXEL0_BIT );
@@ -387,10 +386,7 @@ static void pixel_isr(void) {
     // Because of the buffering of the OCR registers, we are always setting values that will be loaded
     // the next time the timer overflows.
 
-    asm("nop");
-
     rawpixel_t *currentPixel = &(displayedRawPixelSet.rawpixels[currentPixelIndex]);
-
 
     switch (phase) {
 

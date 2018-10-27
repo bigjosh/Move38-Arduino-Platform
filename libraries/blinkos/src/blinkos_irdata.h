@@ -44,5 +44,13 @@ void irDataMarkPacketRead( uint8_t led );
  void irSendByte( uint8_t b );
 
  void irSendComplete();
- 
+
  void irDataInit();   // Really only called to init IR_RX_DEBUG
+
+
+// Convenience function since we send packets in a couple different places.
+// This sends a user data packet. No error checking so you are responsible to do it yourself
+// Returns 0 if it was not able to send because there was already an RX in progress on this face
+// It is a short functin. Is it more code to set up this call then we save?
+
+uint8_t ir_send_data(   uint8_t face, const void *data , uint8_t len ,uint8_t headerbyte  );

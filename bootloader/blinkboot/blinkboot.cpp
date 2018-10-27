@@ -27,6 +27,8 @@
 
 #include <avr/sleep.h>          // TODO: Only for development. Remove.
 
+#include "blinkboot.h"
+
 // TODO: Put this at a known fixed address to save registers
 // Will require a new .section in the linker file. Argh.
 
@@ -35,6 +37,10 @@
 #include "utils.h"
 #include "power.h"
 
+#warning only for dev so tile can sleep
+#include "button.h"
+
+#warning
 #include "debug.h"
 
 #include "callbacks.h"      // blinkcore calling into us - the timer callbacks & run()
@@ -48,16 +54,31 @@
 #define MS_PER_SECOND     1000
 #define MS_TO_TICKS( milliseconds ) ( milliseconds *  (MS_PER_SECOND / US_PER_TICK ) )
 
-// This buys us 16 seconds of timer time
-// https://www.google.com/search?q=(2%5E16+*+250us)&rlz=1C1CYCW_enUS687US687&oq=(2%5E16+*+250us)&aqs=chrome..69i57j6.21078j0j4&sourceid=chrome&ie=UTF-8
-
-#define MS_PER_PULL_RETRY 250
+#define MS_PER_PULL_RETRY 300
 
 uint16_t countdown_until_next_pull;
 
 uint8_t retry_count;               // How many pulls have went sent without any answer?
                                    // Note that while still in listen mode we do not actually send any pulls
                                    // so if we do not get a pull request at all, then we also abort
+
+
+// Set timer to go off imedeately and clear the pending retry count
+
+static void triggerNextPull() {    
+    cli();
+    countdown_until_next_pull=0;
+    sei();
+    retry_count=0;
+}   
+
+// Reset the time to next retry time
+
+static void resetTimer() {
+    cli();
+    countdown_until_next_pull = MS_TO_TICKS( MS_PER_PULL_RETRY );
+    sei();
+}     
 
 
 #define GIVEUP_RETRY_COUNT 10     // Comes out to 2.5 secs. Give up if we do not see a good push in this amount of time.
@@ -85,6 +106,7 @@ void timer_128us_callback_sei(void) {
 
 #define MODE_LISTENING      0        // We have not yet seen a pull request
 #define MODE_DOWNLOADING    1        // We are currently downloading on faces. gamechecksum is the checksum we are looking for.
+#define MODE_DONE           2        // Download finished
 
 uint8_t mode = MODE_LISTENING;       // This changes to downloading the first time we get a pull request
 
@@ -95,25 +117,20 @@ uint16_t download_checksum;           // The expected checksum of the game we ar
 uint8_t download_total_pages;         // The length of the game we are downloading in pages. Set by 1st pull request.
 uint8_t download_next_page;           // Next page we want to get (starts at 0)
 
-// TODO: These should get moved to a file that is shared between blinkboot and blinkos
-#define DOWLONAD_MAX_PAGES 56     // The maximum length of a downloaded game
 
-#define DOWNLOAD_PAGE_SIZE 128                 // Flash pages size for ATMEGA168PB
-
-// These header bytes are chosen to try and give some error robustness.
-// So, for example, a header with a repeating pattern would be less robust
-// because it is possible something blinking in the environment might replicate it
-
-#define IR_PACKET_HEADER_PULLREQUEST     0b01101010      // If you get this, then the other side is saying they want to send you a game
-#define IR_PACKET_HEADER_PULLFLASH       0b01011101      // You send this to request the next block of a game
-#define IR_PACKET_HEADER_PUSHFLASH       0b01011101      // This contains a block of flash code to be programmed into the active area
+uint16_t received_program_checksum;             // The checksum that was in the original pull request packet
+uint16_t program_computed_checksum;           // The running checksum we are computing as we receive the blocks
+                                                // Both of these checksum include the block number with each block. 
+                                                // TODO: I think this protects us from a bad length in the original pull request?
 
 void processPendingIRPackets() {
 
     for( uint8_t f=0; f< IRLED_COUNT ; f++ ) {
-
+        
         if (irDataIsPacketReady(f)) {
-
+            
+            Debug::tx('E');
+            
             uint8_t packetLen = irDataPacketLen(f);
 
             // Note that IrDataPeriodicUpdateComs() will not save a 0-byte packet, so we know
@@ -121,38 +138,70 @@ void processPendingIRPackets() {
 
             // IR data packet received and at least 2 bytes long
 
-            uint8_t const *data = irDataPacketBuffer(f);
-
+            // TODO: Dig straight into the ir data structure and save these calls?
+            
+            const  blinkboot_packet *data = (const blinkboot_packet *) irDataPacketBuffer(f);
+            
+            Debug::tx( *(uint8_t *)data);
+            
+            Debug::tx( data->header );
+            
             // TODO: What packet type should be fastest check (doesn;t really matter THAT much, only a few cycles)
+            
+            if (data->header == IR_PACKET_HEADER_PUSHFLASH ) {                                
 
-            if (*data== IR_PACKET_HEADER_PUSHFLASH ) {
+                 Debug::tx('P');
+                
+                // This is a packet of flash data
 
-                uint16_t packet_game_checksum = data[1] | ( data[2]<<8 );
+                if (packetLen== sizeof( push_payload_t ) + 1  ) {        // Push packet payload plus header byte. Just an extra check that this is a valid packet.
 
-                if (packetLen== (DOWNLOAD_PAGE_SIZE + 5 ) && packet_game_checksum == download_checksum  ) {        // Just an extra check that this is a valid packet?
+                    Debug::tx('S');
 
-                    // This is a valid push packet, and for the game we are downloading
 
-                    uint8_t packet_page_number = data[3];
-
+                    // Note we do not check for program checksum while downloading. If we somehow start downloading a different game, it should result
+                    // in a bad total checksum when we get to the last block so We can do something other than jumping into the mangled flash image. 
+                    
+                    // This is a valid push packet
+                    
+                    //TODO: Check that it came from the right face? Check that we are in download mode?
+                    
+                    uint8_t packet_page_number = data->push_payload.page;
+                   
                     if ( packet_page_number == download_next_page) {        // Is this the one we are waiting for?
+                        
+                        // Compute the checksum on the data in the packet just received. 
+                        
+                        uint8_t data_computed_checksum=0;         // We have to keep this separately so we can fold it into the total program checksum 
+                        
+                        for(uint8_t i=0; i<DOWNLOAD_PAGE_SIZE;i++ ) {
 
-                        uint16_t packet_page_checksum_computed=0;
-
-                        for(uint8_t i=4; i<4+DOWNLOAD_PAGE_SIZE;i++ ) {
-
-                            packet_page_checksum_computed += data[i];
+                            data_computed_checksum += data->push_payload.data[i];
 
                         }
 
-                        uint8_t packet_page_checksum_received = data[ 4 + DOWNLOAD_PAGE_SIZE ];
+                        uint8_t packet_checksum_computed=data_computed_checksum;
+                        
+                        packet_checksum_computed+=IR_PACKET_HEADER_PUSHFLASH;       // Add in the header
+                        
+                        packet_checksum_computed+=packet_page_number;               // Add in the page number
+                        
+                        Debug::tx('c');
+                        Debug::tx(packet_page_number );                        
+                        Debug::tx( packet_checksum_computed );
+                        Debug::tx( data->push_payload.packet_checksum );
 
-                        if (packet_page_checksum_received == packet_page_checksum_computed ) {
+                        if ( ( packet_checksum_computed ^ 0xff ) == data->push_payload.packet_checksum) {     // We invert the page checksum on both sides. This protects against all 0's being seen as OK. 
+                            
+                            program_computed_checksum += packet_checksum_computed + download_next_page ;            // At this point, download_page_next == packet_page_number. We use it cause maybe then it will be warm for the increment that comes next...
 
                             // We got a good packet, good checksum on data, and it was the one we needed, and it is the right game!!!
 
                             download_next_page++;
 
+                            // Blink GREEN with each packet that gets us closer (out of order packets will not change the color)
+                            setRawPixelCoarse( f , download_next_page & 1 ? COARSE_GREEN : COARSE_DIMGREEN );
+                                                                                   
                             if (download_next_page == download_total_pages ) {
 
                                 // TODO: Check the game checksum here
@@ -160,28 +209,30 @@ void processPendingIRPackets() {
                                 // We are down downloading!
                                 // Here we would launch the downloaded game in the active area
                                 // and somehow tell it to start sending pull requests on all faces but this one
+                                
+                                mode=MODE_DONE;
+                                
+                                setAllRawCorsePixels( COARSE_BLUE );
+
+                            } 
 
 
-                            }
-
-                            // Blink GREEN/BLUE with each packet that gets us closer (out of order packets will not change the color)
-                            setRawPixelCoarse( f , download_next_page & 1 ? COARSE_BLUE : COARSE_GREEN );
-
-                        } else {        // if (packet_page_checksum_received != packet_page_checksum_computed )
-
-
+                        } else {         if ( ( packet_checksum_computed ^ 0xff ) == data->push_payload.packet_checksum)
+                                                        
                             setRawPixelCoarse( f , COARSE_RED );
 
                         }
 
-                    } //  if ( packet_page_number == download_next_page)
+                    } else { //  if ( ! packet_page_number == download_next_page)
+                        
+                            setRawPixelCoarse( f , COARSE_ORANGE );
+                        
+                    }                        
 
 
                     // Force next pull to happen immediately and also start retry counting again since we just got a good packet.
-                    cli();
-                    countdown_until_next_pull=0;
-                    sei();
-                    retry_count=0;
+                    
+                    triggerNextPull();
 
                 } else {          // (packetLen== (PAGE_SIZE + 5 ) && packet_game_checksum == download_checksum  )
 
@@ -189,27 +240,41 @@ void processPendingIRPackets() {
 
                 }
 
-            } else if (*data== IR_PACKET_HEADER_PULLREQUEST ) {
+            } else if (data->header == IR_PACKET_HEADER_PULLREQUEST ) {             // This is other side telling us to start pulling new game from him
+                
+                if ( mode==MODE_LISTENING ) {
+                                
+                    Debug::tx( 'r' );
 
-                if (packetLen==5) {     // Extra check that it is valid
+                    if ( packetLen== (sizeof( pull_request_payload_t ) + 1 ) ) {         // Pull request plus header byte
+                        
+                        download_total_pages = data->pull_request_payload.pages;
 
-                    if ( mode==MODE_LISTENING ) {
-
-                        download_total_pages = data[1];
-                        // highestblock this face = data[2];
-                        download_checksum    = data[3] | (data[4]<<8);
+                        download_checksum    = data->pull_request_payload.program_checksum;
+                        
+                        //computered_program_checksum = 0;      // This inits to 0 so we don't have to explicity set it
 
                         download_face = f;
-                        //download_next_page=0;         // It inits to zero so we don't need this explicit assignment
+                        
+                        //download_next_page=0;                 // It inits to zero so we don't need this explicit assignment
+                        
+                        setAllRawCorsePixels( COARSE_OFF );
+                                               
                         mode = MODE_DOWNLOADING;
-
-                        setRawPixelCoarse( f , COARSE_GREEN );
-
-                    }
-
-                }
-
-            }  // Case out packet types
+                        
+                        setRawPixelCoarse( f , COARSE_BLUE );
+                    
+                        triggerNextPull();
+                        
+                    }  else { // Packet length wrong for pull request
+                        
+                        setRawPixelCoarse( f , COARSE_RED );
+                        
+                    }     
+                                        
+                } // ( mode==MODE_LISTENING ) (ignore pull requests if not listening
+                    
+            }  // if (data->header == IR_PACKET_HEADER_PULLREQUEST )                                                        
 
             irDataMarkPacketRead(f);
 
@@ -229,7 +294,7 @@ inline void copy_built_in_game() {
 
 inline void sendNextPullPacket() {
 
-    // Note that if we are blocked from sending becuase there is an incoming packet, we just ignore it
+    // Note that if we are blocked from sending because there is an incoming packet, we just ignore it
     // hopefully it is the packet we are waiting for. If not, we will time out and retry.
 
     if (irSendBegin( download_face )) {
@@ -239,8 +304,15 @@ inline void sendNextPullPacket() {
         irSendByte( download_next_page );
 
         irSendComplete();
+        Debug::tx('P');
 
-    }
+    } else {
+        
+        // Send failed.
+        
+        Debug::tx('f');
+        
+    }        
 
 }
 
@@ -251,10 +323,13 @@ inline void try_to_download() {
         processPendingIRPackets();       // Read any incoming packets looking for pulls & pull requests
 
         if ( countdown_until_next_pull ==0 ) {
+            
+            Debug::tx('T');
 
             // Time to send next pull ?
 
-            retry_count++;
+            #warning
+            //retry_count++;
 
             if (retry_count >= GIVEUP_RETRY_COUNT ) {
 
@@ -267,21 +342,20 @@ inline void try_to_download() {
             }
 
             // We actually only do pulls if we have already seen a pull request that put us into download mode
-            // if not, we do nothing and just wait for a pull request until the rety counter runs out.
+            // if not, we do nothing and just wait for a pull request until the retry counter runs out.
 
             if (mode==MODE_DOWNLOADING) {       // Are we actively downloading?
 
                 // Try sending a pull packet on the face we got the pull request from
+                Debug::tx('L');
 
                 sendNextPullPacket();
 
             }
 
             // Set up counter to trigger next pull packet
-
-            cli();
-            countdown_until_next_pull = MS_TO_TICKS( MS_PER_PULL_RETRY );
-            sei();
+            
+            resetTimer();
 
         }
 
@@ -292,6 +366,21 @@ inline void try_to_download() {
 }
 
 
+static void sleep(void) {
+
+    pixel_disable();        // Turn off pixels so battery drain
+    ir_disable();           // TODO: Wake on pixel
+    button_ISR_on();        // Enable the button interrupt so it can wake us
+
+    power_sleep();          // Go into low power sleep. Only a button change interrupt can wake us
+
+    button_ISR_off();       // Set everything back to thew way it was before we slept
+    ir_enable();
+
+    pixel_enable();
+    
+}    
+
 // This is the entry point where the blinkcore platform will pass control to
 // us after initial power-up is complete
 
@@ -299,25 +388,34 @@ inline void try_to_download() {
 
 void run(void) {
 
+    Debug::init();
+    
+    power_init();       // Get sleep functions
+
     // We only bother enabling what we need to save space
 
     pixel_init();
 
     ir_init();
+    
+    button_init();
 
     ir_enable();
 
     pixel_enable();
+    
+    // TODO: We don't need this in reall boot loader. Just pass off to game once loaded.
+    button_enable_pu();
 
     setAllRawCorsePixels( COARSE_ORANGE );
+    
+    while (1) {
 
-    try_to_download();
+        try_to_download();
 
-    // TODO: Lanuch the active game (it will either be the newly downloaded game or the built in one)
-
-    set_sleep_mode( SLEEP_MODE_PWR_DOWN );
-    sleep_enable();
-    sleep_cpu();
-
+        // TODO: Launch the active game (it will either be the newly downloaded game or the built in one)
+        sleep();
+        
+    }
     //TODO: Jump to active game
 }

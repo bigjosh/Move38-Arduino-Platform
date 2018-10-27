@@ -28,7 +28,7 @@ uint8_t irDataPacketLen( uint8_t led );
 // Get a handle to the received packet buffer.
 // Note only valid after irDataIsPacketReady() turns true and before irDataMarkPacketRead() is called.
 
-const uint8_t *irDataPacketBuffer( uint8_t led );
+const void *irDataPacketBuffer( uint8_t led );
 
 
 // Mark most recently received packet as read, freeing up the buffer to receive the next packet.
@@ -49,5 +49,5 @@ void irDataMarkPacketRead( uint8_t led );
  void irSendByte( uint8_t b );
 
  void irSendComplete();
- 
+
  void irDataInit();   // Really only called to init IR_RX_DEBUG

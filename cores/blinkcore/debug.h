@@ -40,11 +40,26 @@
         }
 
         // Send a byte out the serial port. DebugSerialInit() must be called first. Blocks unitl buffer free if TX already in progress.
+        
+        // TODO: This compile to this...
+        
+        /*
+        
+            //while (!TBI(SP_SERIAL_CTRL_REG,UDRE0));         // Wait for buffer to be clear so we don't overwrite in progress
+            1034:	e0 ec       	ldi	r30, 0xC0	; 192
+            1036:	f0 e0       	ldi	r31, 0x00	; 0
+            1038:	80 81       	ld	r24, Z
+            103a:	85 ff       	sbrs	r24, 5
+            103c:	fd cf       	rjmp	.-6      	; 0x1038 <_Z14irSendCompletev+0x6>
+            //SP_SERIAL_DATA_REG=b;                           // Send new byte
+            1040:	83 e4       	ldi	r24, 0x43	; 67
+            1042:	80 93 c6 00 	sts	0x00C6, r24	; 0x8000c6 <__TEXT_REGION_LENGTH__+0x7e00c6>  
+        */
+        
+         inline static void tx(uint8_t b) {
 
-        inline static void tx(uint8_t b) {
 
             while (!TBI(SP_SERIAL_CTRL_REG,UDRE0));         // Wait for buffer to be clear so we don't overwrite in progress
-
             SP_SERIAL_DATA_REG=b;                           // Send new byte
 
         }

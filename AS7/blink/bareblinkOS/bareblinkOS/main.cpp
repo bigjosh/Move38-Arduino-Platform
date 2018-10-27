@@ -7,7 +7,7 @@
 
 
 #include "blinkos.h"
-
+#include "blinkboot.h"
 
 //#include <string.h>     // memcmp()
 
@@ -18,8 +18,20 @@ void setupEntry() {
 
 };
 
+Timer next_send_pull_request;
 
-void loopEntry( loopstate_in_t const *loopstate_in , loopstate_out_t *loopstate_out) {
+void loopEntry() {
+    
+    if (next_send_pull_request.isExpired()) {
+        
+        // Time to send next pull request
+        
+        blinkboot_packet p;
+        
+        p.header = P
+        
+    }        
+    
 }
 
 

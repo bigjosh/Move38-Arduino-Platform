@@ -36,7 +36,13 @@
 
 /*** Number of faces ***/
 
-#define FACE_COUNT 6				// Total number of IRLEDs
+#define FACE_COUNT 6				// Total number of IR & RGB LEDs
+
+// 'Cause C ain't got iterators and all those FOR loops are too ugly.
+#define FOREACH_FACE(x) for(int x = 0; x < FACE_COUNT ; ++ x)       // Pretend this is a real language with iterators
+
+// Get the number of elements in an array.
+#define COUNT_OF(x) ((sizeof(x)/sizeof(x[0])))
 
 
 #endif 

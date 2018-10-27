@@ -128,3 +128,5 @@ We need all the space we can get so we pass gcc the `-Os` and `-flto`  and we pa
 
 You can read about Link Time Optimization here...
 https://github.com/arduino/Arduino/issues/660
+
+(NB This does not seem to work. Maybe we need to copy all the core files into the blinkboot directory and compile them in one shot rather than having an intermediate lib file for the core?)

@@ -37,6 +37,9 @@
 
 */
 
+#define IR_RX_DEBUG
+#define IR_RX_DEBUG_LED 4
+
 #include <stdint.h>     // uintX_t
 
 #include "ir.h"
@@ -228,16 +231,6 @@ volatile uint8_t most_recent_ir_test;
 
                     // 2,3,4 windows are a '0' data bit - do nothing because we preloaded `dataBit` with `0`
 
-                    #ifdef IR_RX_DEBUG
-                        if (bitwalker==  _BV(IR_RX_DEBUG_LED) ) {
-                            if (dataBit) {
-                                    Debug::tx_now('1');
-                            } else {
-                                    Debug::tx_now('0');
-                            }
-                        }
-                    #endif
-
                     // Here we know we got a data bit. It is either 0 or 1 (decided above)
 
                     uint8_t data =  ptr->byteBuffer>>1 ;    // make room at top for new 1 bit
@@ -262,7 +255,10 @@ volatile uint8_t most_recent_ir_test;
                             #ifdef IR_RX_DEBUG
                                 if (bitwalker== _BV(IR_RX_DEBUG_LED) ) {
                                     Debug::tx_now('B');          // Buffered byte
+                                    Debug::tx( ptr->packetBufferLen );
                                     Debug::tx( data );
+                                    
+                                    
                                 }
                             #endif
 
@@ -276,6 +272,7 @@ volatile uint8_t most_recent_ir_test;
                             #ifdef IR_RX_DEBUG
                                 if (bitwalker== _BV(IR_RX_DEBUG_LED) ) {
                                     Debug::tx_now('V');      // Overflow
+                                    Debug::tx( ptr->packetBufferLen );                                    
                                     Debug::tx( data );
                                 }
                             #endif
@@ -372,12 +369,7 @@ volatile uint8_t most_recent_ir_test;
 
                 // Been too long since we saw pulse, so nothing happening
                 // To get here, we already aborted anything in progress when the windowsSincelastTrigger was incremented to 7
-
-                #ifdef IR_RX_DEBUG
-                    if (bitwalker==_BV(IR_RX_DEBUG_LED)) Debug::tx_now('I');
-                    //if (bitwalker==_BV(IR_RX_DEBUG_LED)) sp_serial_tx('0'+ptr->windowsSinceLastTrigger);      // Error
-                #endif
-
+                
             }
 
             ptr->windowsSinceLastTrigger= 0;          // We are here because we got a trigger
@@ -398,19 +390,17 @@ volatile uint8_t most_recent_ir_test;
 
                 // Note that we do not need to look for errors here, they will show up when the trigger finally happens.
 
-                #ifdef IR_RX_DEBUG
-                    if (bitwalker==_BV(IR_RX_DEBUG_LED)) Debug::tx_now('-');          // Idle sample
-                #endif
-
             } else {
 
                 // We have waited long enough that this can not be a sync pulse
                 // We really only need to clear this so that irDataRXinProgress() will know that
                 // any RX that ws in progress is now aborted
 
-                #ifdef IR_RX_DEBUG
-                    if (bitwalker==_BV(IR_RX_DEBUG_LED)) Debug::tx_now('A');          // Abort any RX in progress
-                #endif
+                if (ptr->byteBuffer) {
+                    #ifdef IR_RX_DEBUG
+                        if (bitwalker==_BV(IR_RX_DEBUG_LED)) Debug::tx_now('A');          // Abort any RX in progress
+                    #endif
+                }
 
                 ptr->byteBuffer = 0x00;            // Clear byte buffer. A 0 here means we are waiting for sync
 
@@ -434,15 +424,40 @@ inline uint8_t irDataRXinProgress( uint8_t led ) {
 
     ir_rx_state_t *ptr = ir_rx_states + led;
 
+    // This uses the fact that anytime we are activel recieving a byte, the byte buffer will 
+    // be nonzero. Even if we are getting an all-0 byte, the top bit will be marching up.
+    // This is handy, but it does allow a collision during the leading sync. See below. 
+
+    return ptr->byteBuffer;
+
+/*
+
+    // Below is a very conservative collision detection scheme that even detects a preamble.
+    // Unfortunately with current RX code, it will see a collision for the first 7 windows
+    // after a valid packet is received because the final pulse of the trailing sync
+    // is in fact a pulse and could be seen as a leading pulse of a new sync. 
+    
+    // We could add an extra rx_in_progess flag or something like that, or find a way to force
+    // the windowsSinceLastTrigger to be 7 at the end of a valid packet. 
+    // Or just require there always be at least 7 windows between a valid TX and a follow up TX. 
+    // We should do this, but not now.
+
     // Anytime we are actively receiving a message, all value windows are less than 7
-    // This will even hold iff in the case where we just triggered and are still waiting to
-    // see if it was a valid pramble.
+    // This will even hold off in the case where we just triggered and are still waiting to
+    // see if it was a valid preamble.
 
     if (ptr->windowsSinceLastTrigger <= 6 ) {
+
+        Debug::tx('F');
+        Debug::tx( ptr->windowsSinceLastTrigger );
+                
+        
         return 1;
     } else {
         return 0;
     }
+    
+*/    
 
 }
 
@@ -470,7 +485,7 @@ uint8_t irDataPacketLen( uint8_t led ) {
 
 }
 
-const uint8_t *irDataPacketBuffer( uint8_t led ) {
+const void *irDataPacketBuffer( uint8_t led ) {
 
     return ir_rx_states[led].packetBuffer;
 

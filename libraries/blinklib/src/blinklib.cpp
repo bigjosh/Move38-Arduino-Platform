@@ -195,7 +195,7 @@ struct face_t {
 
     uint8_t inValue;           // Last received value on this face, or 0 if no neighbor ever seen since startup
     uint8_t outValue;          // Value we send out on this face
-    millis_t expireTime;    // When this face will be consider to be expired (no neighboor there)
+    millis_t expireTime;    // When this face will be consider to be expired (no neighbor there)
     millis_t sendTime;      // Next time we will transmit on this face (set to 0 everytime we get a good message so we ping-pong across the link)
 
 };
@@ -239,7 +239,6 @@ static byte  longPacketLen[FACE_COUNT];
 static byte *longPacketData[FACE_COUNT];
 
 byte getPacketLengthOnFace( uint8_t face ) {
-    asm("nop");
     return longPacketLen[ face ];
 
 }

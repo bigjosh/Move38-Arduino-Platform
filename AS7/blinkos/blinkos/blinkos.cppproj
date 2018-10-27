@@ -165,6 +165,14 @@
       <SubType>compile</SubType>
       <Link>blinkos.h</Link>
     </Compile>
+    <Compile Include="..\..\..\libraries\blinkos\src\blinkos_blinkboot.cpp">
+      <SubType>compile</SubType>
+      <Link>blinkos_blinkboot.cpp</Link>
+    </Compile>
+    <Compile Include="..\..\..\libraries\blinkos\src\blinkos_blinkboot.h">
+      <SubType>compile</SubType>
+      <Link>blinkos_blinkboot.h</Link>
+    </Compile>
     <Compile Include="..\..\..\libraries\blinkos\src\blinkos_button.cpp">
       <SubType>compile</SubType>
       <Link>blinkos_button.cpp</Link>
@@ -172,6 +180,10 @@
     <Compile Include="..\..\..\libraries\blinkos\src\blinkos_button.h">
       <SubType>compile</SubType>
       <Link>blinkos_button.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\libraries\blinkos\src\blinkos_headertypes.h">
+      <SubType>compile</SubType>
+      <Link>blinkos_headertypes.h</Link>
     </Compile>
     <Compile Include="..\..\..\libraries\blinkos\src\blinkos_irdata.cpp">
       <SubType>compile</SubType>
@@ -196,14 +208,6 @@
     <Compile Include="..\..\..\libraries\blinkos\src\blinkos_timer.h">
       <SubType>compile</SubType>
       <Link>blinkos_timer.h</Link>
-    </Compile>
-    <Compile Include="..\..\..\libraries\blinkos\src\blinkos_viral.cpp">
-      <SubType>compile</SubType>
-      <Link>blinkos_viral.cpp</Link>
-    </Compile>
-    <Compile Include="..\..\..\libraries\blinkos\src\blinkos_viral.h">
-      <SubType>compile</SubType>
-      <Link>blinkos_viral.h</Link>
     </Compile>
     <Compile Include="..\..\..\libraries\blinkos\src\pixelcolor.h">
       <SubType>compile</SubType>

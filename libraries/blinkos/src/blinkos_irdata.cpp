@@ -37,6 +37,8 @@
 
 */
 
+#include "debug.h"
+
 #include "blinkos.h"
 
 #include "ir.h"
@@ -296,11 +298,11 @@ volatile uint8_t most_recent_ir_test;
                     #ifdef IR_RX_DEBUG
                         if (bitwalker == _BV(IR_RX_DEBUG_LED) ) {
                             Debug::tx_now('+');                  // got a bit outside of a frame
-                        }                    
+                        }
                     #endif
-                    
-                }                    
-                    
+
+                }
+
 
             } else if (windowsSinceLastTrigger <=6 ) {
 
@@ -328,6 +330,13 @@ volatile uint8_t most_recent_ir_test;
                                 Debug::tx_now('R');      // Packet received and buffered successfully
                             }
                         #endif
+
+                        // This is tricky - here we clear the way to send immediately after the trailing sync
+                        // Otherwise the collisiosn avoidance in irDataTXinProgress() could see the last
+                        // pulse of the trailing sync as a leading pulse of another sync or bit
+                        // This lets use reply to this packet we just received immediately
+
+                        ptr->windowsSinceLastTrigger = 7;
 
                     } else {
 
@@ -362,8 +371,8 @@ volatile uint8_t most_recent_ir_test;
                         #ifdef IR_RX_DEBUG
                             if (bitwalker==_BV(IR_RX_DEBUG_LED)) Debug::tx_now('o');      // sYnc ignored becuase of buffer overflow
                         #endif
-                       
-                    }                        
+
+                    }
 
 
                 }
@@ -430,20 +439,48 @@ volatile uint8_t most_recent_ir_test;
 // Is there potentially an RX in progress on this LED?
 // Used to hold off sending while RX in progress to avoid a collisions that would clobber both transmissions
 
+// Is there potentially an RX in progress on this LED?
+// Used to hold off sending while RX in progress to avoid a collisions that would clobber both transmissions
+
 inline uint8_t irDataRXinProgress( uint8_t led ) {
 
     ir_rx_state_t *ptr = ir_rx_states + led;
 
+    // This uses the fact that anytime we are activel recieving a byte, the byte buffer will 
+    // be nonzero. Even if we are getting an all-0 byte, the top bit will be marching up.
+    // This is handy, but it does allow a collision during the leading sync. See below. 
+
+    return ptr->byteBuffer;
+
+/*
+
+    // Below is a very conservative collision detection scheme that even detects a preamble.
+    // Unfortunately with current RX code, it will see a collision for the first 7 windows
+    // after a valid packet is received because the final pulse of the trailing sync
+    // is in fact a pulse and could be seen as a leading pulse of a new sync. 
+    
+    // We could add an extra rx_in_progess flag or something like that, or find a way to force
+    // the windowsSinceLastTrigger to be 7 at the end of a valid packet. 
+    // Or just require there always be at least 7 windows between a valid TX and a follow up TX. 
+    // We should do this, but not now.
+
     // Anytime we are actively receiving a message, all value windows are less than 7
-    // This will even hold iff in the case where we just triggered and are still waiting to 
-    // see if it was a valid pramble. 
- 
+    // This will even hold off in the case where we just triggered and are still waiting to
+    // see if it was a valid preamble.
+
     if (ptr->windowsSinceLastTrigger <= 6 ) {
+
+        Debug::tx('F');
+        Debug::tx( ptr->windowsSinceLastTrigger );
+                
+        
         return 1;
     } else {
         return 0;
     }
-  
+    
+*/    
+
 }
 
 
@@ -525,20 +562,35 @@ uint8_t irSendBegin( uint8_t face ) {
     // and a long idle window came before it.
 
     // TODO: We need a timeout here or else a continuous stream of SYNCs could lock us out here...
+    
+    if (face==4) {
+                Debug::tx( 'T' );
+    }        
 
     if (irDataRXinProgress(face)) {
+            if (face==4) {
+                Debug::tx( 'F' );
+            }
         return 0;
-    }                                        
-    
+    }
+
     ir_tx_start( 1 << face , US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_1_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  );
 
     ir_tx_sendpulse( US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_S_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  ) ;
-    
+
+    if (face==4) {
+        Debug::tx( 'G' );
+    }
+
+
     return 1;
 
 }
 
 void irSendByte( uint8_t b ) {
+
+    Debug::pin_a_1();
+    Debug::tx( 'W' );
 
     uint8_t bitwalker = 0b00000001;
 
@@ -556,14 +608,24 @@ void irSendByte( uint8_t b ) {
 
     } while (bitwalker);        // 1 bit overflows off top. Would be better if we could test for overflow bit
 
+
+    Debug::tx( b );
+    Debug::tx( 'S' );
+    Debug::pin_a_0();
+
+
 }
 
 void irSendComplete() {
+
+    Debug::tx('C');
 
     // Send final SYNC
     ir_tx_sendpulse( US_TO_CYCLES(  MIN_DELAY_LT( IR_TX_S_BIT_DELAY_RT_US , IR_CLOCK_SPREAD_PCT ))  ) ;
 
     ir_tx_end();
+
+    Debug::tx('D');
 
 }
 
@@ -574,4 +636,39 @@ void irDataInit() {
     #endif
 }
 
+
+// Convenience function since we send packets in a couple different places.
+// This sends a user data packet. No error checking so you are responsible to do it yourself
+// Returns 0 if it was not able to send because there was already an RX in progress on this face
+
+// I bet you are wondering why the headerbyte comes at the end, right?
+// Because if we put it at the beginning then chained functions (like ir_send_user_data)
+// Would have to shuffle all the params around to set up the next call. At the end, the extra
+// param can just get loaded and done is done!
+
+uint8_t ir_send_data(   uint8_t face, const void *data , uint8_t len , uint8_t headerbyte  ) {
+
+    // Ok, now we are ready to start sending!
+
+    const uint8_t *ptr = (uint8_t *) data;      // Just type conversion so we can step though bytes.
+
+    if (irSendBegin( face )) {
+
+        irSendByte( headerbyte );
+
+        while (len) {
+
+            irSendByte( *ptr++ );
+            len--;
+
+        }
+
+        irSendComplete();
+
+        return 1;
+    }
+
+    return 0;
+
+}
 

@@ -29,7 +29,10 @@
 #include "blinkos_button.h"
 #include "blinkos_timer.h"          // Class Timer
 #include "blinkos_pixel.h"
-#include "blinkos_viral.h"
+
+#include "blinkos_headertypes.h"    // Defines the first hearer byte types for IR packets
+
+#include "blinkos_blinkboot.h"
 
 #include "callbacks.h"              // From blinkcore, which will call into us via these
 
@@ -173,12 +176,7 @@ uint8_t crccheck(uint8_t const * data, uint8_t len )
 
 }
 
-// These header bytes are chosen to try and give some error robustness.
-// So, for example, a header with a repeating pattern would be less robust
-// because it is possible something blinking in the environment might replicate it
 
-#define IR_PACKET_HEADER_OOB      0b01001110      // Internal blinkOS messaging
-#define IR_PACKET_HEADER_USERDATA 0b11010011      // Pass up to userland
 
 void processPendingIRPackets() {
 
@@ -199,10 +197,18 @@ void processPendingIRPackets() {
 
             // TODO: What packet type should be fastest check (doesn;t really matter THAT much, only a few cycles)
 
-            if (*data== IR_PACKET_HEADER_OOB ) {
+            if (*data==  IR_PACKET_HEADER_PULLFLASH) {
+                
+                Debug::tx( 'Z' );
 
-                // blinkOS packet
-                irDataMarkPacketRead(f);
+                // This is a request for us to send some of our active game. It should only come when we are in seed mode.
+
+                uint8_t requested_page = data[1];           // Read the requested page from the request packet
+                
+                irDataMarkPacketRead(f);                
+
+                // We are going to blindly send here. The coast should be clear since they just sent the request and will be waiting a timeout period before sending the next one.
+                blinkos_blinkboot_sendPushFlash( f , requested_page );
 
 
             } else if (*data== IR_PACKET_HEADER_USERDATA ) {
@@ -222,7 +228,7 @@ void processPendingIRPackets() {
 
             } else {
 
-                // Thats's unexpected.
+                // That's unexpected.
                 // Could be a data error that messed up bits in the header byte,
                 // which is why we picked interesting bit patterns for header bytes
 
@@ -242,6 +248,8 @@ void processPendingIRPackets() {
 
 uint8_t ir_send_userdata( uint8_t face, const uint8_t *data , uint8_t len ) {
 
+    return ir_send_data( face , data , len ,  IR_PACKET_HEADER_USERDATA  );
+/*
     // Ok, now we are ready to start sending!
 
     if (irSendBegin( face )) {
@@ -261,6 +269,8 @@ uint8_t ir_send_userdata( uint8_t face, const uint8_t *data , uint8_t len ) {
     }
 
     return 0;
+
+    */
 
 }
 
@@ -317,6 +327,10 @@ uint8_t sendUserDataCRC( uint8_t face, const uint8_t *data , uint8_t len ) {
 
 extern void setupEntry();
 
+enum mode_t { RUNNING , SEEDING };        // Are we running the game or seeding downloads to nearby tiles?
+
+mode_t mode = RUNNING;
+
 void run(void) {
 
     power_init();
@@ -334,8 +348,11 @@ void run(void) {
     irDataInit();       // Really only called to init IR_RX_DEBUG
 
     pixel_enable();
-    
+
     button_enable_pu();
+
+    blinkos_blinkboot_setup();     // Get everything ready for seeding
+                                        // TODO: We don't need to call this until we actually go into game transmissions mode.
 
     // Set the buffer pointers
 
@@ -352,7 +369,10 @@ void run(void) {
     setupEntry();
 
     postponeSleep();            // We just turned on, so restart sleep timer
-    
+
+    #warning
+    mode = SEEDING;          // Force for now
+
     //blinkos_transmit_self();
 
     while (1) {
@@ -371,22 +391,29 @@ void run(void) {
 
         loopstate_in.millis = millis_snapshot;
 
-        loopEntry();
+        if (mode==SEEDING) {
 
-        for( uint8_t f = 0; f < PIXEL_FACE_COUNT ; f++ ) {
+            blinkos_blinkboot_loop();
 
-            pixelColor_t color = loopstate_out.colors[f];
+        } else if (mode==RUNNING) {
 
-            if (  color.reserved ) {          // Did the color change on the last pass? (We used the reserved bit to tell in the blnkOS API)
+            loopEntry();
 
-                blinkos_pixel_bufferedSetPixel( f,  color  );           // TODO: Do we need to clear that top bit?
+            for( uint8_t f = 0; f < PIXEL_FACE_COUNT ; f++ ) {
+
+                pixelColor_t color = loopstate_out.colors[f];
+
+                if (  color.reserved ) {          // Did the color change on the last pass? (We used the reserved bit to tell in the blnkOS API)
+
+                    blinkos_pixel_bufferedSetPixel( f,  color  );           // TODO: Do we need to clear that top bit?
+                
+                }                    
+
             }
 
-        }
-
-        blinkos_pixel_displayBufferedPixels();      // show all display updates that happened in last loop()
-                                                    // Also currently blocks until new frame actually starts
-
+            blinkos_pixel_displayBufferedPixels();      // show all display updates that happened in last loop()
+                                                            // Also currently blocks until new frame actually starts
+        }        
 
         for( uint8_t f = 0; f < IR_FACE_COUNT ; f++ ) {
 

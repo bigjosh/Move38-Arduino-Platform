@@ -1,4 +1,6 @@
 
+#include "debug.h"
+
 // Our currently displayed colors and also the colors we send/receive in a packet to share
 
 static Color colors[FACE_COUNT] = { RED, GREEN, BLUE, ORANGE , YELLOW , CYAN };
@@ -43,6 +45,7 @@ void updateDisplayColors() {
 void setup() {
     //splat();
     updateDisplayColors();
+    Debug::init();
 }
 
 // Packet handshaking
@@ -172,7 +175,7 @@ void loop() {
 
     }            //  FOREACH_FACE(f) {
 
-    // Now finally set the outgoing values on each face to reflect the packet state when nessisary
+    // Now finally set the outgoing values on each face to reflect the packet state when necessary
 
     FOREACH_FACE(f) {
 

@@ -29,6 +29,9 @@ union pixelColor_t {
     pixelColor_t(uint8_t r_in , uint8_t g_in, uint8_t b_in );
     pixelColor_t(uint8_t r_in , uint8_t g_in, uint8_t b_in , uint8_t reserverd_in );
 
+
+    // Number of brightness levels in each channel of a color
+
 };
 
 inline pixelColor_t::pixelColor_t(uint8_t r_in , uint8_t g_in, uint8_t b_in ) {
@@ -57,5 +60,21 @@ inline pixelColor_t::pixelColor_t() {
 
 }
 
+// There must be a way to keep these inside the pixelcolor_t namespace, but I can't figure it
+
+const uint8_t BRIGHTNESS_LEVELS_5BIT= (2^5);
+const uint8_t MAX_BRIGHTNESS_5BIT=(BRIGHTNESS_LEVELS_5BIT-1);
+
+const pixelColor_t RED         =pixelColor_t (MAX_BRIGHTNESS_5BIT, 0                    ,0);
+const pixelColor_t ORANGE      =pixelColor_t (MAX_BRIGHTNESS_5BIT,MAX_BRIGHTNESS_5BIT/2 ,0);
+const pixelColor_t YELLOW      =pixelColor_t (MAX_BRIGHTNESS_5BIT,MAX_BRIGHTNESS_5BIT   ,0);
+const pixelColor_t GREEN       =pixelColor_t ( 0                 ,MAX_BRIGHTNESS_5BIT   ,0);
+const pixelColor_t CYAN        =pixelColor_t ( 0                 ,MAX_BRIGHTNESS_5BIT   ,MAX_BRIGHTNESS_5BIT);
+const pixelColor_t BLUE        =pixelColor_t ( 0                 , 0                    ,MAX_BRIGHTNESS_5BIT);
+const pixelColor_t MAGENTA     =pixelColor_t (MAX_BRIGHTNESS_5BIT, 0                    ,MAX_BRIGHTNESS_5BIT);
+
+const pixelColor_t WHITE       =pixelColor_t (MAX_BRIGHTNESS_5BIT,MAX_BRIGHTNESS_5BIT   ,MAX_BRIGHTNESS_5BIT);
+
+const pixelColor_t OFF         =pixelColor_t ( 0                 , 0                    , 0);
 
 #endif 

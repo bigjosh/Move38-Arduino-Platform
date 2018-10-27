@@ -53,10 +53,16 @@ inline coarsePixelColor_t::coarsePixelColor_t() {
 }
 
 #define COARSE_BLACK    coarsePixelColor_t( 0 , 0 , 0 )
+#define COARSE_OFF      coarsePixelColor_t( 0 , 0 , 0 )
 #define COARSE_RED      coarsePixelColor_t( 3 , 0 , 0 )
 #define COARSE_GREEN    coarsePixelColor_t( 0 , 3 , 0 )
+#define COARSE_DIMGREEN coarsePixelColor_t( 0 , 1 , 0 )
 #define COARSE_BLUE     coarsePixelColor_t( 0 , 0 , 3 )
 #define COARSE_ORANGE   coarsePixelColor_t( 3 , 2 , 0 )
+#define COARSE_YELLOW   coarsePixelColor_t( 3 , 3 , 0 )
+#define COARSE_CYAN     coarsePixelColor_t( 0 , 3 , 3 )
+#define COARSE_MAGENTA  coarsePixelColor_t( 3 , 0 , 3 )
+
 
 void setRawPixelCoarse( uint8_t face , coarsePixelColor_t color );
 
