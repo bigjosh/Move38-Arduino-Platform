@@ -50,7 +50,7 @@ static void mhz_init(void) {
 static void init(void) {
 
     mhz_init();				// switch to 8Mhz. TODO: Some day it would be nice to go back to 1Mhz for FCC, but lets just get things working now.
-    
+
     sei();					// Let interrupts happen. For now, this is the timer overflow that updates to next pixel.
 
 }
@@ -59,15 +59,41 @@ static void init(void) {
 // Initialize the hardware and pass the flag to run()
 // Weak so that a user program can take over immediately on startup and do other stuff.
 
-int __attribute__ ((weak)) main(void)
+/* Function Prototypes
+ * The main() function is in init9, which removes the interrupt vector table
+ * we don't need. It is also 'OS_main', which means the compiler does not
+ * generate any entry or exit code itself (but unlike 'naked', it doesn't
+ * suppress some compile-time options we want.)
+ * https://github.com/Optiboot/optiboot/blob/master/optiboot/bootloaders/optiboot/optiboot.c
+ */
+/*
+void pre_main(void) __attribute__ ((naked)) __attribute__ ((section (".text0"))) __attribute__((used));
+int main(void) __attribute__ ((OS_main)) __attribute__ ((section (".init9"))) __attribute__((used));
+
+*/
+/* everything that needs to run VERY early */
+
+/*
+void pre_main(void) {
+    // Allow convenient way of calling do_spm function - jump table,
+    //   so entry to this function will always be here, independent of compilation,
+    //   features etc
+    asm volatile (
+        "	rjmp	main\n"
+    );
+}
+*/
+
+
+void mainx(void) __attribute__ ((section (".init9"))) __attribute__((used)) __attribute__ ((naked));
+
+void mainx(void)
 {
+    asm volatile ("clr r5");
 
 	init();
 
-    while (1) {
-	    run();
+    run();
         // TODO: Sleep here and only wake on new event
-    }
 
-	return 0;
 }

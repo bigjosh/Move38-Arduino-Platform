@@ -80,25 +80,38 @@ The actual program memory that holds the games starts at flash address 0x000. Th
 
 This flash space is shared by...
 
-(Remember all these flash addresses are in WORDs not BYTEs!)
-
 | What | Starts | Ends | Length (Bytes) |
 | - | -:| -:| -:|
 | Active game | 0x0000 | 0x0dff | 7Kb | 
-| Built-in game | 0x0d00 | 0x1bff | 7Kb | 
+| Built-in game | 0x0e00 | 0x1bff | 7Kb | 
 | Bootloader | 0x1c00 | 0x1fff | 2Kb |
+
+(Sometimes flash memory addresses are given in words rather than bytes. The addresses above are bytes)
 
 The active game is the game that will actually get executed. The built-in game must be copied down to the active game area before it can be played (in which was there are two copied of the built-in game in flash). You can't 
 
 Note that the built-in game must be copied into the active 
 
-The active game starts at at 0x000 and can be up to 7Kb long. Each game is self sufficient and can be started without the bootloader present (this helps with development).  
+The active game starts at at 0x0000 and can be up to 7Kb long. Each game is self sufficient and can be started without the bootloader present (this helps with development).
+
+
+To get the bootloader up where it belongs in memory, we have add a new section called `bls` with an address of `0x0e00` to the linker. The GCC linker doubles this word address to make the byte address of `0x1c00`. 
+
+### Start-up tricks
+
+To have as much room as possible for the bootloader, we do some pretty drastic tricks. We completely remove the normal C runtime startup code and replace it with a single instructions to clear the zero register (`r1`). We do not need to set up the stack because [the chip does it automatically](https://ognite.wordpress.com/2013/11/14/true-chaff-superfluous-stack-pointer-and-status-register-setting/). We also declare the main function to be `naked` to suppress the normal stack setup and return, and then we put it in the `init9` section which comes right after all the code that sets up the variables, so there is no `call` (or even `jmp`!) into main - the code just falls though to it. 
+
+### Bootloader fuses  
+
+To get this large 2k bootloader area, the `BOOTZ` fuse bits must be programmed to `00` (this is the factory default).   
+
+At startup, the chip starts executing the bootloader reset vector `0x1c00`. The requires the `BOOTRST` fuse to be programmed to `0` (not the default). IF the bootloader decides that it does not need to load anything (or after it is done loading) then it jumps to `0x000` to start the application code. 
 
 ## Packet formats
 
 ### IR_PACKET_HEADER_PULLREQUEST
     
-| `0b01101010` | length in blocks | highest available block | game checksum  low byte | game checksum high byte | 
+| `0b01101010` | length in blocks | program checksum  low byte | program checksum high byte | 
 
 This is transmitted by a tile that is in game sending mode. 
 

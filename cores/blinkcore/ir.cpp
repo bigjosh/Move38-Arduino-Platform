@@ -72,24 +72,25 @@
 // Normally we leave this ISR off so only used for debugging. The timer ISR actually checks the IR LEDs at regular intervals. 
 // This is better than interrupting on change since bright light could cause lots of ISRs and lock us out. 
 
+#ifdef RX_DEBUG
 
-ISR(IR_ISR,ISR_NAKED) {
+    ISR(IR_ISR,ISR_NAKED) {
 
-    // We make this NAKED so we can deal with it efficiently
-    // otherwise the compiler adds an R0 and R1 preamble and postamble even though these are not used at all. Arg.
-    // It compiles down to a single SBS with no side effects, so no need to save any registers.
+        // We make this NAKED so we can deal with it efficiently
+        // otherwise the compiler adds an R0 and R1 preamble and postamble even though these are not used at all. Arg.
+        // It compiles down to a single SBS with no side effects, so no need to save any registers.
 
-    // Be careful if you put anything here that changes flags or registers!
+        // Be careful if you put anything here that changes flags or registers!
 
-    #ifdef RX_DEBUG
-       if ( ! TBI(PINC,0) ) {              // We test here so we don't go high on spurious INTs
-           SP_PIN_A_SET_1();               // SP pin A goes high any time IR0 is triggered. We clear it when we later process in the polling code.
-       }
-    #endif
+           if ( ! TBI(PINC,0) ) {              // We test here so we don't go high on spurious INTs
+               SP_PIN_A_SET_1();               // SP pin A goes high any time IR0 is triggered. We clear it when we later process in the polling code.
+           }
 
-    asm("RETI");
+        asm("RETI");
 
-}
+    }
+
+#endif
 
 
 // We use the general interrupt control register to gate interrupts on and off rather than the mask
