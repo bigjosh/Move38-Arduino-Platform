@@ -89,8 +89,6 @@ void mainx(void) __attribute__ ((section (".init9"))) __attribute__((used)) __at
 
 void mainx(void)
 {
-    asm volatile ("clr r5");
-
 	init();
 
     run();

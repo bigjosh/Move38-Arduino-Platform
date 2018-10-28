@@ -167,8 +167,8 @@
   <avrgcccpp.linker.memorysettings.Flash>
     <ListValues>
       <Value>.text=0x0000</Value>
-      <Value>bls=0x0e00</Value>
-      <Value>testburn=0x0d00</Value>
+      <Value>bls=0x1c00</Value>
+      <Value>testburn=0x1b00</Value>
     </ListValues>
   </avrgcccpp.linker.memorysettings.Flash>
   <avrgcccpp.linker.miscellaneous.LinkerFlags>-fwhole-program</avrgcccpp.linker.miscellaneous.LinkerFlags>

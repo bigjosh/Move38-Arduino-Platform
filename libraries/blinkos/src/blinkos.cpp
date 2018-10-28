@@ -198,14 +198,14 @@ void processPendingIRPackets() {
             // TODO: What packet type should be fastest check (doesn;t really matter THAT much, only a few cycles)
 
             if (*data==  IR_PACKET_HEADER_PULLFLASH) {
-                
+
                 Debug::tx( 'L' );
 
                 // This is a request for us to send some of our active game. It should only come when we are in seed mode.
 
                 uint8_t requested_page = data[1];           // Read the requested page from the request packet
-                
-                irDataMarkPacketRead(f);                
+
+                irDataMarkPacketRead(f);
 
                 // We are going to blindly send here. The coast should be clear since they just sent the request and will be waiting a timeout period before sending the next one.
                 blinkos_blinkboot_sendPushFlash( f , requested_page );
@@ -337,7 +337,7 @@ void run(void) {
 
     button_init();
 
-    adc_init();			    // Init ADC to start measuring battery voltage
+    //adc_init();			    // Init ADC to start measuring battery voltage
 
     pixel_init();
 
@@ -406,14 +406,14 @@ void run(void) {
                 if (  color.reserved ) {          // Did the color change on the last pass? (We used the reserved bit to tell in the blnkOS API)
 
                     blinkos_pixel_bufferedSetPixel( f,  color  );           // TODO: Do we need to clear that top bit?
-                
-                }                    
+
+                }
 
             }
 
             blinkos_pixel_displayBufferedPixels();      // show all display updates that happened in last loop()
                                                             // Also currently blocks until new frame actually starts
-        }        
+        }
 
         for( uint8_t f = 0; f < IR_FACE_COUNT ; f++ ) {
 

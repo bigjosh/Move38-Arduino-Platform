@@ -18,14 +18,14 @@ Color randomColor() {
 
 }
 
-extern uint8_t __vectors;
+//extern uint8_t __vectors;
 
 // Assign a random color to each face
 
 void splat() {
 
     FOREACH_FACE(f){
-        colors[f +__vectors ] = randomColor();
+        colors[f ] = randomColor();
     }
 
 }

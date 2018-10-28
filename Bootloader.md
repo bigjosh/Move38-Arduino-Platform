@@ -95,7 +95,7 @@ Note that the built-in game must be copied into the active
 The active game starts at at 0x0000 and can be up to 7Kb long. Each game is self sufficient and can be started without the bootloader present (this helps with development).
 
 
-To get the bootloader up where it belongs in memory, we have add a new section called `bls` with an address of `0x0e00` to the linker. The GCC linker doubles this word address to make the byte address of `0x1c00`. 
+To get the bootloader up where it belongs in memory, we have add a new section called `bls` with an address of `0x1c00` to the linker. The GCC linker doubles this word address to make the byte address of `0x3400`, which is the start of the boot loader section with the `BOOTSZ` bit set to `00` (the max bootloader size). 
 
 ### Start-up tricks
 

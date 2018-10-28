@@ -106,8 +106,7 @@ void timer_128us_callback_sei(void) {
 
 const char __attribute__((section("testburn"))) josh[] ="12345 josh is a nice guy";
 
-// For now for tested, eventually 0x000 to put active game at the bottom.
-#define FLASH_BASE_ADDRESS (0x0e00)
+
 
 void __attribute__((section("bls")))  burn_page_to_flash( uint8_t page , const uint8_t *data );
 
@@ -119,20 +118,22 @@ void __attribute__ ((noinline)) burn_page_to_flash( uint8_t page , const uint8_t
 
     // Fist set up zh to have the page in it....
 
+    const char *address = josh;        // This should hit the page at 0x0d00 which we currently define as testburn...
+
     asm("nop");
+
     __asm__ __volatile__
     (
     ""
     :
     :
-        "zh" (page)
+        "z" (address)
     );
 
+    // Do the actual page erase under cover of int protection since the
 
-    // Dop the actual page erase under cover of int protecton since the
-    // SPM has to come right after the STS
-
-
+//     // SPM has to come right after the STS
+/*
     cli();
     __asm__ __volatile__                         \
     (                                            \
@@ -144,11 +145,32 @@ void __attribute__ ((noinline)) burn_page_to_flash( uint8_t page , const uint8_t
         :
     );
     sei();
+*/
 
-    // Wait for erase to complete
-   // boot_spm_busy_wait();
 
-    ACSR = pgm_read_byte( josh + page );
+    for(uint16_t i=0; i<128;i+=2 ){               // 64 words (128 bytes) per page
+        cli();
+        boot_page_fill(  i , ('J'<<8) | 'L' );
+        sei();
+    }
+
+    cli();
+
+    // We have to leave ints off for the full erase/write cycle here
+    // until we get all the int handlers up into the bootloader section.
+
+    boot_page_erase( address );
+
+    boot_spm_busy_wait();
+
+    boot_page_write( address );
+
+    boot_spm_busy_wait( );
+
+   boot_rww_enable();       // Enable the normal memory
+
+    sei();                  // Don't want to have an int going to normal memory until it works again.
+
 
 /*
     // Next fill up the buffer
@@ -314,6 +336,7 @@ void processPendingIRPackets() {
 
                         download_checksum    = data->pull_request_payload.program_checksum;
 
+                        #warning we dont check the checksum on pull requests yet
                         //computered_program_checksum = 0;      // This inits to 0 so we don't have to explicity set it
 
                         download_face = f;
