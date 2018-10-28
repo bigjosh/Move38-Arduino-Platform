@@ -168,6 +168,7 @@
     <ListValues>
       <Value>.text=0x0000</Value>
       <Value>bls=0x0e00</Value>
+      <Value>testburn=0x0d00</Value>
     </ListValues>
   </avrgcccpp.linker.memorysettings.Flash>
   <avrgcccpp.linker.miscellaneous.LinkerFlags>-fwhole-program</avrgcccpp.linker.miscellaneous.LinkerFlags>
@@ -257,13 +258,6 @@
       <SubType>compile</SubType>
       <Link>utils.h</Link>
     </Compile>
-    <Compile Include="..\..\cores\blinkcore\WMath.cpp">
-      <SubType>compile</SubType>
-      <Link>WMath.cpp</Link>
-    </Compile>
-    <Compile Include="Assembler1.s">
-      <SubType>compile</SubType>
-    </Compile>
     <Compile Include="blinkboot.cpp">
       <SubType>compile</SubType>
     </Compile>
@@ -282,6 +276,10 @@
     <Compile Include="coarsepixelcolor.h">
       <SubType>compile</SubType>
       <Link>coarsepixelcolor.h</Link>
+    </Compile>
+    <Compile Include="startup.s">
+      <SubType>compile</SubType>
+      <Link>startup.s</Link>
     </Compile>
   </ItemGroup>
   <ItemGroup>

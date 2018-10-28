@@ -1,9 +1,27 @@
 
 /*
- * Assembler1.s
+ * startup.s
  *
+ * This replaces the normal C startup code with a MUCH smaller version to save space.
+ *
+ * To use it, you must use this signature for your main()...
+
+	void mainx(void) __attribute__ ((section (".init9"))) __attribute__((used)) __attribute__ ((naked));
+
+	void mainx(void)
+	{
+		// Your code here
+	}
+
+	The actual function name does not matter, but it should be void and should never complete.
+
+	You also need to turn off the inclusion of the startard startup files.
+
+	In AS7 that is under project settings->linker
+
+
  * Created: 10/27/2018 4:05:41 PM
- *  Author: passp
+ *  Author: josh
  */
 
  	.macro	vector name

@@ -24,10 +24,6 @@ OS_Timer next_pull_request_timer;           // Next time to send a pull request
 
 uint8_t next_pull_request_target;           // Who to send the next pull request to
 
-const uint16_t active_game_checksum = 0x1234;
-
-const uint16_t active_game_page_count = DOWNLOAD_MAX_PAGES;
-
 // I was so excited we were going to be able to statically initialize these packets at compile time
 // and save so much time and space, but...
 // "sorry, unimplemented: non-trivial designated initializers not supported"

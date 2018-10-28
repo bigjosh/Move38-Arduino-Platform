@@ -103,6 +103,9 @@ void timer_128us_callback_sei(void) {
     IrDataPeriodicUpdateComs();
 }
 
+
+const char __attribute__((section("testburn"))) josh[] ="12345 josh is a nice guy";
+
 // For now for tested, eventually 0x000 to put active game at the bottom.
 #define FLASH_BASE_ADDRESS (0x0e00)
 
@@ -110,17 +113,44 @@ void __attribute__((section("bls")))  burn_page_to_flash( uint8_t page , const u
 
 void __attribute__ ((noinline)) burn_page_to_flash( uint8_t page , const uint8_t *data ) {
 
-
-    asm("nop");
-
     // TODO: We can probably do these better directly. Or maybe fill the buffer while we load the packet. Then we have to clear the buffer at the beginning.
 
     // First erase the flash page...
-    cli();
-    boot_page_erase( FLASH_BASE_ADDRESS + (page * DOWNLOAD_PAGE_SIZE ) );
-    sei();
-    boot_spm_busy_wait();
 
+    // Fist set up zh to have the page in it....
+
+    asm("nop");
+    __asm__ __volatile__
+    (
+    ""
+    :
+    :
+        "zh" (page)
+    );
+
+
+    // Dop the actual page erase under cover of int protecton since the
+    // SPM has to come right after the STS
+
+
+    cli();
+    __asm__ __volatile__                         \
+    (                                            \
+        "sts %0, %1\n\t"                         \
+        "spm\n\t"
+        :
+        : "i" (_SFR_MEM_ADDR(__SPM_REG)),
+          "r" ((uint8_t)(__BOOT_PAGE_ERASE))
+        :
+    );
+    sei();
+
+    // Wait for erase to complete
+   // boot_spm_busy_wait();
+
+    ACSR = pgm_read_byte( josh + page );
+
+/*
     // Next fill up the buffer
 
     uint16_t *p = (uint16_t *) data ;
@@ -140,7 +170,7 @@ void __attribute__ ((noinline)) burn_page_to_flash( uint8_t page , const uint8_t
     cli();
     boot_page_write( FLASH_BASE_ADDRESS );
     sei();
-
+*/
 
 }
 

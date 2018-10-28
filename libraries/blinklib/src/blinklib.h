@@ -284,13 +284,17 @@ class Timer {
 
 // Return a random number between 0 and limit inclusive.
 
-uint16_t rand( uint16_t limit );
+uint16_t random( word limit );
 
 // Read the unique serial number for this blink tile
 // There are 9 bytes in all, so n can be 0-8
 
-
 byte getSerialNumberByte( byte n );
+
+// Map one set to another
+
+long map(word x, word in_min, word in_max, word out_min, word out_max);
+
 
 
 /*

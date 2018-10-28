@@ -1,5 +1,4 @@
-
-#include "debug.h"
+//#include "debug.h"
 
 // Our currently displayed colors and also the colors we send/receive in a packet to share
 
@@ -15,17 +14,18 @@ byte randomByte() {
 
 Color randomColor() {
 
-    return makeColorHSB( randomByte() , 255 , 255 );
+    return makeColorHSB( randomByte()  , 255 , 255 );
 
 }
 
+extern uint8_t __vectors;
 
 // Assign a random color to each face
 
 void splat() {
 
     FOREACH_FACE(f){
-        colors[f] = randomColor();
+        colors[f +__vectors ] = randomColor();
     }
 
 }
@@ -45,7 +45,6 @@ void updateDisplayColors() {
 void setup() {
     //splat();
     updateDisplayColors();
-    Debug::init();
 }
 
 // Packet handshaking
@@ -191,3 +190,5 @@ void loop() {
     }       // FOREACH_FACE
 
 }           // loop()
+
+

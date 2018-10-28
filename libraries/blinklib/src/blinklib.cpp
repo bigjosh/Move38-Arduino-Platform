@@ -17,7 +17,7 @@
 
 #include <limits.h>
 #include <stdint.h>
-#include <stdlib.h>         //rand()
+//#include <stdlib.h>         //rand()
 
 #include <avr/pgmspace.h>   // PROGMEM for parity lookup table
 
@@ -685,18 +685,22 @@ static word GetNextRandUint(void) {
 // TODO: Use entropy from the button or decaying IR LEDs
 // https://stackoverflow.com/a/2999130/3152071
 
-uint16_t rand( uint16_t limit ) {
+uint16_t random( uint16_t limit ) {
 
     word divisor = GETNEXTRANDUINT_MAX/(limit+1);
     word retval;
 
     do {
         retval = GetNextRandUint() / divisor;
-    } while (retval > limit);
+    } while (retval >= limit);
 
     return retval;
 }
 
+long map(word x, word in_min, word in_max, word out_min, word out_max)
+{
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
 
 // Returns the device's unique 8-byte serial number
 // TODO: This should this be in the core for portability with an extra "AVR" byte at the front.
