@@ -4,11 +4,10 @@
 #include <avr/pgmspace.h>       // Functions for accessing flash
 
 #include "blinkos.h"
-#include "blinkboot.h"
+#include "bootloader.h" // Get bootloader protocol
 #include "shared.h"
 #include "blinkos_timer.h"
 #include "blinkos_irdata.h"
-
 
 #include "pixel.h"      // We go direct to the pixel layer her since we are out of the loop.
 #include "debug.h"
@@ -64,7 +63,7 @@ uint8_t blinkos_blinkboot_sendPullRequest( uint8_t face ) {
     struct push_payload_t {                 // Response to a pull with the flash block we asked for
         uint8_t data[DOWNLOAD_PAGE_SIZE];   // An actual page of the flash memory
         uint8_t page;                       // The block number in this packet
-        uint8_t page_checksum;              // Simple longitudinal checksum then inverted. This comes at the end so we can compute it on the fly.
+        uint8_t page_checksum;              // Simple longitudinal checksum + page#,  then inverted. This comes at the end so we can compute it on the fly.
     };
 
 */

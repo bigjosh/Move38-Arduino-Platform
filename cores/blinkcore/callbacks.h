@@ -27,7 +27,8 @@ void timer_128us_callback_sei(void);
 
 void timer_256us_callback_sei(void);
 
-// Called repeatedly after hardware has been initialized.
+// Called after hardware has been initialized.
+// INts are off, so up to callee to set correct vector and sei()
 
 void run(void);
 

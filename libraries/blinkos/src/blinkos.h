@@ -5,6 +5,8 @@
  *
  */
 
+#ifndef BLINKOS_H_
+#define BLINKOS_H_
 
 // Gets us uintx_t
 // Not sure why, but it MUST be in the header and not the cpp
@@ -22,12 +24,13 @@
 
 #define IR_RX_PACKET_SIZE     35
 
-
 // TODO: Change time to uint24 _t
 // Supported!!! https://gcc.gnu.org/wiki/avr-gcc#types
 // typedef __uint24 millis_t;
 
 typedef uint32_t millis_t;
+
+#define MILLIS_T_MAX ((millis_t) -1)
 
 // loopstate is passed in and out of the user program on each pass
 // through the main event loop
@@ -42,7 +45,9 @@ typedef uint32_t millis_t;
 #define BUTTON_BITFLAG_SINGLECLICKED    0b00001000
 #define BUTTON_BITFLAG_DOUBECLICKED     0b00010000
 #define BUTTON_BITFLAG_MULITCLICKED     0b00100000
-#define BUTTON_BITFLAG_DUMMY            0b01000000
+
+#define BUTTON_BITFLAG_3SECPRESSED      0b01000000
+#define BUTTON_BITFLAG_5SECPRESSED      0b10000000
 
 struct buttonstate_t {
 
@@ -124,3 +129,5 @@ void loopEntry();
 
 // Get the number of elements in an array.
 #define OS_COUNT_OF(x) ((sizeof(x)/sizeof(x[0])))
+
+#endif

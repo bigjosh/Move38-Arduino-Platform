@@ -19,6 +19,9 @@
 
 #define BUTTON_LONGPRESS_TIME_MS 2000          // How long you must hold button down to register a long press.
 
+#define BUTTON_3SECPRESS_TIME_MS 3000          
+#define BUTTON_5SECPRESS_TIME_MS 5000          
+
 // Click Semantics
 // ===============
 // All clicks happen inside a click window, as defined by BUTTON_CLICK_TIMEOUT_MS

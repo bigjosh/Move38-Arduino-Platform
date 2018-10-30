@@ -1,12 +1,11 @@
-
-#include "ArduinoTypes.h"
+#include <limits.h>         // Get ULONG_MAX for NEVER
 
 #include "blinklib.h"
-
-
 // Note we directly access millis() here, which is really bad style.
 // The timer should capture millis() in a closure, but no good way to
 // do that in C++ that is not verbose and inefficient, so here we are.
+
+#define NEVER (ULONG_MAX)
 
 bool Timer::isExpired() {
     return millis() >= m_expireTime;

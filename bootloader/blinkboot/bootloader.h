@@ -1,15 +1,16 @@
 /*
  * blinkboot.h
  *
- * This defines stuff that is needed to talk to the bootloader
+ * This defines stuff that is needed to transfer games to the bootloader
  *
  */
 
+#define DOWNLOAD_PAGE_SIZE 128      // Flash pages size for ATMEGA168PB
+                                    // We currently send in full pages because it save the hassle of reassembling packets, but does mean
+                                    // that we must have bigger buffers. Maybe makes sense to send blocks instead?
 
-// TODO: These should get moved to a file that is shared between blinkboot and blinkos
-#define DOWNLOAD_MAX_PAGES 56     // The maximum length of a downloaded game
-
-#define DOWNLOAD_PAGE_SIZE 128                 // Flash pages size for ATMEGA168PB
+#define DOWNLOAD_MAX_PAGES 56       // The maximum length of a downloaded game
+                                    // Currently set to use ~7KB. This saves 7KB for built in game and 2KB for bootloader
 
 // These header bytes are chosen to try and give some error robustness.
 // So, for example, a header with a repeating pattern would be less robust
@@ -29,7 +30,7 @@ struct push_payload_t {                 // Response to a pull with the flash blo
 struct pull_request_payload_t {           // Sending blink telling neighbor there is a new game he needs to download
     uint8_t pages;                        // How many total blocks in this game? We put this first in case the compile wants to pad the header byte
     uint16_t program_checksum;            // The checksum of all the flash data in all of the packets with each page also has added in its page number
-    uint8_t packet_checksum;            // Simple sum of all preceding bytes in packet including header, then inverted. This comes at the end so we can compute it on the fly.    
+    uint8_t packet_checksum;            // Simple sum of all preceding bytes in packet including header, then inverted. This comes at the end so we can compute it on the fly.
 };
 
 

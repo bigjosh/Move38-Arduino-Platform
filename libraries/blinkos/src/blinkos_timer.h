@@ -1,8 +1,7 @@
 // A quick and dirty timer
 // Needs to come after blinkos.h to get millis_t
 
-
-#define NEVER ( (millis_t)-1 )          // UINT32_MAX would be correct here, but generates a Symbol Not Found.
+#include "blinkos.h"
 
 extern millis_t millis_snapshot;
 
@@ -25,10 +24,13 @@ class OS_Timer {
         void add( uint16_t ms );
 
         void never(void);                   // Make this timer never expire (unless set())
+        
+        static const millis_t NEVER =MILLIS_T_MAX ;
 
 
 };
 
+//inline const millis_t OS_Timer::NEVER = MILLIS_T_MAX;
 
 inline bool OS_Timer::isExpired() {
     return millis_snapshot >= m_expireTime;

@@ -28,7 +28,7 @@
 
 #include <avr/sleep.h>          // TODO: Only for development. Remove.
 
-#include "blinkboot.h"
+#include "bootloader.h"
 
 // TODO: Put this at a known fixed address to save registers
 // Will require a new .section in the linker file. Argh.
@@ -104,12 +104,6 @@ void timer_128us_callback_sei(void) {
 }
 
 
-const char __attribute__((section("testburn"))) josh[] ="12345 josh is a nice guy";
-
-
-
-void __attribute__((section("bls")))  burn_page_to_flash( uint8_t page , const uint8_t *data );
-
 void __attribute__ ((noinline)) burn_page_to_flash( uint8_t page , const uint8_t *data ) {
 
     // TODO: We can probably do these better directly. Or maybe fill the buffer while we load the packet. Then we have to clear the buffer at the beginning.
@@ -118,7 +112,7 @@ void __attribute__ ((noinline)) burn_page_to_flash( uint8_t page , const uint8_t
 
     // Fist set up zh to have the page in it....
 
-    const char *address = josh;        // This should hit the page at 0x0d00 which we currently define as testburn...
+    uint16_t address = (page * 128);        // This should hit the page at 0x0d00 which we currently define as testburn...
 
     asm("nop");
 
@@ -148,9 +142,13 @@ void __attribute__ ((noinline)) burn_page_to_flash( uint8_t page , const uint8_t
 */
 
 
+    // We write in words not bytes
+
+    uint16_t *ptr = (uint16_t *) data;
+
     for(uint16_t i=0; i<128;i+=2 ){               // 64 words (128 bytes) per page
         cli();
-        boot_page_fill(  i , ('J'<<8) | 'L' );
+        boot_page_fill(  i , *ptr++ );
         sei();
     }
 
@@ -162,6 +160,8 @@ void __attribute__ ((noinline)) burn_page_to_flash( uint8_t page , const uint8_t
     boot_page_erase( address );
 
     boot_spm_busy_wait();
+
+    // NOte that the bottom bits must be 0 for the write command. :/
 
     boot_page_write( address );
 
@@ -204,7 +204,6 @@ uint8_t mode = MODE_LISTENING;       // This changes to downloading the first ti
 
 uint8_t download_face;            // The face that we saw the PR on
 
-
 uint16_t download_checksum;           // The expected checksum of the game we are downloading. Set by first pull request.
 uint8_t download_total_pages;         // The length of the game we are downloading in pages. Set by 1st pull request.
 uint8_t download_next_page;           // Next page we want to get (starts at 0)
@@ -215,7 +214,39 @@ uint16_t program_computed_checksum;           // The running checksum we are com
                                                 // Both of these checksum include the block number with each block.
                                                 // TODO: I think this protects us from a bad length in the original pull request?
 
-void processPendingIRPackets() {
+static void __attribute__ ((naked))  __attribute__ ((naked)) restart_at_0000() {
+
+    cli();                      // We have to turn of INTs becuse if one happened in the middle of the update, the ret would get pushed to the wrong place
+    __asm__ __volatile__
+    (
+
+        // We can not use __zero_reg__ because OUT must use r>15
+        // Note that we do not have to worry about clobbering r16
+        // since we are about to jump into la-la land!
+
+        "ldi 16 , %0    \n"               \
+        "out __SP_H__, 16    \n"          \
+        "ldi 16 , %1    \n"               \
+        "out __SP_L__, 16    \n"
+        :
+        : "M" ( RAMEND >> 8 ), "M" ( RAMEND & 0xff )           // These compile away.
+        :
+    );
+    sei();
+
+    // Doesn't matter if we INT here becuase stack is in a good place
+
+    // Jump to new software!
+    asm("jmp 0x0000");
+
+}
+
+
+// Use this to push a function out of the bootloader to make room.
+
+//void __attribute__((section("subbls"))) __attribute__ ((noinline)) processPendingIRPackets();
+
+static void processPendingIRPackets() {
 
     for( uint8_t f=0; f< IRLED_COUNT ; f++ ) {
 
@@ -292,13 +323,11 @@ void processPendingIRPackets() {
                                 // Here we would launch the downloaded game in the active area
                                 // and somehow tell it to start sending pull requests on all faces but this one
 
+                                restart_at_0000();
+
                                 mode=MODE_DONE;
 
                                 setAllRawCorsePixels( COARSE_BLUE );
-
-                                cli();
-                                boot_rww_enable ();         // make it so we can jump to the newly programmed flash
-                                sei();
 
                             }
 
@@ -398,24 +427,91 @@ inline void sendNextPullPacket() {
 
 }
 
-inline void try_to_download() {
 
-    while (1) {
+static void sleep(void) {
 
-        processPendingIRPackets();       // Read any incoming packets looking for pulls & pull requests
+    pixel_disable();        // Turn off pixels so battery drain
+    ir_disable();           // TODO: Wake on pixel
+    button_ISR_on();        // Enable the button interrupt so it can wake us
+
+    power_sleep();          // Go into low power sleep. Only a button change interrupt can wake us
+
+    button_ISR_off();       // Set everything back to thew way it was before we slept
+    ir_enable();
+
+    pixel_enable();
+
+}
+
+// Move the interrupts up to the bootloader area
+// Normally the vector is at 0, this moves it up to 0x3400 in the bootloader area.
+
+void move_interrupts_to_bootlader(void)
+{
+    uint8_t temp;
+    /* GET MCUCR*/
+    temp = MCUCR;
+
+    // No need to cli(), ints already off and IVCE blocks them anyway
+
+    /* Enable change of Interrupt Vectors */
+    MCUCR = temp|(1<<IVCE);
+    /* Move interrupts to Boot Flash section */
+    MCUCR = temp|(1<<IVSEL);
+
+}
+
+
+
+// This is the entry point where the blinkcore platform will pass control to
+// us after initial power-up is complete
+
+// We make this weak so that a game can override and take over before we initialize all the higher level stuff
+
+void run(void) {
+
+    Debug::init();
+
+    //power_init();       // Get sleep functions
+
+    // We only bother enabling what we need to save space
+
+    pixel_init();
+
+    ir_init();
+
+    //button_init();
+
+    ir_enable();
+
+    pixel_enable();
+
+    // TODO: We don't need this in real boot loader. Just pass off to game once loaded.
+    //button_enable_pu();
+
+    move_interrupts_to_bootlader();      // Send interrupt up to the bootloader.
+
+    sei();					// Let interrupts happen. For now, this is the timer overflow that updates to next pixel.
+
+    setAllRawCorsePixels( COARSE_ORANGE );
+
+    // Now briefly try to download a game
+
+       processPendingIRPackets();       // Read any incoming packets looking for pulls & pull requests
 
         if ( countdown_until_next_pull ==0 ) {
 
             // Time to send next pull ?
 
-            #warning
-            //retry_count++;
+            // This overflows in about
+            retry_count++;
 
             if (retry_count >= GIVEUP_RETRY_COUNT ) {
 
                 // Too long. Abort to the built-in game and launch
 
-                copy_built_in_game();
+                #warning we need to move built in game to hi address and add copy code
+                //copy_built_in_game();
 
                 return;
 
@@ -438,62 +534,6 @@ inline void try_to_download() {
         }
 
 
-    }
+    restart_at_0000();      // Jump into active game
 
-
-}
-
-
-static void sleep(void) {
-
-    pixel_disable();        // Turn off pixels so battery drain
-    ir_disable();           // TODO: Wake on pixel
-    button_ISR_on();        // Enable the button interrupt so it can wake us
-
-    power_sleep();          // Go into low power sleep. Only a button change interrupt can wake us
-
-    button_ISR_off();       // Set everything back to thew way it was before we slept
-    ir_enable();
-
-    pixel_enable();
-
-}
-
-// This is the entry point where the blinkcore platform will pass control to
-// us after initial power-up is complete
-
-// We make this weak so that a game can override and take over before we initialize all the higher level stuff
-
-void run(void) {
-
-    Debug::init();
-
-    power_init();       // Get sleep functions
-
-    // We only bother enabling what we need to save space
-
-    pixel_init();
-
-    ir_init();
-
-    button_init();
-
-    ir_enable();
-
-    pixel_enable();
-
-    // TODO: We don't need this in real boot loader. Just pass off to game once loaded.
-    button_enable_pu();
-
-    setAllRawCorsePixels( COARSE_ORANGE );
-
-    while (1) {
-
-        try_to_download();
-
-        // TODO: Launch the active game (it will either be the newly downloaded game or the built in one)
-        sleep();
-
-    }
-    //TODO: Jump to active game
 }

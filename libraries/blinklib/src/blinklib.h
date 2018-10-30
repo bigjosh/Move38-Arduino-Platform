@@ -18,6 +18,9 @@
 #ifndef BLINKLIB_H_
 #define BLINKLIB_H_
 
+#include <limits.h>         // UINTLONG_MAX for NEVER
+#include "ArduinoTypes.h"
+
 #include "pixelcolor.h"
 
 // The value of the data sent and received on faces via IR can be between 0 and IR_DATA_VALUE_MAX
@@ -249,8 +252,6 @@ void setFaceColor(  byte face, Color newColor );
 // 5) is only accurate to about +/-10%
 
 unsigned long millis(void);
-
-#define NEVER ( (uint32_t)-1 )          // UINT32_MAX would be correct here, but generates a Symbol Not Found.
 
 class Timer {
 

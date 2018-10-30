@@ -166,9 +166,8 @@
   </avrgcccpp.linker.libraries.Libraries>
   <avrgcccpp.linker.memorysettings.Flash>
     <ListValues>
-      <Value>.text=0x0000</Value>
-      <Value>bls=0x1c00</Value>
-      <Value>testburn=0x1b00</Value>
+      <Value>.text=0x1c00</Value>
+      <Value>subbls=0x1b00</Value>
     </ListValues>
   </avrgcccpp.linker.memorysettings.Flash>
   <avrgcccpp.linker.miscellaneous.LinkerFlags>-fwhole-program</avrgcccpp.linker.miscellaneous.LinkerFlags>
@@ -193,10 +192,6 @@
     <Compile Include="..\..\cores\blinkcore\bitfun.h">
       <SubType>compile</SubType>
       <Link>bitfun.h</Link>
-    </Compile>
-    <Compile Include="..\..\cores\blinkcore\blinkboot.h">
-      <SubType>compile</SubType>
-      <Link>blinkboot.h</Link>
     </Compile>
     <Compile Include="..\..\cores\blinkcore\button.cpp">
       <SubType>compile</SubType>
@@ -269,6 +264,10 @@
       <SubType>compile</SubType>
       <Link>blinkboot_irdata.h</Link>
     </Compile>
+    <Compile Include="bootloader.h">
+      <SubType>compile</SubType>
+      <Link>bootloader.h</Link>
+    </Compile>
     <Compile Include="coarsepixelcolor.cpp">
       <SubType>compile</SubType>
       <Link>coarsepixelcolor.cpp</Link>
@@ -276,6 +275,10 @@
     <Compile Include="coarsepixelcolor.h">
       <SubType>compile</SubType>
       <Link>coarsepixelcolor.h</Link>
+    </Compile>
+    <Compile Include="fuses.c">
+      <SubType>compile</SubType>
+      <Link>fuses.c</Link>
     </Compile>
     <Compile Include="startup.s">
       <SubType>compile</SubType>

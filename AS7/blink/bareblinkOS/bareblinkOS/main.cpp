@@ -7,7 +7,7 @@
 
 
 #include "blinkos.h"
-#include "blinkboot.h"
+#include "bootloader.h"
 
 //#include <string.h>     // memcmp()
 

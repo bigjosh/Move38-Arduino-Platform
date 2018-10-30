@@ -79,13 +79,15 @@ bool power_sleepWithTimeout( power_sleepTimeoutType timeout ) {
 
 }
 
-void power_init(void) {
-
+void wdt_init(void) {
     wdt_reset();        // reset the countdown!
     MCUSR &= ~_BV(WDRF);// You can not turn off the WDT unless this bit is cleared! (NOTE THIS IS MISNAMED IN THE DATASHEET AS WDRT!)
     wdt_disable();      // In case we just rebooted becuase of a power_reset(), this makes sure we will not timeout and
-                        // and reboot again. This is necessary because on WDT reset the WDT flag is set, which automatically re-enables
-                        // the watchdog timer.
+    // and reboot again. This is necessary because on WDT reset the WDT flag is set, which automatically re-enables
+    // the watchdog timer.   
+}    
+
+void power_init(void) {
 
     // Could save a byte here by combining these two to a single assign
 

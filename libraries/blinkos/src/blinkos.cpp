@@ -177,6 +177,11 @@ uint8_t crccheck(uint8_t const * data, uint8_t len )
 }
 
 
+OS_Timer seedTimeout;          // Keep track of the last time we successfully got a pull
+                            // We will drop into the game after 1 second of seeing nothing
+                            
+#define SEED_TIMEOUT_MS 1000                            
+
 
 void processPendingIRPackets() {
 
@@ -209,7 +214,8 @@ void processPendingIRPackets() {
 
                 // We are going to blindly send here. The coast should be clear since they just sent the request and will be waiting a timeout period before sending the next one.
                 blinkos_blinkboot_sendPushFlash( f , requested_page );
-
+                
+                seedTimeout.set( SEED_TIMEOUT_MS );
 
             } else if (*data== IR_PACKET_HEADER_USERDATA ) {
 
@@ -319,6 +325,23 @@ uint8_t sendUserDataCRC( uint8_t face, const uint8_t *data , uint8_t len ) {
 
 }
 
+// This is a temp measure until we get the shared code from the bootloader working
+
+void move_interrupts_to_base(void)
+{
+    uint8_t temp;
+    /* GET MCUCR*/
+    temp = MCUCR;
+    
+    // No need to cli(), ints already off and IVCE blocks them anyway
+    
+    /* Enable change of Interrupt Vectors */
+    MCUCR = temp|(1<<IVCE);
+    /* Move interrupts to Boot Flash section */
+    MCUCR = temp;
+    
+}
+
 
 // This is the entry point where the blinkcore platform will pass control to
 // us after initial power-up is complete
@@ -329,7 +352,7 @@ extern void setupEntry();
 
 enum mode_t { RUNNING , SEEDING };        // Are we running the game or seeding downloads to nearby tiles?
 
-mode_t mode = RUNNING;
+mode_t mode;
 
 void run(void) {
 
@@ -352,7 +375,11 @@ void run(void) {
     button_enable_pu();
 
     blinkos_blinkboot_setup();     // Get everything ready for seeding
-                                        // TODO: We don't need to call this until we actually go into game transmissions mode.
+                                   // TODO: We don't need to call this until we actually go into game transmissions mode.
+               
+    move_interrupts_to_base();      // For now, we will control the INTs. Someday we will leave them to the bootloader
+    sei();                           
+                                   
 
     // Set the buffer pointers
 
@@ -362,18 +389,13 @@ void run(void) {
         loopstate_in.ir_data_buffers[f].ready_flag = 0;
 
     }
-
-
+      
+    seedTimeout.set(SEED_TIMEOUT_MS);    // Giv us an initial 1 sec of trying to spread...
 
     // Call user setup code
     setupEntry();
 
     postponeSleep();            // We just turned on, so restart sleep timer
-
-    #warning
-    mode = SEEDING;          // Force for now
-
-    //blinkos_transmit_self();
 
     while (1) {
 
@@ -391,11 +413,11 @@ void run(void) {
 
         loopstate_in.millis = millis_snapshot;
 
-        if (mode==SEEDING) {
-
+        if (!seedTimeout.isExpired()) {
+            
             blinkos_blinkboot_loop();
 
-        } else if (mode==RUNNING) {
+        } else { // if (mode==RUNNING) {
 
             loopEntry();
 
