@@ -265,7 +265,7 @@ static void processPendingIRPackets() {
 
             // TODO: What packet type should be fastest check (doesn;t really matter THAT much, only a few cycles)
 
-            if (data->header == IR_PACKET_HEADER_PUSHFLASH ) {
+            if (data->header == IR_PACKET_HEADER_PUSH ) {
 
                 // This is a packet of flash data
 
@@ -296,7 +296,7 @@ static void processPendingIRPackets() {
 
                         uint8_t packet_checksum_computed=data_computed_checksum;
 
-                        packet_checksum_computed+=IR_PACKET_HEADER_PUSHFLASH;       // Add in the header
+                        packet_checksum_computed+=IR_PACKET_HEADER_PUSH;       // Add in the header
 
                         packet_checksum_computed+=packet_page_number;               // Add in the page number
 
@@ -355,7 +355,7 @@ static void processPendingIRPackets() {
 
                 }
 
-            } else if (data->header == IR_PACKET_HEADER_PULLREQUEST ) {             // This is other side telling us to start pulling new game from him
+            } else if (data->header == IR_PACKET_HEADER_SEED ) {             // This is other side telling us to start pulling new game from him
 
                 if ( mode==MODE_LISTENING ) {
 
@@ -413,7 +413,7 @@ inline void sendNextPullPacket() {
 
     if (irSendBegin( download_face )) {
 
-        irSendByte( IR_PACKET_HEADER_PULLFLASH );
+        irSendByte( IR_PACKET_HEADER_PULL );
 
         irSendByte( download_next_page );
 

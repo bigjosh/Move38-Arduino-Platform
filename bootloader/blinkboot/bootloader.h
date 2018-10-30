@@ -16,9 +16,9 @@
 // So, for example, a header with a repeating pattern would be less robust
 // because it is possible something blinking in the environment might replicate it
 
-#define IR_PACKET_HEADER_PULLREQUEST     0b01101010      // If you get this, then the other side is saying they want to send you a game
-#define IR_PACKET_HEADER_PULLFLASH       0b01011101      // You send this to request the next block of a game
-#define IR_PACKET_HEADER_PUSHFLASH       0b11011011      // This contains a block of flash code to be programmed into the active area
+#define IR_PACKET_HEADER_SEED       0b01101010      // If you get this, then the other side is saying they want to send you a game
+#define IR_PACKET_HEADER_PULL       0b01011101      // You send this to request the next block of a game
+#define IR_PACKET_HEADER_PUSH       0b11011011      // This contains a block of flash code to be programmed into the active area
 
 
 struct push_payload_t {                 // Response to a pull with the flash block we asked for
