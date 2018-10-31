@@ -20,7 +20,7 @@ The bootloader and built-in game image are typically programmed at the factory a
 
 ## Bootloader state diagram
 
-!(Bootloader state diagram)[bootloader.svg]
+!(Bootloader state diagram)[./bootloader.svg]
 
 
 ## Power up
