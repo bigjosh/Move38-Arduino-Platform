@@ -8,31 +8,28 @@ A typical blink will have three different programs in flash memory...
 
 The active game is the one currently running. It can either be the same as the built-in game, or it could have been loaded from another blink. 
 
-The bootloader is responsible for loading the active game either by copying the built-in game or downloading over the IR links from another tile.
+The bootloader is responsible for loading the active game either by copying the built-in game or downloading over the IR links from another blink.
 
 The only way the built-in game can run is after being copied down to the active area first. This is because all the addresses in every game are referenced from the 0 base address by the linker. Copying the built-in game to the active area first also makes it so that the same exact image is running regardless of what the source (local or downloaded) of the active game was.
 
-The bootloader lives in the AVR's boot loader area at the top of flash memory. This memory is special because the hardware will only allow code in this area to write to flash memory. (There are ways around this, but not really practical for this application.) 
+The bootloader lives in the AVR's special bootloader area at the top of flash memory. This memory is special because the hardware will only allow code in this area to write to flash memory. (There are ways around this, but not really practical for this application.) 
 
 The maximum bootloader size possible on this chip is 2KB. This leaves 14KB for the games, which is split up 7KB for the active game and 7KB for the built-in game image. 
 
-The bootloader and built-in game image are typically programmed at the factory and must be present. Right now the game image is total independent, so it is possible to program a blink with a game directly and have it just run (mostly useful for development), but it is expected that we will move some functions (like pixel updates, IR updating, and maybe button updating) up to the bootloader to avoid having them duplicated in each game image.     
+The bootloader and built-in game image are typically programmed at the factory and must be present. Right now the game image is total independent, so it is possible to program a blink with a game directly and have it just run (mostly useful for development), but it is expected that we will move some functions (like pixel updates, IR updating, and maybe button updating) up to the bootloader to avoid having them duplicated in each game image.  
+
+## Bootloader state diagram
+
+![bootloader.svg]
+
 
 ## Power up
 
-We keep the code that loads new applications over IR in the bootloader section. 
-
-We use the largest bootloader size available on this chip, which is 2KB. 
-
-The `BOOTRST` fuse is programmed, so the AVR immediately jumps to the boot reset address, which is at the begining of the bootloader at byte address `0x3800`. This address has a jump to the beginning of the bootloader, which comes right after the ISR table (which itself follows at `0x3804`).
+The `BOOTRST` fuse is programmed, so the AVR immediately jumps to the bootloader reset address, which is at the beginning of the bootloader memory area at byte address `0x3800`. This address has a jump to the beginning of the bootloader, which comes right after the ISR table (which itself follows at `0x3804`). We get the bootloader to start here by defining the `.text` section to start at `0x1c00` to the linker. Note that `0x1c00` is half of `0x3800` because the linker doubles the address to convert it from a word address to a byte address.  
 
 The bootloader sets `IVSEL`, which activates the bootloader's ISR table rather than the one at the bottom of flash memory where the active game will live. This is important so that the bootloader can use these interrupts while programming a new game into the active area. Note that once an active game is loaded and started, then that game could potentially clear the `IVSEL` bit again to take over interrupts if it wants to. Currently games do this so they are self-contained, but soon hopefully most games will want to leave the bootloader ISRs in place to save space. A game could also potentially take over only some of the ISRs by setting the vectors it wants to replace in the lower ISR table and using jumps up to the ones in the bootloader for the others, and then clearing `IVSEL`.     
 
-At bootup, bootloader beings looking for a "game push" command on one of its faces. 
-
-If a "game push" is seen, then the blink starts loading the new game into the active area from the face where it saw the push. 
-
-If a "game push" is not seen (current timeout is 1 second), then the blink copies the built-in game into the active area and then jumps to it. 
+At bootup, bootloader the blink copies the built-in game into the active area and then jumps to it. This gives an escape hatch so that reseting or pulling the battery on a blink always results in a good active image. Otherwise a downloaded active image could disable the bootloader's ability to run and lock it self in.  
 
 ## Starting a game
 
@@ -48,9 +45,9 @@ Not having to do these saves some code space in the game and let's it get right 
 
 ## IR game load sequence
 
-To initiate a game transfer, the user holds the button for 3 seconds. When the bootloader sees this, it waits for the button to go up and then (1) copies the built-in game to the active area, and (2) goes into Seeding mode below. If the button is not released for 3 seconds (total of 6 seconds) then the blink goes to sleep.
+To initiate a game transfer, the user holds the button for 3 seconds. When the bootloader sees this, it waits for the button to go up and then copies the built-in game to the active area, and (2) goes into Seeding mode below. If the button is not released for 3 seconds (total of 6 seconds) then the blink goes to sleep.
 
-If a blink ever sees a Seeking packet on any face and the checksum is different than the checksum for the game currently in the active area, then it goes into download mode and starts downloading from the face where it got the Seeding packet. In download mode the blink repeatedly sends Pull packets requesting the next page of flash data. If it does not get an answer within 30ms, then it resends the Pull. If the download completes successfully, the blink itself goes into Seeding mode. If the download times out (100ms), then the blink loads the built-in game and jumps to it. This ensures that there is always a valid image in the active area. Once the built-in game is running, it is possible that it will get another Seed packet that will restart the load sequence- hopefully with better luck.   
+If a blink ever sees a Seeking packet on any face and the checksum is different than the checksum for the game currently in the active area, then it goes into download mode and starts downloading from the face where it got the Seeding packet. In download mode the blink repeatedly sends Pull packets requesting the next page of flash data. If it does not get an answer within 30ms, then it resends the Pull. If the download completes successfully, the blink itself goes into Seeding mode. If the download times out (100ms), then the blink reboots, loading the built-in game and jumping to it. This ensures that there is always a valid image in the active area. Once the built-in game is running, it is possible that it will get another Seed packet that will restart the load sequence- hopefully with better luck.   
 
 If a blink receives a Seeding packet that matches its own checksum, then it goes into Seeding mode.
 
@@ -93,6 +90,10 @@ The Im Seeding packet is really just a place holder so that the adjacent
 
 Note that this means that after a blink has already downloaded a game, it will see Pull Request packets that match its current checksum, so it will not download the game again. The sending blink will then timeout when all of the blinks on all of its faces have downloaded the new game. It is up to the game code to decide what to do on start up, it would either launch straight into the game even though there still might be distant downloads in progress, or it could show a "waiting to start animation" and 
 
+
+## Game checksums
+
+To compute the game checksum, you take the individual checksum for each page and add the page number to that, and then sum all of these totals for all of the pages. This helps detect out-of-order problems that a straight checksum without the page number added might miss. 
 
 ## Optimizing game delivery across a field of Blinks
 
