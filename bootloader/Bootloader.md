@@ -175,11 +175,11 @@ The actual program memory that holds the games starts at flash address 0x000. Th
 
 This flash space is shared by...
 
-| What | Starts | Ends | Length (Bytes) |
-| - | -:| -:| -:|
-| Active game | 0x0000 | 0x0dff | 7Kb | 
-| Built-in game | 0x0e00 | 0x1bff | 7Kb | 
-| Bootloader | 0x1c00 | 0x1fff | 2Kb |
+| What | Starts<br>(words)| Starts<br>(bytes)| Length<br>(Bytes) |
+|  -   | -:               | -:               |  -:           |
+| Active game | 0x0000 | 0x0000 | 7KB | 
+| Built-in game | 0x0e00 | 0x1c00 | 7KB | 
+| Bootloader | 0x1c00 | 0x3800| 2KB |
 
 (Sometimes flash memory addresses are given in words rather than bytes. The addresses above are bytes)
 

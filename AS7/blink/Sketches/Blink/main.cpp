@@ -40,8 +40,6 @@ void updateDisplayColors() {
 
 }
 
-
-
 void setup() {
     //splat();
     updateDisplayColors();

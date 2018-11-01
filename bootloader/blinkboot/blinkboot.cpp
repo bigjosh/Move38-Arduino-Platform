@@ -103,6 +103,16 @@ void timer_128us_callback_sei(void) {
     IrDataPeriodicUpdateComs();
 }
 
+#define FLASH_GAME_SIZE         (0x3800)                // How big can a game be in bytes?
+
+#define FLASH_ACTIVE_BASE       ((uint8_t *)0x0000)     // Flash starting address of the active area
+#define FLASH_BUILTIN_BASE      ((uint8_t *)0x1c00)     // flash starting address of the built-in game
+#define FLASH_BOOTLOADER_BASE   ((uint8_t *)0x3800)     // Flash starting address of the bootloader. Fixed by hardware.
+
+// The FLASH_BOOTLOADER_BASE must be defined as the start of the .text segment when compling the bootloader code.
+// Note that the linker doubles the value passed, so the .text should start at 0x1c00 from the linker's args
+
+
 
 void __attribute__ ((noinline)) burn_page_to_flash( uint8_t page , const uint8_t *data ) {
 
@@ -196,6 +206,51 @@ void __attribute__ ((noinline)) burn_page_to_flash( uint8_t page , const uint8_t
 
 }
 
+uint16_t checksum_page( uint8_t page ) {
+
+    uint16_t checksum=0;
+
+    uint8_t *p = FLASH_ACTIVE_BASE + ( page *FLASH_PAGE_SIZE );
+
+    for( uint8_t i=0; i < FLASH_PAGE_SIZE; i++ ) {
+
+        checksum += pgm_read_byte( p++ );
+
+    }
+
+    checksum += page;
+
+    return checksum;
+
+}
+
+
+uint16_t checksum_active_game() {
+
+    uint16_t checksum=0;
+
+    uint16_t checksum=0;
+
+    for( uint8_t page=0; page< DOWNLOAD_MAX_PAGES ; page++ ) {
+
+        checksum += checksum_page( page );
+    }
+
+    return checksum;
+
+}
+
+// Copy the built-in game to the active area
+// Returns the checksum
+
+uint16_t copy_builtin_to_active() {
+    // TODO:
+
+    uint16_t checksum=0;
+
+    for(uint i=0; i<
+}
+
 #define MODE_LISTENING      0        // We have not yet seen a pull request
 #define MODE_DOWNLOADING    1        // We are currently downloading on faces. gamechecksum is the checksum we are looking for.
 #define MODE_DONE           2        // Download finished
@@ -210,7 +265,7 @@ uint8_t download_next_page;           // Next page we want to get (starts at 0)
 
 
 uint16_t received_program_checksum;             // The checksum that was in the original pull request packet
-uint16_t program_computed_checksum;           // The running checksum we are computing as we receive the blocks
+uint16_t program_computed_checksum;             // The running checksum we are computing as we receive the blocks
                                                 // Both of these checksum include the block number with each block.
                                                 // TODO: I think this protects us from a bad length in the original pull request?
 
@@ -234,7 +289,7 @@ static void __attribute__ ((naked))  __attribute__ ((naked)) restart_at_0000() {
     );
     sei();
 
-    // Doesn't matter if we INT here becuase stack is in a good place
+    // Doesn't matter if we INT here because stack is in a good place
 
     // Jump to new software!
     asm("jmp 0x0000");
@@ -288,7 +343,7 @@ static void processPendingIRPackets() {
 
                         uint8_t data_computed_checksum=0;         // We have to keep this separately so we can fold it into the total program checksum
 
-                        for(uint8_t i=0; i<DOWNLOAD_PAGE_SIZE;i++ ) {
+                        for(uint8_t i=0; i<FLASH_PAGE_SIZE;i++ ) {
 
                             data_computed_checksum += data->push_payload.data[i];
 
@@ -486,14 +541,16 @@ void run(void) {
 
     pixel_enable();
 
-    // TODO: We don't need this in real boot loader. Just pass off to game once loaded.
     //button_enable_pu();
 
     move_interrupts_to_bootlader();      // Send interrupt up to the bootloader.
 
+    setAllRawCorsePixels( COARSE_ORANGE );  // Set initial display
+
     sei();					// Let interrupts happen. For now, this is the timer overflow that updates to next pixel.
 
-    setAllRawCorsePixels( COARSE_ORANGE );
+    restart_at_0000();      // Jump into active game
+
 
     // Now briefly try to download a game
 
@@ -534,6 +591,6 @@ void run(void) {
         }
 
 
-    restart_at_0000();      // Jump into active game
+
 
 }
