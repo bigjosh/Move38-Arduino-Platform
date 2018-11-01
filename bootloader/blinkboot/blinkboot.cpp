@@ -521,8 +521,6 @@ void move_interrupts_to_bootlader(void)
 // This is the entry point where the blinkcore platform will pass control to
 // us after initial power-up is complete
 
-// We make this weak so that a game can override and take over before we initialize all the higher level stuff
-
 void run(void) {
 
     Debug::init();

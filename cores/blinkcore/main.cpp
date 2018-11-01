@@ -3,6 +3,7 @@
  *
  * This gets called first by the C bootstrap code.
  * It initializes the hardware and then called run()
+ *
  */
 
 #include "hardware.h"
@@ -80,6 +81,11 @@ void pre_main(void) {
     );
 }
 */
+
+
+// "used" makes sure the link doesn't throw this away since it is not referenced from anywhere else. 
+// "naked" gets rid of stack frame and return at the end. 
+// "init9" gets us running right at the very startup, but after bss initialized.
 
 
 void mainx(void) __attribute__ ((section (".init9"))) __attribute__((used)) __attribute__ ((naked));
