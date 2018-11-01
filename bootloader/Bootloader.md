@@ -29,9 +29,37 @@ The `BOOTRST` fuse is programmed, so the AVR immediately jumps to the bootloader
 
 The bootloader sets `IVSEL`, which activates the bootloader's ISR table rather than the one at the bottom of flash memory where the active game will live. This is important so that the bootloader can use these interrupts while programming a new game into the active area. Note that once an active game is loaded and started, then that game could potentially clear the `IVSEL` bit again to take over interrupts if it wants to. Currently games do this so they are self-contained, but soon hopefully most games will want to leave the bootloader ISRs in place to save space. A game could also potentially take over only some of the ISRs by setting the vectors it wants to replace in the lower ISR table and using jumps up to the ones in the bootloader for the others, and then clearing `IVSEL`.     
 
-At bootup, bootloader the blink copies the built-in game into the active area and then jumps to it. This gives an escape hatch so that reseting or pulling the battery on a blink always results in a good active image. Otherwise a downloaded active image could disable the bootloader's ability to run and lock it self in.  
+At bootup, bootloader the blink copies the built-in game into the active area and then jumps to it. This gives an escape hatch so that reseting or pulling the battery on a blink always results in a good active image. Otherwise a downloaded active image could disable the bootloader's ability to run and lock it self in. 
 
-## Starting a game
+## Software IPC between bootloader and game
+
+Eventually the bootloader will handle all pixel, IR, and button stuff for the game and they will use shared memory at the base of SRAM to communicate. The shared RAM data structure needs to be compiled into the game so it knows where to look and does not clobber that block. 
+
+## Bootloader temporary IPC API
+
+Since we will almost certainly never use the external interrupt pins, we can take over interrupt vectors 1 and 2 and use them for letting the bootloader and game call each other.
+
+
+### Bootloader jump points 
+
+Here are the jump points that that the bootloader exposes to the game:
+
+Vector 0: At address 0x3800. This is the normal entry point at hardware reset and will copy the built-in game down to the active area and execute it starting at the game reset vector 0x000. 
+
+Vector 1: At address 0x3804. This is the entry point for "seeding" mode. The bootloader will take over interrupts and start trying to send this game to neighboring tiles. When it is done, it will restart the active game by jumping to 0x0000. 
+
+Vector 1: At address 0x3808. This is the entry point for "download" mode. The bootloader will take over interrupts and start trying to download a new game from a neighboring tile. `R25` must contain the face that the "seed" packet came from. This will be used as the source for the download. 
+
+### Game jump points 
+
+Here are the jump points that that the game exposes to the bootloader:
+
+Vector 0: At address 0x0000. This is the normal entry point at hardware reset. You could get either because there was a reset and the `BOOTZ` is not set, or because `BOOTZ` was set and the bootloader just copied to the built-in game to the active area and jump to it (you), or because you jumped to the bootloader to goto into "seed" mode and it has finished seeding to all connected tiles. In the last case, you can take special action to send a "start" message to tell all the other copies of yourself that the game is ready to start by broadcasting a viral message.     
+
+Vector 1: At address 0x0004. This is the entry point for a downloaded game. The bootloader jumps here after downloading a new game. Since you are a clone, you can potentially wait for a viral "start" message from your master that would coordinate all tiles starting at about the same time after a download. Note that you'd have to resend this viral message out a few time to propagate it around. 
+
+
+## Onload assumptions
 
 The bootloader starts the active game by jumping to `0x000`. The game can assume....
 
