@@ -52,6 +52,7 @@ struct blinkboot_packet {
     };
 };
 
+/*
 // State for each receiving IR LED
 
 struct ir_rx_state_t {
@@ -86,4 +87,4 @@ struct ir_rx_state_t {
 } ;
 
 
-   
+  */

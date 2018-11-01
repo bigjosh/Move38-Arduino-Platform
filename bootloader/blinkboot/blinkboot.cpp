@@ -30,6 +30,8 @@
 
 #include "bootloader.h"
 
+#include "jump.h"
+
 // TODO: Put this at a known fixed address to save registers
 // Will require a new .section in the linker file. Argh.
 
@@ -229,8 +231,6 @@ uint16_t checksum_active_game() {
 
     uint16_t checksum=0;
 
-    uint16_t checksum=0;
-
     for( uint8_t page=0; page< DOWNLOAD_MAX_PAGES ; page++ ) {
 
         checksum += checksum_page( page );
@@ -248,8 +248,8 @@ uint16_t copy_builtin_to_active() {
 
     uint16_t checksum=0;
 
-    for(uint i=0; i<
 }
+
 
 #define MODE_LISTENING      0        // We have not yet seen a pull request
 #define MODE_DOWNLOADING    1        // We are currently downloading on faces. gamechecksum is the checksum we are looking for.
@@ -546,6 +546,9 @@ void run(void) {
     setAllRawCorsePixels( COARSE_ORANGE );  // Set initial display
 
     sei();					// Let interrupts happen. For now, this is the timer overflow that updates to next pixel.
+
+
+    CLEAR_STACK_JMP( "0x3800" );
 
     restart_at_0000();      // Jump into active game
 
