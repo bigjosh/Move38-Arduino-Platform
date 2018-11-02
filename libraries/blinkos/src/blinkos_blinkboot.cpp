@@ -27,7 +27,7 @@ uint8_t next_pull_request_target;           // Who to send the next pull request
 // and save so much time and space, but...
 // "sorry, unimplemented: non-trivial designated initializers not supported"
 
-pull_request_payload_t pull_request_packet_payload;
+seed_payload_t pull_request_packet_payload;
 
 void blinkos_blinkboot_setup() {
 
@@ -51,73 +51,6 @@ void blinkos_blinkboot_setup() {
 uint8_t blinkos_blinkboot_sendPullRequest( uint8_t face ) {
 
     return ir_send_data( face , &pull_request_packet_payload , sizeof( pull_request_packet_payload )  , IR_PACKET_HEADER_PULLREQUEST );
-
-}
-
-
-// Send response to a pull message that contains one page of flash memory
-// Called from the IR packet handler when it sees the PULL header in an incoming message
-
-/* Here is the push packet payload structure...
-
-    struct push_payload_t {                 // Response to a pull with the flash block we asked for
-        uint8_t data[DOWNLOAD_PAGE_SIZE];   // An actual page of the flash memory
-        uint8_t page;                       // The block number in this packet
-        uint8_t page_checksum;              // Simple longitudinal checksum + page#,  then inverted. This comes at the end so we can compute it on the fly.
-    };
-
-*/
-
-void blinkos_blinkboot_sendPushFlash( uint8_t face , uint8_t page ) {
-
-
-    if (irSendBegin( face )) {
-
-        if (page & 1 ) {
-
-            displayedRawPixelSet.rawpixels[face] = rawpixel_t( 255 , 0 , 255 );
-        } else {
-
-            displayedRawPixelSet.rawpixels[face] = rawpixel_t( 255 ,  160 ,  255 );
-
-        }
-
-        uint8_t computed_checksum=IR_PACKET_HEADER_PUSHFLASH;
-
-        irSendByte( IR_PACKET_HEADER_PUSHFLASH );
-
-        // This feels wrong. There really should be a flash pointer type.
-        uint8_t *flashptr = ((uint8_t *) 0) + (page * DOWNLOAD_PAGE_SIZE);
-
-        for(uint8_t i=0; i<DOWNLOAD_PAGE_SIZE; i++ ) {
-
-            uint8_t b = pgm_read_byte( flashptr++ );
-
-            irSendByte( b );
-
-            computed_checksum+=b;
-
-        }
-
-        irSendByte( page );
-
-        computed_checksum+=page;
-
-        irSendByte( computed_checksum ^ 0xff );            // We invert the checksum on both sides to avoid matching on a string of 0's
-
-        irSendComplete();
-
-        Debug::tx('l');
-
-
-    }    else {
-
-        displayedRawPixelSet.rawpixels[face] = rawpixel_t( 0 , 255 , 255 );
-
-    }
-
-
-    next_pull_request_timer.set(PULL_REQUEST_TIMEOUT_AFTER_PUSH_MS);     // Give the last guy who asked a second to ask for the next page before we go to the next guy
 
 }
 

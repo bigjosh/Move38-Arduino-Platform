@@ -57,46 +57,73 @@
 #define MS_PER_SECOND     1000
 #define MS_TO_TICKS( milliseconds ) ( milliseconds *  (MS_PER_SECOND / US_PER_TICK ) )
 
-#define MS_PER_PULL_RETRY 300
+#define TICKS_PER_COUNT    256
+#define US_PER_COUNT     (US_PER_TICK / TICKS_PER_COUNT)
+#define US_PER_MS         1000
+#define MS_PER_COUNT     (US_PER_MS/US_PER_COUNT)
 
-uint16_t countdown_until_next_pull;
+#define MS_TO_COUNTS( count )  ((count / MS_PER_COUNT )+1)      // Always round up to longer delay
 
-uint8_t retry_count;               // How many pulls have went sent without any answer?
-                                   // Note that while still in listen mode we do not actually send any pulls
-                                   // so if we do not get a pull request at all, then we also abort
+// Here lives all the bootloader state
+
+uint8_t tickcounter;                // We need this extra divider so that our timeout counters fit into a single byte
+                                    // otherwise we need to worry about interrupts coming in the middle of updates.
+
+uint8_t countdown_until_done;       // If we have not seen a PUSH or PULL or an ACTIVE in a while then we timeout.
+                                     // If we are fully downloaded, then we send a few DONEs and then reboot into the active game
+                                     // If now, then we copy built-in game and jump to to
+
+                                     // Should be >~12x the time it takes to send the longest packet to make sure that just missing a couple
+                                     // will not cause a false alarm.
+
+#define COUNTDOWN_UNTIL_DONE_MS     10000   // Wait ling enough that if the neighbor had to service 5 PULL packets to get back to use we woudl still have time.
+#define COUNTDOWN_UNTIL_DONE_COUNT  MS_TO_COUNTS( COUNTDOWN_UNTIL_DONE_MS )
 
 
-// Set timer to go off imedeately and clear the pending retry count
+uint8_t countdown_until_next_seed;  // When do we try and send a seed again?
+                                    // We have to wait a bit between seeds to give the other side a sec to answer if they want to pull
 
-static void triggerNextPull() {
-    cli();
-    countdown_until_next_pull=0;
-    sei();
-    retry_count=0;
+#define COUNTDOWN_UNTIL_NEXT_SEED_MS    100     // Long enough that they can see out seed and gvet back to use with a PULL
+#define COUNTDOWN_UNTIL_NEXT_SEED_COUNT MS_TO_COUNTS( COUNTDOWN_UNTIL_NEXT_SEED_MS )
+
+// Make next seed go out immediately
+
+static void trigger_countdown_until_next_seed() {
+    countdown_until_next_seed=0;
 }
 
-// Reset the time to next retry time
-
-static void resetTimer() {
-    cli();
-    countdown_until_next_pull = MS_TO_TICKS( MS_PER_PULL_RETRY );
-    sei();
+static void reset_countdown_until_next_seed() {
+    countdown_until_next_seed=COUNTDOWN_UNTIL_NEXT_SEED_COUNT;
 }
 
 
-#define GIVEUP_RETRY_COUNT 10     // Comes out to 2.5 secs. Give up if we do not see a good push in this amount of time.
+static void reset_countdown_until_done() {
+    countdown_until_done=COUNTDOWN_UNTIL_DONE_COUNT;
+}
+
 
 
 // Below are the callbacks we provide to blinkcore
 
 // This is called by timer ISR about every 512us with interrupts on.
 
+// This function is not reentrant unless we are doing something very wrong,
+// so ok to test and then update these values without worrying about corruption.
+
 void timer_256us_callback_sei(void) {
 
-    if (countdown_until_next_pull) {
-        countdown_until_next_pull--;
-    }
+    if (--tickcounter == 0 ) {
 
+        // Do this stuff once every 256 ticks
+
+        if (countdown_until_next_seed) {
+            countdown_until_next_seed--;
+        }
+
+        if (countdown_until_done) {
+            countdown_until_done--;
+        }
+    }
 }
 
 // This is called by timer ISR about every 256us with interrupts on.
@@ -105,15 +132,17 @@ void timer_128us_callback_sei(void) {
     IrDataPeriodicUpdateComs();
 }
 
+
 #define FLASH_GAME_SIZE         (0x3800)                // How big can a game be in bytes?
+
+#define FLASH_PAGE_SIZE         128                     // Fixed by hardware
 
 #define FLASH_ACTIVE_BASE       ((uint8_t *)0x0000)     // Flash starting address of the active area
 #define FLASH_BUILTIN_BASE      ((uint8_t *)0x1c00)     // flash starting address of the built-in game
 #define FLASH_BOOTLOADER_BASE   ((uint8_t *)0x3800)     // Flash starting address of the bootloader. Fixed by hardware.
 
-// The FLASH_BOOTLOADER_BASE must be defined as the start of the .text segment when compling the bootloader code.
+// The FLASH_BOOTLOADER_BASE must be defined as the start of the .text segment when compiling the bootloader code.
 // Note that the linker doubles the value passed, so the .text should start at 0x1c00 from the linker's args
-
 
 
 void __attribute__ ((noinline)) burn_page_to_flash( uint8_t page , const uint8_t *data ) {
@@ -208,7 +237,7 @@ void __attribute__ ((noinline)) burn_page_to_flash( uint8_t page , const uint8_t
 
 }
 
-uint16_t checksum_page( uint8_t page ) {
+uint16_t checksum_flash_page( uint8_t page ) {
 
     uint16_t checksum=0;
 
@@ -226,84 +255,212 @@ uint16_t checksum_page( uint8_t page ) {
 
 }
 
+uint8_t checksum_128byte_RAM_buffer( const uint8_t *buffer ) {
+    uint8_t data_computed_checksum=0;         // We have to keep this separately so we can fold it into the total program checksum
 
-uint16_t checksum_active_game() {
+    for(uint8_t i=0; i<FLASH_PAGE_SIZE;i++ ) {
+
+        data_computed_checksum += *(buffer++);
+
+    }
+
+    return data_computed_checksum;
+}
+
+
+
+uint8_t push_packet_computed_checksum( const push_payload_t &push_payload ) {
+
+    uint8_t checksum = checksum_128byte_RAM_buffer( push_payload.data );  // Start with the checksum of the data part
+
+    checksum+=IR_PACKET_HEADER_PUSH;       // Add in the header
+
+    checksum+= push_payload.page;          // Add in the page number. This protects against out of order packets.
+
+    return checksum ^ 0xff;                // Invert all bits to protect again all 0's
+
+
+}
+
+
+// Send response to a pull message that contains one page of flash memory
+// Called from the IR packet handler when it sees the PULL header in an incoming message
+
+/* Here is the push packet payload structure...
+
+    struct push_payload_t {                 // Response to a pull with the flash block we asked for
+        uint8_t data[DOWNLOAD_PAGE_SIZE];   // An actual page of the flash memory
+        uint8_t page;                       // The block number in this packet
+        uint8_t page_checksum;              // Simple longitudinal checksum + page#,  then inverted. This comes at the end so we can compute it on the fly.
+    };
+
+*/
+
+void send_push_packet( uint8_t face , uint8_t page ) {
+
+    if (irSendBegin( face )) {
+
+        if (page & 1 ) {
+
+            displayedRawPixelSet.rawpixels[face] = rawpixel_t( 255 , 0 , 255 );
+        } else {
+
+            displayedRawPixelSet.rawpixels[face] = rawpixel_t( 255 ,  160 ,  255 );
+
+        }
+
+        uint8_t computed_checksum= IR_PACKET_HEADER_PUSH;
+
+        irSendByte( IR_PACKET_HEADER_PUSH );
+
+        // This feels wrong. There really should be a flash pointer type.
+        uint8_t *flashptr = ((uint8_t *) 0) + (page * FLASH_PAGE_SIZE);
+
+        for(uint8_t i=0; i<FLASH_PAGE_SIZE ; i++ ) {
+
+            uint8_t b = pgm_read_byte( flashptr++ );
+
+            irSendByte( b );
+
+            computed_checksum+=b;
+
+        }
+
+        irSendByte( page );
+
+        computed_checksum+=page;            // Add in the page number for some out of order protection
+
+        irSendByte( computed_checksum ^ 0xff );            // We invert the checksum on both sides to avoid matching on a string of 0's
+
+        irSendComplete();
+
+        Debug::tx('l');
+
+
+    }    else {
+
+        displayedRawPixelSet.rawpixels[face] = rawpixel_t( 0 , 255 , 255 );
+
+    }
+
+}
+
+
+
+// TODO: Precompute this whole packet at compile time and send as one big chunk
+
+void send_seed_packet( uint8_t face , uint8_t pages , uint16_t program_checksum ) {
+
+   if (irSendBegin( face )) {
+
+       irSendByte( IR_PACKET_HEADER_SEED );
+
+       uint8_t computed_checksum=IR_PACKET_HEADER_SEED;
+
+       irSendByte( pages );
+
+       computed_checksum += pages;
+
+       uint8_t program_checksum_low = (uint8_t) program_checksum;
+
+       irSendByte( program_checksum_low );
+
+       computed_checksum += program_checksum_low;
+
+       uint8_t program_checksum_high = (uint8_t) program_checksum >> 8;     // TODO: Check that this compiles to just accessing the high byte
+
+       irSendByte( program_checksum_high );
+
+       computed_checksum += program_checksum_high;
+
+       irSendByte( computed_checksum ^ 0xff );          // Invert bits to detect all 0 errors
+
+       irSendComplete();
+
+   }
+
+
+}
+
+
+
+uint16_t calculate_active_game_checksum() {
 
     uint16_t checksum=0;
 
     for( uint8_t page=0; page< DOWNLOAD_MAX_PAGES ; page++ ) {
 
-        checksum += checksum_page( page );
+        checksum += checksum_flash_page( page );
     }
 
     return checksum;
 
 }
 
-// Copy the built-in game to the active area
-// Returns the checksum
 
-uint16_t copy_builtin_to_active() {
-    // TODO:
+#define SOURCE_FACE_NONE    (FACE_COUNT)            // No source face, we are the root.
 
-    uint16_t checksum=0;
+uint8_t download_source_face;         // The face that we saw the first seed on and we are now downloading from
+                                      // Only valid if download_total_pages > 0
 
-}
-
-
-#define MODE_LISTENING      0        // We have not yet seen a pull request
-#define MODE_DOWNLOADING    1        // We are currently downloading on faces. gamechecksum is the checksum we are looking for.
-#define MODE_DONE           2        // Download finished
-
-uint8_t mode = MODE_LISTENING;       // This changes to downloading the first time we get a pull request
-
-uint8_t download_face;            // The face that we saw the PR on
-
-uint16_t download_checksum;           // The expected checksum of the game we are downloading. Set by first pull request.
-uint8_t download_total_pages;         // The length of the game we are downloading in pages. Set by 1st pull request.
-uint8_t download_next_page;           // Next page we want to get (starts at 0)
+uint8_t download_total_pages;         // The length of the game we are downloading in pages. Init to 0. Set by 1st pull request.
+uint8_t download_next_page;           // Next page we want to get
+                                      // 0 means we have not gotten a good push yet
+                                      // > total_pages means that download is done (hack)
 
 
-uint16_t received_program_checksum;             // The checksum that was in the original pull request packet
-uint16_t program_computed_checksum;             // The running checksum we are computing as we receive the blocks
-                                                // Both of these checksum include the block number with each block.
-                                                // TODO: I think this protects us from a bad length in the original pull request?
+uint16_t active_program_checksum;     // The total program checksum for the loaded or loading active program
+                                      // Valid after built in game copied, or after a seed received
 
-static void __attribute__ ((naked))  __attribute__ ((naked)) restart_at_0000() {
 
-    cli();                      // We have to turn of INTs becuse if one happened in the middle of the update, the ret would get pushed to the wrong place
-    __asm__ __volatile__
-    (
+uint8_t next_seed_face;               // The next face we will send a seed packet to. Note that we skip around so that adjacent tiles can maybe seed form each other.
 
-        // We can not use __zero_reg__ because OUT must use r>15
-        // Note that we do not have to worry about clobbering r16
-        // since we are about to jump into la-la land!
 
-        "ldi 16 , %0    \n"               \
-        "out __SP_H__, 16    \n"          \
-        "ldi 16 , %1    \n"               \
-        "out __SP_L__, 16    \n"
-        :
-        : "M" ( RAMEND >> 8 ), "M" ( RAMEND & 0xff )           // These compile away.
-        :
-    );
-    sei();
+// This is triggered by use getting a seed packet. If we get a seed then we know that the other side is waiting for us to pull
+// so should not be a collision.
 
-    // Doesn't matter if we INT here because stack is in a good place
+inline void sendNextPullPacket() {
 
-    // Jump to new software!
-    asm("jmp 0x0000");
+    if (irSendBegin( download_source_face )) {
+
+        irSendByte( IR_PACKET_HEADER_PULL );
+
+        irSendByte( download_next_page );
+
+        irSendComplete();
+
+        } else {
+
+        // Send failed.
+
+    }
 
 }
 
 
-// Use this to push a function out of the bootloader to make room.
+// List of faces in order to seed. We stager them so that hopefully we can make gaps so that adjacent
+// blinks can download from each other rather than from us.
 
-//void __attribute__((section("subbls"))) __attribute__ ((noinline)) processPendingIRPackets();
+// So, for example, if we are on face 0 then next we will jump to face 2. After 2 comes 4. See? Cute, right?
 
-static void processPendingIRPackets() {
+static PROGMEM const uint8_t next_stagered_face[FACE_COUNT] = { 2 , 3 , 4 , 5 , 1 , 0 } ;
+
+// Read in any pending packets and react to to them
+// Pull packet triggers a push if we have the page
+// Seed packet triggers pull if we need more pages
+// Push packet writes new page to flash
+
+// Use this to move a function out of the bootloader to make room.
+// We are able to move this out of the bootloader because it never runs in an interrupt context.
+// It is only called from he main event loop.
+
+void __attribute__((section("subbls"))) __attribute__ ((noinline)) processInboundIRPackets();
+
+void processInboundIRPackets() {
 
     for( uint8_t f=0; f< IRLED_COUNT ; f++ ) {
+
+        asm("nop");
 
         if (irDataIsPacketReady(f)) {
 
@@ -339,29 +496,9 @@ static void processPendingIRPackets() {
 
                         Debug::tx( packet_page_number );
 
-                        // Compute the checksum on the data in the packet just received.
-
-                        uint8_t data_computed_checksum=0;         // We have to keep this separately so we can fold it into the total program checksum
-
-                        for(uint8_t i=0; i<FLASH_PAGE_SIZE;i++ ) {
-
-                            data_computed_checksum += data->push_payload.data[i];
-
-                        }
-
-                        uint8_t packet_checksum_computed=data_computed_checksum;
-
-                        packet_checksum_computed+=IR_PACKET_HEADER_PUSH;       // Add in the header
-
-                        packet_checksum_computed+=packet_page_number;               // Add in the page number
-
-                        if ( ( packet_checksum_computed ^ 0xff ) == data->push_payload.packet_checksum) {     // We invert the page checksum on both sides. This protects against all 0's being seen as OK.
-
-                            program_computed_checksum += packet_checksum_computed + download_next_page ;            // At this point, download_page_next == packet_page_number. We use it cause maybe then it will be warm for the increment that comes next...
+                        if (  push_packet_computed_checksum( data->push_payload )  == data->push_payload.packet_checksum) {
 
                             // We got a good packet, good checksum on data, and it was the one we needed, and it is the right game!!!
-
-                            asm("nop");
 
                             burn_page_to_flash( packet_page_number , data->push_payload.data );
 
@@ -372,22 +509,25 @@ static void processPendingIRPackets() {
 
                             if (download_next_page == download_total_pages ) {
 
-                                // TODO: Check the game checksum here
+                                download_next_page++;           // This hack makes download_next_page > download_total_pages when the download is complete
 
-                                // We are down downloading!
-                                // Here we would launch the downloaded game in the active area
-                                // and somehow tell it to start sending pull requests on all faces but this one
-
-                                restart_at_0000();
-
-                                mode=MODE_DONE;
+                                // We are done downloading! Anything else we should do here?
 
                                 setAllRawCorsePixels( COARSE_BLUE );
+
+                            } else {
+
+                                // we are still downloading, so dont time out as long as we are getting valid push packets that get us closer
+                                // to being done
+
+                                reset_countdown_until_done();
+
+                                // We should have another seed waiting for us to trigger next pull so no need to grease that wheel here.
 
                             }
 
 
-                        } else {         if ( ( packet_checksum_computed ^ 0xff ) == data->push_payload.packet_checksum)
+                        } else {    // push_packet_computed_checksum( data->push_payload )  == data->push_payload.packet_checksum)
 
                             setRawPixelCoarse( f , COARSE_RED );
 
@@ -399,10 +539,8 @@ static void processPendingIRPackets() {
 
                     }
 
-
-                    // Force next pull to happen immediately and also start retry counting again since we just got a good packet.
-
-                    triggerNextPull();
+                    // We will pull next page when the source gets back around to sending us another seed packet to show it
+                    // is our turn.
 
                 } else {          // (packetLen== (PAGE_SIZE + 5 ) && packet_game_checksum == download_checksum  )
 
@@ -412,89 +550,73 @@ static void processPendingIRPackets() {
 
             } else if (data->header == IR_PACKET_HEADER_SEED ) {             // This is other side telling us to start pulling new game from him
 
-                if ( mode==MODE_LISTENING ) {
+                if ( download_next_page <= download_total_pages ) {                // Do we need any more pages? (at start both will be 0, at end next will be total+1
 
-                    if ( packetLen== (sizeof( pull_request_payload_t ) + 1 ) ) {         // Pull request plus header byte
+                    if ( packetLen== (sizeof( seed_payload_t ) + 1 ) ) {         // Seed request plus header byte
 
-                        download_total_pages = data->pull_request_payload.pages;
+                        if ( download_total_pages == 0 ) {      /// we are waiting for a good seed?
 
-                        download_checksum    = data->pull_request_payload.program_checksum;
+                            // We found a good source - lock in and start downloading
 
-                        #warning we dont check the checksum on pull requests yet
-                        //computered_program_checksum = 0;      // This inits to 0 so we don't have to explicity set it
+                            download_total_pages = data->seed_payload.pages;
 
-                        download_face = f;
+                            active_program_checksum = data->seed_payload.program_checksum;
 
-                        //download_next_page=0;                 // It inits to zero so we don't need this explicit assignment
+                            download_source_face = f;
 
-                        setAllRawCorsePixels( COARSE_OFF );
+                            next_seed_face = pgm_read_byte( next_stagered_face + download_source_face );    // Start our seeding as far away from the source as possible to distribute the distribution
 
-                        mode = MODE_DOWNLOADING;
+                            // We will not start seeding until we actually have something to send
 
-                        setRawPixelCoarse( f , COARSE_BLUE );
+                            //download_next_page=0;                 // It inits to zero so we don't need this explicit assignment
 
-                        triggerNextPull();
+                            setAllRawCorsePixels( COARSE_OFF );
+
+                            setRawPixelCoarse( f , COARSE_BLUE );
+
+                        }   //  if ( download_total_pages == 0 ) - we need a source
+
+                        // We got a seed packet, so source is ready for our pull
+
+                        sendNextPullPacket();
 
                     }  else { // Packet length wrong for pull request
 
                         setRawPixelCoarse( f , COARSE_RED );
 
-                    }
+                    } //packetLen== (sizeof( pull_request_payload_t ) + 1 )
 
-                } // ( mode==MODE_LISTENING ) (ignore pull requests if not listening
+                } //if ( download_next_page <= download_total_pages )  (ignore seed packets if we are already downloaded)
 
-            }  // if (data->header == IR_PACKET_HEADER_PULLREQUEST )
+            }  else if (data->header == IR_PACKET_HEADER_PULL ) {
+
+                if ( packetLen== (sizeof( pull_payload_t) + 1 ) ) { // // Pull request plus header byte
+
+                    uint8_t requested_page = data->pull_payload.page;
+
+                    if (requested_page<download_next_page) {            // Do we even have the next page?
+
+                        send_push_packet( f , requested_page  );
+
+                        trigger_countdown_until_next_seed();            // Send next seed immediately so they don't have to wait and they are likely to be able to pull next packet
+
+                        reset_countdown_until_done();                   // As long as we are getting pulls, someone still needs us
+
+                    } // if (requested_page<download_next_page)
+
+                } else { // if ( packetLen== (sizeof( pull_request_payload_t) + 1 ) )
+
+                    setRawPixelCoarse( f , COARSE_RED );
+
+                }
+
+            }// if (data->header == IR_PACKET_HEADER_PULLREQUEST )
 
             irDataMarkPacketRead(f);
 
-        }  // irIsdataPacketReady(f)
+        }// irIsdataPacketReady(f)
 
     }    // for( uint8_t f=0; f< IR_FACE_COUNT; f++ )
-
-}
-
-inline void copy_built_in_game() {
-
-    // TODO: implement
-    // Copy the built in game to the active area in flash
-
-}
-
-
-inline void sendNextPullPacket() {
-
-    // Note that if we are blocked from sending because there is an incoming packet, we just ignore it
-    // hopefully it is the packet we are waiting for. If not, we will time out and retry.
-
-    if (irSendBegin( download_face )) {
-
-        irSendByte( IR_PACKET_HEADER_PULL );
-
-        irSendByte( download_next_page );
-
-        irSendComplete();
-
-    } else {
-
-        // Send failed.
-
-    }
-
-}
-
-
-static void sleep(void) {
-
-    pixel_disable();        // Turn off pixels so battery drain
-    ir_disable();           // TODO: Wake on pixel
-    button_ISR_on();        // Enable the button interrupt so it can wake us
-
-    power_sleep();          // Go into low power sleep. Only a button change interrupt can wake us
-
-    button_ISR_off();       // Set everything back to thew way it was before we slept
-    ir_enable();
-
-    pixel_enable();
 
 }
 
@@ -516,6 +638,78 @@ void move_interrupts_to_bootlader(void)
 
 }
 
+ // If we do not already have an active game (as indicated by download_next_page and download_total_pages), then
+ // wait for a seed packet and start downloading. If we do already have an active game, just start seeding.
+
+inline void download_and_seed_mode() {
+
+    processInboundIRPackets();       // Read any incoming packets looking for pulls & pull requests
+
+    if (countdown_until_next_seed==0 && download_next_page ) {      // Don't bother sending a seed until we have something to share
+
+        next_seed_face = pgm_read_byte( next_stagered_face + next_seed_face );      // Get next staggered face to send on
+
+        send_seed_packet( next_seed_face , download_total_pages , active_program_checksum );
+
+        reset_countdown_until_next_seed();
+
+    }
+
+}
+
+void copy_built_in_game_to_active() {
+
+    #warning Implement copy_built_in_game_to_active()
+
+    // For now we will use whatever game happens to end up in the active area
+
+}
+
+// This is not really an ISR, is it the entry point to start downloading from another tile
+// We mark it as naked because everything is already set up ok, we just want to jump straight in.
+
+
+inline void load_built_in_game_and_seed() {
+
+    // TODO: implement
+    // Copy the built in game to the active area in flash
+
+    // TODO: Calc and return checksum
+
+    active_program_checksum = calculate_active_game_checksum();
+
+    download_total_pages = DOWNLOAD_MAX_PAGES;       // For now always send the whole thing. TODO: Base this on actual program length if shorter?
+    download_next_page = download_total_pages+1;    // Special value of next > total signals totally downloaded, so just seed mode
+    download_source_face = SOURCE_FACE_NONE;        // We are the root
+
+
+    download_and_seed_mode();       // because we already set up the download variables to be done downloading, we will seed until timeout
+
+}
+
+
+// Forground saw a seed packet so we should start downloading a new game
+
+extern "C" void __attribute__((naked)) BOOTLOADER_DOWNLOAD_MODE_VECTOR() {
+
+    //register uint8_t face asm("r25");           // We get passed the face in r25
+
+    // TODO: Know where that first seed came from and start there.
+
+    download_and_seed_mode();       // Entering this Way makes us listen for the first seed and then start downloading
+
+}
+
+// User longpressed so Wants to start seeding this blink's built in game
+
+extern "C" void __attribute__((naked)) BOOTLOADER_SEED_MODE_VECTOR() {
+
+    //register uint8_t face asm("r25");           // We get passed the face in r25
+
+    load_built_in_game_and_seed();
+
+
+}
 
 
 // This is the entry point where the blinkcore platform will pass control to
@@ -545,53 +739,22 @@ void run(void) {
 
     setAllRawCorsePixels( COARSE_ORANGE );  // Set initial display
 
+    // copy_built_in_game_to_active();
+
     sei();					// Let interrupts happen. For now, this is the timer overflow that updates to next pixel.
 
+    if ( GPIOR1 == 'S' ) {
 
-    CLEAR_STACK_JMP( "0x3800" );
+        // Foreground wants us to just seed
 
-    restart_at_0000();      // Jump into active game
+        load_built_in_game_and_seed();
 
+    } else {
 
-    // Now briefly try to download a game
+        // Foreground got a seed packet and wants us to download
 
-       processPendingIRPackets();       // Read any incoming packets looking for pulls & pull requests
+        download_and_seed_mode();
 
-        if ( countdown_until_next_pull ==0 ) {
-
-            // Time to send next pull ?
-
-            // This overflows in about
-            retry_count++;
-
-            if (retry_count >= GIVEUP_RETRY_COUNT ) {
-
-                // Too long. Abort to the built-in game and launch
-
-                #warning we need to move built in game to hi address and add copy code
-                //copy_built_in_game();
-
-                return;
-
-            }
-
-            // We actually only do pulls if we have already seen a pull request that put us into download mode
-            // if not, we do nothing and just wait for a pull request until the retry counter runs out.
-
-            if (mode==MODE_DOWNLOADING) {       // Are we actively downloading?
-
-                // Try sending a pull packet on the face we got the pull request from
-                sendNextPullPacket();
-
-            }
-
-            // Set up counter to trigger next pull packet
-
-            resetTimer();
-
-        }
-
-
-
+    }
 
 }

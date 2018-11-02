@@ -5,7 +5,7 @@
  *
  */
 
-// TODO: This is currently duped in blinkos and bootloader. Find a way to have a single copy of this file. 
+// TODO: This is currently duped in blinkos and bootloader. Find a way to have a single copy of this file.
 
 #define DOWNLOAD_PAGE_SIZE 128      // Flash pages size for ATMEGA168PB
                                     // We currently send in full pages because it save the hassle of reassembling packets, but does mean
@@ -29,7 +29,7 @@ struct push_payload_t {                 // Response to a pull with the flash blo
     uint8_t packet_checksum;            // Simple sum of all preceding bytes in packet including header, then inverted. This comes at the end so we can compute it on the fly.
 };
 
-struct pull_request_payload_t {           // Sending blink telling neighbor there is a new game he needs to download
+struct seed_payload_t {           // Sending blink telling neighbor there is a new game he needs to download
     uint8_t pages;                        // How many total blocks in this game? We put this first in case the compile wants to pad the header byte
     uint16_t program_checksum;            // The checksum of all the flash data in all of the packets with each page also has added in its page number
     uint8_t packet_checksum;            // Simple sum of all preceding bytes in packet including header, then inverted. This comes at the end so we can compute it on the fly.
@@ -48,7 +48,7 @@ struct blinkboot_packet {
     union {
 
         push_payload_t          push_payload;
-        pull_request_payload_t  pull_request_payload;
+        seed_payload_t          seed_payload;
         pull_payload_t          pull_payload;
 
     };

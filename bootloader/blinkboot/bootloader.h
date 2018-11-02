@@ -17,9 +17,11 @@
 // because it is possible something blinking in the environment might replicate it
 
 #define IR_PACKET_HEADER_SEED       0b01101010      // If you get this, then the other side is saying they want to send you a game
+#define IR_PACKET_HEADER_ALIVE      0b11101000      // Send to our source instead of a seed to say that we are still pushing, or someone lower than us in the tree is stil pushing.
 #define IR_PACKET_HEADER_PULL       0b01011101      // You send this to request the next block of a game
 #define IR_PACKET_HEADER_PUSH       0b11011011      // This contains a block of flash code to be programmed into the active area
 
+// TODO: Add an *all done* packet the percolates down so we do not need to wait for timeouts to know when the full tree has finished downloading?
 
 struct push_payload_t {                 // Response to a pull with the flash block we asked for
     uint8_t data[FLASH_PAGE_SIZE];   // An actual page of the flash memory
@@ -27,8 +29,8 @@ struct push_payload_t {                 // Response to a pull with the flash blo
     uint8_t packet_checksum;            // Simple sum of all preceding bytes in packet including header, then inverted. This comes at the end so we can compute it on the fly.
 };
 
-struct pull_request_payload_t {           // Sending blink telling neighbor there is a new game he needs to download
-    uint8_t pages;                        // How many total blocks in this game? We put this first in case the compile wants to pad the header byte
+struct seed_payload_t {           // Sending blink telling neighbor there is a new game he needs to download
+    uint8_t pages;                        // How many total pages in this game? We put this first in case the compile wants to pad the header byte
     uint16_t program_checksum;            // The checksum of all the flash data in all of the packets with each page also has added in its page number
     uint8_t packet_checksum;            // Simple sum of all preceding bytes in packet including header, then inverted. This comes at the end so we can compute it on the fly.
 };
@@ -46,11 +48,32 @@ struct blinkboot_packet {
     union {
 
         push_payload_t          push_payload;
-        pull_request_payload_t  pull_request_payload;
+        seed_payload_t          seed_payload;
         pull_payload_t          pull_payload;
 
     };
 };
+
+
+// Calls from application into bootloader
+
+#define BOOTLOADER_DOWNLOAD_MODE_VECTOR __vector_1
+
+// Call this to have the bootloader try to start downloading from specified face
+// If successful, downloaded game will get started. If not, builtin game will get copied and started.
+
+#define BOOTLOADER_DOWNLOAD_MODE_JMP(face) { R25=face; CLEAR_STACK_JMP(BOOTLOADER_DOWNLOAD_MODE_VECTOR ); }
+
+#define BOOTLOADER_SEED_MODE_VECTOR __vector_2
+
+// Call this to have the bootloader copy the built in game to the active area and start seeding it
+// When the seeding is complete, the bootloader will jump to the active game's reset vector at 0x000
+
+#warning For now just uses in place active game,
+// TODO: Copy active game down
+
+#define BOOTLOADER_SEED_MODE_JMP(face) { CLEAR_STACK_JMP(BOOTLOADER_SEED_MODE_VECTOR ); }
+
 
 /*
 // State for each receiving IR LED
