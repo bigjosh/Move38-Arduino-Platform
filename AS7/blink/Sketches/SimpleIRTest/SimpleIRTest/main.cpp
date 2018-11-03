@@ -12,7 +12,7 @@
  * =======
  * Blink sends an IR pulse every 750us on the active face
  * The RGB LED on the active face shows green to indicate TX mode
- * Pushing button cycles though pulse transmitted pulse width
+ * Long pushing button (>0.5s) cycles though pulse transmitted pulse width
  * The pulse width is indicated by the number of BLUE LEDS lit:
  *
  *    1 blue = 5us
@@ -23,7 +23,7 @@
  *
  * The 'A' pin on the service port connector goes high while the IR LED is on.
  *
- * Pressing the button after the widest pulse width advances to the next face
+ * Short pressing (<0.5s) the button advances to the next face
  * Pressing the button after the last face switches to RX mode
  *
  * RX mode
@@ -62,13 +62,15 @@
  *
  * If only blue on RX lights then this is a good sign that good communication is possible.
  *
- * Try different TX pulse widths by pressing the button. Longer widths (more blue LEDs) have more energy so
+ * Try different TX pulse widths by long pressing the button. Longer widths (more blue LEDs) have more energy so
  * are better able to trigger though poor communications paths, but take longer and add noise.
  *
  * Connect an oscilloscope to the A pin on both blinks. Trigger on the A pin from the TX blink and watch to
  * see how long it takes for the RX to trigger after the TX pulse is sent.
  * Watch for the min and max of the timing between the RX and TX going high on pin A of the two blinks
  * Short and consistent times are good.
+ *
+ * Note that service port pin A is connect to ATMEGA pin 19 (PE2).
  *
  */
 
@@ -87,6 +89,7 @@
 
 
 #define BUTTON_DEBOUNCE_TIME_MS 100      // Debounce button presses
+#define BUTTON_LONGPRESSS_TIME_MS   500
 
 #define IR_LED_CHARGE_TIME_US  5         // How long to charge up the IR LED in RX mode
 #define IR_LED_REST_TIME_US   15         // How long to wait after trigger detected before recharging
@@ -225,8 +228,6 @@ void pixel_flash( uint8_t face , uint8_t r , uint8_t g , uint8_t b  ) {
 
 }
 
-#define TEST_IR_LED 0           // Which LED should we use?
-
 
 // You can connect pin A on the service port to an oscilloscope
 // Note that the pin A is always behind by 2us, but at least it is consistent
@@ -242,9 +243,6 @@ void init() {
     // Start in TX mode where we blink IR0.
     // Set cathode and anode to output mode
 
-    SBI( IR_CATHODE_DDR , TEST_IR_LED );        // Cathode output mode
-    SBI( IR_ANODE_DDR   , TEST_IR_LED );        // Anode output mode
-
     // IR LED is currently OFF because both pins init to 0
     // We will turn it on by driving the anode high
 
@@ -258,7 +256,7 @@ void init() {
 
 
 template <uint8_t pulse_width, uint8_t pixel_count, uint8_t tx_led>
-void send_pulses_until_button_press() {
+void send_pulses_until_button_down() {
 
     // Pre comute where to put the blue LEDs to show the pulse width becuase
     // we dont have time in the loop
@@ -305,30 +303,63 @@ void send_pulses_until_button_press() {
 
     } while (!BUTTON_DOWN());
 
-    _delay_ms(BUTTON_DEBOUNCE_TIME_MS);             // Debounce
-    while (BUTTON_DOWN());                          // Wait for button lift
-
 }
 
 // Cycles though the different pulse widths on button press and then returns
 
 // We have to unroll this because there is no way to do variable timing as short as 5us (thats only 5 instructions)
 
+
+static uint8_t widthstep = 2;       // This is the current width setting
+                                    // it stays set even between face and mode switches
+                                    // We default to the middle
+
+
 template <uint8_t tx_led>
 void tx_cycle_wdiths_on_led() {
-    
-    
-    const uint8_t widthstep = 0;
-    
-    send_pulses_until_button_press< 5, widthstep ,tx_led>();
-    
 
-    send_pulses_until_button_press< 5,1,tx_led>();
-    send_pulses_until_button_press< 7,2,tx_led>();
-    send_pulses_until_button_press<10,3,tx_led>();
-    send_pulses_until_button_press<12,4,tx_led>();
-    send_pulses_until_button_press<15,5,tx_led>();
 
+    while (1) {
+
+        switch (widthstep) {
+
+            case 0: send_pulses_until_button_down< 5,1,tx_led>(); break;
+            case 1: send_pulses_until_button_down< 7,2,tx_led>(); break;
+            case 2: send_pulses_until_button_down<10,3,tx_led>(); break;
+            case 3: send_pulses_until_button_down<12,4,tx_led>(); break;
+            case 4: send_pulses_until_button_down<15,5,tx_led>(); break;
+
+        }
+
+        // When we get here, the send_pulses_until_button_down() just retruned becuase the button went down
+
+        _delay_ms(BUTTON_DEBOUNCE_TIME_MS);             // Debounce
+
+        // COunt how many milliseconds the button is help down for
+
+        TCNT1 = 0;
+        uint16_t ms_count =0;
+        while (BUTTON_DOWN()) {
+
+            if (TCNT1>=1000) {
+                ms_count++;
+                TCNT1=0;
+            }
+
+        };                          // Wait for button up again.
+
+
+        if ( ms_count< BUTTON_LONGPRESSS_TIME_MS ) {
+
+            return;     // Will step to next LED
+
+        }
+
+
+        widthstep++;
+        if (widthstep==4) widthstep=0;
+
+    }
 }
 
 void tx_mode() {
