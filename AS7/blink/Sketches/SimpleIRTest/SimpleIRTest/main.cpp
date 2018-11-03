@@ -485,11 +485,9 @@ int main(void) {
     init();
 
     while (1) {
-         // PIN_A_HIGH();
-         // PIN_A_LOW();
         tx_mode();
         rx_mode();
-        //sleep_with_button_wake();
+        sleep_with_button_wake();
     }
 
 }
