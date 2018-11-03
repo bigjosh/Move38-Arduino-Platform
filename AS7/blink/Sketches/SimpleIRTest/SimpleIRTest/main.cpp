@@ -357,7 +357,7 @@ void tx_cycle_wdiths_on_led() {
 
 
         widthstep++;
-        if (widthstep==4) widthstep=0;
+        if (widthstep==5) widthstep=0;
 
     }
 }
