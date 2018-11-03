@@ -233,7 +233,6 @@ static inline void ir_tx_pulse_internal( uint8_t bitmask ) {
         // Making too long wastes (a little?) battery and time
         // Making too short might not be enough light to trigger the RX on the other side
         // when TX voltage is low and RX voltage is high?
-        // Also replace with a #define and _delay_us() so works when clock changes?
 
         _delay_us( IR_PULSE_TIME_US );
 

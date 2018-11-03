@@ -94,7 +94,10 @@
 #define IR_LED_CHARGE_TIME_US  5         // How long to charge up the IR LED in RX mode
 #define IR_LED_REST_TIME_US   15         // How long to wait after trigger detected before recharging
 
-#define TX_PULSE_SPACING_US 750          // 750us is the width of a SYNC symbol - which is the longest symbol we send. Good for testing ambient.
+#define TX_PULSE_SPACING_US 185          // 750us is the width of a SYNC symbol - which is the longest symbol we send. Good for testing ambient.
+
+#define RX_TOO_SHORT_TIME_US (TX_PULSE_SPACING_US*0.90)     // For detecting errors in RX mode
+#define RX_TOO_LONG_TIME_US  (TX_PULSE_SPACING_US*1.10)
 
 // Set up a 750us timer.
 // By default we are running at 1Mhz now
@@ -423,19 +426,19 @@ void rx_mode_on_led() {
             countdown_flag_too_long--;
         }
 
-        while ( TBI( IR_CATHODE_PIN , rx_led ));  // Spin until the charge dissipates enough for pin to read `0`
         PIN_A_HIGH();
+        while ( TBI( IR_CATHODE_PIN , rx_led ));  // Spin until the charge dissipates enough for pin to read `0`
         PIN_A_LOW();
 
         uint16_t time = TCNT1;                        // Capture the time
         TCNT1 = 0;                                    // Restart timer
 
-        _delay_us( IR_LED_REST_TIME_US );             // Let it rest. This avoids double triggers on the same IR pulse.
+        //_delay_us( IR_LED_REST_TIME_US );             // Let it rest. This avoids double triggers on the same IR pulse.
 
 
-        if (time<650) {
+        if (time<RX_TOO_SHORT_TIME_US) {
             countdown_flag_too_short =COUNTDOWN_FLAG_START;
-        } else if (time<850) {
+        } else if (time<RX_TOO_LONG_TIME_US) {
             countdown_flag_just_right=COUNTDOWN_FLAG_START;
         } else {
             countdown_flag_too_long  =COUNTDOWN_FLAG_START;
