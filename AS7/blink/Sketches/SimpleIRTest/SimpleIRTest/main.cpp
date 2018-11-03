@@ -4,12 +4,15 @@
  * This is the simplest possible IR test program.
  * Is accesses the blink hardware directly with no interrupts and requires no library code (runs bare metal).
  *
- * It has two modes: TX and RX.
+ * It has three modes: TX, RX, and sleep
+ *
+ * Assumes factory default fuses (runs at 1Mhz).
  *
  * TX mode
  * =======
- * Blink sends an IR pulse every 1ms on face IR0.
- * The RGB LED on P0 shows green to indicate TX mode.
+ * Blink sends an IR pulse every 750us on the active face
+ * The RGB LED on the active face shows green to indicate TX mode
+ * Pushing button cycles though pulse transmitted pulse width
  * The pulse width is indicated by the number of BLUE LEDS lit:
  *
  *    1 blue = 5us
@@ -20,30 +23,47 @@
  *
  * The 'A' pin on the service port connector goes high while the IR LED is on.
  *
+ * Pressing the button after the widest pulse width advances to the next face
+ * Pressing the button after the last face switches to RX mode
+ *
  * RX mode
  * =======
- * Blink listens for an IR pulse on face IR0 every 2ms on face IR0.
- * The RGB LED on face P0 shows RED to indicate RX.
+ * Blink listens for IR triggers on the active face
+ * The RGB LED on the active face shows RED to indicate RX
  * The time since the last trigger is indicated by which BLUE LEDS lit:
  *
  *    P2  Cyan    = <650us              (Too short)
  *    P3  Blue    = >650us and <950us   (Just right)
  *    P4  Magenta = >950us              (Too long)
  *
- * The 'A' pin on the service port connector pulses high when the IR0 LED is triggered. This pulse width is fixed and
- * only indicates that a trigger happened.
+ * The 'A' pin on the service port connector pulses high when the active IR LED is triggered. This
+ * pulse width is fixed and only indicates that a trigger happened.
+ *
+ * Pressing the button in RX mode advances to the next face
+ * Pressing the button in RX mode after the last face goes to sleep mode
+ *
+ * SLEEP MODE
+ * ==========
+ *
+ * Blink goes into low power sleep.
+ * Pressing the button in sleep mode wakes the blink and goes to TX mode
  *
  * Usage
  * =====
- * You can cycle between modes and TX mode pulse times by pressing and releasing the button.
- * Put one blink in TX mode and select a pulse width. Put another blink in RX mode. Aim their IR0 faces together.
+ * 1. Put one blink in TX mode (one face green) and select a medium pulse width (3 blue LEDs).
+ * 2. Put another blink in RX mode (one face red).
+ * 3. Aim the green face from the TX mode blink and the red face from the RX mode blink at each other.
+ *
  * For the blink in RTX mode...
- * P2 Cyan indicates that the IR LED is triggering by ambient light before the pulse arrives, or something is touching the LED
- * P3 Blue indicates that pulses with expected timing are being received
- * P4 Magenta in Rx mode indicates that some TX pulses are being missed
+ * Cyan indicates that the IR LED is triggering by ambient light before the pulse arrives, or something is touching the LED
+ * Blue indicates that pulses with expected timing are being received
+ * Magenta in Rx mode indicates that some TX pulses are being missed
  * Each of these indications will stay lit for about 0.1 second after the event so you can see it.
  *
- * If only P5 on RX lights then this is a good sign that good communication is possible.
+ * If only blue on RX lights then this is a good sign that good communication is possible.
+ *
+ * Try different TX pulse widths by pressing the button. Longer widths (more blue LEDs) have more energy so
+ * are better able to trigger though poor communications paths, but take longer and add noise.
  *
  * Connect an oscilloscope to the A pin on both blinks. Trigger on the A pin from the TX blink and watch to
  * see how long it takes for the RX to trigger after the TX pulse is sent.
@@ -56,6 +76,7 @@
 
 #define F_CPU 1000000
 #include <util/delay.h>
+#include <avr/sleep.h>
 
 #include "hardware.h"
 
@@ -69,6 +90,8 @@
 
 #define IR_LED_CHARGE_TIME_US  5         // How long to charge up the IR LED in RX mode
 #define IR_LED_REST_TIME_US   15         // How long to wait after trigger detected before recharging
+
+#define TX_PULSE_SPACING_US 750          // 750us is the width of a SYNC symbol - which is the longest symbol we send. Good for testing ambient.
 
 // Set up a 750us timer.
 // By default we are running at 1Mhz now
@@ -234,184 +257,150 @@ void init() {
 }
 
 
+template <uint8_t pulse_width, uint8_t pixel_count, uint8_t tx_led>
+void send_pulses_until_button_press() {
+
+    // Pre comute where to put the blue LEDs to show the pulse width becuase
+    // we dont have time in the loop
+
+    uint8_t start_blue = ( tx_led + 1 ) % 6 ;
+    uint8_t end_blue = ( start_blue + pixel_count ) % 6;
+
+    SBI( IR_CATHODE_DDR ,  tx_led );
+    CBI( IR_CATHODE_PIN , tx_led );
+
+    SBI( IR_ANODE_DDR   ,  tx_led );
+
+    TCNT1 =0;                                   // Reset the stopwatch
+    do {
+
+        //PIN_A_HIGH();
+        while (TCNT1 < TX_PULSE_SPACING_US );     // Wait 750us
+        //PIN_A_LOW();
+
+        TCNT1 =0;                                 // Reset inter-pulse stopwatch
+
+        SBI( IR_ANODE_PORT , tx_led );         // LED ON!
+        PIN_A_HIGH();
+        _delay_us(pulse_width-4);                             // Account for 4 cycle overhead of actually changing the port
+        CBI( IR_ANODE_PORT , tx_led );         // LED OFF!
+        PIN_A_LOW();
+
+        pixel_flash( tx_led , 0 , 1 , 0 );               // Green on transmitting face
+
+
+
+        // Use the blue LEDs to show current pulse width
+        uint8_t p=start_blue;
+
+        while (p!=end_blue) {
+
+            pixel_flash(   p , 0 , 0 , 1 );               // blue
+            p++;
+            if (p==6) {           // Wrap around
+                p=0;
+            }
+
+        }
+
+    } while (!BUTTON_DOWN());
+
+    _delay_ms(BUTTON_DEBOUNCE_TIME_MS);             // Debounce
+    while (BUTTON_DOWN());                          // Wait for button lift
+
+}
 
 // Cycles though the different pulse widths on button press and then returns
 
 // We have to unroll this because there is no way to do variable timing as short as 5us (thats only 5 instructions)
 
-void tx_mode() {
+template <uint8_t tx_led>
+void tx_cycle_wdiths_on_led() {
+    
+    
+    const uint8_t widthstep = 0;
+    
+    send_pulses_until_button_press< 5, widthstep ,tx_led>();
+    
 
-    SBI( IR_CATHODE_DDR ,TEST_IR_LED );
-
-    TCNT1 =0;                                   // Reset the stopwatch
-
-    do {
-
-        while (TCNT1 < 750 );                       // Wait 750us
-        SBI( IR_ANODE_PORT , TEST_IR_LED );         // LED ON!
-        PIN_A_HIGH();
-        _delay_us(5-4);                             // Account for 4 cycle overhead of actually changing the port
-        CBI( IR_ANODE_PORT , TEST_IR_LED );         // LED OFF!
-        PIN_A_LOW();
-        TCNT1 =0;                                   // Reset interpulse stopwatch
-
-        pixel_flash( 0 , 0 , 1 , 0 );               // Show we are transmitting
-        pixel_flash( 1 , 0 , 0 , 1 );               // 1 blue = 5us
-
-    } while (!BUTTON_DOWN());
-
-    _delay_ms(BUTTON_DEBOUNCE_TIME_MS);             // Debounce
-    while (BUTTON_DOWN());                          // Wait for button lift
-
-    // --------
-
-    do {
-
-        while (TCNT1 < 750 );                       // Wait 750us
-        SBI( IR_ANODE_PORT , TEST_IR_LED );         // LED ON!
-        PIN_A_HIGH();
-        _delay_us(7-4);                             // Account for 2 cycle overhead of actually changing the port
-        CBI( IR_ANODE_PORT , TEST_IR_LED );         // LED OFF!
-        PIN_A_LOW();
-        TCNT1 =0;                                   // Reset interpulse stopwatch
-
-        pixel_flash( 0 , 0 , 1 , 0 );               // Show we are transmitting
-        pixel_flash( 1 , 0 , 0 , 1 );               // 1 blue = 5us
-        pixel_flash( 2 , 0 , 0 , 1 );               // 1 blue = 5us
-
-
-    } while (!BUTTON_DOWN());
-
-    _delay_ms(BUTTON_DEBOUNCE_TIME_MS);             // Debounce
-    while (BUTTON_DOWN());                          // Wait for button lift
-
-
-    // --------
-
-    do {
-
-        while (TCNT1 < 750 );                       // Wait 750us
-        SBI( IR_ANODE_PORT , TEST_IR_LED );         // LED ON!
-        PIN_A_HIGH();
-        _delay_us(10-4);                             // Account for 2 cycle overhead of actually changing the port
-        CBI( IR_ANODE_PORT , TEST_IR_LED );         // LED OFF!
-        PIN_A_LOW();
-        TCNT1 =0;                                   // Reset interpulse stopwatch
-
-        pixel_flash( 0 , 0 , 1 , 0 );               // Show we are transmitting
-        pixel_flash( 1 , 0 , 0 , 1 );               // 1 blue = 5us
-        pixel_flash( 2 , 0 , 0 , 1 );               // 1 blue = 5us
-        pixel_flash( 3 , 0 , 0 , 1 );               // 1 blue = 5us
-
-
-    } while (!BUTTON_DOWN());
-
-    _delay_ms(BUTTON_DEBOUNCE_TIME_MS);             // Debounce
-    while (BUTTON_DOWN());                          // Wait for button lift
-
-    // --------
-
-    do {
-
-        while (TCNT1 < 750 );                       // Wait 750us
-        SBI( IR_ANODE_PORT , TEST_IR_LED );         // LED ON!
-        PIN_A_HIGH();
-        _delay_us(12-4);                             // Account for 2 cycle overhead of actually changing the port
-        CBI( IR_ANODE_PORT , TEST_IR_LED );         // LED OFF!
-        PIN_A_LOW();
-        TCNT1 =0;                                   // Reset interpulse stopwatch
-
-        pixel_flash( 0 , 0 , 1 , 0 );               // Show we are transmitting
-        pixel_flash( 1 , 0 , 0 , 1 );               // 1 blue = 5us
-        pixel_flash( 2 , 0 , 0 , 1 );               // 1 blue = 5us
-        pixel_flash( 3 , 0 , 0 , 1 );               // 1 blue = 5us
-        pixel_flash( 4 , 0 , 0 , 1 );               // 1 blue = 5us
-
-
-    } while (!BUTTON_DOWN());
-
-    _delay_ms(BUTTON_DEBOUNCE_TIME_MS);             // Debounce
-    while (BUTTON_DOWN());                          // Wait for button lift
-
-    // --------
-
-    do {
-
-        while (TCNT1 < 750 );                       // Wait 750us
-        SBI( IR_ANODE_PORT , TEST_IR_LED );         // LED ON!
-        PIN_A_HIGH();
-        _delay_us(15-4);                             // Account for 2 cycle overhead of actually changing the port
-        CBI( IR_ANODE_PORT , TEST_IR_LED );         // LED OFF!
-        PIN_A_LOW();
-        TCNT1 =0;                                   // Reset interpulse stopwatch
-
-        pixel_flash( 0 , 0 , 1 , 0 );               // Show we are transmitting
-        pixel_flash( 1 , 0 , 0 , 1 );               // 1 blue = 5us
-        pixel_flash( 2 , 0 , 0 , 1 );               // 1 blue = 5us
-        pixel_flash( 3 , 0 , 0 , 1 );               // 1 blue = 5us
-        pixel_flash( 4 , 0 , 0 , 1 );               // 1 blue = 5us
-        pixel_flash( 5 , 0 , 0 , 1 );               // 1 blue = 5us
-
-
-    } while (!BUTTON_DOWN());
-
-    _delay_ms(BUTTON_DEBOUNCE_TIME_MS);             // Debounce
-    while (BUTTON_DOWN());                          // Wait for button lift
-
+    send_pulses_until_button_press< 5,1,tx_led>();
+    send_pulses_until_button_press< 7,2,tx_led>();
+    send_pulses_until_button_press<10,3,tx_led>();
+    send_pulses_until_button_press<12,4,tx_led>();
+    send_pulses_until_button_press<15,5,tx_led>();
 
 }
 
+void tx_mode() {
+
+    tx_cycle_wdiths_on_led<0>();
+    tx_cycle_wdiths_on_led<1>();
+    tx_cycle_wdiths_on_led<2>();
+    tx_cycle_wdiths_on_led<3>();
+    tx_cycle_wdiths_on_led<4>();
+    tx_cycle_wdiths_on_led<5>();
+
+}
+
+
 #define  COUNTDOWN_FLAG_START 20       // Making this higher will make the feedback pixel stay on longer after an event
 
-void rx_mode() {
 
-    uint16_t last_time;
 
-    // These flags are int so that when set they will stay set long enough to actually see them
-    // so we set to a count of how many times though the loop they should get lit
-    // and decrement each time we show them until 0.
+template <uint8_t rx_led>
+void rx_mode_on_led() {
 
-    uint8_t countdown_flag_too_short;
-    uint8_t countdown_flag_just_right;
-    uint8_t countdown_flag_too_long;
+
+    uint8_t countdown_flag_too_short=0;
+    uint8_t countdown_flag_just_right=0;
+    uint8_t countdown_flag_too_long=0;
+
+
+    SBI( IR_ANODE_DDR  , rx_led );
+    CBI( IR_ANODE_PORT , rx_led );
 
     TCNT1 = 0;
 
     do {
 
-        SBI( IR_CATHODE_PORT , TEST_IR_LED );         // Charging up cathode
+
+        SBI( IR_CATHODE_DDR , rx_led );         // Charging up cathode
+        SBI( IR_CATHODE_PORT , rx_led );         // Charging up cathode
         _delay_us( IR_LED_CHARGE_TIME_US );
-        CBI( IR_CATHODE_DDR , TEST_IR_LED );          // Switching to input mode - Pull up enabled
-        CBI( IR_CATHODE_PORT , TEST_IR_LED );         // Pull up disconnected so now just floating input
+        CBI( IR_CATHODE_DDR , rx_led );          // Switching to input mode - Pull up enabled
+        CBI( IR_CATHODE_PORT , rx_led );         // Pull up disconnected so now just floating input
 
         // OK, we are now all charged up and ready to receive a pulse
         // Since we don't care if the pulse is shorter than 650us (that would be an error)
         // now is a good time to display the results from the last round
 
-        pixel_flash( 0 , 1 , 0 , 0 );               // Too short marker
+        pixel_flash( rx_led , 1 , 0 , 0 );               // Red on RX face to show we are receiving
 
         if (countdown_flag_too_short) {
-            pixel_flash( 2 , 0 , 1 , 1 );               // Too short marker
+            pixel_flash( (rx_led + 2) % 6 , 0 , 1 , 1 );               // Too short marker
             countdown_flag_too_short--;
         }
 
         if (countdown_flag_just_right) {
-            pixel_flash( 3 , 0 , 0 , 1 );               // Just right marker
+            pixel_flash( (rx_led + 3) % 6 , 0 , 0 , 1 );               // Just right marker
             countdown_flag_just_right--;
         }
 
 
         if (countdown_flag_too_long) {
-            pixel_flash( 4 , 1 , 0 , 1 );               // Too long marker
+            pixel_flash( ( rx_led + 4 ) % 6 , 1 , 0 , 1 );               // Too long marker
             countdown_flag_too_long--;
         }
 
-        while ( TBI( IR_CATHODE_PIN , TEST_IR_LED ));  // Spin until the charge dissipates enough for pin to read `0`
+        while ( TBI( IR_CATHODE_PIN , rx_led ));  // Spin until the charge dissipates enough for pin to read `0`
+        PIN_A_HIGH();
+        PIN_A_LOW();
 
         uint16_t time = TCNT1;                        // Capture the time
         TCNT1 = 0;                                    // Restart timer
 
         _delay_us( IR_LED_REST_TIME_US );             // Let it rest. This avoids double triggers on the same IR pulse.
+
 
         if (time<650) {
             countdown_flag_too_short =COUNTDOWN_FLAG_START;
@@ -424,10 +413,39 @@ void rx_mode() {
         // Loop back around to charge again
 
 
-    } while (!BUTTON_DOWN());
+   } while (!BUTTON_DOWN());
 
     _delay_ms(BUTTON_DEBOUNCE_TIME_MS);             // Debounce
     while (BUTTON_DOWN());                          // Wait for button lift
+}
+
+void rx_mode() {
+    rx_mode_on_led<0>();
+    rx_mode_on_led<1>();
+    rx_mode_on_led<2>();
+    rx_mode_on_led<3>();
+    rx_mode_on_led<4>();
+    rx_mode_on_led<5>();
+}
+
+
+EMPTY_INTERRUPT(BUTTON_ISR);        // We have to turn on the interrupt to be able to wake, but don't really want to catch it
+
+void sleep_with_button_wake() {
+
+    set_sleep_mode( SLEEP_MODE_PWR_DOWN );      // Lowest power
+
+    SBI( PCICR , BUTTON_PCI );          // Enable the pin group so button change can interrupt (int wakes us from sleep)
+    do {
+
+        sei();
+        sleep_cpu();
+        cli();
+        _delay_ms(BUTTON_DEBOUNCE_TIME_MS);
+
+    } while (!BUTTON_DOWN());           // Keep sleeping until button pressed again.
+
+    _delay_ms(BUTTON_DEBOUNCE_TIME_MS);
 
 }
 
@@ -436,9 +454,11 @@ int main(void) {
     init();
 
     while (1) {
-
+         // PIN_A_HIGH();
+         // PIN_A_LOW();
         tx_mode();
         rx_mode();
+        //sleep_with_button_wake();
     }
 
 }
