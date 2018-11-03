@@ -55,6 +55,7 @@ struct blinkboot_packet {
 };
 
 
+/*
 // Calls from application into bootloader
 
 #define BOOTLOADER_DOWNLOAD_MODE_VECTOR __vector_1
@@ -73,6 +74,21 @@ struct blinkboot_packet {
 // TODO: Copy active game down
 
 #define BOOTLOADER_SEED_MODE_JMP(face) { CLEAR_STACK_JMP(BOOTLOADER_SEED_MODE_VECTOR ); }
+  
+*/  
+    
+#define BOOTLOADER_RESET_ADDRESS (0x3800)       // Jump to the reset vector of the bootloader
+    
+#define BOOTLOADER_RESET_JMP() { CLEAR_STACK_JMP(BOOTLOADER_RESET_VECTOR ); }
+        
+// Temp way to start up the bootloader to start seeding the active game        
+        
+#define JUMP_TO_BOOTLOADER_SEED()       { GPIOR1 = 'S'; BOOTLOADER_RESET_JMP(); }
+    
+// Temp way to jump into the bootloader to tell it to start downloading from the next face that gets a seed packet    
+
+#define JUMP_TO_BOOTLOADER_DOWNLOAD()   { GPIOR1 = 'D'; BOOTLOADER_RESET_JMP(); }
+
 
 
 /*

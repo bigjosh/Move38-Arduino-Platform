@@ -641,6 +641,8 @@ void move_interrupts_to_bootlader(void)
  // If we do not already have an active game (as indicated by download_next_page and download_total_pages), then
  // wait for a seed packet and start downloading. If we do already have an active game, just start seeding.
 
+ // TODO: Jump into all these to save all that pushing and poping. We will never be returing, so all for naught.
+
 inline void download_and_seed_mode() {
 
     processInboundIRPackets();       // Read any incoming packets looking for pulls & pull requests
@@ -653,6 +655,24 @@ inline void download_and_seed_mode() {
 
         reset_countdown_until_next_seed();
 
+    }
+
+    if (countdown_until_done==0) {
+
+        // We timed out waiting for something to happen, so reboot.
+        // For now we should lock up, but eventually we can use the chain of ACTIVE packets to trigger the root to send
+        // a START NOW packet and everyone can reboot at once and no chance of accidentally getting an seed loop
+
+        setAllRawCorsePixels( COARSE_GREEN );
+
+        // All read means download failed.
+        // red/blue alternating means it worked
+
+        if ( download_next_page > download_total_pages ) {
+            setRawPixelCoarse( 0 , COARSE_BLUE );
+            setRawPixelCoarse( 2 , COARSE_BLUE );
+            setRawPixelCoarse( 4 , COARSE_BLUE );
+        }
     }
 
 }

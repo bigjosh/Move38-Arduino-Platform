@@ -33,8 +33,8 @@
    1. Don't let any whitespace after the backslashes!
    2. Clobbers R16
    3. cli() before calling
-   
-   TODO: Pick a better reg than r16. Maybe use temp_reg_? 
+
+   TODO: Pick a better reg than r16. Maybe use temp_reg_?
 
 */
 
@@ -53,10 +53,10 @@
 
 
 // Clear the stack and jump to address. Address specified as string!
-// cli() first. 
+// cli() first so an inetrrupt doesnot come while we are updating the stack and clobber random ram
 
 
-#define CLEAR_STACK_JMP( x ) { CLEAR_STACK(); asm( "jmp " x ); }
+#define CLEAR_STACK_JMP( x ) { cli(); CLEAR_STACK(); asm( "jmp " x ); }
 
 
 #endif 
