@@ -38,25 +38,21 @@
 
 */
 
-#define CLEAR_STACK() {             \
-    __asm__ __volatile__            \
-    (                               \
-    "ldi 16 , %0    \n"             \
-    "out __SP_H__, 16    \n"        \
-    "ldi 16 , %1    \n"             \
-    "out __SP_L__, 16    \n"        \
-    :                               \
-    : "M" ( RAMEND >> 8 ), "M" ( RAMEND & 0xff )  \
-    :                               \
-    );                              \
+
+// Disables interrupts
+
+void inline __attribute__((naked))  clear_stack() {
+    __asm__ __volatile__ (
+        "cli                 \n"
+        "ldi 16 , %0         \n"
+        "out __SP_H__, 16    \n"
+        "ldi 16 , %1         \n"
+        "out __SP_L__, 16    \n"
+        :
+        : "M" ( RAMEND >> 8 ), "M" ( RAMEND & 0xff )
+        :
+    );
 }
-
-
-// Clear the stack and jump to address. Address specified as string!
-// cli() first so an inetrrupt doesnot come while we are updating the stack and clobber random ram
-
-
-#define CLEAR_STACK_JMP( x ) { cli(); CLEAR_STACK(); asm( "jmp " x ); }
 
 
 #endif 

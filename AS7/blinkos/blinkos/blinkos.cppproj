@@ -166,14 +166,6 @@
       <SubType>compile</SubType>
       <Link>blinkos.h</Link>
     </Compile>
-    <Compile Include="..\..\..\libraries\blinkos\src\blinkos_blinkboot.cpp">
-      <SubType>compile</SubType>
-      <Link>blinkos_blinkboot.cpp</Link>
-    </Compile>
-    <Compile Include="..\..\..\libraries\blinkos\src\blinkos_blinkboot.h">
-      <SubType>compile</SubType>
-      <Link>blinkos_blinkboot.h</Link>
-    </Compile>
     <Compile Include="..\..\..\libraries\blinkos\src\blinkos_button.cpp">
       <SubType>compile</SubType>
       <Link>blinkos_button.cpp</Link>

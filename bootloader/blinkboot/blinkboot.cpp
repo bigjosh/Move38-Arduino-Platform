@@ -26,6 +26,10 @@
 
 #include <avr/boot.h>           // Bootloader support
 
+// TODO: Get rid of this when not needed
+#define F_CPU 8000000
+#include "util/delay.h"
+
 #include <avr/sleep.h>          // TODO: Only for development. Remove.
 
 #include "bootloader.h"
@@ -52,6 +56,8 @@
 #include "blinkboot_irdata.h"
 
 #include "coarsepixelcolor.h"
+
+#include "blinkos_headertypes.h"
 
 #define US_PER_TICK        256
 #define MS_PER_SECOND     1000
@@ -133,9 +139,11 @@ void timer_128us_callback_sei(void) {
 }
 
 
-#define FLASH_GAME_SIZE         (0x3800)                // How big can a game be in bytes?
+#define DOWNLOAD_MAX_PAGES 56       // The maximum length of a downloaded game
+                                    // Currently set to use ~7KB. This saves 7KB for built in game and 2KB for bootloader
 
-#define FLASH_PAGE_SIZE         128                     // Fixed by hardware
+
+#define FLASH_PAGE_SIZE         SPM_PAGESIZE                     // Fixed by hardware
 
 #define FLASH_ACTIVE_BASE       ((uint8_t *)0x0000)     // Flash starting address of the active area
 #define FLASH_BUILTIN_BASE      ((uint8_t *)0x1c00)     // flash starting address of the built-in game
@@ -454,7 +462,7 @@ static PROGMEM const uint8_t next_stagered_face[FACE_COUNT] = { 2 , 3 , 4 , 5 , 
 // We are able to move this out of the bootloader because it never runs in an interrupt context.
 // It is only called from he main event loop.
 
-void __attribute__((section("subbls"))) __attribute__ ((noinline)) processInboundIRPackets();
+void __attribute__((section("subbls"))) __attribute__((used)) __attribute__ ((noinline)) processInboundIRPackets();
 
 void processInboundIRPackets() {
 
@@ -558,6 +566,8 @@ void processInboundIRPackets() {
 
                             // We found a good source - lock in and start downloading
 
+                            #warning check seeed packet checksum!
+
                             download_total_pages = data->seed_payload.pages;
 
                             active_program_checksum = data->seed_payload.program_checksum;
@@ -649,7 +659,11 @@ inline void download_and_seed_mode() {
 
     if (countdown_until_next_seed==0 && download_next_page ) {      // Don't bother sending a seed until we have something to share
 
+        setRawPixelCoarse( next_seed_face , COARSE_OFF );
+
         next_seed_face = pgm_read_byte( next_stagered_face + next_seed_face );      // Get next staggered face to send on
+
+        setRawPixelCoarse( next_seed_face , COARSE_BLUE );                          // SHow blue on the face we are sending seed packet
 
         send_seed_packet( next_seed_face , download_total_pages , active_program_checksum );
 
@@ -669,7 +683,7 @@ inline void download_and_seed_mode() {
         // red/blue alternating means it worked
 
         if ( download_next_page > download_total_pages ) {
-            setRawPixelCoarse( 0 , COARSE_BLUE );
+            setRawPixelCoarse( 0 , COARSE_BLUE );               // If download worked, show alternating blue/green
             setRawPixelCoarse( 2 , COARSE_BLUE );
             setRawPixelCoarse( 4 , COARSE_BLUE );
         }
@@ -708,7 +722,7 @@ inline void load_built_in_game_and_seed() {
 }
 
 
-// Forground saw a seed packet so we should start downloading a new game
+// Foreground saw a seed packet so we should start downloading a new game
 
 extern "C" void __attribute__((naked)) BOOTLOADER_DOWNLOAD_MODE_VECTOR() {
 
@@ -728,13 +742,14 @@ extern "C" void __attribute__((naked)) BOOTLOADER_SEED_MODE_VECTOR() {
 
     load_built_in_game_and_seed();
 
-
 }
 
 
 // This is the entry point where the blinkcore platform will pass control to
 // us after initial power-up is complete
+//void  dummymain2() __attribute__((section("zerobase"))) __attribute__((used));
 
+//void  run() __attribute__((section("zerobase"))) __attribute__((used ));
 void run(void) {
 
     Debug::init();
@@ -763,6 +778,26 @@ void run(void) {
 
     sei();					// Let interrupts happen. For now, this is the timer overflow that updates to next pixel.
 
+    while (1) {
+
+        if (GPIOR1 == 'S') {
+
+            setAllRawCorsePixels( COARSE_GREEN );
+            _delay_ms(200);
+            setAllRawCorsePixels( COARSE_RED );
+            _delay_ms(200);
+
+        } else {
+
+            setAllRawCorsePixels( COARSE_BLUE );
+            _delay_ms(200);
+            setAllRawCorsePixels( COARSE_RED );
+            _delay_ms(200);
+
+
+        }
+    }
+
     if ( GPIOR1 == 'S' ) {
 
         // Foreground wants us to just seed
@@ -776,5 +811,48 @@ void run(void) {
         download_and_seed_mode();
 
     }
+
+
+}
+
+void force_section_not_gc() __attribute__((used));
+void force_section_not_gc() __attribute__((section("zerobase")));
+void force_section_not_gc() __attribute__((naked));
+
+void force_section_not_gc() {
+    asm("jmp 0x6364");
+}
+
+
+extern "C" void __vector_3 (void) __attribute__((section("zerobase")));
+
+ISR(__vector_3) {
+    force_section_not_gc();
+}
+
+//void dummymain2() __attribute__((section("zerobase"))) __attribute__((used));
+void dummymain2() __attribute__((used));
+void dummymain2() __attribute__((section("zerobase")));
+
+void dummymain2() {
+
+    asm("eor r1,r1");
+
+    BUTTON_PORT |= _BV(BUTTON_BIT);
+
+    _delay_ms( 500 );           // Give pull up a sec to act
+
+    if ( ! BUTTON_PIN & BUTTON_BIT) {       // Pin goes low when button pressed because of pull up
+
+        GPIOR1 = 'S';
+
+        } else {
+
+        GPIOR1 = 'D';
+
+    }
+
+    asm("jmp 0x6262");
+
 
 }

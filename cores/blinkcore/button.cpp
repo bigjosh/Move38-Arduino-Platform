@@ -59,7 +59,6 @@ uint8_t button_down(void) {
 }
 
 
-
 EMPTY_INTERRUPT(BUTTON_ISR);
 
 

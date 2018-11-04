@@ -168,6 +168,7 @@
     <ListValues>
       <Value>.text=0x1c00</Value>
       <Value>subbls=0x1000</Value>
+      <Value>zerobase=0x0000</Value>
     </ListValues>
   </avrgcccpp.linker.memorysettings.Flash>
   <avrgcccpp.linker.miscellaneous.LinkerFlags>-fwhole-program</avrgcccpp.linker.miscellaneous.LinkerFlags>
@@ -264,6 +265,10 @@
       <SubType>compile</SubType>
       <Link>blinkboot_irdata.h</Link>
     </Compile>
+    <Compile Include="blinkos_headertypes.h">
+      <SubType>compile</SubType>
+      <Link>blinkos_headertypes.h</Link>
+    </Compile>
     <Compile Include="bootloader.h">
       <SubType>compile</SubType>
       <Link>bootloader.h</Link>
@@ -275,6 +280,10 @@
     <Compile Include="coarsepixelcolor.h">
       <SubType>compile</SubType>
       <Link>coarsepixelcolor.h</Link>
+    </Compile>
+    <Compile Include="dummymain.cpp">
+      <SubType>compile</SubType>
+      <Link>dummymain.cpp</Link>
     </Compile>
     <Compile Include="fuses.c">
       <SubType>compile</SubType>

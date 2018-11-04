@@ -54,6 +54,8 @@ loopstate_out_t loopstate_out;
 #include "ir.h"
 #include "blinkos_irdata.h"
 
+#include "bootloader.h"
+
 
 #define SLEEP_TIMEOUT_SECONDS (10*60)          // If no button press in this long then goto sleep
 
@@ -177,10 +179,6 @@ uint8_t crccheck(uint8_t const * data, uint8_t len )
 }
 
 
-OS_Timer seedTimeout;          // Keep track of the last time we successfully got a pull
-                            // We will drop into the game after 1 second of seeing nothing
-                            
-#define SEED_TIMEOUT_MS 1000                            
 
 
 void processPendingIRPackets() {
@@ -202,23 +200,28 @@ void processPendingIRPackets() {
 
             // TODO: What packet type should be fastest check (doesn;t really matter THAT much, only a few cycles)
 
-            if (*data==  IR_PACKET_HEADER_PULLFLASH) {
+            if (*data==  IR_PACKET_HEADER_SEED ) {
 
                 Debug::tx( 'L' );
 
-                // This is a request for us to send some of our active game. It should only come when we are in seed mode.
+                // Check if the right size for error rejection
 
-                uint8_t requested_page = data[1];           // Read the requested page from the request packet
+                if ( packetLen == ( sizeof( seed_payload_t ) + 1 ) )    {
+
+                    #warning we should really check the packet checksum here to avoid falsely triggering a bootloader download
+
+                    // THis neighbor wants to send us a game
+
+                    asm("nop");
+                    asm("jmp 0x3800");
+                    //JUMP_TO_BOOTLOADER_DOWNLOAD();
+
+                }
 
                 irDataMarkPacketRead(f);
 
-                // We are going to blindly send here. The coast should be clear since they just sent the request and will be waiting a timeout period before sending the next one.
-                blinkos_blinkboot_sendPushFlash( f , requested_page );
-                
-                seedTimeout.set( SEED_TIMEOUT_MS );
 
             } else if (*data== IR_PACKET_HEADER_USERDATA ) {
-
 
                 // Userland data
                 loopstate_in.ir_data_buffers[f].len=  packetLen-1;      // Account for the header byte
@@ -332,14 +335,14 @@ void move_interrupts_to_base(void)
     uint8_t temp;
     /* GET MCUCR*/
     temp = MCUCR;
-    
+
     // No need to cli(), ints already off and IVCE blocks them anyway
-    
+
     /* Enable change of Interrupt Vectors */
     MCUCR = temp|(1<<IVCE);
     /* Move interrupts to Boot Flash section */
     MCUCR = temp;
-    
+
 }
 
 
@@ -350,9 +353,6 @@ void move_interrupts_to_base(void)
 
 extern void setupEntry();
 
-enum mode_t { RUNNING , SEEDING };        // Are we running the game or seeding downloads to nearby tiles?
-
-mode_t mode;
 
 void run(void) {
 
@@ -374,12 +374,9 @@ void run(void) {
 
     button_enable_pu();
 
-    blinkos_blinkboot_setup();     // Get everything ready for seeding
-                                   // TODO: We don't need to call this until we actually go into game transmissions mode.
-               
     move_interrupts_to_base();      // For now, we will control the INTs. Someday we will leave them to the bootloader
-    sei();                           
-                                   
+    sei();
+
 
     // Set the buffer pointers
 
@@ -389,8 +386,6 @@ void run(void) {
         loopstate_in.ir_data_buffers[f].ready_flag = 0;
 
     }
-      
-    seedTimeout.set(SEED_TIMEOUT_MS);    // Giv us an initial 1 sec of trying to spread...
 
     // Call user setup code
     setupEntry();
@@ -411,32 +406,35 @@ void run(void) {
 
         grabAndClearButtonState( loopstate_in.buttonstate );     // Make a local copy of the instant button state to pass to userland. Also clears the flags for next time.
 
+        #warning THis is just for testing. Add propert long long press detecton
+
+        if (loopstate_in.buttonstate.bitflags & BUTTON_BITFLAG_LONGPRESSED ) {
+
+            asm("nop");
+            asm("jmp 0x3800");
+            //JUMP_TO_BOOTLOADER_SEED();
+
+        }
+
         loopstate_in.millis = millis_snapshot;
 
-        if (!seedTimeout.isExpired()) {
-            
-            blinkos_blinkboot_loop();
 
-        } else { // if (mode==RUNNING) {
+        loopEntry();
 
-            loopEntry();
+        for( uint8_t f = 0; f < PIXEL_FACE_COUNT ; f++ ) {
 
-            for( uint8_t f = 0; f < PIXEL_FACE_COUNT ; f++ ) {
+            pixelColor_t color = loopstate_out.colors[f];
 
-                pixelColor_t color = loopstate_out.colors[f];
+            if (  color.reserved ) {          // Did the color change on the last pass? (We used the reserved bit to tell in the blnkOS API)
 
-                if (  color.reserved ) {          // Did the color change on the last pass? (We used the reserved bit to tell in the blnkOS API)
-
-                    blinkos_pixel_bufferedSetPixel( f,  color  );           // TODO: Do we need to clear that top bit?
-
-                }
+                blinkos_pixel_bufferedSetPixel( f,  color  );           // TODO: Do we need to clear that top bit?
 
             }
 
-            blinkos_pixel_displayBufferedPixels();      // show all display updates that happened in last loop()
-                                                            // Also currently blocks until new frame actually starts
         }
 
+        blinkos_pixel_displayBufferedPixels();      // show all display updates that happened in last loop()
+                                                            // Also currently blocks until new frame actually starts
         for( uint8_t f = 0; f < IR_FACE_COUNT ; f++ ) {
 
             // Go though and mark any of the buffers we just passed into to the app as clear

@@ -260,6 +260,10 @@
       <SubType>compile</SubType>
       <Link>base\blinkcore\ir.h</Link>
     </Compile>
+    <Compile Include="..\..\..\..\cores\blinkcore\jump.h">
+      <SubType>compile</SubType>
+      <Link>base\blinkcore\jump.h</Link>
+    </Compile>
     <Compile Include="..\..\..\..\cores\blinkcore\main.cpp">
       <SubType>compile</SubType>
       <Link>base\blinkcore\main.cpp</Link>
@@ -359,14 +363,6 @@
     <Compile Include="..\..\..\..\libraries\blinkos\src\blinkos.h">
       <SubType>compile</SubType>
       <Link>base\blinkos\blinkos.h</Link>
-    </Compile>
-    <Compile Include="..\..\..\..\libraries\blinkos\src\blinkos_blinkboot.cpp">
-      <SubType>compile</SubType>
-      <Link>base\blinkos\blinkos_blinkboot.cpp</Link>
-    </Compile>
-    <Compile Include="..\..\..\..\libraries\blinkos\src\blinkos_blinkboot.h">
-      <SubType>compile</SubType>
-      <Link>base\blinkos\blinkos_blinkboot.h</Link>
     </Compile>
     <Compile Include="..\..\..\..\libraries\blinkos\src\blinkos_button.cpp">
       <SubType>compile</SubType>

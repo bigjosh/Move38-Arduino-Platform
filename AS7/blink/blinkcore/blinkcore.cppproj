@@ -198,10 +198,6 @@
       <SubType>compile</SubType>
       <Link>ir.h</Link>
     </Compile>
-    <Compile Include="..\..\..\cores\blinkcore\jump.h">
-      <SubType>compile</SubType>
-      <Link>jump.h</Link>
-    </Compile>
     <Compile Include="..\..\..\cores\blinkcore\main.cpp">
       <SubType>compile</SubType>
       <Link>main.cpp</Link>
