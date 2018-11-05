@@ -58,6 +58,7 @@ inline coarsePixelColor_t::coarsePixelColor_t() {
 #define COARSE_GREEN    coarsePixelColor_t( 0 , 3 , 0 )
 #define COARSE_DIMGREEN coarsePixelColor_t( 0 , 1 , 0 )
 #define COARSE_BLUE     coarsePixelColor_t( 0 , 0 , 3 )
+#define COARSE_DIMBLUE  coarsePixelColor_t( 0 , 0 , 2 )
 #define COARSE_ORANGE   coarsePixelColor_t( 3 , 2 , 0 )
 #define COARSE_YELLOW   coarsePixelColor_t( 3 , 3 , 0 )
 #define COARSE_CYAN     coarsePixelColor_t( 0 , 3 , 3 )

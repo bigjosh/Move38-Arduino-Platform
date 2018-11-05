@@ -15,6 +15,7 @@
 
 */
 
+#include <assert.h>
 
 #include <avr/pgmspace.h>
 #include <avr/boot.h>
@@ -59,38 +60,47 @@
 
 #include "blinkos_headertypes.h"
 
-#define US_PER_TICK        256
-#define MS_PER_SECOND     1000
-#define MS_TO_TICKS( milliseconds ) ( milliseconds *  (MS_PER_SECOND / US_PER_TICK ) )
+#define US_PER_TICK        256UL
+#define US_PER_MS         1000UL 
+#define TICK_PER_MS       ( US_PER_MS / US_PER_TICK)
+#define MS_TO_TICKS( milliseconds ) ( milliseconds / MS_PER_TICK )
 
-#define TICKS_PER_COUNT    256
-#define US_PER_COUNT     (US_PER_TICK / TICKS_PER_COUNT)
-#define US_PER_MS         1000
-#define MS_PER_COUNT     (US_PER_MS/US_PER_COUNT)
+#define TICKS_PER_COUNT    256UL                                // Prescaller
+#define US_PER_COUNT     (US_PER_TICK * TICKS_PER_COUNT)        // ~65ms per count
+#define MS_PER_COUNT     (US_PER_COUNT/US_PER_MS)
 
-#define MS_TO_COUNTS( count )  ((count / MS_PER_COUNT )+1)      // Always round up to longer delay
+#define MS_TO_COUNTS( ms )  ((ms / MS_PER_COUNT )+1)      // Always round up to longer delay
 
 // Here lives all the bootloader state
 
-uint8_t tickcounter;                // We need this extra divider so that our timeout counters fit into a single byte
-                                    // otherwise we need to worry about interrupts coming in the middle of updates.
 
-uint8_t countdown_until_done;       // If we have not seen a PUSH or PULL or an ACTIVE in a while then we timeout.
+volatile uint8_t countdown_until_done;       // If we have not seen a PUSH or PULL or an ACTIVE in a while then we timeout.
                                      // If we are fully downloaded, then we send a few DONEs and then reboot into the active game
                                      // If now, then we copy built-in game and jump to to
 
                                      // Should be >~12x the time it takes to send the longest packet to make sure that just missing a couple
                                      // will not cause a false alarm.
 
-#define COUNTDOWN_UNTIL_DONE_MS     10000   // Wait ling enough that if the neighbor had to service 5 PULL packets to get back to use we woudl still have time.
-#define COUNTDOWN_UNTIL_DONE_COUNT  MS_TO_COUNTS( COUNTDOWN_UNTIL_DONE_MS )
+#warning make this shorter in production
+#define COUNTDOWN_UNTIL_NEXT_DONE_MS     16000UL   // Wait long enough that if the neighbor had to service 5 PULL packets to get back to use we would still have time.
+#define COUNTDOWN_UNTIL_NEXT_DONE_COUNT  MS_TO_COUNTS( COUNTDOWN_UNTIL_NEXT_DONE_MS )
+
+#if (COUNTDOWN_UNTIL_DONE_COUNT > 255 )     // So ugly. There must be a way to get the max value of a type at compile time?
+    #error must fit into uint8_t
+#endif
 
 
-uint8_t countdown_until_next_seed;  // When do we try and send a seed again?
+volatile uint8_t countdown_until_next_seed;  // When do we try and send a seed again?
                                     // We have to wait a bit between seeds to give the other side a sec to answer if they want to pull
 
-#define COUNTDOWN_UNTIL_NEXT_SEED_MS    100     // Long enough that they can see out seed and gvet back to use with a PULL
+#warning make this shorter
+#define COUNTDOWN_UNTIL_NEXT_SEED_MS    100UL     // Long enough that they can see out seed and get back to use with a PULL
 #define COUNTDOWN_UNTIL_NEXT_SEED_COUNT MS_TO_COUNTS( COUNTDOWN_UNTIL_NEXT_SEED_MS )
+
+#if (COUNTDOWN_UNTIL_NEXT_SEED_COUNT > 255 )     // So ugly. There must be a way to get the max value of a type at compile time?
+    #error must fit into uint8_t
+#endif
+
 
 // Make next seed go out immediately
 
@@ -99,12 +109,14 @@ static void trigger_countdown_until_next_seed() {
 }
 
 static void reset_countdown_until_next_seed() {
-    countdown_until_next_seed=COUNTDOWN_UNTIL_NEXT_SEED_COUNT;
+
+#warning
+    countdown_until_next_seed= COUNTDOWN_UNTIL_NEXT_SEED_COUNT;
 }
 
 
 static void reset_countdown_until_done() {
-    countdown_until_done=COUNTDOWN_UNTIL_DONE_COUNT;
+    countdown_until_done=COUNTDOWN_UNTIL_NEXT_DONE_COUNT;    
 }
 
 
@@ -118,7 +130,11 @@ static void reset_countdown_until_done() {
 
 void timer_256us_callback_sei(void) {
 
-    if (--tickcounter == 0 ) {
+    static uint8_t tick_prescaller;     // Divide ticks /256
+                                        // We need this extra divider so that our timeout counters fit into a single byte
+                                        // otherwise we need to worry about interrupts coming in the middle of updates.
+
+    if ( --tick_prescaller == 0 ) {      // Predecement so the flag will already be set for comparison
 
         // Do this stuff once every 256 ticks
 
@@ -130,6 +146,7 @@ void timer_256us_callback_sei(void) {
             countdown_until_done--;
         }
     }
+    
 }
 
 // This is called by timer ISR about every 256us with interrupts on.
@@ -654,40 +671,47 @@ void move_interrupts_to_bootlader(void)
  // TODO: Jump into all these to save all that pushing and poping. We will never be returing, so all for naught.
 
 inline void download_and_seed_mode() {
+    
+    setAllRawCorsePixels( COARSE_DIMBLUE );
+    
+    while (1) {
 
-    processInboundIRPackets();       // Read any incoming packets looking for pulls & pull requests
+        processInboundIRPackets();       // Read any incoming packets looking for pulls & pull requests
 
-    if (countdown_until_next_seed==0 && download_next_page ) {      // Don't bother sending a seed until we have something to share
+        if (countdown_until_next_seed==0 && download_next_page > 0  ) {      // Don't bother sending a seed until we have something to share
 
-        setRawPixelCoarse( next_seed_face , COARSE_OFF );
+            setRawPixelCoarse( next_seed_face , COARSE_OFF );
 
-        next_seed_face = pgm_read_byte( next_stagered_face + next_seed_face );      // Get next staggered face to send on
+            next_seed_face = pgm_read_byte( next_stagered_face + next_seed_face );      // Get next staggered face to send on
 
-        setRawPixelCoarse( next_seed_face , COARSE_BLUE );                          // SHow blue on the face we are sending seed packet
+            setRawPixelCoarse( next_seed_face , COARSE_BLUE );                          // SHow blue on the face we are sending seed packet
 
-        send_seed_packet( next_seed_face , download_total_pages , active_program_checksum );
+            send_seed_packet( next_seed_face , download_total_pages , active_program_checksum );
 
-        reset_countdown_until_next_seed();
+            reset_countdown_until_next_seed();
 
-    }
-
-    if (countdown_until_done==0) {
-
-        // We timed out waiting for something to happen, so reboot.
-        // For now we should lock up, but eventually we can use the chain of ACTIVE packets to trigger the root to send
-        // a START NOW packet and everyone can reboot at once and no chance of accidentally getting an seed loop
-
-        setAllRawCorsePixels( COARSE_GREEN );
-
-        // All read means download failed.
-        // red/blue alternating means it worked
-
-        if ( download_next_page > download_total_pages ) {
-            setRawPixelCoarse( 0 , COARSE_BLUE );               // If download worked, show alternating blue/green
-            setRawPixelCoarse( 2 , COARSE_BLUE );
-            setRawPixelCoarse( 4 , COARSE_BLUE );
         }
-    }
+
+        #warning
+        if (0 && countdown_until_done==0) {
+
+            // We timed out waiting for something to happen, so reboot.
+            // For now we should lock up, but eventually we can use the chain of ACTIVE packets to trigger the root to send
+            // a START NOW packet and everyone can reboot at once and no chance of accidentally getting an seed loop
+
+            setAllRawCorsePixels( COARSE_GREEN );
+
+            // All read means download failed.
+            // red/blue alternating means it worked
+
+            if ( download_next_page > download_total_pages ) {
+                setRawPixelCoarse( 0 , COARSE_BLUE );               // If download worked, show alternating blue/green
+                setRawPixelCoarse( 2 , COARSE_BLUE );
+                setRawPixelCoarse( 4 , COARSE_BLUE );
+            }
+        }
+        
+    }        
 
 }
 
@@ -778,7 +802,7 @@ void run(void) {
 
     sei();					// Let interrupts happen. For now, this is the timer overflow that updates to next pixel.
 
-    while (1) {
+    for(uint8_t blink=0;blink<5;blink++) {
 
         if (GPIOR1 == 'S') {
 
@@ -815,44 +839,31 @@ void run(void) {
 
 }
 
-void force_section_not_gc() __attribute__((used));
-void force_section_not_gc() __attribute__((section("zerobase")));
-void force_section_not_gc() __attribute__((naked));
 
-void force_section_not_gc() {
-    asm("jmp 0x6364");
-}
 
 
 extern "C" void __vector_3 (void) __attribute__((section("zerobase")));
+extern "C" void __vector_3 (void) __attribute__((naked));
 
-ISR(__vector_3) {
-    force_section_not_gc();
-}
-
-//void dummymain2() __attribute__((section("zerobase"))) __attribute__((used));
-void dummymain2() __attribute__((used));
-void dummymain2() __attribute__((section("zerobase")));
-
-void dummymain2() {
+extern "C" void __vector_3 (void) {
 
     asm("eor r1,r1");
 
     BUTTON_PORT |= _BV(BUTTON_BIT);
 
-    _delay_ms( 500 );           // Give pull up a sec to act
+    _delay_ms( 100 );           // Give pull up a sec to act
 
-    if ( ! BUTTON_PIN & BUTTON_BIT) {       // Pin goes low when button pressed because of pull up
+    if ( ! ( BUTTON_PIN & _BV(BUTTON_BIT) ) ) {       // Pin goes low when button pressed because of pull up
 
         GPIOR1 = 'S';
 
-        } else {
+    } else {
 
         GPIOR1 = 'D';
 
     }
 
-    asm("jmp 0x6262");
+    asm("jmp 0x3800");
 
 
 }
