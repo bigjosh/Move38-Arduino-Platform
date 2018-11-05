@@ -27,10 +27,10 @@ struct seed_payload_t {           // Sending blink telling neighbor there is a n
 };
 
 
-struct pull_payload_t {                   // Blink asking neighbor for a block of a new game
+struct pull_payload_t {                 // Blink asking neighbor for a block of a new game
     uint8_t page;                       // The block we want the neighbor to send
-};
-
+};                                      // Note that we don't need a checksum here becuase a currupt pull
+                                        // will generate a push that we will just ignore
 
 struct blinkboot_packet {
 

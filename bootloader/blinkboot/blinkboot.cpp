@@ -61,7 +61,7 @@
 #include "blinkos_headertypes.h"
 
 #define US_PER_TICK        256UL
-#define US_PER_MS         1000UL 
+#define US_PER_MS         1000UL
 #define TICK_PER_MS       ( US_PER_MS / US_PER_TICK)
 #define MS_TO_TICKS( milliseconds ) ( milliseconds / MS_PER_TICK )
 
@@ -116,7 +116,7 @@ static void reset_countdown_until_next_seed() {
 
 
 static void reset_countdown_until_done() {
-    countdown_until_done=COUNTDOWN_UNTIL_NEXT_DONE_COUNT;    
+    countdown_until_done=COUNTDOWN_UNTIL_NEXT_DONE_COUNT;
 }
 
 
@@ -146,7 +146,7 @@ void timer_256us_callback_sei(void) {
             countdown_until_done--;
         }
     }
-    
+
 }
 
 // This is called by timer ISR about every 256us with interrupts on.
@@ -294,7 +294,7 @@ uint8_t checksum_128byte_RAM_buffer( const uint8_t *buffer ) {
 
 
 
-uint8_t push_packet_computed_checksum( const push_payload_t &push_payload ) {
+uint8_t push_packet_payload_checksum( const push_payload_t &push_payload ) {
 
     uint8_t checksum = checksum_128byte_RAM_buffer( push_payload.data );  // Start with the checksum of the data part
 
@@ -463,6 +463,29 @@ inline void sendNextPullPacket() {
 }
 
 
+// Returns 1 if this packet passes length and checksum tests for valid push packet
+
+uint8_t inline push_packet_valid( const blinkboot_packet *push_packet , uint8_t packet_len ) {
+
+    // Right packet length?
+
+    if ( packet_len != sizeof( push_payload_t ) + 1  ) {        // +1 to include the header byte
+        return 0;
+    }
+
+    // Check that the payload data is intact
+
+    if (  push_packet_payload_checksum( push_packet->push_payload )  != push_packet->push_payload.packet_checksum ) {
+        return 0;
+    }
+
+    // TODO: check the packet checksum that protects the page number and header
+
+    return 1;
+}
+
+
+
 // List of faces in order to seed. We stager them so that hopefully we can make gaps so that adjacent
 // blinks can download from each other rather than from us.
 
@@ -485,8 +508,6 @@ void processInboundIRPackets() {
 
     for( uint8_t f=0; f< IRLED_COUNT ; f++ ) {
 
-        asm("nop");
-
         if (irDataIsPacketReady(f)) {
 
             uint8_t packetLen = irDataPacketLen(f);
@@ -506,7 +527,7 @@ void processInboundIRPackets() {
 
                 // This is a packet of flash data
 
-                if (packetLen== sizeof( push_payload_t ) + 1  ) {        // Push packet payload plus header byte. Just an extra check that this is a valid packet.
+                if ( push_packet_valid( data , packetLen ) )  {        // Push packet payload plus header byte. Just an extra check that this is a valid packet.
 
                     // Note we do not check for program checksum while downloading. If we somehow start downloading a different game, it should result
                     // in a bad total checksum when we get to the last block so We can do something other than jumping into the mangled flash image.
@@ -519,44 +540,45 @@ void processInboundIRPackets() {
 
                     if ( packet_page_number == download_next_page) {        // Is this the one we are waiting for?
 
+                        Debug::tx( 'G' );
                         Debug::tx( packet_page_number );
 
-                        if (  push_packet_computed_checksum( data->push_payload )  == data->push_payload.packet_checksum) {
+                        // We got a good packet, good checksum on data, and it was the one we needed, and it is the right game!!!
 
-                            // We got a good packet, good checksum on data, and it was the one we needed, and it is the right game!!!
+                        burn_page_to_flash( packet_page_number , data->push_payload.data );
 
-                            burn_page_to_flash( packet_page_number , data->push_payload.data );
+                        download_next_page++;
 
-                            download_next_page++;
+                        // Blink GREEN with each packet that gets us closer (out of order packets will not change the color)
+                        setRawPixelCoarse( f , download_next_page & 1 ? COARSE_GREEN : COARSE_DIMGREEN );
 
-                            // Blink GREEN with each packet that gets us closer (out of order packets will not change the color)
-                            setRawPixelCoarse( f , download_next_page & 1 ? COARSE_GREEN : COARSE_DIMGREEN );
+                        if (download_next_page == download_total_pages ) {
 
-                            if (download_next_page == download_total_pages ) {
+                            download_next_page++;           // This hack makes download_next_page > download_total_pages when the download is complete
 
-                                download_next_page++;           // This hack makes download_next_page > download_total_pages when the download is complete
+                            // We are done downloading! Anything else we should do here?
 
-                                // We are done downloading! Anything else we should do here?
+                            setAllRawCorsePixels( COARSE_BLUE );
 
-                                setAllRawCorsePixels( COARSE_BLUE );
+                        } else {
 
-                            } else {
+                            // we are still downloading, so dont time out as long as we are getting valid push packets that get us closer
+                            // to being done
 
-                                // we are still downloading, so dont time out as long as we are getting valid push packets that get us closer
-                                // to being done
+                            reset_countdown_until_done();
+                            
+                            // Grease the wheels to get get next push quickly and continue the download
+                            sendNextPullPacket();
+                            // The other side should be waiting for this and ready to send the next push right away
+                            // but if anything goes wrong, the source will step to the next face and try to download to them 
+                            // and eventually come back to us with a seed to get things started again. 
+                            
+                            
 
-                                reset_countdown_until_done();
-
-                                // We should have another seed waiting for us to trigger next pull so no need to grease that wheel here.
-
-                            }
-
-
-                        } else {    // push_packet_computed_checksum( data->push_payload )  == data->push_payload.packet_checksum)
-
-                            setRawPixelCoarse( f , COARSE_RED );
+                            // We should have another seed waiting for us to trigger next pull so no need to grease that wheel here.
 
                         }
+
 
                     } else { //  if ( ! packet_page_number == download_next_page)
 
@@ -564,11 +586,13 @@ void processInboundIRPackets() {
 
                     }
 
+
                     // We will pull next page when the source gets back around to sending us another seed packet to show it
                     // is our turn.
 
-                } else {          // (packetLen== (PAGE_SIZE + 5 ) && packet_game_checksum == download_checksum  )
+                } else {     // if ( push_packet_valid( data ) ) )
 
+                    // invalid push packet
                     setRawPixelCoarse( f , COARSE_RED );
 
                 }
@@ -591,7 +615,11 @@ void processInboundIRPackets() {
 
                             download_source_face = f;
 
-                            next_seed_face = pgm_read_byte( next_stagered_face + download_source_face );    // Start our seeding as far away from the source as possible to distribute the distribution
+                            next_seed_face = download_source_face + 2;  // Start seeding up and to the left.
+                                                                        // This always skips the next next counter clockwise face to give some room for distributed downloading.
+                                                                        // TODO: Is this the best simple strategy?
+
+                            if (next_seed_face>=6) next_seed_face-=6;   // In case we wrapped around past face 5
 
                             // We will not start seeding until we actually have something to send
 
@@ -624,8 +652,8 @@ void processInboundIRPackets() {
                     if (requested_page<download_next_page) {            // Do we even have the next page?
 
                         send_push_packet( f , requested_page  );
-
-                        trigger_countdown_until_next_seed();            // Send next seed immediately so they don't have to wait and they are likely to be able to pull next packet
+                        
+                        reset_countdown_until_next_seed();              // Give the recipient time to do a pull when they are ready for it
 
                         reset_countdown_until_done();                   // As long as we are getting pulls, someone still needs us
 
@@ -671,9 +699,9 @@ void move_interrupts_to_bootlader(void)
  // TODO: Jump into all these to save all that pushing and poping. We will never be returing, so all for naught.
 
 inline void download_and_seed_mode() {
-    
+
     setAllRawCorsePixels( COARSE_DIMBLUE );
-    
+
     while (1) {
 
         processInboundIRPackets();       // Read any incoming packets looking for pulls & pull requests
@@ -682,7 +710,12 @@ inline void download_and_seed_mode() {
 
             setRawPixelCoarse( next_seed_face , COARSE_OFF );
 
-            next_seed_face = pgm_read_byte( next_stagered_face + next_seed_face );      // Get next staggered face to send on
+            do {
+
+                next_seed_face = pgm_read_byte( next_stagered_face + next_seed_face );      // Get next staggered face to send on
+
+            } while ( next_seed_face == download_source_face );         // No need to seed the source face, he already has everything we have
+                                                                        // Thie while should only trigger at most one time
 
             setRawPixelCoarse( next_seed_face , COARSE_BLUE );                          // SHow blue on the face we are sending seed packet
 
@@ -710,8 +743,8 @@ inline void download_and_seed_mode() {
                 setRawPixelCoarse( 4 , COARSE_BLUE );
             }
         }
-        
-    }        
+
+    }
 
 }
 
@@ -864,6 +897,14 @@ extern "C" void __vector_3 (void) {
     }
 
     asm("jmp 0x3800");
+
+    GPIOR1='J';
+    GPIOR1='O';
+    GPIOR1='S';
+    GPIOR1='H';
+
+    asm(" .byte 'M' ");
+    asm(" .byte 'M' ");
 
 
 }
