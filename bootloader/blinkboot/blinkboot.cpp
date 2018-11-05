@@ -94,7 +94,7 @@ volatile uint8_t countdown_until_next_seed;  // When do we try and send a seed a
                                     // We have to wait a bit between seeds to give the other side a sec to answer if they want to pull
 
 #warning make this shorter
-#define COUNTDOWN_UNTIL_NEXT_SEED_MS    100UL     // Long enough that they can see out seed and get back to use with a PULL
+#define COUNTDOWN_UNTIL_NEXT_SEED_MS    50UL     // Long enough that they can see out seed and get back to use with a PULL
 #define COUNTDOWN_UNTIL_NEXT_SEED_COUNT MS_TO_COUNTS( COUNTDOWN_UNTIL_NEXT_SEED_MS )
 
 #if (COUNTDOWN_UNTIL_NEXT_SEED_COUNT > 255 )     // So ugly. There must be a way to get the max value of a type at compile time?
@@ -558,7 +558,7 @@ void processInboundIRPackets() {
 
                             // We are done downloading! Anything else we should do here?
 
-                            setAllRawCorsePixels( COARSE_BLUE );
+                            setRawPixelCoarse( f , COARSE_GREEN );
 
                         } else {
 
@@ -625,9 +625,7 @@ void processInboundIRPackets() {
 
                             //download_next_page=0;                 // It inits to zero so we don't need this explicit assignment
 
-                            setAllRawCorsePixels( COARSE_OFF );
-
-                            setRawPixelCoarse( f , COARSE_BLUE );
+                            setRawPixelCoarse( f , COARSE_GREEN );
 
                         }   //  if ( download_total_pages == 0 ) - we need a source
 
@@ -715,7 +713,7 @@ inline void download_and_seed_mode() {
                 next_seed_face = pgm_read_byte( next_stagered_face + next_seed_face );      // Get next staggered face to send on
 
             } while ( next_seed_face == download_source_face );         // No need to seed the source face, he already has everything we have
-                                                                        // Thie while should only trigger at most one time
+                                                                        // This while should only trigger at most one time
 
             setRawPixelCoarse( next_seed_face , COARSE_BLUE );                          // SHow blue on the face we are sending seed packet
 

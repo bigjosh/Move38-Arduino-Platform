@@ -65,6 +65,12 @@ inline coarsePixelColor_t::coarsePixelColor_t() {
 #define COARSE_MAGENTA  coarsePixelColor_t( 3 , 0 , 3 )
 
 
+#define COARSE_GREEN0    coarsePixelColor_t( 0 , 0 , 0 )
+#define COARSE_GREEN1    coarsePixelColor_t( 0 , 1 , 0 )
+#define COARSE_GREEN2    coarsePixelColor_t( 0 , 2 , 0 )
+#define COARSE_GREEN3    coarsePixelColor_t( 0 , 3 , 0 )
+
+
 void setRawPixelCoarse( uint8_t face , coarsePixelColor_t color );
 
 void setAllRawCorsePixels( coarsePixelColor_t color );
