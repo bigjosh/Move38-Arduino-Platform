@@ -218,7 +218,7 @@ void __attribute__ ((noinline)) burn_page_to_flash( uint8_t page , const uint8_t
         sei();
     }
 
-    cli();
+    //cli();
 
     // We have to leave ints off for the full erase/write cycle here
     // until we get all the int handlers up into the bootloader section.
@@ -233,9 +233,9 @@ void __attribute__ ((noinline)) burn_page_to_flash( uint8_t page , const uint8_t
 
     boot_spm_busy_wait( );
 
-   boot_rww_enable();       // Enable the normal memory
+    boot_rww_enable();       // Enable the normal memory
 
-    sei();                  // Don't want to have an int going to normal memory until it works again.
+    //sei();                  // Don't want to have an int going to normal memory until it works again.
 
 
 /*
@@ -525,8 +525,6 @@ uint8_t active_packet_valid( const blinkboot_packet *active_packet , uint8_t pac
 
 // So, for example, if we are on face 0 then next we will jump to face 2. After 2 comes 4. See? Cute, right?
 
-
-
 static PROGMEM const uint8_t next_stagered_face[FACE_COUNT] = { 2 , 3 , 4 , 5 , 1 , 0 } ;
 
 // Read in any pending packets and react to to them
@@ -723,9 +721,6 @@ void processInboundIRPackets() {
 
                 } // if (requested_page<download_next_page)
 
-
-                // setcolor green?
-
             }// if (data->header == IR_PACKET_HEADER_PULLREQUEST )
 
             irDataMarkPacketRead(f);
@@ -809,144 +804,6 @@ void move_interrupts_to_bootlader(void)
 
 }
 
- // If we do not already have an active game (as indicated by download_next_page and download_total_pages), then
- // wait for a seed packet and start downloading. If we do already have an active game, just start seeding.
-
- // TODO: Jump into all these to save all that pushing and poping. We will never be returing, so all for naught.
-
- // Call with 1 to copy the built in game to active area
- 
-void __attribute__((section("subbls"))) __attribute__((used)) __attribute__ ((noinline)) download_and_seed_mode(); 
-
-void download_and_seed_mode( uint8_t revert_to_built_in ) {
-
-
-    while (1) {
-
-        if (revert_to_built_in) {
-
-            #warning Implement copy_built_in_game_to_active()
-
-            active_program_checksum = calculate_active_game_checksum();
-
-            download_total_pages = DOWNLOAD_MAX_PAGES;       // For now always send the whole thing. TODO: Base this on actual program length if shorter?
-            download_next_page = download_total_pages+1;    // Special value of next > total signals totally downloaded, so just seed mode
-            download_source_face = SOURCE_FACE_NONE;        // We are the root
-        }
-
-
-        setAllRawCorsePixels( COARSE_DIMBLUE );
-
-        reset_countdown_until_next_seed();
-        reset_countdown_until_done();
-
-        while (countdown_until_done) {
-
-            Debug::tx('L');
-
-            processInboundIRPackets();       // Read any incoming packets looking for pulls & pull requests
-
-            if (countdown_until_next_seed==0 && download_next_page > 0  ) {      // Don't bother sending a seed until we have something to share
-
-                setRawPixelCoarse( next_seed_face , COARSE_OFF );
-
-                do {
-
-                    next_seed_face = pgm_read_byte( next_stagered_face + next_seed_face );      // Get next staggered face to send on
-
-                } while ( next_seed_face == download_source_face );         // No need to seed the source face, he already has everything we have
-                                                                            // This while should only trigger at most one time
-
-                setRawPixelCoarse( next_seed_face , COARSE_BLUE );                          // SHow blue on the face we are sending seed packet
-
-                send_seed_packet( next_seed_face , download_total_pages , active_program_checksum );
-
-                reset_countdown_until_next_seed();
-
-            }
-
-        }
-
-
-        // We timed out waiting for something to happen, so reboot.
-        // For now we should lock up, but eventually we can use the chain of ACTIVE packets to trigger the root to send
-        // a START NOW packet and everyone can reboot at once and no chance of accidentally getting an seed loop
-
-
-        if ( download_next_page > download_total_pages ) {
-
-            // Download was a success
-            setAllRawCorsePixels( COARSE_GREEN );
-
-            if ( download_source_face != SOURCE_FACE_NONE ) {
-
-                // We were not the root of this download, so we now sit patiently and wait
-                // for the root to see that everyone is done and send a viral LETSGO packet
-
-                wait_for_lets_go_packet();
-
-                // If lets go times out, then we just start the active game anyway.
-                // Should be a long timeout relative to how long the game takes to download
-
-            }
-
-            // Ok either we are the root, in which case we are starting the LETSGO chain
-            // or we got here becuase we ourself just got a letsgo so we will now send it virally.
-
-            // Send it 3 times. SHould be enough o survive looses
-
-            for(uint8_t tries=3; tries; tries--) {
-
-                // We send on all faces. Would could be cool and skip the source since he already knows,
-                // but this is a short quick packet so not worth the hassle.
-                // Yea, we might have a collisions with him here, but who cases since we both are already
-                // inescapably sliding down the letsgo sequnce anyway
-
-                for( uint8_t f=0; f<FACE_COUNT; f++ ) {
-
-                    send_letsgo_packet( f );
-
-                }
-
-            }
-
-            // OK PEOPLE, LETS GO START THE GAME EVERYONE !!!!!
-
-            for(uint8_t blink=0;blink<5;blink++) {
-
-                if (GPIOR1 == 'S') {
-
-                    setAllRawCorsePixels( COARSE_GREEN );
-                    _delay_ms(100);
-                    setAllRawCorsePixels( COARSE_RED );
-                    _delay_ms(100);
-
-                } else {
-
-                    setAllRawCorsePixels( COARSE_BLUE );
-                    _delay_ms(100);
-                    setAllRawCorsePixels( COARSE_RED );
-                    _delay_ms(200);
-
-
-                }
-            }
-
-                asm("cli");
-            asm("jmp 0x0000");
-
-        } else {
-
-            // Download failed
-            setAllRawCorsePixels( COARSE_RED );
-            _delay_ms(500);
-            revert_to_built_in = 1;     // Trigger us to load the built in game on next pass
-
-        }
-
-    }      // while (1) (keep trying until we have a good game in active area)
-
-}
 
 void copy_built_in_game_to_active() {
 
@@ -955,6 +812,113 @@ void copy_built_in_game_to_active() {
     // For now we will use whatever game happens to end up in the active area
 
 }
+
+ // If we do not already have an active game (as indicated by download_next_page and download_total_pages), then
+ // wait for a seed packet and start downloading. If we do already have an active game, just start seeding.
+
+ // TODO: Jump into all these to save all that pushing and poping. We will never be returning, so all for naught.
+
+ // Call with 1 to copy the built in game to active area
+
+void __attribute__((section("subbls"))) __attribute__((used)) __attribute__ ((noinline)) download_and_seed_mode();
+
+// We always exit by jumping to active game, so no need for a RET at the end or to save regs
+void __attribute__((naked)) download_and_seed_mode();
+
+void download_and_seed_mode( uint8_t revert_to_built_in ) {
+
+    if (revert_to_built_in) {
+
+        #warning Implement copy_built_in_game_to_active()
+
+        active_program_checksum = calculate_active_game_checksum();
+
+        download_total_pages = DOWNLOAD_MAX_PAGES;       // For now always send the whole thing. TODO: Base this on actual program length if shorter?
+        download_next_page = download_total_pages+1;    // Special value of next > total signals totally downloaded, so just seed mode
+        download_source_face = SOURCE_FACE_NONE;        // We are the root
+    }
+
+
+    setAllRawCorsePixels( COARSE_DIMBLUE );
+
+    reset_countdown_until_next_seed();
+    reset_countdown_until_done();
+
+    while (countdown_until_done) {
+
+        Debug::tx('L');
+
+        processInboundIRPackets();       // Read any incoming packets looking for pulls & pull requests
+
+        if (countdown_until_next_seed==0 && download_next_page > 0  ) {      // Don't bother sending a seed until we have something to share
+
+            setRawPixelCoarse( next_seed_face , COARSE_OFF );
+
+            do {
+
+                next_seed_face = pgm_read_byte( next_stagered_face + next_seed_face );      // Get next staggered face to send on
+
+            } while ( next_seed_face == download_source_face );         // No need to seed the source face, he already has everything we have
+                                                                        // This while should only trigger at most one time
+
+            setRawPixelCoarse( next_seed_face , COARSE_BLUE );                          // SHow blue on the face we are sending seed packet
+
+            send_seed_packet( next_seed_face , download_total_pages , active_program_checksum );
+
+            reset_countdown_until_next_seed();
+
+        }
+
+    }
+
+
+    // We timed out waiting for something to happen, so reboot.
+    // For now we should lock up, but eventually we can use the chain of ACTIVE packets to trigger the root to send
+    // a START NOW packet and everyone can reboot at once and no chance of accidentally getting an seed loop
+
+
+    if ( download_next_page > download_total_pages ) {
+
+        // Download was a success
+
+
+        // Do a little success flash
+        for(uint8_t x=0; x< 5; x++) {
+            setAllRawCorsePixels( COARSE_GREEN );
+            _delay_ms(100);
+            setAllRawCorsePixels( COARSE_OFF );
+            _delay_ms(100);
+        }
+
+    } else {
+
+        // Download failed
+
+        // Do a little failure flash
+        for(uint8_t x=0; x< 5; x++) {
+            setAllRawCorsePixels( COARSE_GREEN );
+            _delay_ms(100);
+            setAllRawCorsePixels( COARSE_OFF );
+            _delay_ms(100);
+        }
+
+        copy_built_in_game_to_active();
+
+        // If there is still someone Seeding us, then we will start downloading.
+        // Otherwise we just run our built in game.
+        // Hard to know what best to do in this situation.
+
+    }
+
+    // OK PEOPLE, LETS GO START THE GAME EVERYONE !!!!!
+
+    asm("cli");
+    asm("jmp 0x0000");
+
+
+}
+
+
 
 // This is not really an ISR, is it the entry point to start downloading from another tile
 // We mark it as naked because everything is already set up ok, we just want to jump straight in.
@@ -1023,9 +987,12 @@ void run(void) {
     move_interrupts_to_bootlader();      // Send interrupt up to the bootloader.
 
     setAllRawCorsePixels( COARSE_ORANGE );  // Set initial display
-    
+
 
     // copy_built_in_game_to_active();
+
+    active_program_checksum = calculate_active_game_checksum();     // We need this (1) to know if an incoming seed packet matters to use, and
+                                                                    // (2) to generate an outoging seed packet if we end up seeding
 
     sei();					// Let interrupts happen. For now, this is the timer overflow that updates to next pixel.
 
@@ -1086,11 +1053,11 @@ extern "C" void __vector_3 (void) {
     // Clear zero reg
 
     asm("eor r1,r1");
-    
+
     // BUmp CPU up to 8Mhz
-    
+
     CLKPR = _BV( CLKPCE );                  // Enable changes
-    CLKPR =				0;                  // DIV 1 (8Mhz clock with 8Mhz RC osc)    
+    CLKPR =				0;                  // DIV 1 (8Mhz clock with 8Mhz RC osc)
 
     // Init all SRAM variables to 0
 
@@ -1108,7 +1075,7 @@ extern "C" void __vector_3 (void) {
     button_enable_pu();                     // do this first so it has time to overcome capacitance
 
     pixel_init();
-    
+
     pixel_enable();
 
     move_interrupts_to_bootlader();      // Send interrupt up to the bootloader.
@@ -1129,10 +1096,10 @@ extern "C" void __vector_3 (void) {
          if (f==6) f=0;
 
     }
-    
+
     setAllRawCorsePixels( COARSE_ORANGE );  // Set initial display
 
-    _delay_ms(250);     
+    _delay_ms(250);
 
     if ( ! ( BUTTON_PIN & _BV(BUTTON_BIT) ) ) {       // Pin goes low when button pressed because of pull up
 
