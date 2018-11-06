@@ -94,7 +94,8 @@ volatile uint8_t countdown_until_next_seed;  // When do we try and send a seed a
                                     // We have to wait a bit between seeds to give the other side a sec to answer if they want to pull
 
 #warning make this shorter
-#define COUNTDOWN_UNTIL_NEXT_SEED_MS    50UL     // Long enough that they can see out seed and get back to use with a PULL
+#define COUNTDOWN_UNTIL_NEXT_SEED_MS    70UL     // Long enough that they can see out seed and get back to use with a PULL
+                                                 // Actually needs to be move than 63ms to be more than 2 counts or else bad timeing could maye one count aslias too quick
 #define COUNTDOWN_UNTIL_NEXT_SEED_COUNT MS_TO_COUNTS( COUNTDOWN_UNTIL_NEXT_SEED_MS )
 
 #if (COUNTDOWN_UNTIL_NEXT_SEED_COUNT > 255 )     // So ugly. There must be a way to get the max value of a type at compile time?
@@ -110,7 +111,6 @@ static void trigger_countdown_until_next_seed() {
 
 static void reset_countdown_until_next_seed() {
 
-#warning
     countdown_until_next_seed= COUNTDOWN_UNTIL_NEXT_SEED_COUNT;
 }
 
@@ -519,6 +519,18 @@ uint8_t active_packet_valid( const blinkboot_packet *active_packet , uint8_t pac
     return 1;
 }
 
+// Returns 1 if this packet passes length for valid active packet
+
+uint8_t seed_packet_valid( const blinkboot_packet *seed_packet , uint8_t packet_len ) {
+
+    if ( packet_len !=  (sizeof( seed_payload_t ) + 1 )  ) {        // +1 to include the header byte
+        return 0;
+    }
+    
+    // TODO: Check packet checksum here! A bad seed could mess things up. 
+
+    return 1;
+}
 
 // List of faces in order to seed. We stager them so that hopefully we can make gaps so that adjacent
 // blinks can download from each other rather than from us.
@@ -631,47 +643,39 @@ void processInboundIRPackets() {
 
                 }
 
-            } else if (data->header == ir_packet_header_enum::SEED) {             // This is other side telling us to start pulling new game from him
+            } else if (data->header == ir_packet_header_enum::SEED && seed_packet_valid( data , packetLen) ) {             // This is other side telling us to start pulling new game from him
 
                 if ( download_next_page <= download_total_pages ) {                // Do we need any more pages? (at start both will be 0, at end next will be total+1
 
-                    if ( packetLen== (sizeof( seed_payload_t ) + 1 ) ) {         // Seed request plus header byte
+                    if ( download_total_pages == 0 ) {      /// we are waiting for a good seed?
 
-                        if ( download_total_pages == 0 ) {      /// we are waiting for a good seed?
+                        // We found a good source - lock in and start downloading
 
-                            // We found a good source - lock in and start downloading
+                        #warning check seeed packet checksum!
 
-                            #warning check seeed packet checksum!
+                        download_total_pages = data->seed_payload.pages;
 
-                            download_total_pages = data->seed_payload.pages;
+                        active_program_checksum = data->seed_payload.program_checksum;
 
-                            active_program_checksum = data->seed_payload.program_checksum;
+                        download_source_face = f;
 
-                            download_source_face = f;
+                        next_seed_face = download_source_face + 2;  // Start seeding up and to the left.
+                                                                    // This always skips the next next counter clockwise face to give some room for distributed downloading.
+                                                                    // TODO: Is this the best simple strategy?
 
-                            next_seed_face = download_source_face + 2;  // Start seeding up and to the left.
-                                                                        // This always skips the next next counter clockwise face to give some room for distributed downloading.
-                                                                        // TODO: Is this the best simple strategy?
+                        if (next_seed_face>=6) next_seed_face-=6;   // In case we wrapped around past face 5
 
-                            if (next_seed_face>=6) next_seed_face-=6;   // In case we wrapped around past face 5
+                        // We will not start seeding until we actually have something to send
 
-                            // We will not start seeding until we actually have something to send
+                        //download_next_page=0;                 // It inits to zero so we don't need this explicit assignment
 
-                            //download_next_page=0;                 // It inits to zero so we don't need this explicit assignment
+                        setRawPixelCoarse( f , COARSE_GREEN );
 
-                            setRawPixelCoarse( f , COARSE_GREEN );
+                    }   //  if ( download_total_pages == 0 ) - we need a source
 
-                        }   //  if ( download_total_pages == 0 ) - we need a source
+                    // We got a seed packet, so source is ready for our pull
 
-                        // We got a seed packet, so source is ready for our pull
-
-                        sendNextPullPacket();
-
-                    }  else { // Packet length wrong for pull request
-
-                        setRawPixelCoarse( f , COARSE_RED );
-
-                    } //packetLen== (sizeof( pull_request_payload_t ) + 1 )
+                    sendNextPullPacket();
 
                 } //if ( download_next_page <= download_total_pages )  (ignore seed packets if we are already downloaded)
 
@@ -862,6 +866,8 @@ void download_and_seed_mode( uint8_t revert_to_built_in ) {
                                                                         // This while should only trigger at most one time
 
             setRawPixelCoarse( next_seed_face , COARSE_BLUE );                          // SHow blue on the face we are sending seed packet
+
+            Debug::tx( '0'+ next_seed_face ); 
 
             send_seed_packet( next_seed_face , download_total_pages , active_program_checksum );
 
