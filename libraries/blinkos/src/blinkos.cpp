@@ -200,7 +200,7 @@ void processPendingIRPackets() {
 
             // TODO: What packet type should be fastest check (doesn;t really matter THAT much, only a few cycles)
 
-            if (*data==  IR_PACKET_HEADER_SEED ) {
+            if (*data==  ir_packet_header_enum::SEED) {
 
                 Debug::tx( 'L' );
 
@@ -212,16 +212,16 @@ void processPendingIRPackets() {
 
                     // THis neighbor wants to send us a game
 
-                    asm("nop");
-                    asm("jmp 0x3800");
-                    //JUMP_TO_BOOTLOADER_DOWNLOAD();
+                     GPIOR1 = BOOTLOADER_GPOIR_DOWNLOAD_MODE;
+                     asm("cli");
+                     asm("jmp 0x3800");
 
                 }
 
                 irDataMarkPacketRead(f);
 
 
-            } else if (*data== IR_PACKET_HEADER_USERDATA ) {
+            } else if (*data== ir_packet_header_enum::USERDATA ) {
 
                 // Userland data
                 loopstate_in.ir_data_buffers[f].len=  packetLen-1;      // Account for the header byte
@@ -257,7 +257,7 @@ void processPendingIRPackets() {
 
 uint8_t ir_send_userdata( uint8_t face, const uint8_t *data , uint8_t len ) {
 
-    return ir_send_data( face , data , len ,  IR_PACKET_HEADER_USERDATA  );
+    return ir_send_data( face , data , len ,  ir_packet_header_enum::USERDATA  );
 /*
     // Ok, now we are ready to start sending!
 
@@ -300,7 +300,7 @@ uint8_t sendUserDataCRC( uint8_t face, const uint8_t *data , uint8_t len ) {
 
     uint8_t crc = IR_CRC_INIT;
 
-    crc = _crc8_ccitt_update( IR_PACKET_HEADER_USERDATA , crc );
+    crc = _crc8_ccitt_update( ir_packet_header_enum::USERDATA, crc );
 
     crc = crcupdate( data , len , crc );
 
@@ -308,7 +308,7 @@ uint8_t sendUserDataCRC( uint8_t face, const uint8_t *data , uint8_t len ) {
 
     if (irSendBegin( face ) ) {
 
-        irSendByte( IR_PACKET_HEADER_USERDATA );
+        irSendByte( ir_packet_header_enum::USERDATA );
 
         while (len--) {
 
@@ -405,16 +405,6 @@ void run(void) {
                                             // cost lots of unnecessary memory and coping
 
         grabAndClearButtonState( loopstate_in.buttonstate );     // Make a local copy of the instant button state to pass to userland. Also clears the flags for next time.
-
-        #warning THis is just for testing. Add propert long long press detecton
-
-        if (loopstate_in.buttonstate.bitflags & BUTTON_BITFLAG_LONGPRESSED ) {
-
-            asm("nop");
-            asm("jmp 0x3800");
-            //JUMP_TO_BOOTLOADER_SEED();
-
-        }
 
         loopstate_in.millis = millis_snapshot;
 

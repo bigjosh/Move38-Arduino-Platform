@@ -96,8 +96,8 @@
 
 #define TX_PULSE_SPACING_US 185          // 750us is the width of a SYNC symbol - which is the longest symbol we send. Good for testing ambient.
 
-#define RX_TOO_SHORT_TIME_US (TX_PULSE_SPACING_US*0.90)     // For detecting errors in RX mode
-#define RX_TOO_LONG_TIME_US  (TX_PULSE_SPACING_US*1.10)
+#define RX_TOO_SHORT_TIME_US ((TX_PULSE_SPACING_US * 8) / 10 )     // For detecting errors in RX mode
+#define RX_TOO_LONG_TIME_US  ((TX_PULSE_SPACING_US*12 ) / 10 )
 
 // Set up a 750us timer.
 // By default we are running at 1Mhz now

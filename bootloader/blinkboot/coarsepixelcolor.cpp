@@ -5,12 +5,14 @@
  */
 
 #include <stdint.h>
+#include <avr/pgmspace.h>
+
 #include "pixel.h"
 #include "coarsepixelcolor.h"
 
 // TODO: Move this to FLASH! Why is PROGMEM not working here?
 
-const uint8_t coarseColorGamma[4] = { 255 , 218 , 111 , 0 };        // The RAW PWM value for each brightness from full on to full off
+PROGMEM const uint8_t coarseColorGamma[4] = { 255 , 218 , 111 , 0 };        // The RAW PWM value for each brightness from full on to full off
 //const PROGMEM uint8_t coarseColorGamma[4] = { 255 , 218 , 111 , 0 };        // The RAW PWM value for each brightness from full on to full off
 
 void setRawPixelCoarse( uint8_t face , coarsePixelColor_t color ) {
@@ -22,9 +24,9 @@ void setRawPixelCoarse( uint8_t face , coarsePixelColor_t color ) {
     //rawpixel->rawValueR = pgm_read_byte_near( coarseColorGamma[ color.r ]  );
     //rawpixel->rawValueG = pgm_read_byte_near( coarseColorGamma[ color.g ]  );
     //rawpixel->rawValueB = pgm_read_byte_near( coarseColorGamma[ color.b ]  );
-    rawpixel->rawValueR = ( coarseColorGamma[ color.r ]  );
-    rawpixel->rawValueG = ( coarseColorGamma[ color.g ]  );
-    rawpixel->rawValueB = ( coarseColorGamma[ color.b ]  );
+    rawpixel->rawValueR = pgm_read_byte_near( coarseColorGamma + color.r   );
+    rawpixel->rawValueG = pgm_read_byte_near( coarseColorGamma + color.g   );
+    rawpixel->rawValueB = pgm_read_byte_near( coarseColorGamma + color.b   );
 
 }
 

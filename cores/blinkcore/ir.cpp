@@ -466,7 +466,7 @@ void ir_tx_start(uint8_t bitmask , uint16_t initialTicks ) {
 
 // TODO: single buffer this in case sender has a hiccup or is too slow to keep up?
 
-#warning
+#warning dont include debug
 #include"debug.h"
 
 void ir_tx_sendpulse( uint16_t delay_cycles) {    

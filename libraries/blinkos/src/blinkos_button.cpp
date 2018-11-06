@@ -1,6 +1,7 @@
 #include "blinkos.h"
 #include "blinkos_button.h"
 #include "button.h"
+#include "bootloader.h"
 
 // BUTTON CONSTANTS
 
@@ -19,8 +20,8 @@
 
 #define BUTTON_LONGPRESS_TIME_MS 2000          // How long you must hold button down to register a long press.
 
-#define BUTTON_3SECPRESS_TIME_MS 3000          
-#define BUTTON_5SECPRESS_TIME_MS 5000          
+#define BUTTON_SEEDPRESS_TIME_MS 3000          
+#define BUTTON_OFFPRESS_TIME_MS 5000          
 
 // Click Semantics
 // ===============
@@ -41,8 +42,7 @@ static uint16_t clickWindowCountdown=0;                 // How long until we clo
 
 static uint8_t clickPendingcount=0;                     // How many clicks so far int he current click window
 
-static uint16_t longPressCountdown=0;                   // How long until the current press becomes a long press
-
+static uint16_t pressCountup=0;                         // Start counting up when the button goes down to detect long presses 
 
 // Called once per tick by the timer to check the button position
 // and update the button state variables.
@@ -60,27 +60,38 @@ uint8_t updateButtonState1ms(buttonstate_t &buttonstate) {
     uint8_t buttonPositon = button_down();
 
     if ( buttonPositon == debouncedButtonPosition ) {
+        
+        // Debounced button position has not changed
 
         if (buttonDebounceCountdown) {
 
             buttonDebounceCountdown--;
 
         }
-
-        if (longPressCountdown) {
-
-            longPressCountdown--;
-
-            if (longPressCountdown==0) {
-
-                if (debouncedButtonPosition) {
-
-                    buttonstate.bitflags|= BUTTON_BITFLAG_LONGPRESSED;
-                    
-                }
-            }
-
-            // We can nestle the click window countdown in here because a click will ALWAYS happen inside a long press...
+        
+        if (buttonPositon) {        // Button currently down?
+            
+            if (pressCountup > BUTTON_OFFPRESS_TIME_MS) {
+                
+                // Force off
+                
+            } else if (pressCountup > BUTTON_SEEDPRESS_TIME_MS ) {
+                
+                 GPIOR1 = BOOTLOADER_GPOIR_SEED_MODE;
+                 asm("cli");
+                 asm("jmp 0x3800");
+                
+                //JUMP_TO_BOOTLOADER_SEED();
+                
+            } else if ( pressCountup > BUTTON_LONGPRESS_TIME_MS ) {
+                
+                buttonstate.bitflags|= BUTTON_BITFLAG_LONGPRESSED;
+                                
+            }                                         
+            
+           pressCountup++;          // DOn't need to worry about overflow becuase we will seed or turn off before then. 
+                        
+            // We can nestle the click window countdown in here because a click will ALWAYS happen while button is down...
 
             if (clickWindowCountdown) {
 
@@ -109,7 +120,7 @@ uint8_t updateButtonState1ms(buttonstate_t &buttonstate) {
 
             } //  if (clickWindowCountdown)
 
-        } //  if (longPressCountdown)
+        }  // if (buttonPositon) {        // Button currently down?
 
 
     }  else {       // New button position
@@ -125,7 +136,7 @@ uint8_t updateButtonState1ms(buttonstate_t &buttonstate) {
                 }
 
                 clickWindowCountdown = BUTTON_CLICK_TIMEOUT_MS ;
-                longPressCountdown   = BUTTON_LONGPRESS_TIME_MS;
+                pressCountup         = 0; 
 
             } else {
                 
