@@ -43,6 +43,11 @@ struct pull_payload_t {                   // Blink asking neighbor for a block o
     uint8_t page;                       // The block we want the neighbor to send
 };
 
+// ACTIVE, FINISHED, and LETSGO are no payload packets
+
+struct no_payload_t {                   // Pakctes that have no payload just have an inverted check byte
+    uint8_t inverted_check_byte ;       // header byte inverted
+};
 
 
 struct blinkboot_packet {
@@ -54,7 +59,7 @@ struct blinkboot_packet {
         push_payload_t          push_payload;
         seed_payload_t          seed_payload;
         pull_payload_t          pull_payload;
-
+        no_payload_t            no_payload;
     };
 };
 
