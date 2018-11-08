@@ -12,16 +12,15 @@ The bootloader is responsible for loading the active game either by copying the 
 
 The only way the built-in game can run is after being copied down to the active area first. This is because all the addresses in every game are referenced from the 0 base address by the linker. Copying the built-in game to the active area first also makes it so that the same exact image is running regardless of what the source (local or downloaded) of the active game was.
 
-The bootloader lives in the AVR's special bootloader area at the top of flash memory. This memory is special because the hardware will only allow code in this area to write to flash memory. (There are ways around this, but not really practical for this application.) 
+The bootloader lives in the AVR's bootloader area at the top of flash memory. This memory is special because the hardware will only allow code in this area to write to flash memory. (There are ways around this, but not really practical for this application.) 
 
 The maximum bootloader size possible on this chip is 2KB. This leaves 14KB for the games, which is split up 7KB for the active game and 7KB for the built-in game image. 
 
-The bootloader and built-in game image are typically programmed at the factory and must be present. Right now the game image is total independent, so it is possible to program a blink with a game directly and have it just run (mostly useful for development), but it is expected that we will move some functions (like pixel updates, IR updating, and maybe button updating) up to the bootloader to avoid having them duplicated in each game image.  
+The bootloader and built-in game image are typically programmed at the factory and must be present. Right now the game image is totally independent, so it is possible to program a blink with a game directly and have it just run (mostly useful for development), but it is expected that we will move some functions (like pixel updates, IR updating, and maybe button updating) up to the bootloader to avoid having them duplicated in each game image.  
 
 ## Bootloader state diagram
 
-!(Bootloader state diagram)[./bootloader.svg]
-
+!(Bootloader state diagram)[./Blink Bootloader State Diagram.png]
 
 ## Power up
 
@@ -29,7 +28,7 @@ The `BOOTRST` fuse is programmed, so the AVR immediately jumps to the bootloader
 
 The bootloader sets `IVSEL`, which activates the bootloader's ISR table rather than the one at the bottom of flash memory where the active game will live. This is important so that the bootloader can use these interrupts while programming a new game into the active area. Note that once an active game is loaded and started, then that game could potentially clear the `IVSEL` bit again to take over interrupts if it wants to. Currently games do this so they are self-contained, but soon hopefully most games will want to leave the bootloader ISRs in place to save space. A game could also potentially take over only some of the ISRs by setting the vectors it wants to replace in the lower ISR table and using jumps up to the ones in the bootloader for the others, and then clearing `IVSEL`.     
 
-At bootup, bootloader the blink copies the built-in game into the active area and then jumps to it. This gives an escape hatch so that reseting or pulling the battery on a blink always results in a good active image. Otherwise a downloaded active image could disable the bootloader's ability to run and lock it self in. 
+At reset, the bootloader copies the built-in game into the active area and then jumps to it. This gives an escape hatch so that reseting or pulling the battery on a blink always results in a good active image. Otherwise a downloaded active image could disable the bootloader's ability to run and lock it self in. 
 
 ## Software IPC between bootloader and game
 
@@ -39,16 +38,15 @@ Eventually the bootloader will handle all pixel, IR, and button stuff for the ga
 
 Since we will almost certainly never use the external interrupt pins, we can take over interrupt vectors 1 and 2 and use them for letting the bootloader and game call each other.
 
-
 ### Bootloader jump points 
 
 Here are the jump points that that the bootloader exposes to the game:
 
 Vector 0: At address 0x3800. This is the normal entry point at hardware reset and will copy the built-in game down to the active area and execute it starting at the game reset vector 0x000. 
 
-Vector 1: At address 0x3804. This is the entry point for "seeding" mode. The bootloader will take over interrupts and start trying to send this game to neighboring tiles. When it is done, it will restart the active game by jumping to 0x0000. 
+Vector 1: At address 0x3804. This is the entry point for "seeding" mode. The bootloader will take over interrupts and start trying to send this game to neighboring tiles. When it is done, it will restart the active game by jumping to 0x0000.
 
-Vector 1: At address 0x3808. This is the entry point for "download" mode. The bootloader will take over interrupts and start trying to download a new game from a neighboring tile. `R25` must contain the face that the "seed" packet came from. This will be used as the source for the download. 
+Interrupts should be off (`cli()`) when jumping to these vectors. 
 
 ### Game jump points 
 
@@ -257,6 +255,29 @@ Once we are in game download mode, we repeatedly ask out neighbors for new block
 A game in sending mode will reply to a pull packet with a push packet. The game checksum is included so the receipt can verify it is for the correct game. The total length of this packet is 133 bytes.  
 
 Since FLASH pages are 128 bytes long on this chip and we send a full page in each packet, it will ideally take [56 push packets](https://www.google.com/search?rlz=1C1CYCW_enUS687US687&ei=FpzQW_7XMuuMggevqb_YDw&q=%28%280x0e00*2%29+%2F+128+%29+in+decmial&oq=%28%280x0e00*2%29+%2F+128+%29+in+decmial&gs_l=psy-ab.3...9892.17114..17387...0.0..0.67.544.9......0....1..gws-wiz.......0i71j33i10.rIT_Mh01HY4) to send a full game (assuming no errors or dropped packets).  
+
+
+## Sequencing
+
+### DOWNSTREAM PACKETS
+
+Root starts sending SEED packets on faces in a skip pattern to try to distribute downloads.
+
+Non-root blinks start sending SEED packets on all faces except for source face as soon as they have any data to share. It uses the same skip pattern.  
+
+If sending blinks gets a PULL then it sends a PUSH and moves on to next face.
+
+If sending blink gets an ACTIVE or FINISHED, then it moves on to next face.  
+
+### UPSTREAM RESPONSES
+
+Downstream packets are always sent in repose to an incoming packet from the source. This makes sure the source is ready to get something from us and no collisions. 
+
+A blink always checks its source for upstream packets before servicing downstream faces. This makes sure the source never has to wait more than one PUSH cycle time to get a response, and also speeds up downloading. 
+
+On getting a SEED, if we are not downloading then we lock into the sender as our source and send a PULL. If we are downloading then we also send a PULL (means that a packet was missed somewhere). If we are done downloading then we send an ACTIVE or FINISHED.
+
+On getting a PUSH, if we have more to get then we send a PULL to keep things going. If we are done downloading then we send an ACTIVE or FINISHED. 
 
 
 ## Compiling
