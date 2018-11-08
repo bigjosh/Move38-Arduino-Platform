@@ -394,10 +394,8 @@ inline void wait_for_ir_led_trigger() {
 }
 
 
-//template <uint8_t rx_led>
+template <uint8_t rx_led>
 void rx_mode_on_led() {
-
-    const uint8_t rx_led = 0;
 
     SBI( IR_ANODE_DDR  , rx_led );
     CBI( IR_ANODE_PORT , rx_led );
@@ -426,7 +424,7 @@ void rx_mode_on_led() {
         too_long_flag=0;
 
         // First pass we have to do by hand to get in phase with the transmitter
-        
+
         charge_ir_led<rx_led>();
         wait_for_ir_led_trigger<rx_led>();
 
@@ -509,15 +507,12 @@ void rx_mode_on_led() {
 }
 
 void rx_mode() {
-    rx_mode_on_led();
-    /*
     rx_mode_on_led<0>();
     rx_mode_on_led<1>();
     rx_mode_on_led<2>();
     rx_mode_on_led<3>();
     rx_mode_on_led<4>();
     rx_mode_on_led<5>();
-    */
 }
 
 
