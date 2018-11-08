@@ -11,8 +11,12 @@
  * TX mode
  * =======
  * Blink sends an IR pulse every 750us on the active face
+ *
+ * The 'A' pin on the service port connector goes high while the IR LED is on.
+ *
  * The RGB LED on the active face shows green to indicate TX mode
- * Long pushing button (>0.5s) cycles though pulse transmitted pulse width
+ *
+ * Long button press (>0.5s) cycles though pulse transmitted pulse width
  * The pulse width is indicated by the number of BLUE LEDS lit:
  *
  *    1 blue = 5us
@@ -21,14 +25,16 @@
  *    4 blue = 12us
  *    5 blue = 15us
  *
- * The 'A' pin on the service port connector goes high while the IR LED is on.
- *
- * Short pressing (<0.5s) the button advances to the next face
- * Pressing the button after the last face switches to RX mode
+ * Short button press (<0.5s) the button advances to the next face
+ * Short button press after the last face switches to RX mode
  *
  * RX mode
  * =======
  * Blink listens for IR triggers on the active face
+ *
+ * The 'A' pin on the service port connector pulses high when the active IR LED is triggered. This
+ * pulse width is fixed and only indicates that a trigger happened.
+ *
  * The RGB LED on the active face shows RED to indicate RX
  * The time since the last trigger is indicated by which BLUE LEDS lit:
  *
@@ -36,11 +42,11 @@
  *    P3  Blue    = >650us and <950us   (Just right)
  *    P4  Magenta = >950us              (Too long)
  *
- * The 'A' pin on the service port connector pulses high when the active IR LED is triggered. This
- * pulse width is fixed and only indicates that a trigger happened.
+ * The two error cases are latching, so if even a single error is detected then the pixel will stay on.
  *
- * Pressing the button in RX mode advances to the next face
- * Pressing the button in RX mode after the last face goes to sleep mode
+ * Short button press clears any errors.
+ * Long button press advances to the next face
+ * Long button press after the last face goes to sleep mode
  *
  * SLEEP MODE
  * ==========
