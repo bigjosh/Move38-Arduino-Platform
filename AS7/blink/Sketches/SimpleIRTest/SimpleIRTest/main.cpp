@@ -87,17 +87,16 @@
 #define CBI(x,b) (x&=~(1<<b))           // Clear bit in IO reg
 #define TBI(x,b) (x&(1<<b))             // Test bit in IO reg
 
-
 #define BUTTON_DEBOUNCE_TIME_MS 100      // Debounce button presses
 #define BUTTON_LONGPRESSS_TIME_MS   500
 
 #define IR_LED_CHARGE_TIME_US  5         // How long to charge up the IR LED in RX mode
 #define IR_LED_REST_TIME_US   15         // How long to wait after trigger detected before recharging
 
-#define TX_PULSE_SPACING_US 185          // 750us is the width of a SYNC symbol - which is the longest symbol we send. Good for testing ambient.
+#define TX_PULSE_SPACING_US 750          // 750us is the nominal width of a SYNC symbol - which is the longest symbol we send. Good for testing ambient.
 
 #define RX_TOO_SHORT_TIME_US ((TX_PULSE_SPACING_US * 8) / 10 )     // For detecting errors in RX mode
-#define RX_TOO_LONG_TIME_US  ((TX_PULSE_SPACING_US*12 ) / 10 )
+#define RX_TOO_LONG_TIME_US  ((TX_PULSE_SPACING_US* 12) / 10 )
 
 // Set up a 750us timer.
 // By default we are running at 1Mhz now
@@ -376,90 +375,149 @@ void tx_mode() {
 
 }
 
+template <uint8_t rx_led>
+inline void charge_ir_led() {
 
-#define  COUNTDOWN_FLAG_START 20       // Making this higher will make the feedback pixel stay on longer after an event
+    SBI( IR_CATHODE_DDR , rx_led );         // Charging up cathode
+    SBI( IR_CATHODE_PORT , rx_led );         // Charging up cathode
+    _delay_us( IR_LED_CHARGE_TIME_US );
+    CBI( IR_CATHODE_DDR , rx_led );          // Switching to input mode - Pull up enabled
+    CBI( IR_CATHODE_PORT , rx_led );         // Pull up disconnected so now just floating input
 
-
+}
 
 template <uint8_t rx_led>
+inline void wait_for_ir_led_trigger() {
+
+    while ( TBI( IR_CATHODE_PIN , rx_led ));  // Spin until the charge dissipates enough for pin to read `0`
+
+}
+
+
+//template <uint8_t rx_led>
 void rx_mode_on_led() {
 
-
-    uint8_t countdown_flag_too_short=0;
-    uint8_t countdown_flag_just_right=0;
-    uint8_t countdown_flag_too_long=0;
-
+    const uint8_t rx_led = 0;
 
     SBI( IR_ANODE_DDR  , rx_led );
     CBI( IR_ANODE_PORT , rx_led );
 
-    TCNT1 = 0;
+
+    uint8_t too_short_pixel_position = (rx_led + 2) % 6;
+    uint8_t just_right_pixel_positon = (rx_led + 3) % 6;
+    uint8_t too_long_pixel_position  = (rx_led + 4) % 6;
+
+    // Just remember until next pass
+    // so we can display while waiting for trigger
+
+    uint8_t just_right_flag;
+
+    // These latch errors so we can see if they happened.
+    // A button press clears any errors
+    uint8_t too_short_flag;
+    uint8_t too_long_flag;
+
+
 
     do {
 
+        too_short_flag=0;
+        just_right_flag=0;
+        too_long_flag=0;
 
-        SBI( IR_CATHODE_DDR , rx_led );         // Charging up cathode
-        SBI( IR_CATHODE_PORT , rx_led );         // Charging up cathode
-        _delay_us( IR_LED_CHARGE_TIME_US );
-        CBI( IR_CATHODE_DDR , rx_led );          // Switching to input mode - Pull up enabled
-        CBI( IR_CATHODE_PORT , rx_led );         // Pull up disconnected so now just floating input
+        // First pass we have to do by hand to get in phase with the transmitter
+        
+        charge_ir_led<rx_led>();
+        wait_for_ir_led_trigger<rx_led>();
 
-        // OK, we are now all charged up and ready to receive a pulse
-        // Since we don't care if the pulse is shorter than 650us (that would be an error)
-        // now is a good time to display the results from the last round
+        TCNT1 = 0;
 
-        pixel_flash( rx_led , 1 , 0 , 0 );               // Red on RX face to show we are receiving
+        do {
 
-        if (countdown_flag_too_short) {
-            pixel_flash( (rx_led + 2) % 6 , 0 , 1 , 1 );               // Too short marker
-            countdown_flag_too_short--;
+            charge_ir_led<rx_led>();
+
+            // OK, we are now all charged up and ready to receive a pulse
+            // Since we don't care if the pulse is shorter than 650us (that would be an error)
+            // now is a good time to display the results from the last round
+
+            pixel_flash( rx_led , 1 , 0 , 0 );               // Red on RX face to show we are receiving
+
+
+            if (too_short_flag) {
+                pixel_flash( too_short_pixel_position , 0 , 1 , 1 );               // Too short marker
+            }
+
+            if (just_right_flag) {
+                pixel_flash( just_right_pixel_positon , 0 , 0 , 1 );               // Just right marker
+                just_right_flag =0;
+            }
+
+
+            if (too_long_flag) {
+                pixel_flash( too_long_pixel_position , 1 , 0 , 1 );               // Too long marker
+            }
+
+
+
+            PIN_A_HIGH();
+            wait_for_ir_led_trigger<rx_led>();
+            PIN_A_LOW();
+
+            uint16_t time = TCNT1;                        // Capture the time
+            TCNT1 = 0;                                    // Restart timer
+
+            //_delay_us( IR_LED_REST_TIME_US );             // Let it rest. This avoids double triggers on the same IR pulse.
+
+
+            if (time<RX_TOO_SHORT_TIME_US) {
+                too_short_flag=1;;
+            } else if (time<RX_TOO_LONG_TIME_US) {
+                just_right_flag=1;
+            } else {
+                too_long_flag=1;
+            }
+
+            // Loop back around to charge again
+
+       } while (!BUTTON_DOWN());
+
+        _delay_ms(BUTTON_DEBOUNCE_TIME_MS);             // Debounce
+
+        TCNT1 = 0;
+        uint16_t ms_count =0;
+        while (BUTTON_DOWN()) {
+
+            if (TCNT1>=1000) {
+                ms_count++;
+                TCNT1=0;
+            }
+
+        };                          // Wait for button up again.
+
+        _delay_ms(BUTTON_DEBOUNCE_TIME_MS);             // Debounce
+
+        if ( ms_count > BUTTON_LONGPRESSS_TIME_MS ) {
+
+            return;     // Long press will step to next LED
+
         }
 
-        if (countdown_flag_just_right) {
-            pixel_flash( (rx_led + 3) % 6 , 0 , 0 , 1 );               // Just right marker
-            countdown_flag_just_right--;
-        }
+        // Short press just clears errors.
 
+    } while (1);
 
-        if (countdown_flag_too_long) {
-            pixel_flash( ( rx_led + 4 ) % 6 , 1 , 0 , 1 );               // Too long marker
-            countdown_flag_too_long--;
-        }
-
-        PIN_A_HIGH();
-        while ( TBI( IR_CATHODE_PIN , rx_led ));  // Spin until the charge dissipates enough for pin to read `0`
-        PIN_A_LOW();
-
-        uint16_t time = TCNT1;                        // Capture the time
-        TCNT1 = 0;                                    // Restart timer
-
-        //_delay_us( IR_LED_REST_TIME_US );             // Let it rest. This avoids double triggers on the same IR pulse.
-
-
-        if (time<RX_TOO_SHORT_TIME_US) {
-            countdown_flag_too_short =COUNTDOWN_FLAG_START;
-        } else if (time<RX_TOO_LONG_TIME_US) {
-            countdown_flag_just_right=COUNTDOWN_FLAG_START;
-        } else {
-            countdown_flag_too_long  =COUNTDOWN_FLAG_START;
-        }
-
-        // Loop back around to charge again
-
-
-   } while (!BUTTON_DOWN());
-
-    _delay_ms(BUTTON_DEBOUNCE_TIME_MS);             // Debounce
-    while (BUTTON_DOWN());                          // Wait for button lift
 }
 
 void rx_mode() {
+    rx_mode_on_led();
+    /*
     rx_mode_on_led<0>();
     rx_mode_on_led<1>();
     rx_mode_on_led<2>();
     rx_mode_on_led<3>();
     rx_mode_on_led<4>();
     rx_mode_on_led<5>();
+    */
 }
 
 
