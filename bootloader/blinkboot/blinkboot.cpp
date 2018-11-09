@@ -154,8 +154,8 @@ volatile uint8_t countdown_seed;  // When do give up on current face and step to
 
 
 
-volatile uint8_t countdown_active;  // When do switched to be FINISHED? That is, we have no active downloads
-                                      // below us in the download tree
+volatile uint8_t countdown_active;
+
 
 #define COUNTDOWN_ACTIVE_MS    500UL  // This should be long enough that we can make it all the way around
                                       // all faces sending SEED a couple of times and not getting any answer, so
@@ -173,6 +173,41 @@ volatile uint8_t countdown_active;  // When do switched to be FINISHED? That is,
 #if (COUNTDOWN_ACTIVE_COUNT > 255 )     // So ugly. There must be a way to get the max value of a type at compile time?
     #error COUNTDOWN_ACTIVE_COUNT must fit into uint8_t
 #endif
+
+
+
+volatile uint8_t countdown_retry;       // This is reset every time we get something from our source if we are a node
+                                        // (so practically speaking either a SEED or PUSH)
+                                        // If it expires, then it has been a while since we got a push so
+                                        // either PUSH or PULL timed out, or we sent a PULL that was for a block
+                                        // the source did not have yet.
+                                        // If we still need blocks, then we send another PULL to kick start things again and
+                                        // this should not collide because the source never sends anything unsolicited after the SEED.
+                                        // If we do not need blocks, but we are still active (we got a PULL from a child recently)
+                                        // then we send a PULL to our souce with block==total_blocks which will not result in a PUSH
+                                        // but just lets the source we are still active.
+
+
+
+#define COUNTDOWN_RETRY_MS    200UL    // Shorter give faster recovery, and duped PULLs are benign except if they collide with PUSHes.
+
+// all faces sending SEED a couple of times and not getting any answer, so
+// SEED timeout * 6 * 3.
+// Must also be long enough that if one of those faces was in the middle of a PUSH
+// then it has time to finish it and then reply with ACTIVE.
+
+// Keep in mind that anytime we send a PUSH that means we got a PULL
+// so we are active.
+
+
+// Actually needs to be move than 63ms to be more than 2 counts or else bad timing could maybe one count aslias too quick
+#define COUNTDOWN_RETRY_COUNT MS_TO_COUNTS( COUNTDOWN_RETRY_MS )
+
+#if (COUNTDOWN_RETRY_COUNT > 255 )     // So ugly. There must be a way to get the max value of a type at compile time?
+    #error COUNTDOWN_RETRY_COUNT must fit into uint8_t
+#endif
+
+
 
 /*
 typedef uint32_t millis_t;
@@ -194,10 +229,6 @@ void timer_256us_callback_sei(void) {
 
     if ( --tick_prescaller == 0 ) {      // Pre-decement so the flag will already be set for comparison
 
-        asm("nop");
-
-        // Do this stuff once every 256 ticks
-
         // TODO: Make a custom function that decrements and then increments if past zero
         // to save a compare to zero?
 
@@ -212,6 +243,11 @@ void timer_256us_callback_sei(void) {
         if (countdown_active) {
             countdown_active--;
         }
+
+        if (countdown_retry) {
+            countdown_retry--;
+        }
+
         /*
         millisCounter+=1;      // 62ms per prescalled tick
         tick_prescaller=4;
@@ -452,6 +488,8 @@ static void send_push_packet( uint8_t face , uint8_t page ) {
 
 
 // TODO: Precompute this whole packet at compile time and send as one big chunk
+
+static void __attribute__((section("subbls"))) __attribute__((used)) __attribute__ ((noinline)) send_seed_packet( uint8_t face , uint8_t pages , uint16_t program_checksum );
 
 static void send_seed_packet( uint8_t face , uint8_t pages , uint16_t program_checksum ) {
 
@@ -811,6 +849,8 @@ static void processInboundIRPacketsOnFace( uint8_t f ) {
                 Debug::tx( 'L' );
                 send_pull_packet( f , download_next_page );
 
+                countdown_retry = COUNTDOWN_RETRY_COUNT;        // start counting down incase we don't get a reply
+
                 // source will see this and get back to us on the next pass though.
 
                 // Note that this pull will tell the source that we are active
@@ -857,6 +897,7 @@ static void processInboundIRPacketsOnFace( uint8_t f ) {
                     // our source
 
                     send_pull_packet( f , download_next_page );
+                    countdown_retry = COUNTDOWN_RETRY_COUNT;        // start counting down incase we don't get a reply
 
                 }
 
@@ -888,7 +929,9 @@ static void processInboundIRPacketsOnFace( uint8_t f ) {
                 send_push_packet( f , requested_page  );
 
 
-            } // if (requested_page<download_next_page)
+            } else { // if (!requested_page<download_next_page)
+                Debug::tx('>');
+            }
 
             engaged[f]=1;               // No need to ever send another SEED to this face
 
@@ -1084,6 +1127,21 @@ void download_and_seed_mode( uint8_t be_the_root ) {
 
             countdown_seed =  COUNTDOWN_SEED_INITIAL_COUNT;
 
+            if (countdown_retry==0) {
+
+                // We haven't gotten a PUSH in a while so send a PULL. This does two things...
+                // 1. If we need more blocks, this will kickstart the transfer again
+                // 2. If we are done downloading, but we land here then we know that someone is
+                //    still downloading form us (we are active), so this PULL packet will tell the source
+                //    that we are still active and then he will stay active and his source will also
+                //    on down the line. Since the download_next_page==download_total_pages this will not
+                //    generate a PUSH reply.
+
+                send_pull_packet( download_source_face , download_next_page );
+                countdown_retry = COUNTDOWN_RETRY_COUNT;
+
+            }
+
         }
 
     }
@@ -1092,7 +1150,7 @@ void download_and_seed_mode( uint8_t be_the_root ) {
 
     // Check if the download was a success
 
-    if ( download_next_page > download_total_pages ) {
+    if ( download_next_page == download_total_pages ) {
 
         // Download was a success
 
