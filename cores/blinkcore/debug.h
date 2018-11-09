@@ -33,18 +33,17 @@
             UBRR0 = 0;                              // 1Mbd. This is as fast as we can go at 8Mhz, and happens to be 0% error and supported by the Arduino serial monitor.
                                                     // See datasheet table 25-7.
 
-
             SBI( SP_A_DDR , SP_A_BIT );             // Pin A output mode
             SBI( SP_R_DDR , SP_R_BIT );             // Pin R output mode
 
         }
 
         // Send a byte out the serial port. DebugSerialInit() must be called first. Blocks unitl buffer free if TX already in progress.
-        
+
         // TODO: This compile to this...
-        
+
         /*
-        
+
             //while (!TBI(SP_SERIAL_CTRL_REG,UDRE0));         // Wait for buffer to be clear so we don't overwrite in progress
             1034:	e0 ec       	ldi	r30, 0xC0	; 192
             1036:	f0 e0       	ldi	r31, 0x00	; 0
@@ -53,9 +52,9 @@
             103c:	fd cf       	rjmp	.-6      	; 0x1038 <_Z14irSendCompletev+0x6>
             //SP_SERIAL_DATA_REG=b;                           // Send new byte
             1040:	83 e4       	ldi	r24, 0x43	; 67
-            1042:	80 93 c6 00 	sts	0x00C6, r24	; 0x8000c6 <__TEXT_REGION_LENGTH__+0x7e00c6>  
+            1042:	80 93 c6 00 	sts	0x00C6, r24	; 0x8000c6 <__TEXT_REGION_LENGTH__+0x7e00c6>
         */
-        
+
          inline static void tx(uint8_t b) {
 
 
@@ -90,6 +89,16 @@
         inline static void pin_a_1() {
             SBI( SP_A_PORT, SP_A_BIT);
         }
+
+        inline static void pin_a_1_inputmode() {
+            CBI( SP_A_DDR , SP_A_BIT );     // Input
+            SBI( SP_A_PORT, SP_A_BIT);      // Pullup
+        }
+
+        inline static uint8_t pin_a_in() {
+            return TBI( SP_A_PIN , SP_A_BIT);
+        }
+
 
         inline static void pin_r_0() {
             CBI( SP_R_PORT, SP_R_BIT);

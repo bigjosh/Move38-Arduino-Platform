@@ -466,9 +466,6 @@ void ir_tx_start(uint8_t bitmask , uint16_t initialTicks ) {
 
 // TODO: single buffer this in case sender has a hiccup or is too slow to keep up?
 
-#warning dont include debug
-#include"debug.h"
-
 void ir_tx_sendpulse( uint16_t delay_cycles) {    
     while ( !TBI( TIFR1 , TOV1) );            // Wait for current cycle to finish
     OCR1A = delay_cycles;                     // Buffer the next delay value

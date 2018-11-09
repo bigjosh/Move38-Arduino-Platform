@@ -39,9 +39,16 @@
 */
 
 
+
 // Disables interrupts
 
-void inline __attribute__((naked))  clear_stack() {
+/*
+
+  I know you want to make this a function rather than a crappy macro. So do I. But the compiler just
+  ignores the inline and generates a call, which defeats the point - and usually crashes the chip.
+  I wasted 20 minutes of my life on this so you don't have to.
+
+static inline void clear_stack() {
     __asm__ __volatile__ (
         "cli                 \n"
         "ldi 16 , %0         \n"
@@ -53,6 +60,26 @@ void inline __attribute__((naked))  clear_stack() {
         :
     );
 }
+
+*/
+
+
+// `a` is the target address as a string, like...
+// CLEAR_STACK( "0x0000" );
+// Interrupts of off when we jump
+
+#define CLEAR_STACK_AND_JMP(a)          \
+    __asm__ __volatile__ (      \
+    "cli                 \n"    \
+    "ldi 16 , %0         \n"    \
+    "out __SP_H__, 16    \n"    \
+    "ldi 16 , %1         \n"    \
+    "out __SP_L__, 16    \n"    \
+    "jmp " a "           \n"    \
+    :                           \
+    : "M" ( RAMEND >> 8 ), "M" ( RAMEND & 0xff )    \
+    :                           \
+    )
 
 
 #endif 

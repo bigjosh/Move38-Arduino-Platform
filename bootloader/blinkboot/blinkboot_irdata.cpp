@@ -49,8 +49,7 @@
 #if defined(IR_TX_DEBUG) || defined(IR_RX_DEBUG)
     #include "debug.h"                                     // We use the SP port for deugging Stuff
 #endif
-#warning
-#include "debug.h"   
+
 #include "blinkboot_irdata.h"
 
 #include <util/delay.h>         // Must come after F_CPU definition
@@ -242,11 +241,6 @@ volatile uint8_t most_recent_ir_test;
                     // TODO: we could save some time here using an assembly shift followed by a carry bit test
 
                     if (ptr->byteBuffer & 0b00000001) {     // If the bottom it in the input buffer was high, then we just got the last bit of a full byte
-
-                            if (bitwalker==_BV(4)) {
-                                Debug::tx_now(ptr->packetBufferLen);      // Packet received and buffered successfully
-                            }
-
 
                         // Save the fully received byte, prime for next one
 

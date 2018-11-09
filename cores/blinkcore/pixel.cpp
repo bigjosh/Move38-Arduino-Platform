@@ -39,6 +39,7 @@
 #include "hardware.h"
 #include "bitfun.h"
 
+#include "debug.h"
 
 #include <avr/interrupt.h>
 
@@ -377,7 +378,6 @@ volatile uint8_t vertical_blanking_interval;
 // We also keep an index so we can reference the anode to turn on for this pixel.
 // TODO: There must be a more efficient way to keep this?
 
-
 static uint8_t currentPixelIndex;      // Which pixel are we on now?
 
 static void pixel_isr(void) {
@@ -388,6 +388,24 @@ static void pixel_isr(void) {
 
     rawpixel_t *currentPixel = &(displayedRawPixelSet.rawpixels[currentPixelIndex]);
 
+    #warning test
+    
+    /*
+    rawpixel_t test_pixel;
+    
+    
+    Debug::pin_a_1_inputmode();
+
+    if (!Debug::pin_a_in()) {
+
+        currentPixel = &test_pixel;
+        test_pixel.rawValueR = 255;
+        test_pixel.rawValueG = 0;
+        test_pixel.rawValueB = 255;
+    }        
+
+    */
+    
     switch (phase) {
 
 
