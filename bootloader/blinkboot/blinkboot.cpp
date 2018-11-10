@@ -1279,8 +1279,10 @@ void download_and_seed_mode( uint8_t we_are_root ) {
 
     // Check if the download was a success
     // TODO: Check total checksum here too
+    
+    active_program_checksum = calculate_active_game_checksum(); 
 
-    if ( download_next_page == download_total_pages ) {
+    if ( download_next_page == download_total_pages && active_program_checksum == calculate_active_game_checksum()  ) {
 
         // Download was a success
 
