@@ -1,65 +1,39 @@
-##########################################
-## 
-## This file to use the Move38 Blinks platform
-## with the Ardiuno IDE
-## http://move38.com
-##
-## Orginally based on ATMEGA168PA settings from MiniCore
-## https://github.com/MCUdude/MiniCore	
-##
-##########################################
+# See: http://code.google.com/p/arduino/wiki/Platforms
 
-tile.name=Blinks Tile
-tile.upload.maximum_size=15872
-tile.upload.maximum_data_size=1024
+menu.cpu=Processor
 
-# This line seems to have no effect?
-tile.upload.tool=nothing
+##############################################################
 
-tile.program.tool=avrdude
+blink.name=Blink
 
-tile.build.core=blinkcore
-tile.build.board=AVR_Blink
-tile.build.variant=standard
+blink.vid.0=0x2341
+blink.pid.0=0x0043
+blink.vid.1=0x2341
+blink.pid.1=0x0001
+blink.vid.2=0x2A03
+blink.pid.2=0x0043
+blink.vid.3=0x2341
+blink.pid.3=0x0243
 
+blink.upload.tool=avrdude
+blink.upload.protocol=arduino
+blink.upload.maximum_size=32256
+blink.upload.maximum_data_size=2048
+blink.upload.speed=115200
 
-# Note that we actually boot up with DIV8 fuse programmed, so 
-# only running at 1Mhz. Then we switch the prescaller to in init()
-# so we are at 8Mhz by the time user code runs.
-# This is done becuase 8Mhz might need a higher voltage than our battery can
-# supply.
+blink.bootloader.tool=avrdude
+blink.bootloader.low_fuses=0xFF
+blink.bootloader.high_fuses=0xDE
+blink.bootloader.extended_fuses=0xFD
+blink.bootloader.unlock_bits=0x3F
+blink.bootloader.lock_bits=0x0F
+blink.bootloader.file=optiboot/optiboot_atmega328.hex
 
-tile.build.f_cpu=8000000L
+blink.build.mcu=atmega168pb
+blink.build.f_cpu=8000000L
+blink.build.board=AVR_BLINK
+blink.build.core=blinkcore
+blink.build.variant=standard
 
-tile.build.mcu=atmega168pb
+##############################################################
 
-tile.ltoarcmd=avr-gcc-ar
-
-
-# --------------------------------------------------------------------
-# This is tmeporary to support the old tiles without logos. Soon there will be none of them. 
-
-legacytile.name=Legacy No-Logo Blinks Tile 
-legacytile.upload.maximum_size=15872
-legacytile.upload.maximum_data_size=1024
-
-# This line seems to have no effect?
-legacytile.upload.tool=nothing
-
-legacytile.program.tool=avrdude
-
-legacytile.build.core=blinkcore
-legacytile.build.board=AVR_Blink
-legacytile.build.variant=legacy
-
-# Note that we actually boot up with DIV8 fuse programmed, so 
-# only running at 1Mhz. Then we switch the prescaller to /2 in init()
-# so we are at 4Mhz by the time user code runs.
-# This is done becuase 8Mhz might need a higher voltage than our battery can
-# supply.
-
-legacytile.build.f_cpu=4000000L
-
-legacytile.build.mcu=atmega168pb
-
-legacytile.ltoarcmd=avr-gcc-ar
