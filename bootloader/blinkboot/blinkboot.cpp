@@ -130,6 +130,16 @@ volatile uint8_t countdown_startup;  // This is the initial time when we enter s
 #error COUNTDOWN_STARTUP_CHILD_COUNT must fit into uint8_t
 #endif
 
+// This is the time a child will wait after they are not active until they get a GETSGO
+// TODO: This might be too short for really big collections of blinks
+
+#define COUNTDOWN_STARTUP_LETSGOWAIT_MS 10000UL
+#define COUNTDOWN_STARTUP_LETSGOWAIT_COUNT  MS_TO_COUNTS( COUNTDOWN_STARTUP_LETSGOWAIT_MS )
+
+#if (COUNTDOWN_STARTUP_LETSGOWAIT_COUNT > 255 )     // So ugly. There must be a way to get the max value of a type at compile time? Like maxvalueof(uint8_t)?
+    #error COUNTDOWN_STARTUP_LETSGOWAIT_COUNT must fit into uint8_t
+#endif
+
 
 volatile uint8_t countdown_seed;  // When do give up on current face and step to the next one in sequence?
                                   // We have to wait a bit between seeds to give the other side a sec to answer if they want to pull
@@ -835,6 +845,10 @@ static void processInboundIRPacketsOnFace( uint8_t f ) {
 
                         // If we are not active, then we send nothing so our upstream source will
                         // eventually active timeout as well
+                        
+                        // We are now done, but to coordinate starting the downloaded game with everyone
+                        // else, we will wait this long for a LETSGO from the root
+                        countdown_startup = COUNTDOWN_STARTUP_LETSGOWAIT_COUNT;
 
                     } else {
 
@@ -887,7 +901,7 @@ static void processInboundIRPacketsOnFace( uint8_t f ) {
             Debug::tx('e');
             Debug::tx( '0' + f );
 
-            setRawPixelCoarse( f , COARSE_CYAN );
+            //setRawPixelCoarse( f , COARSE_CYAN );
 
             //setAllRawCorsePixels( COARSE_YELLOW );
 
@@ -964,6 +978,8 @@ static void processInboundIRPacketsOnFace( uint8_t f ) {
             countdown_active = COUNTDOWN_ACTIVE_COUNT;  // The blink on this face pulled so he is actively downloading himself so by definition it is active
                                                         // Even if we don't have the one he needs yet.
                                                         // He will try a PULL again next time we pass him with a SEED
+                                                        
+                                                        
 
         } else if (check_letsgo_packet( data , packetLen ) ) {
 
@@ -1087,7 +1103,7 @@ void download_and_seed_mode( uint8_t we_are_root ) {
     // Start by sending 3 rounds of seed packets to everyone
 
 
-    countdown_startup = COUNTDOWN_STARTUP_ROOT_MS;
+    countdown_startup = COUNTDOWN_STARTUP_ROOT_COUNT;
     countdown_active = COUNTDOWN_ACTIVE_COUNT;      // Assume no active downstream blinks until they tell us so
     countdown_seed   = 0;                           // Seed initial SEED round immediately. Will retry at COUNTDOWN_SEED intervals
 
@@ -1104,7 +1120,7 @@ void download_and_seed_mode( uint8_t we_are_root ) {
             for( uint8_t f=0; f<FACE_COUNT; f++ ) {
 
                 // Always check if we got anything new on the source face so we have the most
-                // to offer our requestors
+                // to offer our requesters
 
                 if ( download_source_face != SOURCE_FACE_NONE ) {       // We are not the root and we are downloading
 
@@ -1123,7 +1139,7 @@ void download_and_seed_mode( uint8_t we_are_root ) {
                     // countdown_retry was initialization when we sent first PULL.
 
                     // We only send a PULL if we need a PUSH or if have seen a PULL from out children lately
-                    // This is how the root knows when everythign is done becuase his active will time out
+                    // This is how the root knows when everything is done because his active will time out
 
                     if (countdown_retry==0 && (download_next_page<download_total_pages || countdown_active )) {
 
@@ -1154,8 +1170,8 @@ void download_and_seed_mode( uint8_t we_are_root ) {
 
             // Sending probe seeds are a low priority, so we only do it after we have checked (and possibly pushed to)
             // all the engaged faces
-
-            if (countdown_seed==0 && download_next_page > 0  ) {      // Don't bother sending seeds until we have something to share
+            
+            if (countdown_seed==0 && download_next_page > 0 ) {      // Don't bother sending seeds until we have something to share
 
                 // Visually clear the last blue seed indicator is there was one on the last face
 
@@ -1180,7 +1196,16 @@ void download_and_seed_mode( uint8_t we_are_root ) {
                     // that could collide with his aync PULLs
 
                     // Visually indicate the probe with a blue pixel
-                    setRawPixelCoarse( last_seed_face , COARSE_BLUE );                          // Show blue on the face we are sending seed packet
+                    
+                    if (countdown_startup && countdown_active ) {
+                        setRawPixelCoarse( last_seed_face , COARSE_MAGENTA );                          // Show blue on the face we are sending seed packet
+                    } else {
+                        if (countdown_startup) {
+                            setRawPixelCoarse( last_seed_face , COARSE_BLUE );                          // Show blue on the face we are sending seed packet                        
+                        } else {
+                            setRawPixelCoarse( last_seed_face , COARSE_RED );                          // Show blue on the face we are sending seed packet                            
+                        }                                                        
+                    }                                                
 
                     Debug::tx( 'E' );
                     Debug::tx( '0'+ last_seed_face );
@@ -1199,6 +1224,7 @@ void download_and_seed_mode( uint8_t we_are_root ) {
     // We got here either because we timed out or got a LETSGO packet
 
     // Check if the download was a success
+    // TODO: Check total checksum here too
 
     if ( download_next_page == download_total_pages ) {
 
@@ -1220,7 +1246,7 @@ void download_and_seed_mode( uint8_t we_are_root ) {
         // Download failed
 
         // Do a little failure flash
-        for(uint8_t x=0; x< 5; x++) {
+        for(uint8_t x=0; x< 50; x++) {
             setAllRawCorsePixels( COARSE_RED );
             _delay_ms(100);
             setAllRawCorsePixels( COARSE_OFF );
