@@ -997,26 +997,6 @@ static void processInboundIRPacketsOnFace( uint8_t f ) {
 
 }
 
-// Move the interrupts up to the bootloader area
-// Normally the vector is at 0, this moves it up to 0x3400 in the bootloader area.
-
-//void __attribute__((section("subbls"))) __attribute__((used)) __attribute__ ((noinline)) move_interrupts_to_bootlader();
-
-void move_interrupts_to_bootlader(void)
-{
-    uint8_t temp;
-    /* GET MCUCR*/
-    temp = MCUCR;
-
-    // No need to cli(), ints already off and IVCE blocks them anyway
-
-    /* Enable change of Interrupt Vectors */
-    MCUCR = temp|(1<<IVCE);
-    /* Move interrupts to Boot Flash section */
-    MCUCR = temp|(1<<IVSEL);
-
-}
-
 
 // Does not keep interrupts on
 
@@ -1061,6 +1041,47 @@ void copy_built_in_game_to_active() {
     boot_rww_enable();       // Enable the normal memory
 
     sei();
+
+}
+
+
+// Move the interrupts up to the bootloader area
+// Normally the vector is at 0, this moves it up to 0x3400 in the bootloader area.
+
+//void __attribute__((section("subbls"))) __attribute__((used)) __attribute__ ((noinline)) move_interrupts_to_bootlader();
+
+void move_interrupts_to_bootlader(void)
+{
+    uint8_t temp;
+    /* GET MCUCR*/
+    temp = MCUCR;
+
+    // No need to cli(), ints already off and IVCE blocks them anyway
+
+    /* Enable change of Interrupt Vectors */
+    MCUCR = temp|(1<<IVCE);
+    /* Move interrupts to Boot Flash section */
+    MCUCR = temp|(1<<IVSEL);
+
+}
+
+
+// Move the interrupts back to 0x0000 (not in the bottom of the bootloader) 
+
+//void __attribute__((section("subbls"))) __attribute__((used)) __attribute__ ((noinline)) move_interrupts_to_bootlader();
+
+void move_interrupts_to_base(void)
+{
+    uint8_t temp;
+    /* GET MCUCR*/
+    temp = MCUCR;
+
+    // No need to cli(), ints already off and IVCE blocks them anyway
+
+    /* Enable change of Interrupt Vectors */
+    MCUCR = temp|(1<<IVCE);
+    /* Move interrupts to Boot Flash section */
+    MCUCR = temp & ~(1<<IVSEL);
 
 }
 
@@ -1295,6 +1316,11 @@ void download_and_seed_mode( uint8_t we_are_root ) {
     }
 
     // OK PEOPLE, LETS GO START THE GAME EVERYONE !!!!!
+    
+    move_interrupts_to_base();   
+                                    // Send interrupt back to the normal vector table. For now, Arduino programs expect this.         
+                                    // NOTE: boot_spm_interrupt_disable() does NOT do this! That disables the interrupt when an SPM instruction completes!
+                                    // TODO: we will keep them when we take over pixel and other stuff.
 
     CLEAR_STACK_AND_JMP( "0x0000" );
     //asm("jmp 0x0000");
@@ -1367,8 +1393,8 @@ void run(void) {
     pixel_enable();
 
     //button_enable_pu();
-
-    move_interrupts_to_bootlader();      // Send interrupt up to the bootloader.
+    
+    move_interrupts_to_bootlader();
 
     //setAllRawCorsePixels( COARSE_ORANGE );  // Set initial display
 
@@ -1463,9 +1489,9 @@ extern "C" void __vector_3 (void) {
     pixel_init();
 
     pixel_enable();
-
-    move_interrupts_to_bootlader();      // Send interrupt up to the bootloader.
-
+    
+    move_interrupts_to_bootlader();
+    
     // copy_built_in_game_to_active();
 
     sei();					// Let interrupts happen. For now, this is the timer overflow that updates to next pixel.
@@ -1497,7 +1523,6 @@ extern "C" void __vector_3 (void) {
         GPIOR1 = 'D';
 
     }
-
     CLEAR_STACK_AND_JMP( "0x3800" );
     //asm("jmp 0x3800");
 
