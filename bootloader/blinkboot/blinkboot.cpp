@@ -110,20 +110,26 @@
 // TODO: Do these countdowns need to be volatile?
 // I think we only process packets in the foreground, right?
 
-volatile uint8_t countdown_giveup;   // If we have not seen a PUSH or PULL or an ACTIVE in a while then we timeout.
-                                     // If we are fully downloaded, then we send a few DONEs and then reboot into the active game
-                                     // If now, then we copy built-in game and jump to to
+volatile uint8_t countdown_startup;  // This is the initial time when we enter seed mode that we will wait to see our
+                                     // first child before giving up
 
-                                     // Should be >~12x the time it takes to send the longest packet to make sure that just missing a couple
-                                     // will not cause a false alarm.
 
-#warning make this shorter in production
-#define COUNTDOWN_GIVEUP_MS     5000UL   // Wait long enough that the source had time to service 5 PULL packets to get back to us, allowing for up to 3 missed packets.
-#define COUNTDOWN_GIVEUP_COUNT  MS_TO_COUNTS( COUNTDOWN_GIVEUP_MS )
+#define COUNTDOWN_STARTUP_ROOT_MS 5000UL
+#define COUNTDOWN_STARTUP_ROOT_COUNT  MS_TO_COUNTS( COUNTDOWN_STARTUP_ROOT_MS )
 
-#if (COUNTDOWN_GIVEUP_COUNT > 255 )     // So ugly. There must be a way to get the max value of a type at compile time?
-    #error COUNTDOWN_GIVEUP_COUNT must fit into uint8_t
+#if (COUNTDOWN_STARTUP_ROOT_COUNT > 255 )     // So ugly. There must be a way to get the max value of a type at compile time?
+    #error COUNTDOWN_STARTUP_ROOT_COUNT must fit into uint8_t
 #endif
+
+// Shorten this in production
+
+#define COUNTDOWN_STARTUP_CHILD_MS 5000UL
+#define COUNTDOWN_STARTUP_CHILD_COUNT  MS_TO_COUNTS( COUNTDOWN_STARTUP_CHILD_MS )
+
+#if (COUNTDOWN_STARTUP_CHILD_COUNT > 255 )     // So ugly. There must be a way to get the max value of a type at compile time? Like maxvalueof(uint8_t)?
+#error COUNTDOWN_STARTUP_CHILD_COUNT must fit into uint8_t
+#endif
+
 
 volatile uint8_t countdown_seed;  // When do give up on current face and step to the next one in sequence?
                                   // We have to wait a bit between seeds to give the other side a sec to answer if they want to pull
@@ -232,8 +238,8 @@ void timer_256us_callback_sei(void) {
             countdown_seed--;
         }
 
-        if (countdown_giveup) {
-            countdown_giveup--;
+        if (countdown_startup) {
+            countdown_startup--;
         }
 
         if (countdown_active) {
@@ -749,9 +755,9 @@ To be able to immediately detect when we are finished, we need some way to make 
 we just have not yet seen the other side yet. This could be a per-side timeout
 that starts at an initial high value to allow for first contact and then is reset to a short value
 once we know there is someone there. It could also be a fixed try strategy where were try a face X
-times and if we get no answer then we assume no one there. 
-                                    
-uint8_t finishedbits;               // bitmask if this side and all of its issue are finished downloading 
+times and if we get no answer then we assume no one there.
+
+uint8_t finishedbits;               // bitmask if this side and all of its issue are finished downloading
                                     // You can tell if all of your sides are finished by XORing
                                     // engagedbits with finished bits
 
@@ -859,16 +865,19 @@ static void processInboundIRPacketsOnFace( uint8_t f ) {
                 Debug::tx( download_next_page );
                 send_pull_packet( f , download_next_page );
 
-                countdown_retry = COUNTDOWN_RETRY_COUNT;        // start counting down incase we don't get a reply
-
+                countdown_retry = COUNTDOWN_RETRY_COUNT;        // start counting down in case we don't get a reply
+                countdown_active = COUNTDOWN_ACTIVE_COUNT;      // Stay alive as long as we keep getting PUSHes. 
                 // source will see this and get back to us on the next pass though.
 
                 // Note that this pull will tell the source that we are active
 
+                /*
 
                 // As long as our source is sending us valid push packets, we know he is alive
                 // and so we should not give up
                 countdown_giveup = COUNTDOWN_GIVEUP_COUNT;
+
+                */
 
             } //  if ( packet_page_number == download_next_page) {
 
@@ -882,7 +891,7 @@ static void processInboundIRPacketsOnFace( uint8_t f ) {
 
             //setAllRawCorsePixels( COARSE_YELLOW );
 
-            if ( download_source_face == SOURCE_FACE_NONE ) {           // Do we have a source yet?
+            if ( download_total_pages==0 ) {           // Make sure we don't already have a source, and we are not root
 
                 Debug::tx('-');
 
@@ -893,27 +902,28 @@ static void processInboundIRPacketsOnFace( uint8_t f ) {
                 active_program_checksum = data->seed_payload.program_checksum;
 
                 download_source_face = f;
-                
+
                 // This sets us up to send our first seed as far away from the source as possible
-                // for better distribution. 
+                // for better distribution.
                 last_seed_face = f;
-                
+
                 Debug::tx('L');
                 Debug::tx(download_next_page);
 
                 setRawPixelCoarse( f , COARSE_GREEN1 );
                 send_pull_packet( f , download_next_page );
                 countdown_retry = COUNTDOWN_RETRY_COUNT;        // start counting down incase we don't get a reply
-                
-                countdown_giveup = COUNTDOWN_GIVEUP_COUNT;
+
+                // We just started SEEDing, so wait a minimum time to make sure we have a chance
+                // to see all our neighbors before we give up
+                countdown_startup = COUNTDOWN_STARTUP_CHILD_COUNT;
 
             }   //  if ( download_total_pages == 0 ) - we need a source?
-            
+
             // We ignore SEEDs after the first one we see. The source should stop sending them once
-            // he sees our PULL. Adjacent blinks will keep sending them. 
+            // he sees our PULL. Adjacent blinks will keep sending them.
 
         }  else if ( check_pull_packet( data , packetLen ) ) {
-
 
             uint8_t requested_page = data->pull_payload.page;
 
@@ -938,13 +948,13 @@ static void processInboundIRPacketsOnFace( uint8_t f ) {
                 send_push_packet( f , requested_page  );
 
 
-            } else { 
-                                                          
+            } else {
+
                 Debug::tx('>');
-                            
+
             }
 
-            // If we get a PULL then we know this is our child 
+            // If we get a PULL then we know this is our child
             SBI( engagedbits , f );               // No need to ever send another SEED to this face
 
             if (last_seed_face==f) {    // Are we waiting for this initial PULL?
@@ -962,7 +972,7 @@ static void processInboundIRPacketsOnFace( uint8_t f ) {
             if ( f == download_source_face ) {      // Only expect (and accept) this from source
 
                 letsgo_flag =1;             // This will cause the active loop to dump on next pass
-                countdown_giveup = 0;       // This will cause the giveup loop to dump on next pass
+                countdown_startup = 0;       // This will cause the giveup loop to dump on next pass
 
                 // We will check if the download worked
                 // If it did, then we will send a letsgo storm and jump to new game
@@ -975,39 +985,6 @@ static void processInboundIRPacketsOnFace( uint8_t f ) {
     }// irIsdataPacketReady(f)
 
 }
-
-// Read in any pending packets and react to to them
-// Pull packet triggers a push if we have the page
-// Seed packet triggers pull if we need more pages
-// Push packet writes new page to flash
-
-// Use this to move a function out of the bootloader to make room.
-// We are able to move this out of the bootloader because it never runs in an interrupt context.
-// It is only called from he main event loop.
-
-void __attribute__((section("subbls"))) __attribute__((used)) __attribute__ ((noinline)) processInboundIRPackets();
-
-void processInboundIRPackets() {
-
-    // Does order matter here?
-
-    for( uint8_t f=0; f<FACE_COUNT; f++ ) {
-
-        // Always check if we got anything new on the source face so we have the most
-        // to offer our requestors
-
-        if ( download_source_face != SOURCE_FACE_NONE ) {
-
-            processInboundIRPacketsOnFace( download_source_face );
-
-        }
-
-        processInboundIRPacketsOnFace( f );
-    }
-
-
-}
-
 
 // Move the interrupts up to the bootloader area
 // Normally the vector is at 0, this moves it up to 0x3400 in the bootloader area.
@@ -1054,7 +1031,7 @@ void copy_built_in_game_to_active() {
 // and it starts sending SEEDs to faces in order based on the table, so the root will start at that last index
 // and naturally jump to face 0 and then pick up. Just works and saves logic for the cost on one flash byte.
 
-// If you start here, you go to the one below it                  0   1   2   3   4   5 
+// If you start here, you go to the one below it                  0   1   2   3   4   5
 static PROGMEM const uint8_t next_stagered_face[FACE_COUNT+1] = { 2 , 5 , 4 , 0 , 1 , 3  } ;
 
  // If we do not already have an active game (as indicated by download_next_page and download_total_pages), then
@@ -1064,17 +1041,19 @@ static PROGMEM const uint8_t next_stagered_face[FACE_COUNT+1] = { 2 , 5 , 4 , 0 
 
  // Call with 1 to copy the built in game to active area
 
-void __attribute__((section("subbls"))) __attribute__((used)) __attribute__ ((noinline)) download_and_seed_mode( uint8_t be_the_root );
+void __attribute__((section("subbls"))) __attribute__((used)) __attribute__ ((noinline)) download_and_seed_mode( uint8_t we_are_root );
 
 // We always exit by jumping to active game, so no need for a RET at the end or to save regs
-void __attribute__((naked)) download_and_seed_mode( uint8_t be_the_root );
+void __attribute__((naked)) download_and_seed_mode( uint8_t we_are_root );
 
-void download_and_seed_mode( uint8_t be_the_root ) {
+void download_and_seed_mode( uint8_t we_are_root ) {
 
 
-    download_source_face = SOURCE_FACE_NONE;        // We are the root if we have a download (as per download_total_pages),
-                                                    // or we are waiting for a root if not.
-    if (be_the_root) {
+    download_source_face = SOURCE_FACE_NONE;        // Set to the source face when we get initial seed
+                                                    // or stays at SOURCE_FACE_NONE if we_are_root
+
+
+    if (we_are_root) {
 
         active_program_checksum = calculate_active_game_checksum();
 
@@ -1108,8 +1087,8 @@ void download_and_seed_mode( uint8_t be_the_root ) {
     // Start by sending 3 rounds of seed packets to everyone
 
 
-    countdown_giveup = COUNTDOWN_GIVEUP_COUNT;
-    countdown_active = 0;                           // Assume no active downstream blinks until they tell us so
+    countdown_startup = COUNTDOWN_STARTUP_ROOT_MS;
+    countdown_active = COUNTDOWN_ACTIVE_COUNT;      // Assume no active downstream blinks until they tell us so
     countdown_seed   = 0;                           // Seed initial SEED round immediately. Will retry at COUNTDOWN_SEED intervals
 
    // Keep going until either...
@@ -1117,7 +1096,7 @@ void download_and_seed_mode( uint8_t be_the_root ) {
    // 2. we get a LETSGO which sets  giveup=0
 
 
-    while ( (countdown_giveup || countdown_active) && !letsgo_flag ) {
+    while ( ( countdown_startup || countdown_active ) && !letsgo_flag ) {
 
             // Scan all the faces for new incoming messages
             // Note that some incoming messages generate outgoing messages, like PULL making a PUSH
@@ -1141,9 +1120,12 @@ void download_and_seed_mode( uint8_t be_the_root ) {
                     // expire our active time with our source.
 
                     // We checked above that download_source_face != SOURCE-FACE_NONE, so we know that
-                    // countdown_retry was initilizard when we sent first PULL.
+                    // countdown_retry was initialization when we sent first PULL.
 
-                    if (countdown_retry==0) {
+                    // We only send a PULL if we need a PUSH or if have seen a PULL from out children lately
+                    // This is how the root knows when everythign is done becuase his active will time out
+
+                    if (countdown_retry==0 && (download_next_page<download_total_pages || countdown_active )) {
 
                         // We haven't gotten a PUSH in a while so send a PULL. This does two things...
                         // 1. If we need more blocks, this will kickstart the transfer again
@@ -1156,7 +1138,7 @@ void download_and_seed_mode( uint8_t be_the_root ) {
                         Debug::tx('R');
                         Debug::tx('L');
                         Debug::tx(download_next_page);
-                        
+
                         send_pull_packet( download_source_face , download_next_page );
                         countdown_retry = COUNTDOWN_RETRY_COUNT;
 
