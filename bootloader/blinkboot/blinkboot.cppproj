@@ -181,7 +181,7 @@
   <avrgcccpp.linker.memorysettings.Flash>
     <ListValues>
       <Value>.text=0x1c00</Value>
-      <Value>subbls=0x1000</Value>
+      <Value>subbls=0x1800</Value>
       <Value>zerobase.start=0x0000</Value>
       <Value>zerobase.rest=0x0000</Value>
       <Value>zerobase=0x0000</Value>

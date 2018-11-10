@@ -420,7 +420,7 @@ static uint8_t checksum_128byte_RAM_buffer( const uint8_t *buffer ) {
     return data_computed_checksum;
 }
 
-static uint8_t __attribute__((section("subbls"))) __attribute__((used)) __attribute__ ((noinline)) push_packet_payload_checksum( const push_payload_t &push_payload );
+//static uint8_t __attribute__((section("subbls"))) __attribute__((used)) __attribute__ ((noinline)) push_packet_payload_checksum( const push_payload_t &push_payload );
 
 static uint8_t push_packet_payload_checksum( const push_payload_t &push_payload ) {
 
@@ -449,7 +449,7 @@ static uint8_t push_packet_payload_checksum( const push_payload_t &push_payload 
 
 */
 
-static void __attribute__((section("subbls"))) __attribute__((used)) __attribute__ ((noinline)) send_push_packet( uint8_t face , uint8_t page );
+//static void __attribute__((section("subbls"))) __attribute__((used)) __attribute__ ((noinline)) send_push_packet( uint8_t face , uint8_t page );
 
 
 static void send_push_packet( uint8_t face , uint8_t page ) {
@@ -489,7 +489,7 @@ static void send_push_packet( uint8_t face , uint8_t page ) {
 
 // TODO: Precompute this whole packet at compile time and send as one big chunk
 
-static void __attribute__((section("subbls"))) __attribute__((used)) __attribute__ ((noinline)) send_seed_packet( uint8_t face , uint8_t pages , uint16_t program_checksum );
+//static void __attribute__((section("subbls"))) __attribute__((used)) __attribute__ ((noinline)) send_seed_packet( uint8_t face , uint8_t pages , uint16_t program_checksum );
 
 static void send_seed_packet( uint8_t face , uint8_t pages , uint16_t program_checksum ) {
 
@@ -524,7 +524,7 @@ static void send_seed_packet( uint8_t face , uint8_t pages , uint16_t program_ch
 
 }
 
-uint16_t __attribute__((section("subbls"))) __attribute__((used)) __attribute__ ((noinline)) calculate_active_game_checksum();
+//uint16_t __attribute__((section("subbls"))) __attribute__((used)) __attribute__ ((noinline)) calculate_active_game_checksum();
 
 uint16_t calculate_active_game_checksum() {
 
@@ -562,8 +562,7 @@ uint8_t last_seed_face;               // The last face we sent a seed packet to.
 // If we get a seed then we know that the other side is waiting for us to pull
 // so should not be a collision.
 
-static void __attribute__((section("subbls"))) __attribute__((used)) __attribute__ ((noinline)) send_pull_packet( uint8_t face , uint8_t next_page);
-
+//static void __attribute__((section("subbls"))) __attribute__((used)) __attribute__ ((noinline)) send_pull_packet( uint8_t face , uint8_t next_page);
 
 static void send_pull_packet( uint8_t face , uint8_t next_page) {
 
@@ -675,8 +674,7 @@ static void send_letsgo_packet( uint8_t face ) {
 
 // Send repeatedly on all faces
 
-static void __attribute__((section("subbls"))) __attribute__((used)) __attribute__ ((noinline)) send_letsgo_storm();
-
+//static void __attribute__((section("subbls"))) __attribute__((used)) __attribute__ ((noinline)) send_letsgo_storm();
 
 static void send_letsgo_storm() {
 
@@ -731,7 +729,7 @@ static uint8_t check_push_packet( const blinkboot_packet *push_packet , uint8_t 
 
 // Returns 1 if this packet passes length for valid active packet
 
-static uint8_t __attribute__((section("subbls"))) __attribute__((used)) __attribute__ ((noinline)) check_seed_packet( const blinkboot_packet *seed_packet , uint8_t packet_len );
+//static uint8_t __attribute__((section("subbls"))) __attribute__((used)) __attribute__ ((noinline)) check_seed_packet( const blinkboot_packet *seed_packet , uint8_t packet_len );
 
 static uint8_t check_seed_packet( const blinkboot_packet *seed_packet , uint8_t packet_len ) {
 
@@ -1005,7 +1003,7 @@ static void processInboundIRPacketsOnFace( uint8_t f ) {
 // Move the interrupts up to the bootloader area
 // Normally the vector is at 0, this moves it up to 0x3400 in the bootloader area.
 
-void __attribute__((section("subbls"))) __attribute__((used)) __attribute__ ((noinline)) move_interrupts_to_bootlader();
+//void __attribute__((section("subbls"))) __attribute__((used)) __attribute__ ((noinline)) move_interrupts_to_bootlader();
 
 void move_interrupts_to_bootlader(void)
 {
@@ -1313,7 +1311,7 @@ extern "C" void __attribute__((naked)) BOOTLOADER_SEED_MODE_VECTOR() {
 
 //void  run() __attribute__((section("zerobase"))) __attribute__((used ));
 
-void __attribute__((section("subbls"))) __attribute__((used)) __attribute__ ((noinline)) run();
+//void __attribute__((section("subbls"))) __attribute__((used)) __attribute__ ((noinline)) run();
 
 void run(void) {
 
