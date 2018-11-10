@@ -9,15 +9,15 @@
 // besides avoiding duplicates, also try to maximize the hamming distance between these big
 
 namespace ir_packet_header_enum {
-    
+
     enum {
-    
+
         SEED    =   0b01101010,      // If you get this, then the other side is saying they want to send you a game
-        ACTIVE  =   0b11101000,      // Send to our source any time we get a valid pull or active packet. Basically this is an empty pull. 
+        ACTIVE  =   0b11101000,      // Send to our source any time we get a valid pull or active packet. Basically this is an empty pull.
         PULL    =   0b01011101,      // You send this to request the next block of a game
         PUSH    =   0b11011011,      // This contains a block of flash code to be programmed into the active area
         USERDATA=   0b00110111,      // Used by blink OS to carry user data packets
-    };    
+    };
 };
 
 // TODO: Add an *all done* packet the percolates down so we do not need to wait for timeouts to know when the full tree has finished downloading?
@@ -38,7 +38,9 @@ struct seed_payload_t {           // Sending blink telling neighbor there is a n
 
 
 struct pull_payload_t {                   // Blink asking neighbor for a block of a new game
-    uint8_t page;                       // The block we want the neighbor to send
+    uint8_t page;                         // The block we want the neighbor to send
+                                          // page==total_pages is a ping to let source know that our issue are still downloading
+                                          // page>totalpages tell source that we and all our issue are finished downloading
 };
 
 
