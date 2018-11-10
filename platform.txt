@@ -105,7 +105,8 @@ tools.avrdude.upload.params.noverify=-V
 
 # We replace the upload pattern with the program pattern because for now blinks code comes via programmer,
 # so putting this here lets us push the convenient "Upload" button rather than having to do the "Via Programmer" menu pick.
-tools.avrdude.upload.pattern="{cmd.path}" "-C{config.path}" {upload.verbose} {upload.verify} -p{build.mcu} -cusbtiny  "-Uflash:w:{build.path}/{build.project_name}.hex:i" "-Uflash:w:{runtime.platform.path}/bootloader/bin/blinkboot.hex:i"
+# The -B 4 speeds up the clock to 250KHz which is the fastest we can go with the currently programmed 1MHz MCU clock at startup
+tools.avrdude.upload.pattern="{cmd.path}" "-C{config.path}" -B 4 {upload.verbose} {upload.verify} -p{build.mcu} -cusbtiny  "-Uflash:w:{build.path}/{build.project_name}.hex:i" "-Uflash:w:{runtime.platform.path}/bootloader/bin/blinkboot.hex:i"
 #tools.avrdude.upload.pattern="{cmd.path}" "-C{config.path}" {upload.verbose} {upload.verify} -p{build.mcu} -c{upload.protocol} "-P{serial.port}" -b{upload.speed} -D "-Uflash:w:{build.path}/{build.project_name}.hex:i" "-Uflash:w:{build.core}/bootloader/bin/blinkboot.hex:i"
 
 tools.avrdude.program.params.verbose=-v
@@ -115,7 +116,8 @@ tools.avrdude.program.verify=
 tools.avrdude.program.params.noverify=-V
 
 # This just makes the "Upload via programmer" menu option work and do the same thing as the Upload button
-tools.avrdude.program.pattern="{cmd.path}" "-C{config.path}" {program.verbose} {program.verify} -p{build.mcu} -c{protocol} {program.extra_params} "-Uflash:w:{build.path}/{build.project_name}.hex:i" "-Uflash:w:{build.core}/bootloader/bin/blinkboot.hex:i"
+# The -B 4 speeds up the clock to 250KHz which is the fastest we can go with the currently programmed 1MHz MCU clock at startup
+tools.avrdude.program.pattern="{cmd.path}" "-C{config.path}" -B 4 {program.verbose} {program.verify} -p{build.mcu} -c{protocol} {program.extra_params} "-Uflash:w:{build.path}/{build.project_name}.hex:i" "-Uflash:w:{build.core}/bootloader/bin/blinkboot.hex:i"
 
 tools.avrdude.erase.params.verbose=-v
 tools.avrdude.erase.params.quiet=-q -q
