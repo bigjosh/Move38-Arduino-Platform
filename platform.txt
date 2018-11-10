@@ -102,14 +102,20 @@ tools.avrdude.upload.params.quiet=-q -q
 # tools.avrdude.upload.verify is needed for backwards compatibility with IDE 1.6.8 or older, IDE 1.6.9 or newer overrides this value
 tools.avrdude.upload.verify=
 tools.avrdude.upload.params.noverify=-V
-tools.avrdude.upload.pattern="{cmd.path}" "-C{config.path}" {upload.verbose} {upload.verify} -p{build.mcu} -c{upload.protocol} "-P{serial.port}" -b{upload.speed} -D "-Uflash:w:{build.path}/{build.project_name}.hex:i" "-Uflash:w:{build.core}/bootloader/bin/blinkboot.hex:i"
+
+# We replace the upload pattern with the program pattern because for now blinks code comes via programmer,
+# so putting this here lets us push the convenient "Upload" button rather than having to do the "Via Programmer" menu pick.
+tools.avrdude.upload.pattern="{cmd.path}" "-C{config.path}" {upload.verbose} {upload.verify} -p{build.mcu} -cusbtiny  "-Uflash:w:{build.path}/{build.project_name}.hex:i" "-Uflash:w:{runtime.platform.path}/bootloader/bin/blinkboot.hex:i"
+#tools.avrdude.upload.pattern="{cmd.path}" "-C{config.path}" {upload.verbose} {upload.verify} -p{build.mcu} -c{upload.protocol} "-P{serial.port}" -b{upload.speed} -D "-Uflash:w:{build.path}/{build.project_name}.hex:i" "-Uflash:w:{build.core}/bootloader/bin/blinkboot.hex:i"
 
 tools.avrdude.program.params.verbose=-v
 tools.avrdude.program.params.quiet=-q -q
 # tools.avrdude.program.verify is needed for backwards compatibility with IDE 1.6.8 or older, IDE 1.6.9 or newer overrides this value
 tools.avrdude.program.verify=
 tools.avrdude.program.params.noverify=-V
-tools.avrdude.program.pattern="{cmd.path}" "-C{config.path}" {program.verbose} {program.verify} -p{build.mcu} -c{protocol} {program.extra_params} "-Uflash:w:{build.path}/{build.project_name}.hex:i"
+
+# This just makes the "Upload via programmer" menu option work and do the same thing as the Upload button
+tools.avrdude.program.pattern="{cmd.path}" "-C{config.path}" {program.verbose} {program.verify} -p{build.mcu} -c{protocol} {program.extra_params} "-Uflash:w:{build.path}/{build.project_name}.hex:i" "-Uflash:w:{build.core}/bootloader/bin/blinkboot.hex:i"
 
 tools.avrdude.erase.params.verbose=-v
 tools.avrdude.erase.params.quiet=-q -q

@@ -1066,7 +1066,7 @@ void move_interrupts_to_bootlader(void)
 }
 
 
-// Move the interrupts back to 0x0000 (not in the bottom of the bootloader) 
+// Move the interrupts back to 0x0000 (not in the bottom of the bootloader)
 
 //void __attribute__((section("subbls"))) __attribute__((used)) __attribute__ ((noinline)) move_interrupts_to_bootlader();
 
@@ -1279,8 +1279,8 @@ void download_and_seed_mode( uint8_t we_are_root ) {
 
     // Check if the download was a success
     // TODO: Check total checksum here too
-    
-    active_program_checksum = calculate_active_game_checksum(); 
+
+    active_program_checksum = calculate_active_game_checksum();
 
     if ( download_next_page == download_total_pages && active_program_checksum == calculate_active_game_checksum()  ) {
 
@@ -1318,9 +1318,9 @@ void download_and_seed_mode( uint8_t we_are_root ) {
     }
 
     // OK PEOPLE, LETS GO START THE GAME EVERYONE !!!!!
-    
-    move_interrupts_to_base();   
-                                    // Send interrupt back to the normal vector table. For now, Arduino programs expect this.         
+
+    move_interrupts_to_base();
+                                    // Send interrupt back to the normal vector table. For now, Arduino programs expect this.
                                     // NOTE: boot_spm_interrupt_disable() does NOT do this! That disables the interrupt when an SPM instruction completes!
                                     // TODO: we will keep them when we take over pixel and other stuff.
 
@@ -1395,7 +1395,7 @@ void run(void) {
     pixel_enable();
 
     //button_enable_pu();
-    
+
     move_interrupts_to_bootlader();
 
     //setAllRawCorsePixels( COARSE_ORANGE );  // Set initial display
@@ -1450,7 +1450,7 @@ void run(void) {
 
 }
 
-
+/*
 
 
 // Below is just a little stub program to make it easier to work on the bootloader.
@@ -1491,9 +1491,9 @@ extern "C" void __vector_3 (void) {
     pixel_init();
 
     pixel_enable();
-    
+
     move_interrupts_to_bootlader();
-    
+
     // copy_built_in_game_to_active();
 
     sei();					// Let interrupts happen. For now, this is the timer overflow that updates to next pixel.
@@ -1536,3 +1536,4 @@ extern "C" void __vector_3 (void) {
 
 }
 
+*/
