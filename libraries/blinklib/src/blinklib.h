@@ -317,6 +317,10 @@ bool irIsReadyOnFace( uint8_t face );
 
 uint8_t irGetData( uint8_t face );
 
+// Enter seed mode - Copies current built-in game (not necessarily you!) to active game, then spreads, then runs
+// Never returns!
+
+void seedMe();  
 
 /* Power functions */
 
@@ -351,6 +355,8 @@ void setup(void);
 // on the tile face are updated
 
 void loop();
+
+
 
 
 /*

@@ -24,12 +24,12 @@ tile.build.variant=standard
 
 
 # Note that we actually boot up with DIV8 fuse programmed, so 
-# only running at 1Mhz. Then we switch the prescaller to /2 in init()
-# so we are at 4Mhz by the time user code runs.
+# only running at 1Mhz. Then we switch the prescaller to in init()
+# so we are at 8Mhz by the time user code runs.
 # This is done becuase 8Mhz might need a higher voltage than our battery can
 # supply.
 
-tile.build.f_cpu=4000000L
+tile.build.f_cpu=8000000L
 
 tile.build.mcu=atmega168pb
 

@@ -77,11 +77,10 @@ uint8_t updateButtonState1ms(buttonstate_t &buttonstate) {
                 
             } else if (pressCountup > BUTTON_SEEDPRESS_TIME_MS ) {
                 
-                 GPIOR1 = BOOTLOADER_GPOIR_SEED_MODE;
-                 asm("cli");
-                 asm("jmp 0x3800");
+                // This will never return
                 
-                //JUMP_TO_BOOTLOADER_SEED();
+                JUMP_TO_BOOTLOADER_SEED();
+                               
                 
             } else if ( pressCountup > BUTTON_LONGPRESS_TIME_MS ) {
                 

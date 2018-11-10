@@ -32,9 +32,9 @@
 
 #include "blinkos_headertypes.h"    // Defines the first hearer byte types for IR packets
 
-#include "blinkos_blinkboot.h"
-
 #include "callbacks.h"              // From blinkcore, which will call into us via these
+
+#include "bootloader.h"
 
 // TODO: Put this at a known fixed address to save registers
 // Will require a new .section in the linker file. Argh.
@@ -234,6 +234,13 @@ void processPendingIRPackets() {
                 // this is messy, but these buffers are the biggest thing in RAM.
                 // so that the userland can read from the buffer without worrying about it getting
                 // overwritten
+
+            } else if (*data == ir_packet_header_enum::SEED ) {
+
+                // Someone want to send us a new game!
+                // This seem reckless, right?
+
+                JUMP_TO_BOOTLOADER_DOWNLOAD();
 
             } else {
 

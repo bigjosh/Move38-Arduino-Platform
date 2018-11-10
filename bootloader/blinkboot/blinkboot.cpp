@@ -60,6 +60,21 @@
 
 #include "blinkos_headertypes.h"
 
+#define DOWNLOAD_MAX_PAGES 0x30     // The length of a downloaded game. Currently we always download all block even for shorter games.
+                                    // Turns out that flash stores 0xff in unused space, and 1 bits send quickly in our IR protocol so
+                                    // maybe not worth the extra overhead of setting the length? Woud could always scan backwards though the 0xffs?
+
+
+#define FLASH_PAGE_SIZE         SPM_PAGESIZE                     // Fixed by hardware
+
+// The game size is the DOWNLOAD_MAX_PAGES * FLASH_PAGE_SIZE and must fit between FLASH_ACTIVE_BASE and FLASH_BUILTIN_BASE
+// and also between FLASH_BUILTIN_BASE and the subbls section
+
+#define FLASH_ACTIVE_BASE       ((uint8_t *)0x0000)     // Flash starting address of the active area
+#define FLASH_BUILTIN_BASE      ((uint8_t *)0x1800)     // flash starting address of the built-in game
+#define FLASH_BOOTLOADER_BASE   ((uint8_t *)0x3800)     // Flash starting address of the bootloader. Fixed by hardware.
+
+
 #define US_PER_TICK        256UL
 #define US_PER_MS         1000UL
 #define TICK_PER_MS       ( US_PER_MS / US_PER_TICK)
@@ -275,15 +290,6 @@ void timer_128us_callback_sei(void) {
     IrDataPeriodicUpdateComs();
 }
 
-#define DOWNLOAD_MAX_PAGES 56       // The maximum length of a downloaded game
-                                    // Currently set to use ~7KB. This saves 7KB for built in game and 2KB for bootloader
-
-
-#define FLASH_PAGE_SIZE         SPM_PAGESIZE                     // Fixed by hardware
-
-#define FLASH_ACTIVE_BASE       ((uint8_t *)0x0000)     // Flash starting address of the active area
-#define FLASH_BUILTIN_BASE      ((uint8_t *)0x1c00)     // flash starting address of the built-in game
-#define FLASH_BOOTLOADER_BASE   ((uint8_t *)0x3800)     // Flash starting address of the bootloader. Fixed by hardware.
 
 // The FLASH_BOOTLOADER_BASE must be defined as the start of the .text segment when compiling the bootloader code.
 // Note that the linker doubles the value passed, so the .text should start at 0x1c00 from the linker's args
@@ -300,15 +306,6 @@ static void __attribute__ ((noinline)) burn_page_to_flash( uint8_t page , const 
 
     uint16_t address = (page * 128);        // This should hit the page at 0x0d00 which we currently define as testburn...
 
-    asm("nop");
-
-    __asm__ __volatile__
-    (
-    ""
-    :
-    :
-        "z" (address)
-    );
 
     // Do the actual page erase under cover of int protection since the
 
@@ -333,8 +330,8 @@ static void __attribute__ ((noinline)) burn_page_to_flash( uint8_t page , const 
     // TODO: We can do this much faster in ASM since we can
     // avoid reloading zero_reg every pass and use post increment for Z and stuff like that.
 
-    // Anything that has an SPM must have cli/sei around it becuase the SPM much come
-    // 4 cycles after the enable bit interlock bnefore it.
+    // Anything that has an SPM must have cli/sei around it because the SPM much come
+    // 4 cycles after the enable bit interlock before it.
 
     const uint16_t *ptr = (const uint16_t *) data;
 
@@ -843,7 +840,7 @@ static void processInboundIRPacketsOnFace( uint8_t f ) {
 
                         // If we are not active, then we send nothing so our upstream source will
                         // eventually active timeout as well
-                        
+
                         // We are now done, but to coordinate starting the downloaded game with everyone
                         // else, we will wait this long for a LETSGO from the root
                         countdown_startup = COUNTDOWN_STARTUP_LETSGOWAIT_COUNT;
@@ -878,7 +875,7 @@ static void processInboundIRPacketsOnFace( uint8_t f ) {
                 send_pull_packet( f , download_next_page );
 
                 countdown_retry = COUNTDOWN_RETRY_COUNT;        // start counting down in case we don't get a reply
-                countdown_active = COUNTDOWN_ACTIVE_COUNT;      // Stay alive as long as we keep getting PUSHes. 
+                countdown_active = COUNTDOWN_ACTIVE_COUNT;      // Stay alive as long as we keep getting PUSHes.
                 // source will see this and get back to us on the next pass though.
 
                 // Note that this pull will tell the source that we are active
@@ -976,8 +973,8 @@ static void processInboundIRPacketsOnFace( uint8_t f ) {
             countdown_active = COUNTDOWN_ACTIVE_COUNT;  // The blink on this face pulled so he is actively downloading himself so by definition it is active
                                                         // Even if we don't have the one he needs yet.
                                                         // He will try a PULL again next time we pass him with a SEED
-                                                        
-                                                        
+
+
 
         } else if (check_letsgo_packet( data , packetLen ) ) {
 
@@ -1021,11 +1018,49 @@ void move_interrupts_to_bootlader(void)
 }
 
 
+// Does not keep interrupts on
+
 void copy_built_in_game_to_active() {
 
-    #warning Implement copy_built_in_game_to_active()
+    return;
 
-    // For now we will use whatever game happens to end up in the active area
+    uint16_t *s_addr = (uint16_t *) FLASH_BUILTIN_BASE;
+    uint16_t *d_addr = (uint16_t *) FLASH_ACTIVE_BASE;
+
+    cli();      // Can't let interrupts come before SPM op
+
+    for( uint8_t page = 0 ; page < DOWNLOAD_MAX_PAGES ; page++ ) {
+
+        // We write in words not bytes
+
+        // TODO: We can do this much faster in ASM since we can
+        // avoid reloading zero_reg every pass and use post increment for Z and stuff like that.
+
+        // Anything that has an SPM must have cli/sei around it becuase the SPM much come
+        // 4 cycles after the enable bit interlock bnefore it.
+
+        for(uint16_t i=0; i<128;i+=2 ){               // 64 words (128 bytes) per page
+            boot_page_fill(  i , *s_addr++ );
+        }
+
+
+        boot_page_erase( d_addr );
+
+        boot_spm_busy_wait();
+
+        // Note that the bottom bits must be 0 for the write command. :/
+
+        boot_page_write( d_addr );
+
+        boot_spm_busy_wait( );
+
+        d_addr+=64;         // 128 bytes, but this is a word *
+
+    }
+
+    boot_rww_enable();       // Enable the normal memory
+
+    sei();
 
 }
 
@@ -1168,7 +1203,7 @@ void download_and_seed_mode( uint8_t we_are_root ) {
 
             // Sending probe seeds are a low priority, so we only do it after we have checked (and possibly pushed to)
             // all the engaged faces
-            
+
             if (countdown_seed==0 && download_next_page > 0 ) {      // Don't bother sending seeds until we have something to share
 
                 // Visually clear the last blue seed indicator is there was one on the last face
@@ -1194,16 +1229,16 @@ void download_and_seed_mode( uint8_t we_are_root ) {
                     // that could collide with his aync PULLs
 
                     // Visually indicate the probe with a blue pixel
-                    
+
                     if (countdown_startup && countdown_active ) {
                         setRawPixelCoarse( last_seed_face , COARSE_MAGENTA );                          // Show blue on the face we are sending seed packet
                     } else {
                         if (countdown_startup) {
-                            setRawPixelCoarse( last_seed_face , COARSE_BLUE );                          // Show blue on the face we are sending seed packet                        
+                            setRawPixelCoarse( last_seed_face , COARSE_BLUE );                          // Show blue on the face we are sending seed packet
                         } else {
-                            setRawPixelCoarse( last_seed_face , COARSE_RED );                          // Show blue on the face we are sending seed packet                            
-                        }                                                        
-                    }                                                
+                            setRawPixelCoarse( last_seed_face , COARSE_RED );                          // Show blue on the face we are sending seed packet
+                        }
+                    }
 
                     Debug::tx( 'E' );
                     Debug::tx( '0'+ last_seed_face );
@@ -1388,6 +1423,8 @@ void run(void) {
 }
 
 
+
+
 // Below is just a little stub program to make it easier to work on the bootloader.
 // This stub lands at 0x000 to runs at reset. All it does is check the button.
 // If the button is down, then it runs the bootloader in seed mode.
@@ -1436,7 +1473,7 @@ extern "C" void __vector_3 (void) {
     uint8_t f=0;
 
     while ( ( BUTTON_PIN & _BV(BUTTON_BIT) ) ) {
-         setRawPixelCoarse( f , COARSE_BLUE );
+         setRawPixelCoarse( f , COARSE_RED );
          _delay_ms(100);
          setRawPixelCoarse( f , COARSE_OFF );
          f++;
