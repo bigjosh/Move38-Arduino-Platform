@@ -360,8 +360,17 @@ void move_interrupts_to_base(void)
 
 extern void setupEntry();
 
+//#include "debug.h"
 
 void run(void) {
+    
+    /*
+    Debug::init();
+    while (1) {
+        Debug::pin_a_1();
+        Debug::pin_a_0();
+    }
+    */
 
     power_init();
 
@@ -382,8 +391,8 @@ void run(void) {
     button_enable_pu();
 
     move_interrupts_to_base();      // For now, we will control the INTs. Someday we will leave them to the bootloader
-    sei();
 
+    sei();
 
     // Set the buffer pointers
 

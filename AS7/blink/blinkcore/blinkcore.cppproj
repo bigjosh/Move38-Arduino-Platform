@@ -222,10 +222,6 @@
       <SubType>compile</SubType>
       <Link>shared.h</Link>
     </Compile>
-    <Compile Include="..\..\..\cores\blinkcore\startup.s">
-      <SubType>compile</SubType>
-      <Link>startup.s</Link>
-    </Compile>
     <Compile Include="..\..\..\cores\blinkcore\timers.h">
       <SubType>compile</SubType>
       <Link>timers.h</Link>

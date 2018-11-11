@@ -28,6 +28,7 @@ millis_t millis_snapshot;
 
 // Only call with interrupts on.
 
+
 void updateMillisSnapshot(void) {
 
     DO_ATOMICALLY {
@@ -36,12 +37,9 @@ void updateMillisSnapshot(void) {
 
 }
 
-
 // Note this runs in callback context
 
 void incrementMillis1ms(void) {
-
     millisCounter++;
-
 }
 

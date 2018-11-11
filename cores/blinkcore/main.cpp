@@ -87,7 +87,7 @@ void pre_main(void) {
 // "init9" gets us running right at the very startup, but after bss initialized.
 
 
-int main(void) __attribute__ ((section (".init9"))) __attribute__((used)) __attribute__ ((naked));
+//int main(void) __attribute__ ((section (".init9"))) __attribute__((used)) __attribute__ ((naked));
 
 int main(void)
 {
