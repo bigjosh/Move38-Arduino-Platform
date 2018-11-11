@@ -45,7 +45,7 @@ void updateDisplayColors() {
 void setup() {
     //splat();
     updateDisplayColors();
-    
+
 }
 
 // Packet handshaking
@@ -96,21 +96,9 @@ static byte current_game_state = IDLE_STATE;
 static bool pending_packet_send_on_face[FACE_COUNT];
 static bool pending_ack_send_on_face[FACE_COUNT];
 
-#warning this stuff just to see if we are running the bootloader
-
-uint8_t runflag;
-
 #include <util/delay.h>
 
 void loop() {
-    
-    if (!runflag) {
-        
-        _delay_ms(1000); 
-        
-        runflag=1;
-        
-    }        
 
     FOREACH_FACE(f) {
 
