@@ -98,7 +98,24 @@ static bool pending_ack_send_on_face[FACE_COUNT];
 
 #include <util/delay.h>
 
+
+#warning test
+uint8_t ___c_this_is_third;
+
+uint8_t ___a_this_is_first;
+
+uint8_t ___b_this_is_second;
+
+
+
+
+
 void loop() {
+
+    ___c_this_is_third=0;
+    ___a_this_is_first=0;
+    ___b_this_is_second=0;
+
 
     FOREACH_FACE(f) {
 

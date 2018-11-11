@@ -21,17 +21,18 @@ void setupEntry() {
 Timer next_send_pull_request;
 
 void loopEntry() {
-    
+
+
     if (next_send_pull_request.isExpired()) {
-        
+
         // Time to send next pull request
-        
+
         blinkboot_packet p;
-        
+
         p.header = P
-        
-    }        
-    
+
+    }
+
 }
 
 

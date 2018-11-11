@@ -64,7 +64,7 @@ struct ir_data_buffer_t {
 
     const uint8_t *data;
     uint8_t len;
-    uint8_t ready_flag;              // 1 if new packet received. Call markread_data_buffer();
+    uint8_t ready_flag;              // 1 if new packet received. Set to 0 to free the buffer for next packet
 
 };
 
@@ -75,7 +75,7 @@ struct ir_data_buffer_t {
 uint8_t ir_send_userdata( uint8_t face, const uint8_t *data , uint8_t len );
 
 struct loopstate_in_t {
-
+   
     ir_data_buffer_t ir_data_buffers[IR_FACE_COUNT];
 
     buttonstate_t buttonstate;   // Note that the flags in here are cleared after every pass though the loop
