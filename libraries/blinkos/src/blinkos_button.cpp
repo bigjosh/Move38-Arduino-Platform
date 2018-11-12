@@ -20,8 +20,8 @@
 
 #define BUTTON_LONGPRESS_TIME_MS 2000          // How long you must hold button down to register a long press.
 
-#define BUTTON_SEEDPRESS_TIME_MS 3000          
-#define BUTTON_OFFPRESS_TIME_MS 5000          
+#define BUTTON_SEEDPRESS_TIME_MS 3000
+#define BUTTON_OFFPRESS_TIME_MS 5000
 
 // Click Semantics
 // ===============
@@ -42,7 +42,7 @@ static uint16_t clickWindowCountdown=0;                 // How long until we clo
 
 static uint8_t clickPendingcount=0;                     // How many clicks so far int he current click window
 
-static uint16_t pressCountup=0;                         // Start counting up when the button goes down to detect long presses 
+static uint16_t pressCountup=0;                         // Start counting up when the button goes down to detect long presses
 
 // Called once per tick by the timer to check the button position
 // and update the button state variables.
@@ -50,17 +50,17 @@ static uint16_t pressCountup=0;                         // Start counting up whe
 // Note: this runs in Callback context in the timercallback
 // Called every 1ms
 
-// Why do I hate pass by reference so bad? But I think we need it here so this function 
-// can compile away into the single (timing sensitive) caller. 
+// Why do I hate pass by reference so bad? But I think we need it here so this function
+// can compile away into the single (timing sensitive) caller.
 
 uint8_t updateButtonState1ms(buttonstate_t &buttonstate) {
-            
+
     uint8_t buttonChangeFlag=0;         // So we know what to return.
 
     uint8_t buttonPositon = button_down();
 
     if ( buttonPositon == debouncedButtonPosition ) {
-        
+
         // Debounced button position has not changed
 
         if (buttonDebounceCountdown) {
@@ -68,29 +68,29 @@ uint8_t updateButtonState1ms(buttonstate_t &buttonstate) {
             buttonDebounceCountdown--;
 
         }
-        
+
         if (buttonPositon) {        // Button currently down?
-            
+
             if (pressCountup > BUTTON_OFFPRESS_TIME_MS) {
-                
+
                 // Force off
-                
+
             } else if (pressCountup > BUTTON_SEEDPRESS_TIME_MS ) {
-                
+
                 // This will never return
-                
+
                 JUMP_TO_BOOTLOADER_SEED();
-                               
-                
+
+
             } else if ( pressCountup > BUTTON_LONGPRESS_TIME_MS ) {
-                
+
                 buttonstate.bitflags|= BUTTON_BITFLAG_LONGPRESSED;
-                                
-            }                                         
-            
-           pressCountup++;          // DOn't need to worry about overflow becuase we will seed or turn off before then. 
-                        
-            // We can nestle the click window countdown in here because a click will ALWAYS happen while button is down...
+
+            }
+
+           pressCountup++;          // Don't need to worry about overflow because we will seed or turn off before then.
+
+        } else {  //  if (!buttonPositon) {  -- button currently up
 
             if (clickWindowCountdown) {
 
@@ -100,18 +100,18 @@ uint8_t updateButtonState1ms(buttonstate_t &buttonstate) {
 
                     if (!debouncedButtonPosition) {              // Button is up, so register clicks
 
-                        if (clickPendingcount==1) {                           
-                            buttonstate.bitflags |= BUTTON_BITFLAG_SINGLECLICKED;                               
+                        if (clickPendingcount==1) {
+                            buttonstate.bitflags |= BUTTON_BITFLAG_SINGLECLICKED;
                         } else if (clickPendingcount==2) {
                            buttonstate.bitflags |= BUTTON_BITFLAG_DOUBECLICKED;
                         } else {
                             buttonstate.bitflags |= BUTTON_BITFLAG_MULITCLICKED;
-                            buttonstate.clickcount = clickPendingcount;                                
-                            // Note this could overwrite a previous multiclick count if more than 1 happens per loop cycle. 
+                            buttonstate.clickcount = clickPendingcount;
+                            // Note this could overwrite a previous multiclick count if more than 1 happens per loop cycle.
                         }
-                        
-                        
-                    }                            
+
+
+                    }
 
                     clickPendingcount=0;        // Start next cycle (aborts any pending clicks if button was still down
 
@@ -125,28 +125,28 @@ uint8_t updateButtonState1ms(buttonstate_t &buttonstate) {
     }  else {       // New button position
 
         if (!buttonDebounceCountdown) {         // Done bouncing
-            
+
             if (buttonPositon) {            // Button just pressed?
-                
+
                 buttonstate.bitflags |= BUTTON_BITFLAG_PRESSED;
-                                               
+
                 if (clickPendingcount<255) {        // Don't overflow
                     clickPendingcount++;
                 }
 
                 clickWindowCountdown = BUTTON_CLICK_TIMEOUT_MS ;
-                pressCountup         = 0; 
+                pressCountup         = 0;
 
             } else {
-                
+
                 buttonstate.bitflags |= BUTTON_BITFLAG_RELEASED;
 
             }
-            
+
             debouncedButtonPosition = buttonPositon;
-            
+
             buttonChangeFlag =1 ;
-            
+
         }
 
         // Restart the countdown anytime the button position changes
@@ -156,7 +156,7 @@ uint8_t updateButtonState1ms(buttonstate_t &buttonstate) {
     }
 
     buttonstate.down = debouncedButtonPosition;
-    
+
     return buttonChangeFlag;
 }
 
