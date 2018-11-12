@@ -284,7 +284,7 @@ static uint8_t ir_send_packet_buffer[ IR_LONG_PACKET_MAX_LEN + 3 ];
 uint8_t sendPacketOnFace( byte face , const byte *data, byte len ) {
 
     if ( len > IR_LONG_PACKET_MAX_LEN ) {
-        
+
         // Ignore request to send oversized packet
 
         return 0;
@@ -325,12 +325,12 @@ uint8_t sendPacketOnFace( byte face , const byte *data, byte len ) {
     *b = computedChecksum;
 
     uint8_t sent_flag = ir_send_userdata( face , ir_send_packet_buffer , packetLen );
-    
+
     if (sent_flag) {
-        
+
           faces[face].sendTime = now + TX_PROBE_TIME_MS;
-         
-    }         
+
+    }
 
     return sent_flag ;
 
@@ -601,6 +601,13 @@ bool buttonLongPressed(void) {
 
 // --- Utility functions
 
+Color makeColorRGB( byte red, byte green, byte blue ) {
+
+    // Internal color representation is only 5 bits, so we have to divide down from 8 bits
+    return Color( red >> 3 , green >> 3 , blue >> 3 );
+
+}
+
 Color makeColorHSB( uint8_t hue, uint8_t saturation, uint8_t brightness ) {
 
     uint8_t r;
@@ -655,7 +662,7 @@ Color makeColorHSB( uint8_t hue, uint8_t saturation, uint8_t brightness ) {
         }
     }
 
-    return( Color( r , g  , b ) );
+    return( makeColorRGB( r  , g   , b  ) );
 }
 
 // OMG, the Ardiuno rand() function is just a mod! We at least want a uniform distibution.
@@ -796,7 +803,7 @@ void setupEntry() {
 }
 
 void loopEntry() {
-   
+
     now = loopstate_in.millis;
 
     RX_IRFaces( loopstate_in.ir_data_buffers );
@@ -833,7 +840,7 @@ void loopEntry() {
 }
 
 void seedMe() {
-    
-    JUMP_TO_BOOTLOADER_SEED();    
-    
+
+    JUMP_TO_BOOTLOADER_SEED();
+
 }    
