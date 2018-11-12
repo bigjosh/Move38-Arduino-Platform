@@ -1,202 +1,668 @@
 /*
+ *
+ *  This library lives in userland and acts as a shim to th blinkos layer
+ *
+ *  This view tailored to be idiomatic Arduino-y. There are probably better views of the interface if you are not an Arduinohead.
+ *
+ * In this view, each tile has a "state" that is represented by a number between 1 and 127.
+ * This state value is continuously broadcast on all of its faces.
+ * Each tile also remembers the most recently received state value from he neighbor on each of its faces.
+ *
+ * You supply setup() and loop().
+ *
+ * While in loop(), the world is frozen. All changes you make to the pixels and to data on the faces
+ * is buffered until loop returns.
+ *
+ */
 
-    This library presents an API for game developers on the Move38 Blinks platform.
-    More info at http://Move38.com
-
-    This API sits on top of the hardware abstraction layer and presents a simplified representation
-    of the current state of the tile and its adjacent neighbors.
-
-    It handles all the low level protocol to communicate state with neighbors, and
-    offers high level functions for setting the color and detecting button interactions.
-
-*/
-
-// We need this little nugget to get UINT16_T as per...
-// https://stackoverflow.com/a/3233069/3152071
-// ...and it must come before Arduino.h which also pulls in stdint.h
-
-#define __STDC_LIMIT_MACROS
+#include <limits.h>
 #include <stdint.h>
+//#include <stdlib.h>         //rand()
 
-#include <avr/pgmspace.h>
-#include <stddef.h>     // NULL
+#include <avr/pgmspace.h>   // PROGMEM for parity lookup table
+
+#include <stddef.h>
 
 #include "ArduinoTypes.h"
 
 #include "blinklib.h"
-#include "blinkstate.h"			// Get the reference to beginBlinkState()
 
-#include "pixel.h"
-#include "timer.h"
-#include "button.h"
-#include "utils.h"
-#include "power.h"
+#include "blinkos.h"
 
-#include "ir.h"
-#include "irdata.h"
-
-#include "run.h"
-
-#include <util//atomic.h>
-#define DO_ATOMICALLY ATOMIC_BLOCK(ATOMIC_FORCEON)                  // Non-HAL code always runs with interrupts on
-
-// IR CONSTANTS
-
-#define STATE_BROADCAST_SPACING_MS  50           // How often do we broadcast our state to neighboring tiles?
-
-#define STATE_ABSENSE_TIMEOUT_MS 250             // If we don't get any state received on a face for this long, we set their state to 0
-
-// BUTTON CONSTANTS
-
-// Debounce button pressed this much
-// Empirically determined. At 50ms, I can click twice fast enough
-// that the second click it gets in the debounce. At 20ms, I do not
-// any bounce even when I sllllooooowwwwly click.
-#define BUTTON_DEBOUNCE_MS 20
-
-// Delay for determining clicks
-// So, a click or double click will not be registered until this timeout
-// because we don't know yet if it is a single, double, or triple
-
-#define BUTTON_CLICK_TIMEOUT_MS 330
-
-#define BUTTON_LONGPRESS_TIME_MS 2000          // How long you must hold button down to register a long press.
-
-#define SLEEP_TIMEOUT_SECONDS (10*60)          // If no button press in this long then goto sleep
-
-#define SLEEP_TIMEOUT_MS ( (unsigned long) SLEEP_TIMEOUT_SECONDS  * MILLIS_PER_SECOND) // Must cast up becuase otherwise will overflow
+#include "bootloader.h"
 
 
-// When we should fall sleep from inactivity
-Timer sleepTimer;
+#define TX_PROBE_TIME_MS           150     // How often to do a blind send when no RX has happened recently to trigger ping pong
+                                           // Nice to have probe time shorter than expire time so you have to miss 2 messages
+                                           // before the face will expire
+
+#define RX_EXPIRE_TIME_MS         200      // If we do not see a message in this long, then show that face as expired
 
 
-//#define BUTTON_SLEEP_TIMEOUT_SECONDS (10*60)   // If no button press in this long then goto sleep
+// This is a parity check that I came up with that I think is robust to close together bitflips and
+// also efficient to calculate.
+// We keep the 6 data bits in the middle of the byte, and then send parity bits at the top and bottom
+// that cover alternating data bits. This should catch any 1 or 2 consecutive flips.
+// Top parity is even, bottom is odd. The idea here is that a string of all 1's or 0's will fail.
 
-// PIXEL FUNCTIONS
+// A hamming code would have been better, but we need 6 data bits rather than 4.
 
-// Remeber that thge underlying pixel_* setting functions are double buffered and so
-// require a call to pixel_displayBuffer() to aactually show all the updates. We do this
-// this call everytime loop() returns to ensure a coherent update, and also make sure that
-// sure that the final result of any loop() interation will always hit the display for at least
-// one frame to eliminate aliasing and tearing.
+// Commented code below generates the output parity checked bytes for all 63 valid input values.
+// https://www.onlinegdb.com/online_c++_compiler
+
+/*
+
+#include <iostream>
+
+using namespace std;
+
+uint8_t paritygenerator( uint8_t d ) {
+
+    // TODO: We are only counting the bottom 6 bits, so could replace popcount()
+    //       with some asm that only counts those with 5 shifts
+    //       https://www.avrfreaks.net/forum/avr-gcc-de-optimizing-my-code
+
+    uint8_t topbits   = d & 0b00010101;
+    uint8_t topbitcount = __builtin_popcount( topbits );
+    uint8_t topparitybit = !(topbitcount & 0b00000001 );
 
 
-void setColorOnFace( Color newColor , byte face ) {
+    uint8_t bottombits = d & 0b00101010;
+    uint8_t bottombitcount = __builtin_popcount( bottombits );
+    uint8_t bottomparitybit = (bottombitcount & 0b00000001 );
 
-    pixelColor_t newPixelColor;
 
-    // TODO: OMG, this is the most inefficient conversion from a unit16 back to (the same) unit16 ever!
-    // But to share a type between the core and blinklib level though pixel.h would require all blinklib
-    // users to get the whole pixel.h namespace. There has to be a good way around this. Maybe
-    // break out the pixelColor type into its own core .H file? seems wrong. Hmmm....
-
-    newPixelColor.r = GET_5BIT_R( newColor );
-    newPixelColor.g = GET_5BIT_G( newColor );
-    newPixelColor.b = GET_5BIT_B( newColor );
-
-    pixel_bufferedSetPixel( face , newPixelColor );
+    return ( ( topparitybit << 7 ) | ( d << 1 ) | ( bottomparitybit ) );
 
 }
 
-void setFaceColor( byte face , Color newColor ) {
-    setColorOnFace( newColor , face );
-}
+#include <iostream>
+#include <iomanip>
 
-// Convenience function to set all pixels to the same color.
+#include <bitset>
+using std::setw;
 
-void setColor( Color newColor ) {
+void generateParityTable( void ) {
 
-    FOREACH_FACE(f) {
-        setColorOnFace( newColor, f );
+    for( uint8_t d =0; d < 64 ; d++ ) {
+
+        std::bitset<8> x(paritygenerator( d ) );
+        std::cout << "    0b" << x << ",   // " << setw(2) << (int) d << "\n";
+
     }
 
 }
 
-// This maps 0-255 values to 0-31 values with the special case that 0 (in 0-255) is the only value that maps to 0 (in 0-31)
-// This leads to some slight non-linearity since there are not a uniform integral number of 1-255 values
-// to map to each of the 1-31 values.
 
-byte map8bitTo5bit( byte b ) {
+int main()
+{
 
-    if (b==0) return 0;
+    generateParityTable();
 
-    // 0 gets a special case of `off`, so we divide the rest of the range in to
-    // 31 equaly spaced regions to assign the remaing 31 brightness levels.
+    return 0;
+}
+*/
 
-    uint16_t normalizedB = b-1;     // Offset to a value 0-254 that will be scaled to the remaining 31 on values
+// We precompute the parity table for efficiency
+// Look how nicely those bits encode! Try and change two bits in a row - bet you can't! Good hamming!
 
-    //uint16_t scaledB = (normalizedB / 255) * 31); // This is what we want to say, but it will underflow in integer math
+static const uint8_t PROGMEM parityTable[] = {
 
-    byte scaledB = ( (uint16_t) normalizedB * 31U) / 255U; // Be very careful to stay in bounds!
+    0b10000000,   //  0
+    0b00000010,   //  1
+    0b10000101,   //  2
+    0b00000111,   //  3
+    0b00001000,   //  4
+    0b10001010,   //  5
+    0b00001101,   //  6
+    0b10001111,   //  7
+    0b10010001,   //  8
+    0b00010011,   //  9
+    0b10010100,   // 10
+    0b00010110,   // 11
+    0b00011001,   // 12
+    0b10011011,   // 13
+    0b00011100,   // 14
+    0b10011110,   // 15
+    0b00100000,   // 16
+    0b10100010,   // 17
+    0b00100101,   // 18
+    0b10100111,   // 19
+    0b10101000,   // 20
+    0b00101010,   // 21
+    0b10101101,   // 22
+    0b00101111,   // 23
+    0b00110001,   // 24
+    0b10110011,   // 25
+    0b00110100,   // 26
+    0b10110110,   // 27
+    0b10111001,   // 28
+    0b00111011,   // 29
+    0b10111100,   // 30
+    0b00111110,   // 31
+    0b11000001,   // 32
+    0b01000011,   // 33
+    0b11000100,   // 34
+    0b01000110,   // 35
+    0b01001001,   // 36
+    0b11001011,   // 37
+    0b01001100,   // 38
+    0b11001110,   // 39
+    0b11010000,   // 40
+    0b01010010,   // 41
+    0b11010101,   // 42
+    0b01010111,   // 43
+    0b01011000,   // 44
+    0b11011010,   // 45
+    0b01011101,   // 46
+    0b11011111,   // 47
+    0b01100001,   // 48
+    0b11100011,   // 49
+    0b01100100,   // 50
+    0b11100110,   // 51
+    0b11101001,   // 52
+    0b01101011,   // 53
+    0b11101100,   // 54
+    0b01101110,   // 55
+    0b01110000,   // 56
+    0b11110010,   // 57
+    0b01110101,   // 58
+    0b11110111,   // 59
+    0b11111000,   // 60
+    0b01111010,   // 61
+    0b11111101,   // 62
+    0b01111111,   // 63
+};
 
-    // scaledB is now a number 0-30 that is (almost) lenearly scaled down from the orginal b
+// This is a special byte that signals that this is a long data packet
+// It must appear twice, and the final byte is a checksum of all bytes including the two header bytes
 
-    return ( scaledB )+1;       // De-normalize back up to `on` values 1-31.
+#define LONG_DATA_PACKET_HEADER0 0b10101010
+#define LONG_DATA_PACKET_HEADER1 0b01010101
+
+static uint8_t parityEncode( uint8_t d ) {
+    return pgm_read_byte_near( parityTable+ d );
+}
+
+static uint8_t parityDecode( uint8_t d ) {
+
+    return (d & 0b01111110) >> 1 ;
 
 }
 
-// Make a new color from RGB values. Each value can be 0-255.
+
+// TODO: These struct even better if they are padded to a power of 2 like https://stackoverflow.com/questions/1239855/pad-a-c-structure-to-a-power-of-two
+
+struct face_t {
+
+    uint8_t inValue;           // Last received value on this face, or 0 if no neighbor ever seen since startup
+    uint8_t outValue;          // Value we send out on this face
+    millis_t expireTime;    // When this face will be consider to be expired (no neighbor there)
+    millis_t sendTime;      // Next time we will transmit on this face (set to 0 everytime we get a good message so we ping-pong across the link)
+
+};
+
+static face_t faces[FACE_COUNT];
+
+// Grab once from loopstate
+millis_t now;
+
+unsigned long millis() {
+    return now;
+}
+
+// Returns the checksum of all bytes
+
+uint8_t computeChecksum( const uint8_t *buffer , uint8_t len ) {
+
+    uint8_t computedChecksum = 0;
+
+    for( uint8_t l=0; l < len ; l++ ) {
+
+        computedChecksum += *buffer++;
+
+    }
+
+    return computedChecksum;
+
+}
+
+#if  ( ( IR_LONG_PACKET_MAX_LEN + 3  ) > IR_RX_PACKET_SIZE )
+
+    #error There has to be enough room in the blinkos packet buffer to hold the user packet plus 2 header bytes and one checksum byte
+
+#endif
+
+// The length of the long packet in each face buffer
+// The packet starts at byte 3 because there are 2 header bytes
+// This len already has the header bytes deducted and also the checksum at the end.
+// TODO: If we share the static packetbuffers directly up from blinkOS then this could all be shorted and sweeter
+static byte  longPacketLen[FACE_COUNT];
+static byte *longPacketData[FACE_COUNT];
+
+byte getPacketLengthOnFace( uint8_t face ) {
+    return longPacketLen[ face ];
+
+}
+
+boolean isPacketReadyOnFace( uint8_t face ) {
+    return getPacketLengthOnFace(face) != 0;
+}
+
+const byte *getPacketDataOnFace( uint8_t face ) {
+
+    return longPacketData[face];
+
+}
+
+void markLongPacketRead( uint8_t face ) {
+
+    // We don't want to mark it read if it is not actually pending because then we might be throwing away an unread packet
+    if ( longPacketLen[face] ) {
+        longPacketLen[face]=0;
+        ir_mark_packet_read( face );
+    }
+}
+
+
+#define SBI(x,b) (x|= (1<<b))           // Set bit
+#define CBI(x,b) (x&=~(1<<b))           // Clear bit
+#define TBI(x,b) (x&(1<<b))             // Test bit
+
+uint8_t rx_buffer_fresh_bitflag;    // One bit per IR LED indicates that we just got a new state update packet on this face
+                                    // Needed to know when it is clear to send on that face to keep up the ping-pong
+                                    // when packets are involved
+                                    // We could also expose a "valueOnFaceJustRefreshed()" function but we are getting so far
+                                    // away from the original blink state model here! Really packets do not even fit in this model
+                                    // but give the people what they want!
+
+// This is the easy way to do this, but uses RAM unnecessarily.
+// TODO: Make a scatter version of this to save RAM & time
+
+static uint8_t ir_send_packet_buffer[ IR_LONG_PACKET_MAX_LEN + 3 ];
+
+uint8_t sendPacketOnFace( byte face , const byte *data, byte len ) {
+
+    if ( len > IR_LONG_PACKET_MAX_LEN ) {
+
+        // Ignore request to send oversized packet
+
+        return 0;
+
+    }
+
+    if ( ! TBI( rx_buffer_fresh_bitflag , face ) ) {
+        // We never blind send a packet. Instead we wait for a normal (short) value message to come in
+        // and then we reply with the packet to avoid collisions. We depend on the value messages to
+        // do handshaking and also to discover when there is a neighbor on the other side.
+
+        // The caller should see this 0 and then try to send again until they hit a moment when we know it is save to send
+        return 0;
+
+    }
+
+    const uint8_t *s = (const uint8_t *) data ;           // Just to convert from void to uint8_t
+
+    uint8_t *b = ir_send_packet_buffer;
+
+    // Build up the packet in the buffer
+
+    *b++= LONG_DATA_PACKET_HEADER0;
+    *b++= LONG_DATA_PACKET_HEADER1;
+
+    uint8_t packetLen = len+3;
+
+    uint8_t computedChecksum= LONG_DATA_PACKET_HEADER0+LONG_DATA_PACKET_HEADER1;    // The header bytes are included in the checksum
+
+    while (len--) {
+
+        computedChecksum += *s;
+
+        *b++= *s++;
+
+    }
+
+    *b = computedChecksum;
+
+    uint8_t sent_flag = ir_send_userdata( face , ir_send_packet_buffer , packetLen );
+
+    if (sent_flag) {
+
+          faces[face].sendTime = now + TX_PROBE_TIME_MS;
+
+    }
+
+    return sent_flag ;
+
+}
+
+static void RX_IRFaces( const ir_data_buffer_t *ir_data_buffers ) {
+
+    //  Use these pointers to step though the arrays
+    face_t *face = faces;
+    const ir_data_buffer_t *ir_data_buffer = ir_data_buffers;
+
+    for( uint8_t f=0; f < FACE_COUNT ; f++ ) {
+
+            // Check for anything new coming in...
+
+        if ( ir_data_buffer->ready_flag ) {
+
+            // Got something, so we know there is someone out there
+            // TODO: Should we require the received packet to pass error checks?
+            face->expireTime = now + RX_EXPIRE_TIME_MS;
+
+            const uint8_t *packetBuffer = ir_data_buffer->data;
+            const uint8_t packetLen = ir_data_buffer->len;
+
+            if ( packetLen == 1 ) {
+
+
+                // We only deal with 1 byte long packets in blinklib so anything else is an error
+
+                uint8_t receivedByte = packetBuffer[0];
+
+                uint8_t decodedByte = parityDecode( receivedByte );
+
+                if ( receivedByte == parityEncode( decodedByte ) ) {
+
+                    // This looks like a valid value!
+
+                    // OK, everything checks out, we got a good face value!
+
+                    face->inValue = decodedByte;
+
+                    // Clear to send on this face immediately to ping-pong messages at max speed without collisions
+                    face->sendTime = 0;
+
+
+                    SBI( rx_buffer_fresh_bitflag , f );     // Mark that we just got a valid message on this face so we can ping pong with packets. Code smell!
+
+                } //  if ( receivedByte == parityEncode( decodedByte ) )
+
+                // Mark the data buffer as consumed. This clears it out so it will be ready to receive the next packet
+                // If we don't do this, then we might miss the response to our ping
+
+                ir_mark_packet_read( f ) ;
+
+            }   else { // if ( ir_data_buffer->len == 1 )
+
+                if (packetLen>=4 && packetBuffer[0] == LONG_DATA_PACKET_HEADER0 && packetBuffer[1] == LONG_DATA_PACKET_HEADER1 && computeChecksum( packetBuffer , packetLen-1)  ==  packetBuffer[ packetLen - 1 ] ) {       // A packet must have at least 2 header bytes and one data byte and check sum byte
+
+                    // Ok this packet checks out folks!
+
+                    longPacketLen[ f ] = packetLen-3;           // We deduct 3 from he length to account for the 2 header bytes and the trailing checksum byte
+                    longPacketData[f] = (byte *) (packetBuffer + 2);       // Skip the header bytes
+
+                    // NOTE that we do not mark this packet as read! This will give the suer a chance to read it directly from the IR buffer.
+
+                    // Clear to send on this face immediately to ping-pong messages at max speed without collisions
+                    face->sendTime = 0;
+
+                } else {
+
+                    // Note that we do not clear to send on this face. There was some kind of problem, maybe corruption
+                    // so there might still be stuff in flight and we don't want to step on it.
+                    // Instead we let the timer take over and let things cool down until one side blinks sends to
+                    // start things up again.
+
+                    // Packet too short so consume it to make room for next.
+
+                    ir_mark_packet_read( f ) ;
+
+                }
+
+            }
+
+
+        }  // if ( ir_data_buffer->ready_flag )
+
+        face++;
+        ir_data_buffer++;
+
+    } // for( uint8_t f=0; f < FACE_COUNT ; f++ )
+
+}
+
+
+static void TX_IRFaces() {
+
+    //  Use these pointers to step though the arrays
+    face_t *face = faces;
+
+    for( uint8_t f=0; f < FACE_COUNT ; f++ ) {
+        // Send one out too if it is time....
+
+        if ( face->sendTime <= now ) {        // Time to send on this face?
+                                              // Note that we do not use the rx_fresh flag here because we want the timeout
+                                              // to do automatic retries to kickstart things when a new neighbor shows up or
+                                              // when an IR message gets missed
+
+            uint8_t data = parityEncode( face->outValue );
+
+            if (ir_send_userdata( f , &data  , sizeof(data) ) ) {
+
+                // Here we set a timeout to keep periodically probing on this face, but
+                // if there is a neighbor, they will send back to us as soon as they get what we
+                // just transmitted, which will make us immediately send again. So the only case
+                // when this probe timeout will happen is if there is no neighbor there.
+
+                // If ir_send_userdata() returns 0, then we could not send becuase there was an RX in progress on this face.
+                // Because we do not reset the sentTime in that case, we will automatically try again next pass.
+
+                face->sendTime = now + TX_PROBE_TIME_MS;
+            }
+
+        } // if ( face->sendTime <= now )
+
+        face++;
+
+    } // for( uint8_t f=0; f < FACE_COUNT ; f++ )
+
+}
+
+
+// Returns the last received state on the indicated face
+// Remember that getNeighborState() starts at 0 on powerup.
+// so returns 0 if no neighbor ever seen on this face since power-up
+// so best to only use after checking if face is not expired first.
+// Note the a face expiring has no effect on the getNeighborState()
+
+byte getLastValueReceivedOnFace( byte face ) {
+
+    return faces[face].inValue;
+
+}
+
+// Did the neighborState value on this face change since the
+// last time we checked?
+// Remember that getNeighborState starts at 0 on powerup.
+// Note the a face expiring has no effect on the getNeighborState()
+
+byte didValueOnFaceChange( byte face ) {
+    static byte prevState[FACE_COUNT];
+
+    byte curState = getLastValueReceivedOnFace(face);
+
+    if ( curState == prevState[face] ) {
+        return false;
+    }
+    prevState[face] = curState;
+
+    return true;
+
+}
+
+
+
+byte isValueReceivedOnFaceExpired( byte face ) {
+
+    return faces[face].expireTime < now;
+
+}
+
+// Returns false if their has been a neighbor seen recently on any face, true otherwise.
+
+bool isAlone() {
+
+	FOREACH_FACE(f) {
+
+		if( !isValueReceivedOnFaceExpired(f) ) {
+			return false;
+		}
+
+	}
+	return true;
+
+}
+
+
+// Set our broadcasted state on all faces to newState.
+// This state is repeatedly broadcast to any neighboring tiles.
+
+// By default we power up in state 0.
+
+void setValueSentOnAllFaces( byte value ) {
+
+     if (value > IR_DATA_VALUE_MAX ) {
+
+         value = IR_DATA_VALUE_MAX;
+
+     }
+
+    FOREACH_FACE(f) {
+
+        faces[f].outValue = value;
+
+    }
+
+}
+
+// Set our broadcasted state on indicated face to newState.
+// This state is repeatedly broadcast to the partner tile on the indicated face.
+
+// By default we power up in state 0.
+
+void setValueSentOnFace( byte value , byte face ) {
+
+     if (value > IR_DATA_VALUE_MAX ) {
+
+         value = IR_DATA_VALUE_MAX;
+
+     }
+
+    faces[face].outValue = value;
+
+}
+
+
+static buttonstate_t buttonstate;
+
+bool buttonDown(void) {
+    return buttonstate.down;
+}
+
+static bool grabandclearbuttonflag( uint8_t flagbit ) {
+    bool r = buttonstate.bitflags & flagbit;
+    buttonstate.bitflags &= ~ flagbit;
+    return r;
+}
+
+bool buttonPressed(void) {
+    return grabandclearbuttonflag( BUTTON_BITFLAG_PRESSED );
+}
+
+bool buttonReleased(void) {
+    return grabandclearbuttonflag( BUTTON_BITFLAG_RELEASED );
+}
+
+bool buttonSingleClicked() {
+    return grabandclearbuttonflag( BUTTON_BITFLAG_SINGLECLICKED );
+}
+
+bool buttonDoubleClicked() {
+    return grabandclearbuttonflag( BUTTON_BITFLAG_DOUBECLICKED );
+}
+
+bool buttonMultiClicked() {
+    return grabandclearbuttonflag( BUTTON_BITFLAG_MULITCLICKED );
+}
+
+
+// The number of clicks in the longest consecutive valid click cycle since the last time called.
+byte buttonClickCount(void) {
+    return buttonstate.clickcount;
+}
+
+// Remember that a long press fires while the button is still down
+bool buttonLongPressed(void) {
+    return grabandclearbuttonflag( BUTTON_BITFLAG_LONGPRESSED );
+}
+
+// --- Utility functions
 
 Color makeColorRGB( byte red, byte green, byte blue ) {
-    return MAKECOLOR_5BIT_RGB( map8bitTo5bit(red) , map8bitTo5bit(green) ,  map8bitTo5bit(blue) );
+
+    // Internal color representation is only 5 bits, so we have to divide down from 8 bits
+    return Color( red >> 3 , green >> 3 , blue >> 3 );
+
 }
 
 Color makeColorHSB( uint8_t hue, uint8_t saturation, uint8_t brightness ) {
 
-	uint8_t r;
-	uint8_t g;
-	uint8_t b;
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
 
-	if (saturation == 0)
-	{
-		// achromatic (grey)
-		r =g = b= brightness;
-	}
-	else
-	{
-		unsigned int scaledHue = (hue * 6);
-		unsigned int sector = scaledHue >> 8; // sector 0 to 5 around the color wheel
-		unsigned int offsetInSector = scaledHue - (sector << 8);  // position within the sector
-		unsigned int p = (brightness * ( 255 - saturation )) >> 8;
-		unsigned int q = (brightness * ( 255 - ((saturation * offsetInSector) >> 8) )) >> 8;
-		unsigned int t = (brightness * ( 255 - ((saturation * ( 255 - offsetInSector )) >> 8) )) >> 8;
+    if (saturation == 0)
+    {
+        // achromatic (grey)
+        r =g = b= brightness;
+    }
+    else
+    {
+        unsigned int scaledHue = (hue * 6);
+        unsigned int sector = scaledHue >> 8; // sector 0 to 5 around the color wheel
+        unsigned int offsetInSector = scaledHue - (sector << 8);  // position within the sector
+        unsigned int p = (brightness * ( 255 - saturation )) >> 8;
+        unsigned int q = (brightness * ( 255 - ((saturation * offsetInSector) >> 8) )) >> 8;
+        unsigned int t = (brightness * ( 255 - ((saturation * ( 255 - offsetInSector )) >> 8) )) >> 8;
 
-		switch( sector ) {
-			case 0:
-			r = brightness;
-			g = t;
-			b = p;
-			break;
-			case 1:
-			r = q;
-			g = brightness;
-			b = p;
-			break;
-			case 2:
-			r = p;
-			g = brightness;
-			b = t;
-			break;
-			case 3:
-			r = p;
-			g = q;
-			b = brightness;
-			break;
-			case 4:
-			r = t;
-			g = p;
-			b = brightness;
-			break;
-			default:    // case 5:
-			r = brightness;
-			g = p;
-			b = q;
-			break;
-		}
-	}
+        switch( sector ) {
+            case 0:
+            r = brightness;
+            g = t;
+            b = p;
+            break;
+            case 1:
+            r = q;
+            g = brightness;
+            b = p;
+            break;
+            case 2:
+            r = p;
+            g = brightness;
+            b = t;
+            break;
+            case 3:
+            r = p;
+            g = q;
+            b = brightness;
+            break;
+            case 4:
+            r = t;
+            g = p;
+            b = brightness;
+            break;
+            default:    // case 5:
+            r = brightness;
+            g = p;
+            b = q;
+            break;
+        }
+    }
 
-    return( makeColorRGB( r , g  , b ) );
+    return( makeColorRGB( r  , g   , b  ) );
 }
 
 // OMG, the Ardiuno rand() function is just a mod! We at least want a uniform distibution.
@@ -204,9 +670,9 @@ Color makeColorHSB( uint8_t hue, uint8_t saturation, uint8_t brightness ) {
 // Here we implement the SimpleRNG pseudo-random number generator based on this code...
 // https://www.johndcook.com/SimpleRNG.cpp
 
-#define GETNEXTRANDUINT_MAX UINT16_MAX
+#define GETNEXTRANDUINT_MAX ( (word) -1 )
 
-static uint16_t GetNextRandUint(void) {
+static word GetNextRandUint(void) {
 
     // These values are not magical, just the default values Marsaglia used.
     // Any unit should work.
@@ -214,8 +680,8 @@ static uint16_t GetNextRandUint(void) {
     // We make them local static so that we only consume the storage if the random()
     // functions are actually ever called.
 
-    static uint32_t u = 521288629UL;
-    static uint32_t v = 362436069UL;
+    static unsigned long u = 521288629UL;
+    static unsigned long v = 362436069UL;
 
     v = 36969*(v & 65535) + (v >> 16);
     u = 18000*(u & 65535) + (u >> 16);
@@ -228,28 +694,32 @@ static uint16_t GetNextRandUint(void) {
 // TODO: Use entropy from the button or decaying IR LEDs
 // https://stackoverflow.com/a/2999130/3152071
 
-uint16_t rand( uint16_t limit ) {
+uint16_t random( uint16_t limit ) {
 
-    uint16_t divisor = GETNEXTRANDUINT_MAX/(limit+1);
-    uint16_t retval;
+    word divisor = GETNEXTRANDUINT_MAX/(limit+1);
+    word retval;
 
     do {
         retval = GetNextRandUint() / divisor;
-    } while (retval > limit);
+    } while (retval >= limit);
 
     return retval;
 }
 
-// Returns the number of millis since last call
-// Handy for profiling.
-
-uint32_t timeDelta(void) {
-    static uint32_t lastcall=0;
-    uint32_t now = millis();
-    uint32_t delta = now - lastcall;
-    lastcall = now;
-    return delta;
+long map(word x, word in_min, word in_max, word out_min, word out_max)
+{
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
+
+// Returns the device's unique 8-byte serial number
+// TODO: This should this be in the core for portability with an extra "AVR" byte at the front.
+
+// 0xF0 points to the 1st of 8 bytes of serial number data
+// As per "13.6.8.1. SNOBRx - Serial Number Byte 8 to 0"
+
+
+const byte * const serialno_addr = ( const byte *)   0xF0;
+
 
 // Read the unique serial number for this blink tile
 // There are 9 bytes in all, so n can be 0-8
@@ -259,344 +729,16 @@ byte getSerialNumberByte( byte n ) {
 
     if (n>8) return(0);
 
-    return utils_serialno()->bytes[n];
+
+
+    return serialno_addr[n];
 
 }
 
+// We keep a local copy since blinkos clears on each call
+// but blinklib model is latching
 
-/** IR Functions **/
-
-
-// // These all can be updated by callback, so must be volatile.
-
-
-// Click Semantics
-// ===============
-// All clicks happen inside a click window, as defined by BUTTON_CLICK_TIMEOUT_MS
-// The window resets each time the debounced button state goes down.
-// Any subsequent down events before the window expires are part of the same click cycle.
-// If a cycle ends with the button up, then the clicks are tallied.
-// If the cycle ends with the button down, then we interpret this that the user wanted to
-// abort the clicks, so we discard the count.
-
-static volatile byte buttonState=0;                     // Current debounced state
-
-static volatile byte buttonPressedFlag=0;               // Has the button been pressed since the last time we checked it?
-static volatile byte buttonReleasedFlag=0;              // Has the button been lifted since the last time we checked it?
-
-static uint8_t buttonDebounceCountdown=0;               // How long until we are done bouncing. Only touched in the callback
-                                                        // Set to BUTTON_DEBOUNCE_MS every time we see a change, then we ignore everything
-                                                        // until it gets to 0 again
-
-static uint16_t clickWindowCountdown=0;                 // How long until we close the current click window. 0=done TODO: Make this 8bit by reducing scan rate.
-static uint8_t clickPendingcount=0;                     // How many clicks so far int he current click window
-
-static uint16_t longPressCountdown=0;                   // How long until the current press becomes a long press
-
-static volatile byte singleClickedFlag=0;               // single click since the last time we checked it?
-static volatile byte doubleClickedFlag=0;               // double click since the last time we checked it?
-static volatile byte multiClickedFlag=0;                // multi click since the last time we checked it?
-
-static volatile byte longPressFlag=0;                   // Has the button been long pressed since the last time we checked it?
-
-static volatile uint8_t maxCompletedClickCount=0;       // Remember the most completed clicks to support the clickCount() function
-
-
-static volatile uint8_t buttonChangeFlag = 1;           // Set anytime the button changes state. Used to reset the sleep timer in the foreground.
-                                                        // Init to 1 so that we reset the sleep timer on startup.
-
-// Called once per tick by the timer to check the button position
-// and update the button state variables.
-
-// Note: this runs in Callback context in the timercallback
-// Called every 1ms
-
-
-static void updateButtonState1ms(void) {
-
-    bool buttonPositon = button_down();
-
-    if ( buttonPositon == buttonState ) {
-
-        if (buttonDebounceCountdown) {
-
-            buttonDebounceCountdown--;
-
-        }
-
-        if (longPressCountdown) {
-
-            longPressCountdown--;
-
-            if (longPressCountdown==0) {
-
-                if (buttonState) {
-
-                    longPressFlag = 1;
-                }
-            }
-
-            // We can nestle the click window countdown in here because a click will ALWAYS happen inside a long press...
-
-            if (clickWindowCountdown) {
-
-                clickWindowCountdown--;
-
-                if (clickWindowCountdown==0) {      // Click window just expired
-
-                    if (!buttonState) {              // Button is up, so register clicks
-
-                        if (clickPendingcount==1) {
-                            singleClickedFlag=1;
-                        } else if (clickPendingcount==2) {
-                            doubleClickedFlag=1;
-                        } else {
-                            multiClickedFlag=1;
-                        }
-
-
-                        if (clickPendingcount > maxCompletedClickCount ) {
-                            maxCompletedClickCount=clickPendingcount;
-                        }
-
-
-
-                    }
-
-                    clickPendingcount=0;        // Start next cycle (aborts any pending clicks if button was still down
-
-
-                }
-
-            }
-
-        }
-
-
-    }  else {       // New button position
-
-        if (!buttonDebounceCountdown) {         // Done bouncing
-
-            buttonChangeFlag = 1;               // Signal to foreground that something happened on the button
-
-            buttonState = buttonPositon;
-
-            if (buttonPositon) {
-                buttonPressedFlag=1;
-
-                if (clickPendingcount<255) {        // Don't overflow
-                    clickPendingcount++;
-                }
-
-                clickWindowCountdown = BUTTON_CLICK_TIMEOUT_MS ;
-                longPressCountdown   = BUTTON_LONGPRESS_TIME_MS;
-
-            } else {
-                buttonReleasedFlag=1;
-            }
-        }
-
-        // Restart the countdown anytime the button position changes
-
-        buttonDebounceCountdown = BUTTON_DEBOUNCE_MS;
-
-    }
-
-
-
-}
-
-
-// Debounced view of button state
-
-bool buttonDown(void) {
-
-    return buttonState;
-
-}
-
-
-// This test does not need to be atomic. No race
-// because we only clear here, and only set in ISR.
-
-// This compiles quite nicely...
-
-/*
-;if ( flag ) {
-552:	80 91 15 01 	lds	r24, 0x0115	; 0x800115 <buttonPressedFlag>
-556:	81 11       	cpse	r24, r1
-;flag=false;
-558:	10 92 15 01 	sts	0x0115, r1	; 0x800115 <buttonPressedFlag>
-55c:	08 95       	ret
-*/
-
-bool testAndClearFlag( volatile byte &flag ) {
-
-if ( flag ) {
-    flag=false;
-    return true;
-}
-
-return false;
-
-}
-
-
-bool buttonPressed(void) {
-    return testAndClearFlag ( buttonPressedFlag );
-}
-
-
-bool buttonReleased(void) {
-    // This test does not need to be atomic. No race
-    // because we only clear here, and only set in ISR
-    return testAndClearFlag ( buttonReleasedFlag );
-}
-
-
-bool buttonSingleClicked(void) {
-    return testAndClearFlag( singleClickedFlag );
-}
-
-
-bool buttonDoubleClicked(void) {
-    return testAndClearFlag( doubleClickedFlag);
-}
-
-bool buttonMultiClicked(void) {
-    return testAndClearFlag( multiClickedFlag );
-}
-
-bool buttonLongPressed(void) {
-    return testAndClearFlag( longPressFlag );
-}
-
-
-uint8_t buttonClickCount(void) {
-
-    uint8_t t;
-
-    // Race here - if a new (and higher count) click expired exactly between the next two lines,
-    // we would only read the previous highest count, and then discard the new highest when we set to 0.
-    // That's why we need ATOMICALLY here.
-
-    DO_ATOMICALLY {
-        t=maxCompletedClickCount;
-        maxCompletedClickCount=0;
-    }
-
-    return t;
-}
-
-
-// Will overflow after about 62 days...
-// https://www.google.com/search?q=(2%5E31)*2.5ms&rlz=1C1CYCW_enUS687US687&oq=(2%5E31)*2.5ms
-
-static volatile uint32_t millisCounter=1;           // How many milliseconds since startup?
-                                                    // We begin at 1 so that the comparison `0 < mills() `
-                                                    // will always be true so we can use `0` time to semantically
-                                                    // mean `always in the past.
-
-// Overflows after about 60 days
-// Note that resolution is limited by timer tick rate
-
-// TODO: Clear out millis to zero on wake
-
-// This snapshot makes sure that we always see the same value for millis() in a given iteration of loop()
-// This "freeze-time" view makes it harder to have race conditions when millis() changes while you are looking at it.
-// The value of millis_snapshot gets reset to 0 after each loop() iteration.
-
-static uint32_t millis_snapshot;
-
-// Need not be atomic since never called from the background.
-
-static void updateMillis(void) {
-
-	millis_snapshot = millisCounter;
-
-}
-
-unsigned long millis(void) {
-    return( millis_snapshot );
-}
-
-// Note we directlyt access millis() here, which is really bad style.
-// The timer should capture millis() in a closure, but no good way to
-// do that in C++ that is not verbose and inefficient, so here we are.
-
-bool Timer::isExpired() {
-	return millis() >= m_expireTime;
-}
-
-void Timer::set( uint32_t ms ) {
-	m_expireTime= millis()+ms;
-}
-
-uint32_t Timer::getRemaining() {
-
-  uint32_t timeRemaining;
-
-  if( millis() >= m_expireTime) {
-
-    timeRemaining = 0;
-
-  } else {
-
-    timeRemaining = m_expireTime - millis();
-
-  }
-
-  return timeRemaining;
-
-}
-
-void Timer::add( uint16_t ms ) {
-
-    // Check to avoid overflow
-
-    uint32_t timeLeft = NEVER - m_expireTime;
-
-    if (ms > timeLeft ) {
-
-        m_expireTime = NEVER;
-
-    } else {
-
-	    m_expireTime+= ms;
-
-    }
-}
-
-void Timer::never(void) {
-    m_expireTime=NEVER;
-}
-
-
-
-// TODO: This is accurate and correct, but so inefficient.
-// We can do better.
-
-// TODO: chance timer to 500us so increment is faster.
-// TODO: Change time to uint24 _t
-
-// Supported!!! https://gcc.gnu.org/wiki/avr-gcc#types
-
-// __uint24 timer24;
-
-#define BLINKCORE_UINT16_MAX (0xffff)               // I can not get stdint.h to work even with #define __STDC_LIMIT_MACROS, so have to resort to this hack.
-
-
-// Note this runs in callback context
-
-static void incrementMillis1ms(void) {
-
-    millisCounter++;
-
-}
-
-// Have we woken since last time we checked?
-
-static volatile uint8_t wokeFlag=0;
+uint8_t local_woke_flag;
 
 // Returns 1 if we have slept and woken since last time we checked
 // Best to check as last test at the end of loop() so you can
@@ -604,107 +746,101 @@ static volatile uint8_t wokeFlag=0;
 
 uint8_t hasWoken(void) {
 
-    if (wokeFlag) {
-        wokeFlag=0;
+    if (local_woke_flag) {
+
+        local_woke_flag =0;
         return 1;
+
     }
+
 
     return 0;
 
 }
 
-// Turn off everything and goto to sleep
+// --- Pixel functions
 
-static void sleep(void) {
+// Make a new color in the HSB colorspace. All values are 0-255.
 
-    pixel_disable();        // Turn off pixels so battery drain
-    ir_disable();           // TODO: Wake on pixel
-    button_ISR_on();        // Enable the button interrupt so it can wake us
+Color makeColorHSB( byte hue, byte saturation, byte brightness );
 
-    power_sleep();          // Go into low power sleep. Only a button change interrupt can wake us
+// Change the tile to the specified color
+// NOTE: all color changes are double buffered
+// and the display is updated when loop() returns
 
-    button_ISR_off();       // Set everything back to thew way it was before we slept
-    ir_enable();
-    pixel_enable();
 
-    wokeFlag = 1;
+// Set the pixel on the specified face (0-5) to the specified color
+// NOTE: all color changes are double buffered
+// and the display is updated when loop() returns
 
-}
+void setColorOnFace( Color newColor , byte face ) {
 
-// Called about once every 1ms
-
-#include "sp.h"
-
-void timer_1000us_callback_sei(void) {
-
-    incrementMillis1ms();
-    updateButtonState1ms();
+    loopstate_out.colors[face] =  pixelColor_t( GET_5BIT_R( newColor ) , GET_5BIT_G( newColor) , GET_5BIT_B( newColor ) , 1 );
 
 }
 
-// This is called by timer ISR about every 512us with interrupts on.
 
-void timer_256us_callback_sei(void) {
+void setColor( Color newColor) {
 
-    // Decrementing slightly more efficient because we save a compare.
-    static unsigned step_us=0;
-
-    step_us += 256;                     // 256us between calls
-
-    if ( step_us>= 1000 ) {             // 1000us in a 1ms
-        timer_1000us_callback_sei();
-        step_us-=1000;
+    FOREACH_FACE(f) {
+        setColorOnFace( newColor , f );
     }
+
 }
 
-// This is called by timer ISR about every 256us with interrupts on.
 
-void timer_128us_callback_sei(void) {
-    IrDataPeriodicUpdateComs();
+// DEPREICATED: Use setColorOnFace()
+void setFaceColor(  byte face, Color newColor ) {
+
+    setColorOnFace( newColor , face );
+
 }
 
-// This is the entry point where the blinkcore platform will pass control to
-// us after initial power-up is complete
 
-// We make this weak so that a game can override and take over before we initialize all the hier level stuff
-
-void __attribute__ ((weak)) run(void) {
-
-	// Let blinkstate sink its hooks in
-	blinkStateSetup();
-
-    // Call user setup code
+void setupEntry() {
+    // Call up to the userland code
     setup();
+}
 
-    while (1) {
+void loopEntry() {
 
-        updateMillis();                     // The millis() function only offers a snapshot so that
-                                            // we always get the same value no matter when we look inside
-                                            // a single loop iteration.
+    now = loopstate_in.millis;
 
+    RX_IRFaces( loopstate_in.ir_data_buffers );
 
-        loop();
+    // Capture the incoming button state. We OR in the flags because in blinklib model we clear the flags only when read.
+    buttonstate.bitflags |= loopstate_in.buttonstate.bitflags;
+    buttonstate.clickcount = loopstate_in.buttonstate.clickcount;
+    buttonstate.down = loopstate_in.buttonstate.down;
 
-        pixel_displayBufferedPixels();      // show all display updates that happened in last loop()
-                                            // Also currently blocks until new frame actually starts
+    // Latch woke_flag
+    local_woke_flag |= loopstate_in.woke_flag;
 
-        blinkStateLoop();                 // Process any received IR messages.
+    // Call the user program
 
-        if (buttonChangeFlag) {
+     loop();
 
-            buttonChangeFlag = 0;
+     // Go ahead an release any packets that the loop() forgot to mark as read
+     // We count on the fact that markLongPacketRead() here will only release pending packets
+     // If we did not do this, then if the game forgot to clear a buffer then that face would be blocked
+     // From OS messages forever. We could work around that by having separate user and OS buffers, but more memory
+     // and complexity.
 
-            sleepTimer.set( SLEEP_TIMEOUT_MS );
+     FOREACH_FACE(f) {
+        markLongPacketRead(f);
+     }
 
-        }
+     // Transmit any IR packets waiting to go out
+     // Note that we do this after loop had a chance to update them.
+     TX_IRFaces();
 
-        if (sleepTimer.isExpired()) {
-            sleep();
-
-        }
-
-        // He we could add a delay rather than call loop() as quickly as possible. This could lower power.
-
-    }
+     rx_buffer_fresh_bitflag = 0;      //We missed our change to send on the messages received on this pass.
+                                    // RX_IRfaces() will set these again for messages received on the next pass.
 
 }
+
+void seedMe() {
+
+    JUMP_TO_BOOTLOADER_SEED();
+
+}    

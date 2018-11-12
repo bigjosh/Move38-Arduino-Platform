@@ -27,12 +27,14 @@
 // 'I' on startup initialization
 //
 
-#define RX_DEBUG
+//#define IR_RX_DEBUG
+//#define IR_RX_DEBUG_LED 4       // Which IR LED should we watch? (0-5)
+                                // 4 is nice because you can monitor the LED anode on the square pin of the ISP port
 
 
-// If defined, we keep some extra error counters for diagnostics. 
-// Otherwise IR errors don't really show up anywhere except maybe decreased performance. 
-// TODO: Implement these counters so we have a way of seeing errors. 
+// If defined, we keep some extra error counters for diagnostics.
+// Otherwise IR errors don't really show up anywhere except maybe decreased performance.
+// TODO: Implement these counters so we have a way of seeing errors.
 //#define RX_TRACK_ERRORS
 
 #define IRLED_COUNT FACE_COUNT
@@ -59,7 +61,7 @@ void ir_disable(void);
 // Call ir_tx_end() after last pulse to turn off the ISR (optional but saves CPU and power)
 
 void ir_tx_start(uint8_t bitmask , uint16_t initialTicks );
-    
+
 // Send next pulse int this pulse train.
 // leadingSpaces is the number of spaces to wait between the previous pulse and this pulse.
 // 0 doesn't really make any sense

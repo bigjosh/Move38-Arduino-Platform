@@ -25,21 +25,21 @@
     <preserveEEPROM>true</preserveEEPROM>
     <OverrideVtorValue>exception_table</OverrideVtorValue>
     <BootSegment>2</BootSegment>
-    <eraseonlaunchrule>0</eraseonlaunchrule>
+    <eraseonlaunchrule>7</eraseonlaunchrule>
     <avrtool>com.atmel.avrdbg.tool.ispmk2</avrtool>
-    <avrtoolserialnumber>0000B0022024</avrtoolserialnumber>
+    <avrtoolserialnumber>0000B3020609</avrtoolserialnumber>
     <avrdeviceexpectedsignature>0x1E9415</avrdeviceexpectedsignature>
     <avrtoolinterface>ISP</avrtoolinterface>
-    <avrtoolinterfaceclock>125000</avrtoolinterfaceclock>
+    <avrtoolinterfaceclock>250000</avrtoolinterfaceclock>
     <com_atmel_avrdbg_tool_ispmk2>
       <ToolOptions>
         <InterfaceProperties>
-          <IspClock>125000</IspClock>
+          <IspClock>250000</IspClock>
         </InterfaceProperties>
         <InterfaceName>ISP</InterfaceName>
       </ToolOptions>
       <ToolType>com.atmel.avrdbg.tool.ispmk2</ToolType>
-      <ToolNumber>0000B0022024</ToolNumber>
+      <ToolNumber>0000B3020609</ToolNumber>
       <ToolName>AVRISP mkII</ToolName>
     </com_atmel_avrdbg_tool_ispmk2>
     <AAFDebugger>
@@ -83,6 +83,17 @@
         </dependencies>
       </framework-data>
     </AsfFrameworkConfig>
+    <com_atmel_avrdbg_tool_avrdragon>
+      <ToolOptions>
+        <InterfaceProperties>
+          <IspClock>125000</IspClock>
+        </InterfaceProperties>
+        <InterfaceName>ISP</InterfaceName>
+      </ToolOptions>
+      <ToolType>com.atmel.avrdbg.tool.avrdragon</ToolType>
+      <ToolNumber>00A200031957</ToolNumber>
+      <ToolName>AVR Dragon</ToolName>
+    </com_atmel_avrdbg_tool_avrdragon>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
     <ToolchainSettings>
@@ -143,92 +154,287 @@
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <ToolchainSettings>
       <AvrGccCpp>
-        <avrgcc.common.Device>-mmcu=atmega168pb -B "%24(PackRepoDir)\atmel\ATmega_DFP\1.2.209\gcc\dev\atmega168pb"</avrgcc.common.Device>
-        <avrgcc.common.outputfiles.hex>True</avrgcc.common.outputfiles.hex>
-        <avrgcc.common.outputfiles.lss>True</avrgcc.common.outputfiles.lss>
-        <avrgcc.common.outputfiles.eep>True</avrgcc.common.outputfiles.eep>
-        <avrgcc.common.outputfiles.srec>True</avrgcc.common.outputfiles.srec>
-        <avrgcc.common.outputfiles.usersignatures>False</avrgcc.common.outputfiles.usersignatures>
-        <avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>True</avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>
-        <avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>True</avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>
-        <avrgcc.compiler.symbols.DefSymbols>
-          <ListValues>
-            <Value>DEBUG</Value>
-            <Value>DEBUG</Value>
-          </ListValues>
-        </avrgcc.compiler.symbols.DefSymbols>
-        <avrgcc.compiler.directories.IncludePaths>
-          <ListValues>
-            <Value>../../../../../cores/blinkcore</Value>
-            <Value>../../../../../variants/standard</Value>
-            <Value>%24(PackRepoDir)\atmel\ATmega_DFP\1.2.209\include</Value>
-          </ListValues>
-        </avrgcc.compiler.directories.IncludePaths>
-        <avrgcc.compiler.optimization.level>Optimize (-O1)</avrgcc.compiler.optimization.level>
-        <avrgcc.compiler.optimization.PackStructureMembers>True</avrgcc.compiler.optimization.PackStructureMembers>
-        <avrgcc.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcc.compiler.optimization.AllocateBytesNeededForEnum>
-        <avrgcc.compiler.optimization.DebugLevel>Default (-g2)</avrgcc.compiler.optimization.DebugLevel>
-        <avrgcc.compiler.warnings.AllWarnings>True</avrgcc.compiler.warnings.AllWarnings>
-        <avrgcccpp.compiler.general.ChangeDefaultCharTypeUnsigned>True</avrgcccpp.compiler.general.ChangeDefaultCharTypeUnsigned>
-        <avrgcccpp.compiler.general.ChangeDefaultBitFieldUnsigned>True</avrgcccpp.compiler.general.ChangeDefaultBitFieldUnsigned>
-        <avrgcccpp.compiler.symbols.DefSymbols>
-          <ListValues>
-            <Value>DEBUG</Value>
-            <Value>DEBUG</Value>
-          </ListValues>
-        </avrgcccpp.compiler.symbols.DefSymbols>
-        <avrgcccpp.compiler.directories.IncludePaths>
-          <ListValues>
-            <Value>../../../../../libraries/blinklib/src</Value>
-            <Value>../../../../../cores/blinkcore</Value>
-            <Value>../../../../../libraries/blinkstate/src</Value>
-            <Value>../../../../../variants/standard</Value>
-            <Value>../../../../../libraries/blinkani/src</Value>
-            <Value>%24(PackRepoDir)\atmel\ATmega_DFP\1.2.209\include</Value>
-          </ListValues>
-        </avrgcccpp.compiler.directories.IncludePaths>
-        <avrgcccpp.compiler.optimization.level>Optimize (-O1)</avrgcccpp.compiler.optimization.level>
-        <avrgcccpp.compiler.optimization.PackStructureMembers>True</avrgcccpp.compiler.optimization.PackStructureMembers>
-        <avrgcccpp.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcccpp.compiler.optimization.AllocateBytesNeededForEnum>
-        <avrgcccpp.compiler.optimization.DebugLevel>Default (-g2)</avrgcccpp.compiler.optimization.DebugLevel>
-        <avrgcccpp.compiler.warnings.AllWarnings>True</avrgcccpp.compiler.warnings.AllWarnings>
-        <avrgcccpp.compiler.warnings.Undefined>True</avrgcccpp.compiler.warnings.Undefined>
-        <avrgcccpp.compiler.miscellaneous.OtherFlags>-include Arduino.h</avrgcccpp.compiler.miscellaneous.OtherFlags>
-        <avrgcccpp.linker.libraries.Libraries>
-          <ListValues>
-            <Value>libm</Value>
-          </ListValues>
-        </avrgcccpp.linker.libraries.Libraries>
-        <avrgcccpp.assembler.general.IncludePaths>
-          <ListValues>
-            <Value>%24(PackRepoDir)\atmel\ATmega_DFP\1.2.209\include</Value>
-          </ListValues>
-        </avrgcccpp.assembler.general.IncludePaths>
-        <avrgcccpp.assembler.debugging.DebugLevel>Default (-Wa,-g)</avrgcccpp.assembler.debugging.DebugLevel>
-      </AvrGccCpp>
+  <avrgcc.common.Device>-mmcu=atmega168pb -B "%24(PackRepoDir)\atmel\ATmega_DFP\1.2.209\gcc\dev\atmega168pb"</avrgcc.common.Device>
+  <avrgcc.common.outputfiles.hex>True</avrgcc.common.outputfiles.hex>
+  <avrgcc.common.outputfiles.lss>True</avrgcc.common.outputfiles.lss>
+  <avrgcc.common.outputfiles.eep>True</avrgcc.common.outputfiles.eep>
+  <avrgcc.common.outputfiles.srec>True</avrgcc.common.outputfiles.srec>
+  <avrgcc.common.outputfiles.usersignatures>False</avrgcc.common.outputfiles.usersignatures>
+  <avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>True</avrgcc.compiler.general.ChangeDefaultCharTypeUnsigned>
+  <avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>True</avrgcc.compiler.general.ChangeDefaultBitFieldUnsigned>
+  <avrgcc.compiler.symbols.DefSymbols>
+    <ListValues>
+      <Value>DEBUG</Value>
+      <Value>DEBUG</Value>
+    </ListValues>
+  </avrgcc.compiler.symbols.DefSymbols>
+  <avrgcc.compiler.directories.IncludePaths>
+    <ListValues>
+      <Value>../../../../../cores/blinkcore</Value>
+      <Value>../../../../../variants/standard</Value>
+      <Value>%24(PackRepoDir)\atmel\ATmega_DFP\1.2.209\include</Value>
+    </ListValues>
+  </avrgcc.compiler.directories.IncludePaths>
+  <avrgcc.compiler.optimization.level>Optimize (-O1)</avrgcc.compiler.optimization.level>
+  <avrgcc.compiler.optimization.PackStructureMembers>True</avrgcc.compiler.optimization.PackStructureMembers>
+  <avrgcc.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcc.compiler.optimization.AllocateBytesNeededForEnum>
+  <avrgcc.compiler.optimization.DebugLevel>Default (-g2)</avrgcc.compiler.optimization.DebugLevel>
+  <avrgcc.compiler.warnings.AllWarnings>True</avrgcc.compiler.warnings.AllWarnings>
+  <avrgcccpp.compiler.general.ChangeDefaultCharTypeUnsigned>True</avrgcccpp.compiler.general.ChangeDefaultCharTypeUnsigned>
+  <avrgcccpp.compiler.general.ChangeDefaultBitFieldUnsigned>True</avrgcccpp.compiler.general.ChangeDefaultBitFieldUnsigned>
+  <avrgcccpp.compiler.symbols.DefSymbols>
+    <ListValues>
+      <Value>DEBUG</Value>
+      <Value>DEBUG</Value>
+    </ListValues>
+  </avrgcccpp.compiler.symbols.DefSymbols>
+  <avrgcccpp.compiler.directories.IncludePaths>
+    <ListValues>
+      <Value>%24(PackRepoDir)\atmel\ATmega_DFP\1.2.209\include</Value>
+      <Value>../../../../../cores/blinkcore</Value>
+      <Value>../../../../../libraries/blinklib/src</Value>
+      <Value>../../../../../libraries/blinkos/src</Value>
+      <Value>../../../../../variants/standard</Value>
+    </ListValues>
+  </avrgcccpp.compiler.directories.IncludePaths>
+  <avrgcccpp.compiler.optimization.level>Optimize for size (-Os)</avrgcccpp.compiler.optimization.level>
+  <avrgcccpp.compiler.optimization.PackStructureMembers>True</avrgcccpp.compiler.optimization.PackStructureMembers>
+  <avrgcccpp.compiler.optimization.AllocateBytesNeededForEnum>True</avrgcccpp.compiler.optimization.AllocateBytesNeededForEnum>
+  <avrgcccpp.compiler.optimization.DebugLevel>Default (-g2)</avrgcccpp.compiler.optimization.DebugLevel>
+  <avrgcccpp.compiler.warnings.AllWarnings>True</avrgcccpp.compiler.warnings.AllWarnings>
+  <avrgcccpp.compiler.warnings.Undefined>True</avrgcccpp.compiler.warnings.Undefined>
+  <avrgcccpp.compiler.miscellaneous.OtherFlags>-include Arduino.h -include blinklib.h</avrgcccpp.compiler.miscellaneous.OtherFlags>
+  <avrgcccpp.compiler.miscellaneous.Verbose>True</avrgcccpp.compiler.miscellaneous.Verbose>
+  <avrgcccpp.linker.libraries.Libraries>
+    <ListValues>
+      <Value>libm</Value>
+    </ListValues>
+  </avrgcccpp.linker.libraries.Libraries>
+  <avrgcccpp.assembler.general.IncludePaths>
+    <ListValues>
+      <Value>%24(PackRepoDir)\atmel\ATmega_DFP\1.2.209\include</Value>
+    </ListValues>
+  </avrgcccpp.assembler.general.IncludePaths>
+  <avrgcccpp.assembler.debugging.DebugLevel>Default (-Wa,-g)</avrgcccpp.assembler.debugging.DebugLevel>
+</AvrGccCpp>
     </ToolchainSettings>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="..\..\..\..\cores\blinkcore\adc.cpp">
+      <SubType>compile</SubType>
+      <Link>base\blinkcore\adc.cpp</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\cores\blinkcore\adc.h">
+      <SubType>compile</SubType>
+      <Link>base\blinkcore\adc.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\cores\blinkcore\bitfun.h">
+      <SubType>compile</SubType>
+      <Link>base\blinkcore\bitfun.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\cores\blinkcore\button.cpp">
+      <SubType>compile</SubType>
+      <Link>base\blinkcore\button.cpp</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\cores\blinkcore\button.h">
+      <SubType>compile</SubType>
+      <Link>base\blinkcore\button.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\cores\blinkcore\callbacks.h">
+      <SubType>compile</SubType>
+      <Link>base\blinkcore\callbacks.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\cores\blinkcore\debug.h">
+      <SubType>compile</SubType>
+      <Link>base\blinkcore\debug.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\cores\blinkcore\ir.cpp">
+      <SubType>compile</SubType>
+      <Link>base\blinkcore\ir.cpp</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\cores\blinkcore\ir.h">
+      <SubType>compile</SubType>
+      <Link>base\blinkcore\ir.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\cores\blinkcore\main.cpp">
+      <SubType>compile</SubType>
+      <Link>base\blinkcore\main.cpp</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\cores\blinkcore\pixel.cpp">
+      <SubType>compile</SubType>
+      <Link>base\blinkcore\pixel.cpp</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\cores\blinkcore\pixel.h">
+      <SubType>compile</SubType>
+      <Link>base\blinkcore\pixel.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\cores\blinkcore\power.cpp">
+      <SubType>compile</SubType>
+      <Link>base\blinkcore\power.cpp</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\cores\blinkcore\power.h">
+      <SubType>compile</SubType>
+      <Link>base\blinkcore\power.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\cores\blinkcore\shared.h">
+      <SubType>compile</SubType>
+      <Link>base\blinkcore\shared.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\cores\blinkcore\timers.h">
+      <SubType>compile</SubType>
+      <Link>base\blinkcore\timers.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\cores\blinkcore\utils.cpp">
+      <SubType>compile</SubType>
+      <Link>base\blinkcore\utils.cpp</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\cores\blinkcore\utils.h">
+      <SubType>compile</SubType>
+      <Link>base\blinkcore\utils.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\libraries\blinklib\src\Arduino.h">
+      <SubType>compile</SubType>
+      <Link>base\blinklib\Arduino.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\libraries\blinklib\src\ArduinoTypes.h">
+      <SubType>compile</SubType>
+      <Link>base\blinklib\ArduinoTypes.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\libraries\blinklib\src\blinklib.cpp">
+      <SubType>compile</SubType>
+      <Link>base\blinklib\blinklib.cpp</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\libraries\blinklib\src\blinklib.h">
+      <SubType>compile</SubType>
+      <Link>base\blinklib\blinklib.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\libraries\blinklib\src\DummySerial.h">
+      <SubType>compile</SubType>
+      <Link>base\blinklib\DummySerial.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\libraries\blinklib\src\pixelcolor.h">
+      <SubType>compile</SubType>
+      <Link>base\blinklib\pixelcolor.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\libraries\blinklib\src\Print.cpp">
+      <SubType>compile</SubType>
+      <Link>base\blinklib\Print.cpp</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\libraries\blinklib\src\Print.h">
+      <SubType>compile</SubType>
+      <Link>base\blinklib\Print.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\libraries\blinklib\src\Serial.cpp">
+      <SubType>compile</SubType>
+      <Link>base\blinklib\Serial.cpp</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\libraries\blinklib\src\Serial.h">
+      <SubType>compile</SubType>
+      <Link>base\blinklib\Serial.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\libraries\blinklib\src\sp.cpp">
+      <SubType>compile</SubType>
+      <Link>base\blinklib\sp.cpp</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\libraries\blinklib\src\sp.h">
+      <SubType>compile</SubType>
+      <Link>base\blinklib\sp.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\libraries\blinklib\src\Timer.cpp">
+      <SubType>compile</SubType>
+      <Link>base\blinklib\Timer.cpp</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\libraries\blinkos\src\blinkos.cpp">
+      <SubType>compile</SubType>
+      <Link>base\blinkos\blinkos.cpp</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\libraries\blinkos\src\blinkos.h">
+      <SubType>compile</SubType>
+      <Link>base\blinkos\blinkos.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\libraries\blinkos\src\blinkos_button.cpp">
+      <SubType>compile</SubType>
+      <Link>base\blinkos\blinkos_button.cpp</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\libraries\blinkos\src\blinkos_button.h">
+      <SubType>compile</SubType>
+      <Link>base\blinkos\blinkos_button.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\libraries\blinkos\src\blinkos_headertypes.h">
+      <SubType>compile</SubType>
+      <Link>base\blinkos\blinkos_headertypes.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\libraries\blinkos\src\blinkos_irdata.cpp">
+      <SubType>compile</SubType>
+      <Link>base\blinkos\blinkos_irdata.cpp</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\libraries\blinkos\src\blinkos_irdata.h">
+      <SubType>compile</SubType>
+      <Link>base\blinkos\blinkos_irdata.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\libraries\blinkos\src\blinkos_pixel.cpp">
+      <SubType>compile</SubType>
+      <Link>base\blinkos\blinkos_pixel.cpp</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\libraries\blinkos\src\blinkos_pixel.h">
+      <SubType>compile</SubType>
+      <Link>base\blinkos\blinkos_pixel.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\libraries\blinkos\src\blinkos_timer.cpp">
+      <SubType>compile</SubType>
+      <Link>base\blinkos\blinkos_timer.cpp</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\libraries\blinkos\src\blinkos_timer.h">
+      <SubType>compile</SubType>
+      <Link>base\blinkos\blinkos_timer.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\libraries\blinkos\src\bootloader.h">
+      <SubType>compile</SubType>
+      <Link>base\blinkos\bootloader.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\libraries\blinkos\src\pixelcolor.h">
+      <SubType>compile</SubType>
+      <Link>base\blinkos\pixelcolor.h</Link>
+    </Compile>
     <Compile Include="main.cpp">
       <SubType>compile</SubType>
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\blinkcore\blinkcore.cppproj">
-      <Name>blinkcore</Name>
-      <Project>{dce6c7e3-ee26-4d79-826b-08594b9ad897}</Project>
-      <Private>True</Private>
-    </ProjectReference>
-    <ProjectReference Include="..\blinklib\blinklib.cppproj">
-      <Name>blinklib</Name>
-      <Project>{c03aa8ca-16e3-4a37-9986-eeaa5cbcefd6}</Project>
-      <Private>True</Private>
-    </ProjectReference>
-    <ProjectReference Include="..\blinkstate\blinkstate.cppproj">
-      <Name>blinkstate</Name>
-      <Project>{c7103c5c-377a-4589-89b5-ee449b21a39a}</Project>
-      <Private>True</Private>
-    </ProjectReference>
+    <Folder Include="base" />
+    <Folder Include="base\blinkcore" />
+    <Folder Include="base\blinklib" />
+    <Folder Include="base\blinkos" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\..\cores\blinkcore\Interrupts.md">
+      <SubType>compile</SubType>
+      <Link>base\blinkcore\Interrupts.md</Link>
+    </None>
+    <None Include="..\..\..\..\cores\blinkcore\IR.md">
+      <SubType>compile</SubType>
+      <Link>base\blinkcore\IR.md</Link>
+    </None>
+    <None Include="..\..\..\..\cores\blinkcore\macros.inc">
+      <SubType>compile</SubType>
+      <Link>base\blinkcore\macros.inc</Link>
+    </None>
+    <None Include="..\..\..\..\cores\blinkcore\README.md">
+      <SubType>compile</SubType>
+      <Link>base\blinkcore\README.md</Link>
+    </None>
+    <None Include="..\..\..\..\cores\blinkcore\SP.md">
+      <SubType>compile</SubType>
+      <Link>base\blinkcore\SP.md</Link>
+    </None>
+    <None Include="..\..\..\..\cores\blinkcore\Timers.md">
+      <SubType>compile</SubType>
+      <Link>base\blinkcore\Timers.md</Link>
+    </None>
+    <None Include="..\..\..\..\libraries\blinkos\src\blinkos_irdata.md">
+      <SubType>compile</SubType>
+      <Link>base\blinkos\blinkos_irdata.md</Link>
+    </None>
   </ItemGroup>
   <Import Project="$(AVRSTUDIO_EXE_PATH)\\Vs\\Compiler.targets" />
 </Project>

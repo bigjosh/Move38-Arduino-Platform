@@ -1,207 +1,197 @@
-/*
- *  Take on the color of the dominant Blink attached
- */
+//#include "debug.h"
 
-static byte myState = 0;
-static Color colors[] = { BLUE, RED, YELLOW, ORANGE, GREEN};
-static const byte myState_count = COUNT_OF (colors);
+// Our currently displayed colors and also the colors we send/receive in a packet to share
 
-static bool errorFlag[ FACE_COUNT ];
+//static Color colors[FACE_COUNT] = { RED, GREEN, BLUE, ORANGE , YELLOW , CYAN };
 
-static void clearErrors() {
-  FOREACH_FACE(f) {
-    errorFlag[f]=false;
-  }
+static Color colors[FACE_COUNT] = { GREEN, GREEN, BLUE, GREEN , GREEN , CYAN };
+
+byte randomByte() {
+
+    return random(255);
+
 }
 
-#warning
-#include "sp.h"
+// Generate a random color
+
+Color randomColor() {
+
+    return makeColorHSB( randomByte()  , 255 , 255 );
+
+}
+
+//extern uint8_t __vectors;
+
+// Assign a random color to each face
+
+void splat() {
+
+    FOREACH_FACE(f){
+        colors[f ] = randomColor();
+    }
+
+}
+
+// Display the currently programmed colors
+
+void updateDisplayColors() {
+
+    FOREACH_FACE(f) {
+        setColorOnFace( colors[ f ] , f );
+    }
+
+}
 
 void setup() {
-  // put your setup code here, to run once:
-  clearErrors();
-  
-    SP_PIN_A_MODE_OUT();
-    sp_serial_init();
-    sp_serial_disable_rx();
-    SP_PIN_R_MODE_OUT();
-    sp_serial_tx('h');
+    //splat();
+    updateDisplayColors();
 
 }
 
-// Sin in degrees ( standard sin() takes radians )
+// Packet handshaking
+// The blink that wants to send a packet starts sending the PACKET_READY_TO_GO
+// The blink that sees the PACKET_READY_TO_GO replies with a SEND_ME_THE_PACKET
+// The original sending packet now replies with the actual packet. Note that you want to do this as soon as you see the SEND_ME_THE_PACKET come in.
+// Once the receiving blink gets the packet, it stops sending the SEND_ME_THE_PACKET and the transfer is complete!
 
-float sin_d( uint16_t degrees ) {
+// You might not need to have explicit command for this if the game happens to already have state changes that are natural places
+// to send and ACK the packets, but in this demo they are needed to keep the transmissions ping ponging.
 
-    return sin( ( degrees / 360.0F ) * 2.0F * PI   );
-}
+#define I_GOT_THE_PACKET    63     // Signal that we got the packet so they can stop sending.
+#define IDLE_STATE           0     // Go back to some other state. In a real program this would be lots of other normal states.
 
-// Returns a number 0-255 that throbs in a sin over time
+/*
 
-const word throb_duration_ms=500;    // How long one throb takes
+    Here is how the packet send dance works...
 
-byte throbbing(void) {
+    T wants to send a packet to R.
 
-  word offset_ms = millis() % throb_duration_ms;
+    T sends the packet until it gets an I_GOT_THE_PACKET from R.
 
-  // offset range [0,throb_duration_ms)
+    When R gets a packet, it sends I_GOT_THE_PACKET until it sees something that is not a packet from T.
 
-  float phase = (float) offset_ms / (float) throb_duration_ms;
+    Since this API presents a state-based model, the right way to do this would be to treat the packets like all other face vales.
+    You could call setValueOnFace() with a byte, or an array of bytes and the blink would continuously send whatever you set and the other side
+    we see with getLastValueReceivedonFace().
 
-  // phase range [0,1)
+    Unfortunately this just doesn't work on this resource constrained platform because each face would need about 100 bytes of extra buffers
+    for this to work. It would also be butt slow to keep sending these very long messages continuously and we would loose our required
+    10Hz refresh rate.
 
-  float wave = sin( phase * 2.0 * PI );
+    So instead we basically have to build an event based model on top of the state based model (which is itself built on an event model!).
+    Those PACKET-based states are not really states, it is the transitions between the states that simulate events.
 
-  // wave range [-1,1]
+    Things are much simpler in an event-driven model, and maybe games that need big packets should use the event driven API. The state
+    API is probably best for games like the old school ones that really are state based.
 
-  byte wave_byte = ( (wave + 1.0) * (255.0/2) );          // Note: NOT times 128! that would overflow byte!
-
-  // wave_byte range [0,255]
-
-  return wave_byte;
-
-}
-
-
-// Returns the circular maximum of the two values
-// I define this as being the one that is larger looking
-// from the perspective they are closer together than farther
-// apart. Make sense?
-// To keep myself from getting confused, I
-// first figure out i,j where i<=j<count
-// next we figure out x,y,z which are...
-// x=distance from 0 to i
-// y=distance from i to j
-// z-distance from j to count
-
-byte circularMax( byte a , byte b , byte count ) {
-
-  byte i,j;
-
-  if ( b > a )   {
-
-    i = a;
-    j = b;
-
-  } else {
-
-    i = b;
-    j = a;
-
-  }
-
-  // Ok, i and j are now sorted out, so we can compute our number line...
-
-  byte x=i;
-  byte y=j-i;
-  byte z=count-j;
-
-  /*
-   * |-----|-----|-----|
-   * 0     i     j     count
-   *  <-x-> <-y-> <-z->
-   */
-
-  if ( y < (x + z) ) {
-    return j;
-  }
-
-  // In ambiguous cases, b wins
-
-  return i;
-
-}
-
-// This map() functuion is now in Arduino.h in /dev
-// It is replicated here so this skect can compile on older API commits
-
-long map_m(long x, long in_min, long in_max, long out_min, long out_max)
-{
-  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-}
+*/
 
 
-// Just a little error test that adds the inverted value on top of the value
-// Breaks if (myState_count^2) > IR_DATA_VALUE_MAX
+// The game state just a stand-in for this demo, but in a normal program this would be the normal
+// state values that get sent when no packet transfer activity is happening.
+// It can use any values except the one we reserved above for packet transfer states.
 
-byte encode( byte v ) {
-    
-    return v | ( (v % 2) <<3 ); 
+static byte current_game_state = IDLE_STATE;
 
-}
+static bool pending_packet_send_on_face[FACE_COUNT];
+static bool pending_ack_send_on_face[FACE_COUNT];
 
-byte decode( byte v ) {
-
-    return v & 0b00000111;
-
-}
-
-
-byte test( byte v ) {
-        
-    return ( (decode( v ) % 2 ) == (  v >> 3 ) ) ;
-    
-}
-
+#include <util/delay.h>
 
 void loop() {
 
-  // put your main code here, to run repeatedly:
-  if ( buttonPressed() ) {
+    FOREACH_FACE(f) {
 
-    myState++;
-    if (myState >= myState_count ) {
-      myState = 0;
+        if ( !isValueReceivedOnFaceExpired(f)) {
+
+            byte value_received=getLastValueReceivedOnFace(f);
+
+            if ( value_received == I_GOT_THE_PACKET ) {
+
+                pending_packet_send_on_face[f] = false;
+
+            } else {
+
+                pending_ack_send_on_face[f] = false;
+
+            }
+
+            if (pending_packet_send_on_face[f]) {                        // Do we have something to send on this face?
+
+                // Note that we do not care if this succeeded or not since we will keep sending until
+                // we get an ACK back.
+
+                sendPacketOnFace( f , (byte *) colors , sizeof(colors) );
+
+                // Keep in mind that we do not change the value send here, so in case the other side misses this packet
+                // then we will send again when we get their next SEND_ME_THE_PACKET in response to seeing our I_HAVE_A_PACKET_4_U
+
+            }
+
+        }   // !isValueReceivedOnFaceExpired(f)
+
     }
-    clearErrors();
 
-  }
+    // Single button press re-splats our colors and signals to neighbors we have something for them
 
-  FOREACH_FACE( f ) {
+    if ( buttonDown() ) {
 
-    if ( !isValueReceivedOnFaceExpired( f )  ) {
+        // Keep scrambling while button is down
 
-      // update to the value we see, if the value is already our value, do nothing
+        splat();
+        updateDisplayColors();
 
-      byte neighborValue = getLastValueReceivedOnFace( f );
-
-      if ( test(neighborValue)) {
-
-        myState = circularMax( decode(neighborValue) , myState , myState_count );
-
-      } else {
-
-        errorFlag[f] = true;
-
-      }
     }
-  }
 
-  // We put this check here as a defense from out of bounds incoming data (and the normal click wrap)
+    if (buttonReleased()) {
 
+        // When the button is released, the scramble stops and it is time to send the update out
 
+        FOREACH_FACE(f) pending_packet_send_on_face[f]=true;        // This will trigger a send on all faces
 
-  //setColor(dim( colors[myState], 190 + 55 * sin_d( (millis()/10) % 360)));
-
-  byte brightness = map_m( throbbing() , 0, 255 , 1 , 255 );    // Don't go all the way down to 0 brightness.
-
-  setColor( dim( colors[myState] , brightness ) );
-
-  FOREACH_FACE(f) {
-    if (errorFlag[f]) {
-      setFaceColor( f , WHITE );
     }
-  }
+
+    // Deal with any packets that came in to us
+
+    FOREACH_FACE(f) {
+
+        if ( isPacketReadyOnFace( f ) )  {
+
+            if ( getPacketLengthOnFace(f) == sizeof ( colors ) ) {      // Just a double check to make sure the packet is the right length. Just stops corrupt packets or packets from other games from getting into our headspace.
+
+                Color *receivedColors = (Color *) getPacketDataOnFace( f ) ;
+
+                FOREACH_FACE( g ) {
+
+                    colors[g] = receivedColors[g];
+
+                }
+
+                updateDisplayColors();
+
+            }
+
+            pending_ack_send_on_face[f]=true;           // Tell other side that we got it so they can stop sending it
+
+        }       // if ( isPacketReadyOnFace( f ) )  {
+
+    }            //  FOREACH_FACE(f) {
+
+    // Now finally set the outgoing values on each face to reflect the packet state when necessary
+
+    FOREACH_FACE(f) {
+
+        if (pending_ack_send_on_face[f]) {
+
+            setValueSentOnFace( I_GOT_THE_PACKET , f );
+
+        } else {
+
+            setValueSentOnFace( current_game_state , f );
+
+        }
+    }       // FOREACH_FACE
+
+}           // loop()
 
 
-//  setValueSentOnAllFaces( 0b00001111 );         // TESTING
-//  setValueSentOnAllFaces( 0b00000000 );         // TESTING
-//  setValueSentOnAllFaces( 0b11110000 );         // TESTING
-//  setValueSentOnAllFaces( 0b11110001 );         // TESTING
-
-  byte s = encode( myState); 
-  
- //  setValueSentOnAllFaces( encode( myState ) );
-  setValueSentOnAllFaces( s );
-
-}

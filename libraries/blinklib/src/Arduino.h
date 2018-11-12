@@ -69,27 +69,18 @@
 
     #define bit(b) (1UL << (b))
 
-
-	// WMath prototypes (embellished with arg names)
-
-	uint16_t makeWord(uint16_t w);
-	uint16_t makeWord(byte h, byte l);
-
-	#define word(...) makeWord(__VA_ARGS__)
-
-	long random(long howbig);
-	long random(long howsmall, long howbig);
-	void randomSeed(unsigned long seed);
-	long map(long x, long in_min, long in_max, long out_min, long out_max);
-
-
 	// Don't judge me
 	// I know this is so ugly, but only other way to make it so people do not need to do a
 	// manual #include in their sketches would be to throw all the library code into one giant
 	// directory... and that is even uglier, right?
-
-	#include "shared.h"
+    
+    #ifdef ARDUINO
+        // This is only here to trick the Arduino IDE into compiling and linking the blinkOS library
+        // We do not use (or want!) any of these functions!
+	    #include "blinkos.h"
+    #endif
+    
 	#include "blinklib.h"
-	#include "blinkstate.h"
-
+	
+	
 #endif

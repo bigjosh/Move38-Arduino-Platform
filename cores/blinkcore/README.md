@@ -56,5 +56,3 @@ The debug system uses pins #6 and #19 for communications. Hopefully these will b
 
 `Arduino.h` is automatically included in all Arduino sketches and defines some of the the Arduino API functions that make sense on Blinks. 
   
-`WMath.cpp` is taken from the Arduino core. It provides wrappers for some `random()` functions from `stdlib` and the `map()` function.
- 

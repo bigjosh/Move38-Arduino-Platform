@@ -153,6 +153,7 @@
 // Pins as digital IO
 
 #define SP_A_PORT PORTE
+#define SP_A_PIN  PINE
 #define SP_A_DDR  DDRE
 #define SP_A_BIT  2
 

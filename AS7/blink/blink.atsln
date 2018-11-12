@@ -5,14 +5,17 @@ VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "blinkcore", "blinkcore\blinkcore.cppproj", "{DCE6C7E3-EE26-4D79-826B-08594B9AD897}"
 EndProject
-Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "blinklib", "blinklib\blinklib.cppproj", "{C03AA8CA-16E3-4A37-9986-EEAA5CBCEFD6}"
-EndProject
 Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "Blink", "Sketches\Blink\Blink.cppproj", "{C3728EB0-DD95-4D36-9694-C16A953BBF73}"
 EndProject
-Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "blinkstate", "blinkstate\blinkstate.cppproj", "{C7103C5C-377A-4589-89B5-EE449B21A39A}"
-	ProjectSection(ProjectDependencies) = postProject
-		{C03AA8CA-16E3-4A37-9986-EEAA5CBCEFD6} = {C03AA8CA-16E3-4A37-9986-EEAA5CBCEFD6}
-	EndProjectSection
+Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "blinkos", "..\blinkos\blinkos\blinkos.cppproj", "{75C30A81-EDD6-4DE5-8D7E-D379AA89F81A}"
+EndProject
+Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "blinklib", "..\blinklib\blinklib\blinklib.cppproj", "{1D617D28-32B2-45AB-BA7F-EE884B221598}"
+EndProject
+Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "bareblinkOS", "bareblinkOS\bareblinkOS\bareblinkOS.cppproj", "{B750FA7B-22DE-43C4-A796-F95418271EDD}"
+EndProject
+Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "blinkboot", "..\..\bootloader\blinkboot\blinkboot.cppproj", "{05B8462F-C048-4509-8CB7-4121C0CF6082}"
+EndProject
+Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "SimpleIRTest", "Sketches\SimpleIRTest\SimpleIRTest\SimpleIRTest.cppproj", "{1145F5C6-4295-4338-9298-A77DF00F0E78}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -24,18 +27,30 @@ Global
 		{DCE6C7E3-EE26-4D79-826B-08594B9AD897}.Debug|AVR.Build.0 = Debug|AVR
 		{DCE6C7E3-EE26-4D79-826B-08594B9AD897}.Release|AVR.ActiveCfg = Release|AVR
 		{DCE6C7E3-EE26-4D79-826B-08594B9AD897}.Release|AVR.Build.0 = Release|AVR
-		{C03AA8CA-16E3-4A37-9986-EEAA5CBCEFD6}.Debug|AVR.ActiveCfg = Debug|AVR
-		{C03AA8CA-16E3-4A37-9986-EEAA5CBCEFD6}.Debug|AVR.Build.0 = Debug|AVR
-		{C03AA8CA-16E3-4A37-9986-EEAA5CBCEFD6}.Release|AVR.ActiveCfg = Release|AVR
-		{C03AA8CA-16E3-4A37-9986-EEAA5CBCEFD6}.Release|AVR.Build.0 = Release|AVR
 		{C3728EB0-DD95-4D36-9694-C16A953BBF73}.Debug|AVR.ActiveCfg = Debug|AVR
 		{C3728EB0-DD95-4D36-9694-C16A953BBF73}.Debug|AVR.Build.0 = Debug|AVR
 		{C3728EB0-DD95-4D36-9694-C16A953BBF73}.Release|AVR.ActiveCfg = Release|AVR
 		{C3728EB0-DD95-4D36-9694-C16A953BBF73}.Release|AVR.Build.0 = Release|AVR
-		{C7103C5C-377A-4589-89B5-EE449B21A39A}.Debug|AVR.ActiveCfg = Debug|AVR
-		{C7103C5C-377A-4589-89B5-EE449B21A39A}.Debug|AVR.Build.0 = Debug|AVR
-		{C7103C5C-377A-4589-89B5-EE449B21A39A}.Release|AVR.ActiveCfg = Release|AVR
-		{C7103C5C-377A-4589-89B5-EE449B21A39A}.Release|AVR.Build.0 = Release|AVR
+		{75C30A81-EDD6-4DE5-8D7E-D379AA89F81A}.Debug|AVR.ActiveCfg = Debug|AVR
+		{75C30A81-EDD6-4DE5-8D7E-D379AA89F81A}.Debug|AVR.Build.0 = Debug|AVR
+		{75C30A81-EDD6-4DE5-8D7E-D379AA89F81A}.Release|AVR.ActiveCfg = Release|AVR
+		{75C30A81-EDD6-4DE5-8D7E-D379AA89F81A}.Release|AVR.Build.0 = Release|AVR
+		{1D617D28-32B2-45AB-BA7F-EE884B221598}.Debug|AVR.ActiveCfg = Debug|AVR
+		{1D617D28-32B2-45AB-BA7F-EE884B221598}.Debug|AVR.Build.0 = Debug|AVR
+		{1D617D28-32B2-45AB-BA7F-EE884B221598}.Release|AVR.ActiveCfg = Release|AVR
+		{1D617D28-32B2-45AB-BA7F-EE884B221598}.Release|AVR.Build.0 = Release|AVR
+		{B750FA7B-22DE-43C4-A796-F95418271EDD}.Debug|AVR.ActiveCfg = Debug|AVR
+		{B750FA7B-22DE-43C4-A796-F95418271EDD}.Debug|AVR.Build.0 = Debug|AVR
+		{B750FA7B-22DE-43C4-A796-F95418271EDD}.Release|AVR.ActiveCfg = Release|AVR
+		{B750FA7B-22DE-43C4-A796-F95418271EDD}.Release|AVR.Build.0 = Release|AVR
+		{05B8462F-C048-4509-8CB7-4121C0CF6082}.Debug|AVR.ActiveCfg = Debug|AVR
+		{05B8462F-C048-4509-8CB7-4121C0CF6082}.Debug|AVR.Build.0 = Debug|AVR
+		{05B8462F-C048-4509-8CB7-4121C0CF6082}.Release|AVR.ActiveCfg = Release|AVR
+		{05B8462F-C048-4509-8CB7-4121C0CF6082}.Release|AVR.Build.0 = Release|AVR
+		{1145F5C6-4295-4338-9298-A77DF00F0E78}.Debug|AVR.ActiveCfg = Debug|AVR
+		{1145F5C6-4295-4338-9298-A77DF00F0E78}.Debug|AVR.Build.0 = Debug|AVR
+		{1145F5C6-4295-4338-9298-A77DF00F0E78}.Release|AVR.ActiveCfg = Release|AVR
+		{1145F5C6-4295-4338-9298-A77DF00F0E78}.Release|AVR.Build.0 = Release|AVR
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

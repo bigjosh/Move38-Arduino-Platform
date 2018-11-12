@@ -34,46 +34,24 @@
 // TODO: Really nail down the gamma mapping and maybe switch everything to 5 bit per channel
 // TODO: Really nail down the blue booster
 
+
+
 #include "hardware.h"
 #include "bitfun.h"
 
+#include "debug.h"
+
 #include <avr/interrupt.h>
-#include <avr/pgmspace.h>
-#include <string.h>             // memcpy()
 
 #include "pixel.h"
+
 #include "utils.h"
 
-#include "timer.h"      // We piggyback actual timer callback in pixel since we are using that clock for PWM
+#include "timers.h"      // We piggyback actual timer callback in pixel since we are using that clock for PWM
 
-// Here are the raw compare register values for each pixel
-// These are precomputed from brightness values because we read them often from inside an ISR
-// Note that for red & green, 255 corresponds to OFF and 250 is about maximum prudent brightness
-// since we are direct driving them. No danger here since the pins are limited to 20mA, but they do get so
-// bright that is gives me a headache.
+#include "callbacks.h"      // External callbacks to the next higher layer
 
-typedef struct  {
-    uint8_t rawValueR;
-    uint8_t rawValueG;
-    uint8_t rawValueB;
-} rawpixel_t;
-
-// We need these struct gymnastics because C fixed array typedefs do not work
-// as you (I?) think they would...
-// https://stackoverflow.com/questions/4523497/typedef-fixed-length-array
-
-typedef struct {
-    rawpixel_t rawpixels[PIXEL_COUNT];
-} rawpixelset_t;
-
-// Double buffer the raw pixels so we can switch quickly and atomically
-
-#define RAW_PIXEL_SET_BUFFER_COUNT 2
-
-static rawpixelset_t rawpixelsetbuffer[RAW_PIXEL_SET_BUFFER_COUNT];
-
-static rawpixelset_t *displayedRawPixelSet=&rawpixelsetbuffer[0];        // Currently being displayed
-static rawpixelset_t *bufferedRawPixelSet =&rawpixelsetbuffer[1];        // Benignly Updateable
+rawpixelset_t displayedRawPixelSet;        // Currently being displayed
 
 static void setupPixelPins(void) {
 
@@ -266,28 +244,17 @@ static void setupTimers(void) {
 }
 
 void pixel_init(void) {
-
-    // First initialize the buffers
-    for( uint8_t i = 0 ; i < RAW_PIXEL_SET_BUFFER_COUNT ; i++ ) {
-        rawpixelset_t *rawpixelset = &rawpixelsetbuffer[ i ];
-        for( uint8_t j =0; j < PIXEL_COUNT ; j++ ) {
-            rawpixelset->rawpixels[j].rawValueR = 255;
-            rawpixelset->rawpixels[j].rawValueG = 255;
-            rawpixelset->rawpixels[j].rawValueB = 255;
-        }
-    }
-
+    
 	setupPixelPins();
 	setupTimers();
 }
 
-// Note that LINE is 0-5 whereas the pixels are labeled p1-p6 on the board.
 
-static void activateAnode( uint8_t line ) {
+static void activateAnode( uint8_t led ) {
 
     // TODO: These could probably be compressed with some bit hacking
 
-    switch (line) {
+    switch (led) {
 
         case 0:
             SBI( PIXEL0_PORT , PIXEL0_BIT );
@@ -352,8 +319,6 @@ void updateVccFlag(void) {                  // Set the flag based on ADC check o
 */
 
 
-static uint8_t currentPixelIndex;      // Which pixel are we on now?
-
 // Each pixel has 5 phases -
 // 0=Charging blue pump. All anodes are low.
 // 1=Resting after pump charge. Get ready to show blue.
@@ -369,11 +334,13 @@ static uint8_t currentPixelIndex;      // Which pixel are we on now?
 
 static uint8_t phase=0;
 
-// To swap the display buffer, you set this and then wait until it is unset by the
-// background display ISR
-// This makes display updates atomic, and swaps always happen between frames to avoid tearing and aliasing
+// This is cleared when we are done displaying the current buffer values and about to reset and start again
+// Once this is cleared, you have one pixel interrupt period to get your new data into the pixel buffer
+// before the next refresh cycle starts.
 
-static volatile uint8_t pendingRawPixelBufferSwap =0;
+// We picked to clear this rather than set to 1 becuase in the ISR is is faster to set to 0 since R1 is always loaded with 0
+
+volatile uint8_t vertical_blanking_interval;
 
 // Need to compute timekeeping based off the pixel interrupt
 
@@ -402,14 +369,43 @@ static volatile uint8_t pendingRawPixelBufferSwap =0;
 // pass, so none of this is timing critical as long as we finish in time for next
 // pass
 
+
+// We keep this precomputed because the compiler insists on doing a couple of 16 bit adds to find the offsets
+// even when the struct size is a power of 2. Keeping it here means we only do a load to get the current value,
+// and an add to update it once per display cycle.
+
+
+// We also keep an index so we can reference the anode to turn on for this pixel.
+// TODO: There must be a more efficient way to keep this?
+
+static uint8_t currentPixelIndex;      // Which pixel are we on now?
+
 static void pixel_isr(void) {
 
     // THIS IS COMPLICATED
     // Because of the buffering of the OCR registers, we are always setting values that will be loaded
     // the next time the timer overflows.
 
-    rawpixel_t *currentPixel = &(displayedRawPixelSet->rawpixels[currentPixelIndex]);      // TODO: cache this and eliminate currentPixel since buffer only changes at end of frame
+    rawpixel_t *currentPixel = &(displayedRawPixelSet.rawpixels[currentPixelIndex]);
 
+    #warning test
+    
+    /*
+    rawpixel_t test_pixel;
+    
+    
+    Debug::pin_a_1_inputmode();
+
+    if (!Debug::pin_a_in()) {
+
+        currentPixel = &test_pixel;
+        test_pixel.rawValueR = 255;
+        test_pixel.rawValueG = 0;
+        test_pixel.rawValueB = 255;
+    }        
+
+    */
+    
     switch (phase) {
 
 
@@ -533,6 +529,7 @@ static void pixel_isr(void) {
             OCR0B = currentPixel->rawValueG;    // Load OCR to turn on green at next overflow
 
             phase++;
+
             break;
 
         case 4: // Right now the green LED is on.
@@ -545,23 +542,18 @@ static void pixel_isr(void) {
 
             phase=0;                            // Step to next pixel and start over
 
+            // Step to the next pixel
+            // Note that we do not increment the currentPixelIndex here. We update that in phase 1 where we already have it handy.
+
+
+
+
             currentPixelIndex++;
 
-            if (currentPixelIndex==PIXEL_COUNT) {
-                currentPixelIndex=0;
+            if (currentPixelIndex==PIXEL_COUNT) {                           // Did we do all the pixels?
 
-                if (pendingRawPixelBufferSwap) {
-
-                    rawpixelset_t *temp;
-
-                    // Quickly swap the display and buffer sets
-                    temp = displayedRawPixelSet;
-                    displayedRawPixelSet = bufferedRawPixelSet;
-                    bufferedRawPixelSet = temp;
-
-                    pendingRawPixelBufferSwap=0;
-
-                }
+                vertical_blanking_interval =0;                              // Signal to foreground that now is the time to update the display buffer
+                currentPixelIndex = 0 ;
 
             }
 
@@ -691,73 +683,3 @@ void pixel_enable(void) {
 }
 
 
-// Update the pixel buffer with raw PWM register values.
-// Larger pwm values map to shorter PWM cycles (255=off) so for red and green
-// there is an inverse but very non linear relation between raw value and brightness.
-// For blue is is more complicated because of the charge pump. The peak brightness is somewhere
-// in the middle.
-
-// Values set here are buffered into next call to pixel_displayBufferedPixels()
-
-// This is mostly useful for utilities to find the pwm -> brightness mapping to be used
-// in the gamma lookup table below.
-
-void pixel_bufferedSetPixelRaw( uint8_t pixel, uint8_t r_pwm , uint8_t g_pwm , uint8_t b_pwm ) {
-
-    rawpixel_t *rawpixel = &(bufferedRawPixelSet->rawpixels[pixel]);
-
-    rawpixel->rawValueR= r_pwm;
-    rawpixel->rawValueG= g_pwm;
-    rawpixel->rawValueB= b_pwm;
-
-}
-
-
-// Gamma table courtesy of adafruit...
-// https://learn.adafruit.com/led-tricks-gamma-correction/the-quick-fix
-// Compressed down to 32 entries, normalized for our raw values that start at 255 off.
-
-// TODO: Possible that green and red are similar enough that we can combine them into one table and save some flash space
-
-static const uint8_t PROGMEM gamma8R[32] = {
-    255,254,253,251,250,248,245,242,238,234,230,224,218,211,204,195,186,176,165,153,140,126,111,95,78,59,40,19,13,9,3,1
-};
-
-static const uint8_t PROGMEM gamma8G[32] = {
-    255,254,253,251,250,248,245,242,238,234,230,224,218,211,204,195,186,176,165,153,140,126,111,95,78,59,40,19,13,9,3,1
-};
-
-static const uint8_t PROGMEM gamma8B[32] = {
-    255,254,253,251,250,248,245,242,238,234,230,224,218,211,204,195,186,176,165,153,140,126,111,95,78,59,40,19,13,9,3,1
-};
-
-
-// Update the pixel buffer.
-
-void pixel_bufferedSetPixel( uint8_t pixel, pixelColor_t newColor) {
-
-    // TODO: OMG, this could be so much more efficient by reducing the size of the gamma table
-    // to 32 entries per color and having direct mapping to raw values.
-    // We will do that when we normalize the colors.
-
-    rawpixel_t *rawpixel = &(bufferedRawPixelSet->rawpixels[pixel]);
-
-    rawpixel->rawValueR= pgm_read_byte(&gamma8R[newColor.r]);
-    rawpixel->rawValueG= pgm_read_byte(&gamma8G[newColor.g]);
-    rawpixel->rawValueB= pgm_read_byte(&gamma8B[newColor.b]);
-
-}
-
-// Display the buffered pixels by swapping the buffer. Blocks until next frame starts.
-
-void pixel_displayBufferedPixels(void) {
-
-    pendingRawPixelBufferSwap = 1;      // Signal to background that we want to swap buffers
-
-    while (pendingRawPixelBufferSwap);  // wait for that to actually happen
-
-    // Insure continuity by making sure that after the swap the (now) buffer starts
-    // off with the same values that the old buffer ended with
-    memcpy( bufferedRawPixelSet , displayedRawPixelSet , sizeof( rawpixelset_t  ) );
-
-}

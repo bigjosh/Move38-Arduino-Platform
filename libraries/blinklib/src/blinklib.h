@@ -1,19 +1,96 @@
 /*
- * blink.h
+ * blkinklib.h
  *
- * This defines a high-level interface to the blinks tile hardware.
+ * This defines a statefull view of the blinks tile interactions with neighbors.
+ *
+ * In this view, each tile has a "state" that is represented by a number between 1 and 127.
+ * This state value is continuously broadcast on all of its faces.
+ * Each tile also remembers the most recently received state value from he neighbor on each of its faces.
+ *
+ * Note that this library depends on the blinklib library for communications with neighbors. The blinklib
+ * IR read functions are not available when using the blinkstate library.
+ *
+ * Note that the beacon transmissions only occur when the loop() function returns, so it is important
+ * that sketches using this model return from loop() frequently.
  *
  */
 
 #ifndef BLINKLIB_H_
 #define BLINKLIB_H_
 
-//#include "blinkcore.h"
-
+#include <limits.h>         // UINTLONG_MAX for NEVER
 #include "ArduinoTypes.h"
 
-#include <stdbool.h>
-#include <stdint.h>
+#include "pixelcolor.h"
+
+// The value of the data sent and received on faces via IR can be between 0 and IR_DATA_VALUE_MAX
+// If you try to send higher than this, the max value will be sent.
+
+#define IR_DATA_VALUE_MAX 63
+
+// Returns the last received value on the indicated face
+// Between 0 and IR_DATA_VALUE_MAX inclusive
+// returns 0 if no neighbor ever seen on this face since power-up
+// so best to only use after checking if face is not expired first.
+
+byte getLastValueReceivedOnFace( byte face );
+
+// Did the neighborState value on this face change since the
+// last time we checked?
+
+// Note the a face expiring has no effect on the last value
+
+byte didValueOnFaceChange( byte face );
+
+// false if messages have been recently received on the indicated face
+// (currently configured to 100ms timeout in `expireDurration_ms` )
+
+byte isValueReceivedOnFaceExpired( byte face );
+
+// Returns false if their has been a neighbor seen recently on any face, returns true otherwise.
+bool isAlone();
+
+// Set value that will be continuously broadcast on specified face.
+// Value should be between 0 and IR_DATA_VALUE_MAX inclusive.
+// If a value greater than IR_DATA_VALUE_MAX is specified, IR_DATA_VALUE_MAX will be sent.
+// By default we power up with all faces sending the value 0.
+
+void setValueSentOnFace( byte value , byte face );
+
+// Same as setValueSentOnFace(), but sets all faces in one call.
+
+void setValueSentOnAllFaces( byte value );
+
+/* --- Long packet processing */
+
+// Note that long packets have a 1 byte checksum added by blinklib. Packets with the wrong checksum are tossed.
+
+#define IR_LONG_PACKET_MAX_LEN 32
+
+// Returns the number of bytes waiting in the data buffer, or 0 if no packet ready.
+byte getPacketLengthOnFace( uint8_t face );
+
+// Returns true if a packet is available in the buffer
+boolean isPacketReadyOnFace( uint8_t face );
+
+ // Returns a pointer to the actual received data
+ // This should really be a (void *) so it can be assigned to any pointer type,
+ // but in C++ you can not case a (void *) into something else so it doesn't really work there
+ // and I think too ugly to have these functions that are inverses of each other to take/return different types.
+ // Thanks, Stroustrup.
+const byte *getPacketDataOnFace( uint8_t face );
+
+// Frees up the buffer holding the long packet. This is not necessary because the
+// buffer will be automatically released when loop() returns, but it is good
+// practice to manually release it as soon as you are done with to to make room
+// for new incoming data.
+void markLongPacketRead( uint8_t face );
+
+// Send a long data packet.  Packet is protected by checksum.
+// Return 1 if sent.
+// Returns 0 if not able to send because (1) there is currently data being received on that face, (2) the len exceeds IR_LONG_PACKET_MAX_LEN
+
+uint8_t sendPacketOnFace( byte face , const byte *data, byte len );
 
 
 /*
@@ -63,37 +140,6 @@ byte buttonClickCount(void);
 // Remember that a long press fires while the button is still down
 bool buttonLongPressed(void);
 
-
-
-
-/*
-    IR communications functions
-*/
-
-
-// Send data on a single face.
-// Data is 6-bits wide, top bits are ignored.
-
-void irSendData( uint8_t face , const uint8_t *data , uint8_t len  );
-
-// Simultaneously send data on all faces that have a `1` in bitmask
-// Data is 6-bits wide, top bits are ignored.
-void irSendDataBitmask(uint8_t data, uint8_t bitmask);
-
-// Broadcast data on all faces.
-// Data is 6-bits wide, top bits are ignored.
-
-void irBroadcastData( uint8_t data );
-
-// Is there a received data ready to be read on the indicated face? Returns 0 if none.
-
-bool irIsReadyOnFace( uint8_t face );
-
-// Read the most recently received data. Value 0-127. Blocks if no data ready.
-
-uint8_t irGetData( uint8_t led );
-
-
 /*
 
 	This set of functions lets you control the colors on the face RGB LEDs
@@ -118,22 +164,22 @@ uint8_t irGetData( uint8_t led );
 // Argh, these macros are so ugly... but so ideomatic arduino. Maybe use a class with bitfields like
 // we did in pixel.cpp just so we can sleep at night?
 
-typedef uint16_t Color;
+typedef pixelColor_t Color;
 
 // Number of brightness levels in each channel of a color
 #define BRIGHTNESS_LEVELS_5BIT 32
 #define MAX_BRIGHTNESS_5BIT    (BRIGHTNESS_LEVELS_5BIT-1)
 
-#define GET_5BIT_R(color) ((color>>10)&31)
-#define GET_5BIT_G(color) ((color>> 5)&31)
-#define GET_5BIT_B(color) ((color    )&31)
+#define GET_5BIT_R(color) (color.r)
+#define GET_5BIT_G(color) (color.g)
+#define GET_5BIT_B(color) (color.b)
 
 // R,G,B are all in the domain 0-31
 // Here we expose the internal color representation, but it is worth it
 // to get the performance and size benefits of static compilation
 // Shame no way to do this right in C/C++
 
-#define MAKECOLOR_5BIT_RGB(r,g,b) ((r&31)<<10|(g&31)<<5|(b&31))
+#define MAKECOLOR_5BIT_RGB(r,g,b) (pixelColor_t(r,g,b,1))
 
 #define RED         MAKECOLOR_5BIT_RGB(MAX_BRIGHTNESS_5BIT, 0                    ,0)
 #define ORANGE      MAKECOLOR_5BIT_RGB(MAX_BRIGHTNESS_5BIT,MAX_BRIGHTNESS_5BIT/2 ,0)
@@ -207,10 +253,6 @@ void setFaceColor(  byte face, Color newColor );
 
 unsigned long millis(void);
 
-#define NEVER ( (uint32_t)-1 )          // UINT32_MAX would be correct here, but generates a Symbol Not Found.
-
-
-
 class Timer {
 
 	private:
@@ -223,14 +265,13 @@ class Timer {
 
 		bool isExpired();
 
-    uint32_t getRemaining();
+        uint32_t getRemaining();
 
-    void set( uint32_t ms );            // This time will expire ms milliseconds from now
+        void set( uint32_t ms );            // This time will expire ms milliseconds from now
 
 		void add( uint16_t ms );
 
-    void never(void);                   // Make this timer never expire (unless set())
-
+        void never(void);                   // Make this timer never expire (unless set())
 
 };
 
@@ -244,13 +285,17 @@ class Timer {
 
 // Return a random number between 0 and limit inclusive.
 
-uint16_t rand( uint16_t limit );
+uint16_t random( word limit );
 
 // Read the unique serial number for this blink tile
 // There are 9 bytes in all, so n can be 0-8
 
-
 byte getSerialNumberByte( byte n );
+
+// Map one set to another
+
+long map(word x, word in_min, word in_max, word out_min, word out_max);
+
 
 
 /*
@@ -272,6 +317,10 @@ bool irIsReadyOnFace( uint8_t face );
 
 uint8_t irGetData( uint8_t face );
 
+// Enter seed mode - Copies current built-in game (not necessarily you!) to active game, then spreads, then runs
+// Never returns!
+
+void seedMe();  
 
 /* Power functions */
 
@@ -308,9 +357,11 @@ void setup(void);
 void loop();
 
 
+
+
 /*
 
-	Some syntactic sugar to make our progrmas look not so ugly.
+	Some syntactic sugar to make our programs look not so ugly.
 
 */
 
@@ -322,7 +373,6 @@ void loop();
 
 // Get the number of elements in an array.
 #define COUNT_OF(x) ((sizeof(x)/sizeof(x[0])))
-
 
 
 #endif /* BLINKLIB_H_ */

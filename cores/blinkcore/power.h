@@ -44,6 +44,9 @@ typedef enum {
 
 void power_sleep(void);
 
+
+void wdt_init(void);
+
 // Sleep with a predefined timeout.
 // This is very power efficient since chip is stopped except for WDT
 

@@ -69,25 +69,28 @@
 // hit it and discharged the capacitance, so the pin goes from high to low. We initialize each pin at high, and we charge it
 // back to high everything it drops low, so we should in practice only ever see high to low transitions here.
 
-// TOOD: We will use this for waking from nap.
+// Normally we leave this ISR off so only used for debugging. The timer ISR actually checks the IR LEDs at regular intervals. 
+// This is better than interrupting on change since bright light could cause lots of ISRs and lock us out. 
 
-ISR(IR_ISR,ISR_NAKED) {
+#ifdef RX_DEBUG
 
-    // We make this NAKED so we can deal with it efficiently
-    // otherwise the compiler adds an R0 and R1 preamble and postamble even though these are not used at all. Arg.
-    // It compiles down to a single SBS with no side effects, so no need to save any registers.
+    ISR(IR_ISR,ISR_NAKED) {
 
-    // Be careful if you put anything here that changes flags or registers!
+        // We make this NAKED so we can deal with it efficiently
+        // otherwise the compiler adds an R0 and R1 preamble and postamble even though these are not used at all. Arg.
+        // It compiles down to a single SBS with no side effects, so no need to save any registers.
 
-    #ifdef RX_DEBUG
-       if ( ! TBI(PINC,0) ) {              // We test here so we don't go high on spurious INTs
-           SP_PIN_A_SET_1();               // SP pin A goes high any time IR0 is triggered. We clear it when we later process in the polling code.
-       }
-    #endif
+        // Be careful if you put anything here that changes flags or registers!
 
-    asm("RETI");
+           if ( ! TBI(PINC,0) ) {              // We test here so we don't go high on spurious INTs
+               SP_PIN_A_SET_1();               // SP pin A goes high any time IR0 is triggered. We clear it when we later process in the polling code.
+           }
 
-}
+        asm("RETI");
+
+    }
+
+#endif
 
 
 // We use the general interrupt control register to gate interrupts on and off rather than the mask
@@ -230,7 +233,6 @@ static inline void ir_tx_pulse_internal( uint8_t bitmask ) {
         // Making too long wastes (a little?) battery and time
         // Making too short might not be enough light to trigger the RX on the other side
         // when TX voltage is low and RX voltage is high?
-        // Also replace with a #define and _delay_us() so works when clock changes?
 
         _delay_us( IR_PULSE_TIME_US );
 
@@ -385,11 +387,10 @@ static volatile uint8_t sendpulse_bitmask;      // Which IR LEDs to send on
 ISR(TIMER1_COMPA_vect) {
 
     #ifdef TX_DEBUG
-        if (sendpulse_bitmask&0x01) SP_PIN_A_SET_1();
+        if (sendpulse_bitmask & _BV(IR_RX_DEBUG_LED) ) SP_PIN_A_SET_1(); 
     #endif
 
     ir_tx_pulse_internal( sendpulse_bitmask );     // Flash
-//    ir_tx_pulse_internal( IR_ALL_BITS );     // Flash
            
     #ifdef TX_DEBUG
         SP_PIN_A_SET_0();
@@ -426,7 +427,7 @@ ISR(TIMER1_COMPA_vect) {
 // Call ir_tx_end() after last pulse to turn off the ISR (optional but saves CPU and power)
 
 void ir_tx_start(uint8_t bitmask , uint16_t initialTicks ) {
-
+      
     TCCR1B = _BV( WGM13) | _BV( WGM12);      // clk/0. Timer is now stopped.
     TCCR1A = 0;                               // Mode 12. THis is a CTC mode, we pick it just so we can directly access OCRA without the buffer.
 
@@ -466,11 +467,9 @@ void ir_tx_start(uint8_t bitmask , uint16_t initialTicks ) {
 // TODO: single buffer this in case sender has a hiccup or is too slow to keep up?
 
 void ir_tx_sendpulse( uint16_t delay_cycles) {    
-    while ( !TBI( TIFR1 , TOV1) );             // Wait for current cycle to finish
+    while ( !TBI( TIFR1 , TOV1) );            // Wait for current cycle to finish
     OCR1A = delay_cycles;                     // Buffer the next delay value
-    SBI( TIFR1 , TOV1 );                      // Writing a 1 to the bit clears it    
-    
-    
+    SBI( TIFR1 , TOV1 );                      // Writing a 1 to the bit clears it       
 }
 
 // Turn off the pulse sending ISR
