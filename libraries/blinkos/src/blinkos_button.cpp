@@ -16,12 +16,11 @@
 // So, a click or double click will not be registered until this timeout
 // because we don't know yet if it is a single, double, or triple
 
-#define BUTTON_CLICK_TIMEOUT_MS 330
+#define BUTTON_CLICK_TIMEOUT_MS      330
 
-#define BUTTON_LONGPRESS_TIME_MS 2000          // How long you must hold button down to register a long press.
-
-#define BUTTON_SEEDPRESS_TIME_MS 3000
-#define BUTTON_OFFPRESS_TIME_MS 5000
+#define BUTTON_LONGPRESS_TIME_MS    2000          // How long you must hold button down to register a long press.
+#define BUTTON_SEEDPRESS_TIME_MS    3000
+#define BUTTON_OFFPRESS_TIME_MS     5000
 
 // Click Semantics
 // ===============
@@ -41,6 +40,10 @@ static uint8_t buttonDebounceCountdown=0;               // How long until we are
 static uint16_t clickWindowCountdown=0;                 // How long until we close the current click window. 0=done TODO: Make this 8bit by reducing scan rate.
 
 static uint8_t clickPendingcount=0;                     // How many clicks so far int he current click window
+
+static uint8_t longpressRegisteredFlag=0;               // Did we register a long press since the button went down?
+                                                        // Avoids multiple long press events from the same down event
+                                                        // We could keep an independant longpressCountup, but that would be a 16 bit so heavy to increment and compare.
 
 static uint16_t pressCountup=0;                         // Start counting up when the button goes down to detect long presses
 
@@ -71,6 +74,20 @@ uint8_t updateButtonState1ms(buttonstate_t &buttonstate) {
 
         if (buttonPositon) {        // Button currently down?
 
+            if (clickWindowCountdown) {             // Was the button pressed less than a click window ago?
+
+                clickWindowCountdown--;
+
+                if (clickWindowCountdown==0) {      // Click window just expired (only catches the transition from not-expired to expired while button is up)
+
+                    clickPendingcount=0;            // We are still down, so toss any pending clicks
+
+                }
+
+            }
+
+            pressCountup++;          // Don't need to worry about overflow because we will seed or turn off before then.
+
             if (pressCountup > BUTTON_OFFPRESS_TIME_MS) {
 
                 // Force off
@@ -84,38 +101,43 @@ uint8_t updateButtonState1ms(buttonstate_t &buttonstate) {
 
             } else if ( pressCountup > BUTTON_LONGPRESS_TIME_MS ) {
 
-                buttonstate.bitflags|= BUTTON_BITFLAG_LONGPRESSED;
+                if (!longpressRegisteredFlag) {
+
+                    buttonstate.bitflags|= BUTTON_BITFLAG_LONGPRESSED;
+
+                    longpressRegisteredFlag=1;          // Don't register this one again until a button up event
+
+                }
+
 
             }
 
-           pressCountup++;          // Don't need to worry about overflow because we will seed or turn off before then.
+
 
         } else {  //  if (!buttonPositon) {  -- button currently up
 
-            if (clickWindowCountdown) {
+            if (clickWindowCountdown) {             // Was the button pressed less than a click window ago?
 
                 clickWindowCountdown--;
 
-                if (clickWindowCountdown==0) {      // Click window just expired
+                if (clickWindowCountdown==0) {      // Click window just expired (only catches the transition from not-expired to expired while button is up)
 
-                    if (!debouncedButtonPosition) {              // Button is up, so register clicks
+                    // Button is up, so register any clicks that happened inside this window
 
-                        if (clickPendingcount==1) {
-                            buttonstate.bitflags |= BUTTON_BITFLAG_SINGLECLICKED;
-                        } else if (clickPendingcount==2) {
-                           buttonstate.bitflags |= BUTTON_BITFLAG_DOUBECLICKED;
-                        } else {
-                            buttonstate.bitflags |= BUTTON_BITFLAG_MULITCLICKED;
-                            buttonstate.clickcount = clickPendingcount;
-                            // Note this could overwrite a previous multiclick count if more than 1 happens per loop cycle.
-                        }
-
-
+                    if (clickPendingcount==1) {
+                        buttonstate.bitflags |= BUTTON_BITFLAG_SINGLECLICKED;
+                    } else if (clickPendingcount==2) {
+                        buttonstate.bitflags |= BUTTON_BITFLAG_DOUBECLICKED;
+                    } else {
+                        buttonstate.bitflags |= BUTTON_BITFLAG_MULITCLICKED;
+                        buttonstate.clickcount = clickPendingcount;
+                        // Note this could overwrite a previous multiclick count if more than 1 happens per loop cycle.
                     }
 
                     clickPendingcount=0;        // Start next cycle (aborts any pending clicks if button was still down
 
                 }
+
 
             } //  if (clickWindowCountdown)
 
@@ -124,9 +146,11 @@ uint8_t updateButtonState1ms(buttonstate_t &buttonstate) {
 
     }  else {       // New button position
 
-        if (!buttonDebounceCountdown) {         // Done bouncing
+        if (buttonDebounceCountdown==0) {         // Done bouncing
 
-            if (buttonPositon) {            // Button just pressed?
+            if (buttonPositon) {
+
+                // Button down event
 
                 buttonstate.bitflags |= BUTTON_BITFLAG_PRESSED;
 
@@ -139,7 +163,18 @@ uint8_t updateButtonState1ms(buttonstate_t &buttonstate) {
 
             } else {
 
+                // Button up event
+
                 buttonstate.bitflags |= BUTTON_BITFLAG_RELEASED;
+
+                if (clickWindowCountdown==0) {      // Button down longer than the click window?
+
+                    clickPendingcount=0;            // Don't register any clicks.
+                                                    // Clickwindow stays at 0 until next down event
+
+                }
+
+                longpressRegisteredFlag = 0;        // Now that the button is released, we can register another long press on the next down.
 
             }
 
