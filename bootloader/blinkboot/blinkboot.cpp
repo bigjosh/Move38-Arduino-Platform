@@ -35,8 +35,6 @@
 
 #include "bootloader.h"
 
-#include "jump.h"
-
 // TODO: Put this at a known fixed address to save registers
 // Will require a new .section in the linker file. Argh.
 
@@ -60,7 +58,10 @@
 
 #include "blinkos_headertypes.h"
 
-#define DOWNLOAD_MAX_PAGES 0x30     // The length of a downloaded game. Currently we always download all block even for shorter games.
+#warning active program area expanded to ease development but must be reduced to half the available flash space.
+#define DOWNLOAD_MAX_PAGES 0x60     // The length of a downloaded game. Currently we always download all block even for shorter games.
+
+//#define DOWNLOAD_MAX_PAGES 0x30     // The length of a downloaded game. Currently we always download all block even for shorter games.
                                     // Turns out that flash stores 0xff in unused space, and 1 bits send quickly in our IR protocol so
                                     // maybe not worth the extra overhead of setting the length? Woud could always scan backwards though the 0xffs?
 
@@ -1324,8 +1325,8 @@ void download_and_seed_mode( uint8_t we_are_root ) {
                                     // NOTE: boot_spm_interrupt_disable() does NOT do this! That disables the interrupt when an SPM instruction completes!
                                     // TODO: we will keep them when we take over pixel and other stuff.
 
-    CLEAR_STACK_AND_JMP( "0x0000" );
-    //asm("jmp 0x0000");
+    cli();
+    asm("jmp 0x0000");
 }
 
 
