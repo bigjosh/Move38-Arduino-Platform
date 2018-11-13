@@ -5,7 +5,6 @@
  *
  */
 
-#include "jump.h"
 
 /*
 // Calls from application into bootloader
@@ -42,11 +41,11 @@
 
 // Temp way to start up the bootloader to start seeding the active game
 
-#define JUMP_TO_BOOTLOADER_SEED()       { GPIOR1 = BOOTLOADER_GPOIR_SEED_MODE; clear_stack();  BOOTLOADER_RESET_JMP(); }
+#define JUMP_TO_BOOTLOADER_SEED()       { GPIOR1 = BOOTLOADER_GPOIR_SEED_MODE; cli(); BOOTLOADER_RESET_JMP(); }
 
 // Temp way to jump into the bootloader to tell it to start downloading from the next face that gets a seed packet
 
-#define JUMP_TO_BOOTLOADER_DOWNLOAD()   { GPIOR1 = BOOTLOADER_GPOIR_DOWNLOAD_MODE; clear_stack(); BOOTLOADER_RESET_JMP(); }
+#define JUMP_TO_BOOTLOADER_DOWNLOAD()   { GPIOR1 = BOOTLOADER_GPOIR_DOWNLOAD_MODE; cli(); BOOTLOADER_RESET_JMP(); }
 
 
 /*

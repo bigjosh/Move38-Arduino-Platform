@@ -19,8 +19,8 @@
 #define BUTTON_CLICK_TIMEOUT_MS      330
 
 #define BUTTON_LONGPRESS_TIME_MS    2000          // How long you must hold button down to register a long press.
-#define BUTTON_SEEDPRESS_TIME_MS    3000
-#define BUTTON_OFFPRESS_TIME_MS     5000
+#define BUTTON_SEEDPRESS_TIME_MS    6000
+#define BUTTON_OFFPRESS_TIME_MS     7000
 
 // Click Semantics
 // ===============
