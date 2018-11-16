@@ -35,6 +35,13 @@ void adc_startConversion(void);
 
 uint8_t adc_readLastResult(void);              // Return 1.1V reference as measured against Vcc scale (0=0V, 255=Vcc)
 
+// Takes the average of 10 battery readings and compares to the minimum voltage needed.
+// Returns 0 if battery too low for operations
+// Power of two saves some division work
+// 256 is a very nice value, but takes a while
+
+uint8_t battery_voltage_fit();
+
 // Disable and power down the ADC to save power
 
 void adc_disable(void);

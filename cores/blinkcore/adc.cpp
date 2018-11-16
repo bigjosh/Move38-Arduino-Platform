@@ -112,5 +112,28 @@ uint8_t adc_readLastResult(void) {              // Return 1.1V reference as meas
 
 }
 
+// Min voltage needed for 8Mhz operation...
+// https://electronics.stackexchange.com/questions/336718/what-is-the-minimum-voltage-required-to-operate-an-avr-mcu-at-8mhz-clock-speed
+// Green LEDs work down to here also.
+
+#define MINIMUM_BATTERY_VOLTAGE (2.4)
+
+// This value maps to a reading of 116, which maps back to a minimum voltage of 2.41V, so enough precision and no rounding issues here
+// https://www.google.com/search?rlz=1C1CYCW_enUS687US687&ei=lBPvW6ezJuy2ggfL4ZuwBA&q=%281.1*255%29%2F116&oq=%281.1*255%29%2F116&gs_l=psy-ab.3...24588.25840..26254...0.0..0.81.378.6......0....1..gws-wiz.......35i39j0i8i30.N6jfOTUiN2w
+
+// Takes the average of 256 battery readings and compares to the minimum voltage needed.
+// Returns 0 if battery too low for operations
+// Power of two saves some division work
+// 256 is a very nice value, but takes a while
 
 
+uint8_t battery_voltage_fit() {
+    uint8_t r=0;
+
+    r = adc_readLastResult();
+
+    adc_startConversion();              // Start next conversion so it will be ready for next time
+
+    return r < ADC_V_TO_READING( MINIMUM_BATTERY_VOLTAGE );
+
+}

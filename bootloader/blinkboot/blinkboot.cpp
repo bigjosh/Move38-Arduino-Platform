@@ -1381,8 +1381,6 @@ void run(void) {
 
     Debug::init();
 
-    //power_init();       // Get sleep functions
-
     // We only bother enabling what we need to save space
 
     pixel_init();
