@@ -92,14 +92,21 @@ void adc_startConversion(void) {
 	SBI( ADCSRA , ADSC);					// Start next conversion, will complete silently in 13 cycles (25 cycles for 1st)
 }
 
+
+// What reading would we get back from adc_readLastResult() that would correspond to this voltage?
+// Set up as #define so compare can be static
+// Double check the result for the voltage you care about because there can be significant loss of precision and rounding effects
+
+#define ADC_V_TO_READING( v ) ((1.1 * 255.0)/v)
+
 // Returns the previous conversion result (call adc_startConversion() to start a conversion).
 // Blocks if you call too soon and conversion not ready yet.
 
-uint8_t adc_readLastVccX10(void) {              // Return Vcc x10
+uint8_t adc_readLastResult(void) {              // Return 1.1V reference as measured against Vcc scale (0=0V, 255=Vcc)
 
 	while (TBI(ADCSRA,ADSC)) ;       // Wait for any pending conversion to complete
 
-	uint8_t lastReading = (11 / ADCH);      // Remember the result from the last reading.
+	uint8_t lastReading =  ADCH;      // Remember the result from the last reading.
 
 	return( lastReading  );
 
