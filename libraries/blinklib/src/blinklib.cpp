@@ -701,7 +701,7 @@ uint16_t random( uint16_t limit ) {
 
     do {
         retval = GetNextRandUint() / divisor;
-    } while (retval >= limit);
+    } while (retval > limit);
 
     return retval;
 }
