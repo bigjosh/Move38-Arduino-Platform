@@ -28,7 +28,11 @@ void timer_128us_callback_sei(void);
 void timer_256us_callback_sei(void);
 
 // Called after hardware has been initialized.
+// Clock set to 8Mhz
 // INts are off, so up to callee to set correct vector and sei()
+
+// ADC and POWER (sleep) have already been init'ed since we had to check
+// battery voltage before increasing clock speed.
 
 void run(void);
 

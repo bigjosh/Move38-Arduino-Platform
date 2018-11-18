@@ -62,4 +62,39 @@ void power_init(void);
 
 void power_soft_reset(void);
 
+
+/*
+    To avoid unintentional changes of clock frequency, a special write procedure must be followed to change the
+    CLKPS bits:
+    1. Write the Clock Prescaler Change Enable (CLKPCE) bit to one and all other bits in CLKPR to zero.
+    2. Within four cycles, write the desired value to CLKPS while writing a zero to CLKPCE.
+
+*/
+
+
+// Change clock prescaler to run at 8Mhz.
+// By default the CLKDIV fuse boots us at 8Mhz osc /8 so 1Mhz clock
+// This lets us check the battery voltage before switching to high gear
+// You need at least 2.4 volts to tun at 8Mhz reliably!
+// https://electronics.stackexchange.com/questions/336718/what-is-the-minimum-voltage-required-to-operate-an-avr-mcu-at-8mhz-clock-speed/336719
+
+
+inline void power_8mhz_clock() {
+
+    CLKPR = _BV( CLKPCE );                  // Enable changes
+    CLKPR =				0;                  // DIV 1 (8Mhz clock with 8Mhz RC osc)
+
+}
+
+//  1Mhz clock can run all the way down to at least 1.8V
+
+inline void power_1mhz_clock() {
+
+    CLKPR = _BV( CLKPCE );                  // Enable changes
+    CLKPR =				8;                  // DIV81 (8Mhz clock with 8Mhz RC osc)
+
+}
+
+
+
 #endif /* POWER_H_ */

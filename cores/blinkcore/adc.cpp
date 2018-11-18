@@ -92,18 +92,48 @@ void adc_startConversion(void) {
 	SBI( ADCSRA , ADSC);					// Start next conversion, will complete silently in 13 cycles (25 cycles for 1st)
 }
 
+
+// What reading would we get back from adc_readLastResult() that would correspond to this voltage?
+// Set up as #define so compare can be static
+// Double check the result for the voltage you care about because there can be significant loss of precision and rounding effects
+
+#define ADC_V_TO_READING( v ) ((1.1 * 255.0)/v)
+
 // Returns the previous conversion result (call adc_startConversion() to start a conversion).
 // Blocks if you call too soon and conversion not ready yet.
 
-uint8_t adc_readLastVccX10(void) {              // Return Vcc x10
+uint8_t adc_readLastResult(void) {              // Return 1.1V reference as measured against Vcc scale (0=0V, 255=Vcc)
 
 	while (TBI(ADCSRA,ADSC)) ;       // Wait for any pending conversion to complete
 
-	uint8_t lastReading = (11 / ADCH);      // Remember the result from the last reading.
+	uint8_t lastReading =  ADCH;      // Remember the result from the last reading.
 
 	return( lastReading  );
 
 }
 
+// Min voltage needed for 8Mhz operation...
+// https://electronics.stackexchange.com/questions/336718/what-is-the-minimum-voltage-required-to-operate-an-avr-mcu-at-8mhz-clock-speed
+// Green LEDs work down to here also.
+
+#define MINIMUM_BATTERY_VOLTAGE (2.4)
+
+// This value maps to a reading of 116, which maps back to a minimum voltage of 2.41V, so enough precision and no rounding issues here
+// https://www.google.com/search?rlz=1C1CYCW_enUS687US687&ei=lBPvW6ezJuy2ggfL4ZuwBA&q=%281.1*255%29%2F116&oq=%281.1*255%29%2F116&gs_l=psy-ab.3...24588.25840..26254...0.0..0.81.378.6......0....1..gws-wiz.......35i39j0i8i30.N6jfOTUiN2w
+
+// Takes the average of 256 battery readings and compares to the minimum voltage needed.
+// Returns 0 if battery too low for operations
+// Power of two saves some division work
+// 256 is a very nice value, but takes a while
 
 
+uint8_t battery_voltage_fit() {
+    uint8_t r=0;
+
+    r = adc_readLastResult();
+
+    adc_startConversion();              // Start next conversion so it will be ready for next time
+
+    return r < ADC_V_TO_READING( MINIMUM_BATTERY_VOLTAGE );
+
+}
