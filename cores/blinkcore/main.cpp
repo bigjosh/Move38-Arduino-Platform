@@ -61,8 +61,8 @@ void pre_main(void) {
 int main(void)
 {
 
-    adc_init();
-    adc_enable();           // Start ADC so we can check battery
+    //adc_init();
+    //adc_enable();           // Start ADC so we can check battery
 
     power_init();           // Enable sleep mode
 
