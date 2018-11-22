@@ -28,10 +28,23 @@ blinkbios_slack_block_t     __attribute__ ((section (".ipcram5")))    blinkbios_
 
 // We will never return, so don't need any of the extra formality, just give me the straight up code
 
+#include <avr/io.h>
+
+byte s[] = { 1 ,2 , 3 , 4 , 5 };
+
 int main(void) __attribute__ ((section (".init9"))) __attribute__((used)) __attribute__ ((naked));
 
 int main(void) {
 
-    run();
+    #warning
 
-}   
+    PORTB = 1;
+    //run();
+
+}
+
+void test(void) {
+
+    PORTC= s[3];
+
+}    

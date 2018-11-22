@@ -233,9 +233,9 @@
       <SubType>compile</SubType>
       <Link>sp.h</Link>
     </Compile>
-    <Compile Include="..\..\..\cores\blinklib\startup.s">
+    <Compile Include="..\..\..\cores\blinklib\startup.S">
       <SubType>compile</SubType>
-      <Link>startup.s</Link>
+      <Link>startup.S</Link>
     </Compile>
     <Compile Include="..\..\..\cores\blinklib\Timer.cpp">
       <SubType>compile</SubType>

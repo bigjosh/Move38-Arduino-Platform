@@ -30,13 +30,6 @@
 #include <avr/io.h>
 
 
-
- 	.text
-
- 	.section .init2,"ax",@progbits
-
-__init:
-
 /*
 
 	There is nothing here! NO VECTORS here! No __zero_reg! We just jump stright into the code!
@@ -53,4 +46,13 @@ __init:
 
 */
 
-	clr r1
+	// There does not seem to be any good way to avoid this jmp since
+	// the compiler likes to put the contructors and jump trampolines at the bottom of flash,
+	// which ended up being 0x0000 when we get rid of all the vectors!
+
+ 	.section .vectors,"ax",@progbits
+	.global	__vectors
+	.func	__vectors
+__vectors:
+	eor r1, r1
+	jmp 	__init
