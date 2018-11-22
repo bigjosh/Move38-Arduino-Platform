@@ -53,8 +53,10 @@
  	.section .resetvector,"ax",@progbits
 
 	.global __reset
+	.func __reset
 
 __reset:
-
 	nop
-	jmp 	__init
+	jmp __code_start
+
+	.endfunc

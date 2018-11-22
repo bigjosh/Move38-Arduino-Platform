@@ -43,10 +43,9 @@ int main(void) {
     PORTB = 1;
     //run();
 
+    PORTB = s[PORTB];
+
+
+    // Don't fall off the edge of the earth here!
+    // Make sure we stop above!
 }
-
-void test(void) {
-
-    PORTC= s[3];
-
-}    

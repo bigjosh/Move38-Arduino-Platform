@@ -23,6 +23,9 @@ MEMORY
   signature (rw!x) : ORIGIN = 0x840000, LENGTH = __SIGNATURE_REGION_LENGTH__
   user_signatures (rw!x) : ORIGIN = 0x850000, LENGTH = __USER_SIGNATURE_REGION_LENGTH__
 }
+
+ENTRY( __reset )
+
 SECTIONS
 {
   /* Read-only sections, merged into text segment: */
@@ -82,15 +85,22 @@ SECTIONS
   .rela.bss      : { *(.rela.bss)		}
   .rel.plt       : { *(.rel.plt)		}
   .rela.plt      : { *(.rela.plt)		}
+
   /* Internal text space or external memory.  */
+  
   .text   :
-  {
+  {  
+
+    *(.resetvector)
+	KEEP( *(.resetvector) )
+	
     *(.vectors)
     KEEP(*(.vectors))
     /* For data that needs to reside in the lower 64k of progmem.  */
      *(.progmem.gcc*)
     /* PR 13812: Placing the trampolines here gives a better chance
        that they will be in range of the code that uses them.  */
+	   
     . = ALIGN(2);
      __trampolines_start = . ;
     /* The jump trampolines for the 16-bit limited relocs will reside here.  */
@@ -119,6 +129,10 @@ SECTIONS
     KEEP(SORT(*)(.dtors))
     /* From this point on, we don't bother about wether the insns are
        below or above the 16 bits boundary.  */
+
+	/* Give us a place to jump from the reset vector that is past all the non-code stuff */
+	__code_start = . ;	   
+	   
     *(.init0)  /* Start here after reset.  */
     KEEP (*(.init0))
     *(.init1)
