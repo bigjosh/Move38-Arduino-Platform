@@ -6,6 +6,7 @@
 OUTPUT_FORMAT("elf32-avr","elf32-avr","elf32-avr")
 OUTPUT_ARCH(avr:5)
 __TEXT_REGION_LENGTH__ = DEFINED(__TEXT_REGION_LENGTH__) ? __TEXT_REGION_LENGTH__ : 128K;
+__BOOT_REGION_LENGTH__ = DEFINED(__BOOT_REGION_LENGTH__) ? __BOOT_REGION_LENGTH__ : 2K;
 __DATA_REGION_LENGTH__ = DEFINED(__DATA_REGION_LENGTH__) ? __DATA_REGION_LENGTH__ : 0xffa0;
 __EEPROM_REGION_LENGTH__ = DEFINED(__EEPROM_REGION_LENGTH__) ? __EEPROM_REGION_LENGTH__ : 64K;
 __FUSE_REGION_LENGTH__ = DEFINED(__FUSE_REGION_LENGTH__) ? __FUSE_REGION_LENGTH__ : 1K;
@@ -14,15 +15,24 @@ __SIGNATURE_REGION_LENGTH__ = DEFINED(__SIGNATURE_REGION_LENGTH__) ? __SIGNATURE
 __USER_SIGNATURE_REGION_LENGTH__ = DEFINED(__USER_SIGNATURE_REGION_LENGTH__) ? __USER_SIGNATURE_REGION_LENGTH__ : 1K;
 MEMORY
 {
-  text   (rx)   : ORIGIN = 0, LENGTH = __TEXT_REGION_LENGTH__
- /* data   (rw!x) : ORIGIN = 0x800060, LENGTH = __DATA_REGION_LENGTH__ */
-  dataX   (rw!x) : ORIGIN = 0x800100, LENGTH = __DATA_REGION_LENGTH__ 
+
+/* For BlinkBIOS, we want code to start in the bootloader area of flash at 0xb800 */
+
+  text   (rx)   : ORIGIN = 0x0000, LENGTH = 14K
+
+  boot   (rx)   : ORIGIN = 0xB800 , LENGTH = 2K
+
+/* Not sure why this was at 0x800060, but usable memory starts at 0x800100 */
+  
+  data   (rw!x) : ORIGIN = 0x800100, LENGTH = __DATA_REGION_LENGTH__ 
+  
   eeprom (rw!x) : ORIGIN = 0x810000, LENGTH = __EEPROM_REGION_LENGTH__
   fuse      (rw!x) : ORIGIN = 0x820000, LENGTH = __FUSE_REGION_LENGTH__
   lock      (rw!x) : ORIGIN = 0x830000, LENGTH = __LOCK_REGION_LENGTH__
   signature (rw!x) : ORIGIN = 0x840000, LENGTH = __SIGNATURE_REGION_LENGTH__
   user_signatures (rw!x) : ORIGIN = 0x850000, LENGTH = __USER_SIGNATURE_REGION_LENGTH__
 }
+
 SECTIONS
 {
   /* Read-only sections, merged into text segment: */
@@ -83,7 +93,13 @@ SECTIONS
   .rel.plt       : { *(.rel.plt)		}
   .rela.plt      : { *(.rela.plt)		}
   /* Internal text space or external memory.  */
-  .text   :
+  
+  /*
+   This script is for BlinkBIOS, so we start our code at the base of the 
+   bootloader area, which we define above as the `boot` region. 
+  */
+  
+  .text :
   {
     *(.vectors)
     KEEP(*(.vectors))
@@ -167,14 +183,20 @@ SECTIONS
   }  > text
   
   
-  .ipcram : {  
-
-	/* 
-	   HACK ALERT: The startup code references a symbol called `__bss_start` where it really should be called
-				   something like `init_zero` start. Rather than edit the startup, we are just moving that symbol to the beginig 
-				   of ipcram so that ipcram gets zeroed out with bss. 
-	*/	
+  /*
+	
+	Here is the shared memory block that sits at the base of RAM. We use this to talk to the BlinkBIOS
+	code running up in the bootloader area of flash. That code has already initialized this stuff to 0's
+	so we need to leave it be. 
 		
+	Not sure why NOLOAD must be explicitly specified here, but without it we seem to get all the .bss 0's 
+	in the hex output. 
+  */
+  
+ .ipcram (NOLOAD) :
+ {
+ 
+ 	
     *(.ipcram1)
 	KEEP (*(.ipcram1))	
     *(.ipcram2)
@@ -190,33 +212,25 @@ SECTIONS
     *(.ipcram7)
 	KEEP (*(.ipcram7))
 	*(.ipcram8)	
-	KEEP (*(.ipcram8))
-    _eipcram = . ;
-    PROVIDE (__ipcram_end = .) ;			 
-  
-  } > dataX
-
-  /*
-	Note that we moved .bss to come right after the shared IPC memory block so that they can both
-	be zeroed out in one pass by the startup code. 
+	KEEP (*(.ipcram8))  
 	
-  */
+  }
+ 
   
-  .bss     : 
+  
+  .bssx  (NOLOAD)   : 
   {
   
-     PROVIDE (__bss_start = .) ;
-  
+    PROVIDE (__bss_start = .) ;		/* Used by startup library to know where to start zeroing */
+
     *(.bss)
      *(.bss*)
     *(COMMON)
      PROVIDE (__bss_end = .) ;
-  }  > dataX
+  }  > data
 
-  
-/*  .dataX ADDR(.ipcram) + SIZEOF (.ipcram)   : AT (ADDR (.ipcram)) */
-  
-  .dataX    : 
+    
+  .datax  : 
   {
      PROVIDE (__data_start = .) ;
     *(.data)
@@ -229,27 +243,22 @@ SECTIONS
      _edata = . ;
      PROVIDE (__data_end = .) ;
 	 
-  }  > dataX AT> text
-  
-  
-  __data_load_start = LOADADDR(.dataX);
-   __data_load_end = __data_load_start + SIZEOF(.dataX);
+  }  > data AT> text
+    
+  __data_load_start = LOADADDR(.datax);
+  __data_load_end = __data_load_start + SIZEOF(.datax);
    
   /* Global data not cleared after reset.  */
-  
-/*  .noinit  ADDR(.bss) + SIZEOF (.bss)  :  AT (ADDR (.noinit)) */
-  
-  .noinit    :  
+    
+  .noinit (NOLOAD)    :  
   {
      PROVIDE (__noinit_start = .) ;
     *(.noinit*)
      PROVIDE (__noinit_end = .) ;
      _end = . ;
      PROVIDE (__heap_start = .) ;
-  }  > dataX
-  
-  
-  
+  }  > data
+    
   .eeprom  :
   {
     /* See .data above...  */
