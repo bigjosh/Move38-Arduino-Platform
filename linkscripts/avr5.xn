@@ -169,9 +169,13 @@ SECTIONS
   
   .ipcram : {  
 
-	/* We moved .data_start after ipcram so that the startup code does
-	   not try to copy initialization stuff here. 
+	/* 
+	   HACK ALERT: The startup code references a symbol called `__bss_start` where it really should be called
+				   something like `init_zero` start. Rather than edit the startup, we are just moving that symbol to the beginig 
+				   of ipcram so that ipcram gets zeroed out with bss. 
 	*/	
+	
+     PROVIDE (__bss_start = .) ;
 	
     *(.ipcram1)
 	KEEP (*(.ipcram1))	
@@ -194,6 +198,21 @@ SECTIONS
   
   } > dataX
 
+  /*
+	Note that we moved .bss to come right after the shared IPC memory block so that they can both
+	be zeroed out in one pass by the startup code. 
+	
+  */
+  
+  .bss     : 
+  {
+    *(.bss)
+     *(.bss*)
+    *(COMMON)
+     PROVIDE (__bss_end = .) ;
+  }  > dataX
+
+  
 /*  .dataX ADDR(.ipcram) + SIZEOF (.ipcram)   : AT (ADDR (.ipcram)) */
   
   .dataX    : 
@@ -211,17 +230,7 @@ SECTIONS
 	 
   }  > dataX AT> text
   
-  /*.bss  ADDR(.dataX) + SIZEOF (.dataX)   : AT (ADDR (.bss)) */
   
-  .bss     : 
-  {
-     PROVIDE (__bss_start = .) ;
-    *(.bss)
-     *(.bss*)
-    *(COMMON)
-     PROVIDE (__bss_end = .) ;
-  }  > dataX
-
   __data_load_start = LOADADDR(.dataX);
    __data_load_end = __data_load_start + SIZEOF(.dataX);
    
