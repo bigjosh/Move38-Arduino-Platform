@@ -32,19 +32,11 @@ blinkbios_slack_block_t     __attribute__ ((section (".ipcram5") , used ))    bl
 
 #include <avr/io.h>
 
-byte s[] = { 1 ,2 , 3 , 4 , 5 };
-
 int main(void) __attribute__ ((section (".init9"))) __attribute__((used)) __attribute__ ((naked));
 
 int main(void) {
 
-    #warning
-
-    PORTB = 1;
-    //run();
-
-    PORTB = s[PORTB];
-
+    run();
 
     // Don't fall off the edge of the earth here!
     // Make sure we stop above!

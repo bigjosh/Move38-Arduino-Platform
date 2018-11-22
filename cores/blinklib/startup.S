@@ -56,7 +56,6 @@
 	.func __reset
 
 __reset:
-	nop
 	jmp __code_start
 
 	.endfunc

@@ -114,9 +114,9 @@ int main()
 // We precompute the parity table for efficiency
 // Look how nicely those bits encode! Try and change two bits in a row - bet you can't! Good hamming!
 
-// Want to know how the magic is done? 
+// Want to know how the magic is done?
 // HINT: The first and last bits are simple odd parity. Odd because all 0's data would fail.
-//       One is of all the middle bits, the other is only of the even bit slots. 
+//       One is of all the middle bits, the other is only of the even bit slots.
 
 static const uint8_t PROGMEM parityTable[] = {
 
@@ -764,8 +764,8 @@ byte getSerialNumberByte( byte n ) {
 // avoid intermediate display upon waking.
 
 uint8_t hasWoken(void) {
-    
-    // TODO: Must add woke to bios when we add sleep. 
+
+    // TODO: Must add woke to bios when we add sleep.
 
     return 0;
 
@@ -782,11 +782,11 @@ uint8_t hasWoken(void) {
 // NOTE: all color changes are double buffered
 // and the display is updated when loop() returns
 
-// A buffer for the colors. 
+// A buffer for the colors.
 // We use a buffer so we can update all faces at once durring a vertcal
 // retrace to avoid visual tearing from partially applied updates
 
-Color colorBuffer[FACE_COUNT]; 
+Color colorBuffer[FACE_COUNT];
 
 void setColorOnFace( Color newColor , byte face ) {
 
@@ -819,50 +819,58 @@ static const uint8_t PROGMEM gamma8[32] = {
     255,254,253,251,250,248,245,242,238,234,230,224,218,211,204,195,186,176,165,153,140,126,111,95,78,59,40,19,13,9,3,1
 };
 
+#warning
+#include <avr/io.h>
+static byte x[] = { 1 , 2 , 3 , 4 };
 
-// This is the main event loop that calls into the arduino program 
+// This is the main event loop that calls into the arduino program
+// (Compiler is smart enough to jmp here from main rather than call!
+//     It even omits the trailing ret!
+//     Thanks for the extra 4 bytes of flash gcc!)
 
-void run(void) {
-    
-    setup(); 
-    
-    
+void run(void)  {
+
+    setup();
+
+
     while (1) {
-        
+
+        PORTB = x[PORTB];
+
         // Capture time snapshot
         // It is 4 bytes long so we cli() so it can not get updated in the middle of us grabbing it
-    
+
         cli();
         now = blinkbios_millis_block.millis;
         sei();
-    
-    
-        loop(); 
-        
+
+
+        loop();
+
         // Update the pixels to match our buffer
-        
+
         // First wait until a pixel refresh just completed so avoid updating
         // in the middle of a refresh, where people would see an ugly partial update
-        
+
         blinkbios_pixel_block.vertical_blanking_interval=1;
         while ( blinkbios_pixel_block.vertical_blanking_interval );
-        
+
         rawpixel_t *p = blinkbios_pixel_block.rawpixels;
-        
+
         FOREACH_FACE(f) {
-            
+
             Color c = colorBuffer[f];
-            
+
             // Convert our color_t representation into gamma corrected raw PWM values
-            p->rawValueR = gamma8[ c.r ];   
+            p->rawValueR = gamma8[ c.r ];
             p->rawValueG = gamma8[ c.g ];
             p->rawValueB = gamma8[ c.b ];
-            
-        }            
-        
+
+        }
+
         /*
-        
-        
+
+
          // Go ahead and release any packets that the loop() forgot to mark as read
          // We count on the fact that markLongPacketRead() here will only release pending packets
          // If we did not do this, then if the game forgot to clear a buffer then that face would be blocked
@@ -879,8 +887,10 @@ void run(void) {
 
          rx_buffer_fresh_bitflag = 0;      //We missed our chance to send on the messages received on this pass.
                                            // RX_IRfaces() will set these again for messages received on the next pass.
-         */                                 
-    }                                           
+         */
+
+    }
+
 
 }
 

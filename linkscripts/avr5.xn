@@ -15,8 +15,7 @@ __USER_SIGNATURE_REGION_LENGTH__ = DEFINED(__USER_SIGNATURE_REGION_LENGTH__) ? _
 MEMORY
 {
   text   (rx)   : ORIGIN = 0, LENGTH = __TEXT_REGION_LENGTH__
- /* data   (rw!x) : ORIGIN = 0x800060, LENGTH = __DATA_REGION_LENGTH__ */
-  dataX   (rw!x) : ORIGIN = 0x800100, LENGTH = __DATA_REGION_LENGTH__ 
+  data   (rw!x) : ORIGIN = 0x800100, LENGTH = __DATA_REGION_LENGTH__ 
   eeprom (rw!x) : ORIGIN = 0x810000, LENGTH = __EEPROM_REGION_LENGTH__
   fuse      (rw!x) : ORIGIN = 0x820000, LENGTH = __FUSE_REGION_LENGTH__
   lock      (rw!x) : ORIGIN = 0x830000, LENGTH = __LOCK_REGION_LENGTH__
@@ -181,8 +180,16 @@ SECTIONS
   }  > text
   
   
-  .ipcram : {  
 
+  /*
+	Note that we moved .bss to come right after the shared IPC memory block so that they can both
+	be zeroed out in one pass by the startup code. 
+	
+  */
+  
+  .bss  0x800100   : 
+  {
+  
 	/* 
 	   HACK ALERT: The startup code references a symbol called `__bss_start` where it really should be called
 				   something like `init_zero` start. Rather than edit the startup, we are just moving that symbol to the beginig 
@@ -207,60 +214,49 @@ SECTIONS
 	KEEP (*(.ipcram8))
     _eipcram = . ;
     PROVIDE (__ipcram_end = .) ;			 
+    
   
-  } > dataX
-
-  /*
-	Note that we moved .bss to come right after the shared IPC memory block so that they can both
-	be zeroed out in one pass by the startup code. 
-	
-  */
-  
-  .bss     : 
-  {
-  
-     PROVIDE (__bss_start = .) ;
+    __bss_start = . ;
   
     *(.bss)
      *(.bss*)
     *(COMMON)
-     PROVIDE (__bss_end = .) ;
-  }  > dataX
+    __bss_end = . ;
+  }  > data
 
   
-/*  .dataX ADDR(.ipcram) + SIZEOF (.ipcram)   : AT (ADDR (.ipcram)) */
-  
-  .dataX    : 
+  .data	(ADDR (.bss) + SIZEOF (.bss))  : AT (ADDR (.text) + SIZEOF (.text))
   {
      PROVIDE (__data_start = .) ;
-    *(.data)
-     *(.data*)
-    *(.gnu.linkonce.d*)
+    /* --gc-sections will delete empty .data. This leads to wrong start
+       addresses for subsequent sections because -Tdata= from the command
+       line will have no effect, see PR13697.  Thus, keep .data  */
+    KEEP (*(.data))
+    *(.data*)
     *(.rodata)  /* We need to include .rodata here if gcc is used */
-     *(.rodata*) /* with -fdata-sections.  */
-    *(.gnu.linkonce.r*)
+    *(.rodata*) /* with -fdata-sections.  */
+    *(.gnu.linkonce.d*)
     . = ALIGN(2);
      _edata = . ;
      PROVIDE (__data_end = .) ;
-	 
-  }  > dataX AT> text
+  }  > data  
   
   
-  __data_load_start = LOADADDR(.dataX);
-   __data_load_end = __data_load_start + SIZEOF(.dataX);
+  __data_load_start = LOADADDR(.data);
+   __data_load_end = __data_load_start + SIZEOF(.data);
    
   /* Global data not cleared after reset.  */
   
-/*  .noinit  ADDR(.bss) + SIZEOF (.bss)  :  AT (ADDR (.noinit)) */
+/*  .noinit  ADDR(.data) + SIZEOF (.data)  :  AT (ADDR (.noinit)) */
   
-  .noinit    :  
+  .noinit   ADDR(.data) + SIZEOF (.data) :  
   {
      PROVIDE (__noinit_start = .) ;
     *(.noinit*)
      PROVIDE (__noinit_end = .) ;
      _end = . ;
      PROVIDE (__heap_start = .) ;
-  }  > dataX
+  }  > data
   
   
   
