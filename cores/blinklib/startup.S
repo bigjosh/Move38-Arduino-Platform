@@ -50,9 +50,11 @@
 	// the compiler likes to put the contructors and jump trampolines at the bottom of flash,
 	// which ended up being 0x0000 when we get rid of all the vectors!
 
- 	.section .vectors,"ax",@progbits
-	.global	__vectors
-	.func	__vectors
-__vectors:
-	eor r1, r1
+ 	.section .resetvector,"ax",@progbits
+
+	.global __reset
+
+__reset:
+
+	nop
 	jmp 	__init
