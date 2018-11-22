@@ -1,6 +1,6 @@
 
 // Here are our magic shared memory links to the BlinkBIOS running up in the bootloader area.
-// These special sections are defined in a special linker script to make sure that the addresses 
+// These special sections are defined in a special linker script to make sure that the addresses
 // are the same on both the foreground (this blinklib program) and the background (the BlinkBIOS project compiled to a HEX file)
 
 #include "blinkbios_shared_button.h"
@@ -8,6 +8,8 @@
 #include "blinkbios_shared_pixel.h"
 #include "blinkbios_shared_irdata.h"
 #include "blinkbios_shared_slack.h"
+
+#include "blinklib.h"
 
 // Here are the actual allocations for the shared memory blocks
 
@@ -22,14 +24,14 @@ blinkbios_slack_block_t     __attribute__ ((section (".ipcram5")))    blinkbios_
 // Here is our entry point. We are called by the BlinkBIOS after everything is set up and ready
 // Note that this is not a normal startup, we are staring right from flash address 0x000 with no
 // vector table at all. We don't need one because all vectors are pointing to the BlinkBIOS
-// running up in the bootloader area. 
+// running up in the bootloader area.
 
 // We will never return, so don't need any of the extra formality, just give me the straight up code
 
 int main(void) __attribute__ ((section (".init9"))) __attribute__((used)) __attribute__ ((naked));
 
 int main(void) {
-        
-    run(); 
-        
+
+    run();
+
 }   

@@ -773,10 +773,6 @@ uint8_t hasWoken(void) {
 
 // --- Pixel functions
 
-// Make a new color in the HSB colorspace. All values are 0-255.
-
-Color makeColorHSB( byte hue, byte saturation, byte brightness );
-
 // Change the tile to the specified color
 // NOTE: all color changes are double buffered
 // and the display is updated when loop() returns
@@ -790,7 +786,7 @@ Color makeColorHSB( byte hue, byte saturation, byte brightness );
 // We use a buffer so we can update all faces at once durring a vertcal
 // retrace to avoid visual tearing from partially applied updates
 
-Color colorBuffer[face]; 
+Color colorBuffer[FACE_COUNT]; 
 
 void setColorOnFace( Color newColor , byte face ) {
 
@@ -849,9 +845,9 @@ void run(void) {
         // in the middle of a refresh, where people would see an ugly partial update
         
         blinkbios_pixel_block.vertical_blanking_interval=1;
-        while ( blinkbios_pixel_block.vertical_blanking_interval=1 );
+        while ( blinkbios_pixel_block.vertical_blanking_interval );
         
-        rawpixel_t *p = blinkbios_pixelblock_t.rawpixels;
+        rawpixel_t *p = blinkbios_pixel_block.rawpixels;
         
         FOREACH_FACE(f) {
             
