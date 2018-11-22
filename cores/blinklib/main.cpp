@@ -15,11 +15,13 @@
 
 // We put each in its own section so that the separately compiled blinkos will be able to find them.
 
-blinkbios_pixelblock_t      __attribute__ ((section (".ipcram1")))    blinkbios_pixel_block;
-blinkbios_millis_block_t    __attribute__ ((section (".ipcram2")))    blinkbios_millis_block;
-blinkbios_button_block_t    __attribute__ ((section (".ipcram3")))    blinkbios_button_block;
-blinkbios_irdata_block_t    __attribute__ ((section (".ipcram4")))    blinkbios_irdata_block;
-blinkbios_slack_block_t     __attribute__ ((section (".ipcram5")))    blinkbios_slack_block;
+// Note that without the `used` attribute, these blocks get tossed even though they are maked as `KEEP` in the linker script
+
+blinkbios_pixelblock_t      __attribute__ ((section (".ipcram1") , used ))    blinkbios_pixel_block;
+blinkbios_millis_block_t    __attribute__ ((section (".ipcram2") , used ))    blinkbios_millis_block;
+blinkbios_button_block_t    __attribute__ ((section (".ipcram3") , used ))    blinkbios_button_block;
+blinkbios_irdata_block_t    __attribute__ ((section (".ipcram4") , used ))    blinkbios_irdata_block;
+blinkbios_slack_block_t     __attribute__ ((section (".ipcram5") , used ))    blinkbios_slack_block;
 
 // Here is our entry point. We are called by the BlinkBIOS after everything is set up and ready
 // Note that this is not a normal startup, we are staring right from flash address 0x000 with no
