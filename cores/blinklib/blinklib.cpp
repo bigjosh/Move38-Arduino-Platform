@@ -27,10 +27,6 @@
 
 #include "blinklib.h"
 
-#include "blinkos.h"
-
-#include "bootloader.h"
-
 
 #define TX_PROBE_TIME_MS           150     // How often to do a blind send when no RX has happened recently to trigger ping pong
                                            // Nice to have probe time shorter than expire time so you have to miss 2 messages
