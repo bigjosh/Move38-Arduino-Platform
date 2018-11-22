@@ -231,7 +231,9 @@ SECTIONS
 
   /*.data	(ADDR (.bss) + SIZEOF (.bss))  : AT (ADDR (.text) + SIZEOF (.text)) */
   
-  .datax	(ADDR (.bss) + SIZEOF (.bss)) : AT (ADDR (.text) + SIZEOF (.text))
+  /* .datax	(ADDR (.bss) + SIZEOF (.bss)) : AT (ADDR (.text) + SIZEOF (.text)) */
+  
+  .datax :
   {
      PROVIDE (__data_start = .) ;
     /* --gc-sections will delete empty .data. This leads to wrong start
@@ -245,7 +247,7 @@ SECTIONS
     . = ALIGN(2);
      _edata = . ;
      PROVIDE (__data_end = .) ;
-  }  
+  }  > data AT> text 
   
   
   __data_load_start = LOADADDR(.datax);
