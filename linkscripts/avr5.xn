@@ -174,9 +174,7 @@ SECTIONS
 				   something like `init_zero` start. Rather than edit the startup, we are just moving that symbol to the beginig 
 				   of ipcram so that ipcram gets zeroed out with bss. 
 	*/	
-	
-     PROVIDE (__bss_start = .) ;
-	
+		
     *(.ipcram1)
 	KEEP (*(.ipcram1))	
     *(.ipcram2)
@@ -206,6 +204,9 @@ SECTIONS
   
   .bss     : 
   {
+  
+     PROVIDE (__bss_start = .) ;
+  
     *(.bss)
      *(.bss*)
     *(COMMON)
