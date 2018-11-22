@@ -76,5 +76,4 @@
 
 	#include "blinklib.h"
 
-
 #endif

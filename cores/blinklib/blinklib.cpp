@@ -17,15 +17,27 @@
 
 #include <limits.h>
 #include <stdint.h>
-//#include <stdlib.h>         //rand()
 
 #include <avr/pgmspace.h>   // PROGMEM for parity lookup table
+#include <avr/interrupt.h>  // cli() and sei() so we can get snapshots of multibyte variables
 
 #include <stddef.h>
 
 #include "ArduinoTypes.h"
 
 #include "blinklib.h"
+
+// Here are our magic shared memory links to the BlinkBIOS running up in the bootloader area.
+// These special sections are defined in a special linker script to make sure that the addresses
+// are the same on both the foreground (this blinklib program) and the background (the BlinkBIOS project compiled to a HEX file)
+
+// The actual memory for these blocks is allocated in main.cpp. Remember, it overlaps with the same blocks in BlinkBIOS code running in the bootloader!
+
+#include "blinkbios_shared_button.h"
+#include "blinkbios_shared_millis.h"
+#include "blinkbios_shared_pixel.h"
+#include "blinkbios_shared_irdata.h"
+#include "blinkbios_shared_slack.h"
 
 
 #define TX_PROBE_TIME_MS           150     // How often to do a blind send when no RX has happened recently to trigger ping pong
@@ -101,6 +113,10 @@ int main()
 
 // We precompute the parity table for efficiency
 // Look how nicely those bits encode! Try and change two bits in a row - bet you can't! Good hamming!
+
+// Want to know how the magic is done? 
+// HINT: The first and last bits are simple odd parity. Odd because all 0's data would fail.
+//       One is of all the middle bits, the other is only of the even bit slots. 
 
 static const uint8_t PROGMEM parityTable[] = {
 
@@ -180,6 +196,8 @@ static uint8_t parityEncode( uint8_t d ) {
     return pgm_read_byte_near( parityTable+ d );
 }
 
+// The actual data is hidden in the middle
+
 static uint8_t parityDecode( uint8_t d ) {
 
     return (d & 0b01111110) >> 1 ;
@@ -187,20 +205,21 @@ static uint8_t parityDecode( uint8_t d ) {
 }
 
 
-// TODO: These struct even better if they are padded to a power of 2 like https://stackoverflow.com/questions/1239855/pad-a-c-structure-to-a-power-of-two
+// TODO: These structs even better if they are padded to a power of 2 like https://stackoverflow.com/questions/1239855/pad-a-c-structure-to-a-power-of-two
 
 struct face_t {
 
-    uint8_t inValue;           // Last received value on this face, or 0 if no neighbor ever seen since startup
-    uint8_t outValue;          // Value we send out on this face
+    uint8_t inValue;        // Last received value on this face, or 0 if no neighbor ever seen since startup
+    uint8_t outValue;       // Value we send out on this face
     millis_t expireTime;    // When this face will be consider to be expired (no neighbor there)
-    millis_t sendTime;      // Next time we will transmit on this face (set to 0 everytime we get a good message so we ping-pong across the link)
+    millis_t sendTime;      // Next time we will transmit on this face (set to 0 every time we get a good message so we ping-pong across the link)
 
 };
 
+
 static face_t faces[FACE_COUNT];
 
-// Grab once from loopstate
+// Millis snapshot for this pass though loop
 millis_t now;
 
 unsigned long millis() {
@@ -223,6 +242,8 @@ uint8_t computeChecksum( const uint8_t *buffer , uint8_t len ) {
 
 }
 
+/*
+
 #if  ( ( IR_LONG_PACKET_MAX_LEN + 3  ) > IR_RX_PACKET_SIZE )
 
     #error There has to be enough room in the blinkos packet buffer to hold the user packet plus 2 header bytes and one checksum byte
@@ -238,7 +259,6 @@ static byte *longPacketData[FACE_COUNT];
 
 byte getPacketLengthOnFace( uint8_t face ) {
     return longPacketLen[ face ];
-
 }
 
 boolean isPacketReadyOnFace( uint8_t face ) {
@@ -246,9 +266,7 @@ boolean isPacketReadyOnFace( uint8_t face ) {
 }
 
 const byte *getPacketDataOnFace( uint8_t face ) {
-
     return longPacketData[face];
-
 }
 
 void markLongPacketRead( uint8_t face ) {
@@ -420,6 +438,9 @@ static void RX_IRFaces( const ir_data_buffer_t *ir_data_buffers ) {
 
 }
 
+*/
+
+/*
 
 static void TX_IRFaces() {
 
@@ -551,6 +572,9 @@ void setValueSentOnFace( byte value , byte face ) {
 
 }
 
+*/
+
+/*
 
 static buttonstate_t buttonstate;
 
@@ -594,6 +618,8 @@ byte buttonClickCount(void) {
 bool buttonLongPressed(void) {
     return grabandclearbuttonflag( BUTTON_BITFLAG_LONGPRESSED );
 }
+
+*/
 
 // --- Utility functions
 
@@ -666,6 +692,8 @@ Color makeColorHSB( uint8_t hue, uint8_t saturation, uint8_t brightness ) {
 // Here we implement the SimpleRNG pseudo-random number generator based on this code...
 // https://www.johndcook.com/SimpleRNG.cpp
 
+// TODO: Make this calculation smaller with shorter ints, add a way to put entropy into the seeds
+
 #define GETNEXTRANDUINT_MAX ( (word) -1 )
 
 static word GetNextRandUint(void) {
@@ -725,30 +753,19 @@ byte getSerialNumberByte( byte n ) {
 
     if (n>8) return(0);
 
-
-
     return serialno_addr[n];
 
 }
 
-// We keep a local copy since blinkos clears on each call
-// but blinklib model is latching
 
-uint8_t local_woke_flag;
 
 // Returns 1 if we have slept and woken since last time we checked
 // Best to check as last test at the end of loop() so you can
 // avoid intermediate display upon waking.
 
 uint8_t hasWoken(void) {
-
-    if (local_woke_flag) {
-
-        local_woke_flag =0;
-        return 1;
-
-    }
-
+    
+    // TODO: Must add woke to bios when we add sleep. 
 
     return 0;
 
@@ -769,9 +786,15 @@ Color makeColorHSB( byte hue, byte saturation, byte brightness );
 // NOTE: all color changes are double buffered
 // and the display is updated when loop() returns
 
+// A buffer for the colors. 
+// We use a buffer so we can update all faces at once durring a vertcal
+// retrace to avoid visual tearing from partially applied updates
+
+Color colorBuffer[face]; 
+
 void setColorOnFace( Color newColor , byte face ) {
 
-    loopstate_out.colors[face] =  pixelColor_t( GET_5BIT_R( newColor ) , GET_5BIT_G( newColor) , GET_5BIT_B( newColor ) , 1 );
+    colorBuffer[face] =  pixelColor_t( GET_5BIT_R( newColor ) , GET_5BIT_G( newColor) , GET_5BIT_B( newColor ) , 1 );
 
 }
 
@@ -785,7 +808,6 @@ void setColor( Color newColor) {
 }
 
 
-// DEPREICATED: Use setColorOnFace()
 void setFaceColor(  byte face, Color newColor ) {
 
     setColorOnFace( newColor , face );
@@ -793,50 +815,81 @@ void setFaceColor(  byte face, Color newColor ) {
 }
 
 
-void setupEntry() {
-    // Call up to the userland code
-    setup();
-}
+// Gamma table courtesy of adafruit...
+// https://learn.adafruit.com/led-tricks-gamma-correction/the-quick-fix
+// Compressed down to 32 entries, normalized for our raw values that start at 255 off.
 
-void loopEntry() {
+static const uint8_t PROGMEM gamma8[32] = {
+    255,254,253,251,250,248,245,242,238,234,230,224,218,211,204,195,186,176,165,153,140,126,111,95,78,59,40,19,13,9,3,1
+};
 
-    now = loopstate_in.millis;
 
-    RX_IRFaces( loopstate_in.ir_data_buffers );
+// This is the main event loop that calls into the arduino program 
 
-    // Capture the incoming button state. We OR in the flags because in blinklib model we clear the flags only when read.
-    buttonstate.bitflags |= loopstate_in.buttonstate.bitflags;
-    buttonstate.clickcount = loopstate_in.buttonstate.clickcount;
-    buttonstate.down = loopstate_in.buttonstate.down;
+void run(void) {
+    
+    setup(); 
+    
+    
+    while (1) {
+        
+        // Capture time snapshot
+        // It is 4 bytes long so we cli() so it can not get updated in the middle of us grabbing it
+    
+        cli();
+        now = blinkbios_millis_block.millis;
+        sei();
+    
+    
+        loop(); 
+        
+        // Update the pixels to match our buffer
+        
+        // First wait until a pixel refresh just completed so avoid updating
+        // in the middle of a refresh, where people would see an ugly partial update
+        
+        blinkbios_pixel_block.vertical_blanking_interval=1;
+        while ( blinkbios_pixel_block.vertical_blanking_interval=1 );
+        
+        rawpixel_t *p = blinkbios_pixelblock_t.rawpixels;
+        
+        FOREACH_FACE(f) {
+            
+            Color c = colorBuffer[f];
+            
+            // Convert our color_t representation into gamma corrected raw PWM values
+            p->rawValueR = gamma8[ c.r ];   
+            p->rawValueG = gamma8[ c.g ];
+            p->rawValueB = gamma8[ c.b ];
+            
+        }            
+        
+        /*
+        
+        
+         // Go ahead and release any packets that the loop() forgot to mark as read
+         // We count on the fact that markLongPacketRead() here will only release pending packets
+         // If we did not do this, then if the game forgot to clear a buffer then that face would be blocked
+         // From OS messages forever. We could work around that by having separate user and OS buffers, but more memory
+         // and complexity.
 
-    // Latch woke_flag
-    local_woke_flag |= loopstate_in.woke_flag;
+         FOREACH_FACE(f) {
+            markLongPacketRead(f);
+         }
 
-    // Call the user program
+         // Transmit any IR packets waiting to go out
+         // Note that we do this after loop had a chance to update them.
+         TX_IRFaces();
 
-     loop();
-
-     // Go ahead an release any packets that the loop() forgot to mark as read
-     // We count on the fact that markLongPacketRead() here will only release pending packets
-     // If we did not do this, then if the game forgot to clear a buffer then that face would be blocked
-     // From OS messages forever. We could work around that by having separate user and OS buffers, but more memory
-     // and complexity.
-
-     FOREACH_FACE(f) {
-        markLongPacketRead(f);
-     }
-
-     // Transmit any IR packets waiting to go out
-     // Note that we do this after loop had a chance to update them.
-     TX_IRFaces();
-
-     rx_buffer_fresh_bitflag = 0;      //We missed our change to send on the messages received on this pass.
-                                    // RX_IRfaces() will set these again for messages received on the next pass.
+         rx_buffer_fresh_bitflag = 0;      //We missed our chance to send on the messages received on this pass.
+                                           // RX_IRfaces() will set these again for messages received on the next pass.
+         */                                 
+    }                                           
 
 }
 
 void seedMe() {
 
-    JUMP_TO_BOOTLOADER_SEED();
+   // JUMP_TO_BOOTLOADER_SEED();
 
 }    

@@ -165,6 +165,30 @@
       <SubType>compile</SubType>
       <Link>ArduinoTypes.h</Link>
     </Compile>
+    <Compile Include="..\..\..\cores\blinklib\blinkbios_shared_button.h">
+      <SubType>compile</SubType>
+      <Link>blinkbios_shared_button.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\cores\blinklib\blinkbios_shared_functions.h">
+      <SubType>compile</SubType>
+      <Link>blinkbios_shared_functions.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\cores\blinklib\blinkbios_shared_irdata.h">
+      <SubType>compile</SubType>
+      <Link>blinkbios_shared_irdata.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\cores\blinklib\blinkbios_shared_millis.h">
+      <SubType>compile</SubType>
+      <Link>blinkbios_shared_millis.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\cores\blinklib\blinkbios_shared_pixel.h">
+      <SubType>compile</SubType>
+      <Link>blinkbios_shared_pixel.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\cores\blinklib\blinkbios_shared_slack.h">
+      <SubType>compile</SubType>
+      <Link>blinkbios_shared_slack.h</Link>
+    </Compile>
     <Compile Include="..\..\..\cores\blinklib\blinklib.cpp">
       <SubType>compile</SubType>
       <Link>blinklib.cpp</Link>
@@ -176,6 +200,10 @@
     <Compile Include="..\..\..\cores\blinklib\DummySerial.h">
       <SubType>compile</SubType>
       <Link>DummySerial.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\cores\blinklib\main.cpp">
+      <SubType>compile</SubType>
+      <Link>main.cpp</Link>
     </Compile>
     <Compile Include="..\..\..\cores\blinklib\pixelcolor.h">
       <SubType>compile</SubType>
@@ -204,6 +232,10 @@
     <Compile Include="..\..\..\cores\blinklib\sp.h">
       <SubType>compile</SubType>
       <Link>sp.h</Link>
+    </Compile>
+    <Compile Include="..\..\..\cores\blinklib\startup.s">
+      <SubType>compile</SubType>
+      <Link>startup.s</Link>
     </Compile>
     <Compile Include="..\..\..\cores\blinklib\Timer.cpp">
       <SubType>compile</SubType>
