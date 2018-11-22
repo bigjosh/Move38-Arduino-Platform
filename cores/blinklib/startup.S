@@ -52,3 +52,5 @@ __init:
 	is taken care of by library code that will link in here automatically.
 
 */
+
+	clr r1
