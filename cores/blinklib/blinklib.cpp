@@ -830,6 +830,7 @@ static byte x[] = { 1 , 2 , 3 , 4 };
 
 void run(void)  {
 
+/*
     #warning
     DDRE |= _BV(2);
 
@@ -837,7 +838,7 @@ void run(void)  {
         PINE = _BV(2);
 
     };
-
+*/
     setup();
 
     while (1) {
@@ -852,6 +853,10 @@ void run(void)  {
         sei();
 
 
+   blinkbios_pixel_block.rawpixels[0].rawValueR=now&255;
+   blinkbios_pixel_block.rawpixels[2].rawValueG=now&255;
+   blinkbios_pixel_block.rawpixels[4].rawValueB=now&255;
+
         loop();
 
         // Update the pixels to match our buffer
@@ -863,7 +868,7 @@ void run(void)  {
         while ( blinkbios_pixel_block.vertical_blanking_interval );
 
         volatile rawpixel_t *p = blinkbios_pixel_block.rawpixels;
-
+/*
         FOREACH_FACE(f) {
 
             Color c = colorBuffer[f];
@@ -874,7 +879,7 @@ void run(void)  {
             p->rawValueB = gamma8[ c.b ];
 
         }
-
+*/
         /*
 
 

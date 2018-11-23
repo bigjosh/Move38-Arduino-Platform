@@ -71,7 +71,8 @@ recipe.ar.pattern="{compiler.path}{compiler.ar.cmd}" {compiler.ar.flags} {compil
 ## Combine gc-sections, archives, and objects
 #recipe.c.combine.pattern="{compiler.path}{compiler.c.elf.cmd}" {compiler.c.elf.flags} -mmcu={build.mcu} {compiler.c.elf.extra_flags} -Wl,--script={runtime.platform.path}/linkscripts/avr5.xn -Wl,-nostartfiles -o "{build.path}/{build.project_name}.elf" {object_files} "{build.path}/{archive_file}" "-L{build.path}" -lm
 #recipe.c.combine.pattern="{compiler.path}{compiler.c.elf.cmd}" {compiler.c.elf.flags} -mmcu={build.mcu} {compiler.c.elf.extra_flags} -Wl,--print-gc-sections -Wl,--script={runtime.platform.path}/linkscripts/avr5.xn   -Wl,-Map,{build.path}/out.map -nostartfiles -o "{build.path}/{build.project_name}.elf" {object_files} "{build.path}/{archive_file}" "-L{build.path}" -lm
-recipe.c.combine.pattern="{compiler.path}{compiler.c.elf.cmd}" {compiler.c.elf.flags} -mmcu={build.mcu} {compiler.c.elf.extra_flags} -nostartfiles -o "{build.path}/{build.project_name}.elf" "{build.path}/core/startup.S.o" {object_files} "{build.path}/{archive_file}" "-L{build.path}" -lm
+# Ok, I know that hard-coded path to the startup.S.o is ugly, but it took me a full day to figure out that the startup file can not be inside the archive and now I just need it to works so don't judge me. 
+recipe.c.combine.pattern="{compiler.path}{compiler.c.elf.cmd}" {compiler.c.elf.flags} -mmcu={build.mcu} {compiler.c.elf.extra_flags} -Wl,--script={runtime.platform.path}/linkscripts/avr5.xn -nostartfiles -o "{build.path}/{build.project_name}.elf" "{build.path}/core/startup.S.o" {object_files} "{build.path}/{archive_file}" "-L{build.path}" -lm
 
 ## Create output files (.eep and .hex)
 recipe.objcopy.eep.pattern="{compiler.path}{compiler.objcopy.cmd}" {compiler.objcopy.eep.flags} {compiler.objcopy.eep.extra_flags} "{build.path}/{build.project_name}.elf" "{build.path}/{build.project_name}.eep"
