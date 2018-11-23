@@ -15,12 +15,13 @@ We add a new group of sections called `ipcram1`-`ipcram9` which hold the shared 
 
 Note also that we mark these sections as `KEEP`, but they still seem to get garbage collected if not referenced, so we should make sure to reference them in the foreground code or else the foreground will put variables here and overwrite the bootloader's info. 
 
-
-We had to make a new `.dataX` segment because the origin of the normal `.data` segment seems to be hardcoded someplace (I could not figure out where). 
+We had to make a new `.dataX` segment because the origin of the normal `.data` segment seems to be hardcoded into the "specific device" file in gcc...  
 
 https://electronics.stackexchange.com/questions/408115/how-does-avr-gcc-linker-know-to-put-the-datasection-at-0x800100-rather-than
 
-It is ok, becuase the new script is much cleaner than the stock one, and also moves the `bss` segment down so that both the `ipcram` memory and the normal static variables can all be initialized to `0` in one big block. Note that we only want to zero out the `ipcram` in the BIOS startup, so the linker script for user programs will put the `bss` start above here.  
+It is ok, becuase the new script is much cleaner than the stock one, and also moves the `bss` segment down so that both the `ipcram` memory and the normal static variables can all be initialized to `0` in one big block. Note that we only want to zero out the `ipcram` in the BIOS startup, so the linker script for user programs will put the `bss` start above here.
+
+Another hard won discovery is that if you put anything into .bss, it seems to output the whole thing to the HEX file. We fix this by adding `(NOLOAD)` to the segment. Phew.     
 
 To get Arduino use this custom script, we edit the `platform.txt` to have...
 
