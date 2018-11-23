@@ -574,17 +574,26 @@ void setValueSentOnFace( byte value , byte face ) {
 
 */
 
-/*
 
-static buttonstate_t buttonstate;
+// --------------Button code
+
+
+// Here we keep a local snapshot of the button block stuff
+
+static uint8_t buttonSnapshotDown;               // 1 if button is currently down (debounced)
+
+static uint8_t buttonSnapshotBitflags;
+
+static uint8_t buttonSnapshotClickcount;         // Number of clicks on most recent multiclick
+
 
 bool buttonDown(void) {
-    return buttonstate.down;
+    return buttonSnapshotDown != 0;
 }
 
 static bool grabandclearbuttonflag( uint8_t flagbit ) {
-    bool r = buttonstate.bitflags & flagbit;
-    buttonstate.bitflags &= ~ flagbit;
+    bool r = buttonSnapshotBitflags & flagbit;
+    buttonSnapshotBitflags &= ~ flagbit;
     return r;
 }
 
@@ -601,7 +610,7 @@ bool buttonSingleClicked() {
 }
 
 bool buttonDoubleClicked() {
-    return grabandclearbuttonflag( BUTTON_BITFLAG_DOUBECLICKED );
+    return grabandclearbuttonflag( BUTTON_BITFLAG_DOUBLECLICKED );
 }
 
 bool buttonMultiClicked() {
@@ -611,7 +620,7 @@ bool buttonMultiClicked() {
 
 // The number of clicks in the longest consecutive valid click cycle since the last time called.
 byte buttonClickCount(void) {
-    return buttonstate.clickcount;
+    return buttonSnapshotClickcount;
 }
 
 // Remember that a long press fires while the button is still down
@@ -619,7 +628,7 @@ bool buttonLongPressed(void) {
     return grabandclearbuttonflag( BUTTON_BITFLAG_LONGPRESSED );
 }
 
-*/
+
 
 // --- Utility functions
 
@@ -847,11 +856,15 @@ void run(void)  {
         now = blinkbios_millis_block.millis;
         sei();
 
-/*
-   blinkbios_pixel_block.rawpixels[0].rawValueR=now&255;
-   blinkbios_pixel_block.rawpixels[2].rawValueG=now&255;
-   blinkbios_pixel_block.rawpixels[4].rawValueB=now&255;
-*/
+        // Capture button snapshot
+
+        cli();
+        buttonSnapshotDown       = blinkbios_button_block.down;
+        buttonSnapshotBitflags  |= blinkbios_button_block.bitflags;  // Or any new flags into the ones we've got
+        blinkbios_button_block.bitflags=0;                   // Clear out the flags now that we have them
+        buttonSnapshotClickcount = blinkbios_button_block.clickcount;
+        sei();
+
         loop();
 
         // Update the pixels to match our buffer

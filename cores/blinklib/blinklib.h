@@ -161,7 +161,7 @@ bool buttonLongPressed(void);
 // TODO: Use top bit(s) for something useful like automatic
 //       blink or twinkle or something like that.
 
-// Argh, these macros are so ugly... but so ideomatic arduino. Maybe use a class with bitfields like
+// Argh, these macros are so ugly... but so idiomatic arduino. Maybe use a class with bitfields like
 // we did in pixel.cpp just so we can sleep at night?
 
 typedef pixelColor_t Color;
