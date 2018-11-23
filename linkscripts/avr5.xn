@@ -15,7 +15,10 @@ __USER_SIGNATURE_REGION_LENGTH__ = DEFINED(__USER_SIGNATURE_REGION_LENGTH__) ? _
 MEMORY
 {
   text   (rx)   : ORIGIN = 0, LENGTH = __TEXT_REGION_LENGTH__
+  ipcram (rw!x) : ORIGIN = 0x800100, LENGTH = __DATA_REGION_LENGTH__ 
+  
   data   (rw!x) : ORIGIN = 0x800100, LENGTH = __DATA_REGION_LENGTH__ 
+  
   eeprom (rw!x) : ORIGIN = 0x810000, LENGTH = __EEPROM_REGION_LENGTH__
   fuse      (rw!x) : ORIGIN = 0x820000, LENGTH = __FUSE_REGION_LENGTH__
   lock      (rw!x) : ORIGIN = 0x830000, LENGTH = __LOCK_REGION_LENGTH__
@@ -214,9 +217,9 @@ SECTIONS
     _eipcram = . ;
     PROVIDE (__ipcram_end = .) ;			 
   
-  } > data
+  } > ipcram
   
-  .bss  (NOLOAD) : 
+  .bss  0x800200 (NOLOAD) : 
   {
     __bss_start = . ;
   
@@ -227,9 +230,7 @@ SECTIONS
   }  > data
 
   /*.data	(ADDR (.bss) + SIZEOF (.bss))  : AT (ADDR (.text) + SIZEOF (.text)) */
-  
-  /* .datax	(ADDR (.bss) + SIZEOF (.bss)) : AT (ADDR (.text) + SIZEOF (.text)) */
-  
+   
   .datax :
   {
      PROVIDE (__data_start = .) ;

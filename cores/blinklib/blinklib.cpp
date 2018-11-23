@@ -830,8 +830,15 @@ static byte x[] = { 1 , 2 , 3 , 4 };
 
 void run(void)  {
 
-    setup();
+    #warning
+    DDRE |= _BV(2);
 
+    while (1) {
+        PINE = _BV(2);
+
+    };
+
+    setup();
 
     while (1) {
 
@@ -855,7 +862,7 @@ void run(void)  {
         blinkbios_pixel_block.vertical_blanking_interval=1;
         while ( blinkbios_pixel_block.vertical_blanking_interval );
 
-        rawpixel_t *p = blinkbios_pixel_block.rawpixels;
+        volatile rawpixel_t *p = blinkbios_pixel_block.rawpixels;
 
         FOREACH_FACE(f) {
 

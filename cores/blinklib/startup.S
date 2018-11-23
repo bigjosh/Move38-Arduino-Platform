@@ -27,8 +27,6 @@
  *  Author: josh
  */
 
-#include <avr/io.h>
-
 
 /*
 
@@ -50,12 +48,24 @@
 	// the compiler likes to put the contructors and jump trampolines at the bottom of flash,
 	// which ended up being 0x0000 when we get rid of all the vectors!
 
- 	.section .resetvector,"ax",@progbits
 
-	.global __reset
-	.func __reset
-
-__reset:
-	jmp __code_start
-
+	.section .vectors,"ax",@progbits
+	.global	__vectors
+	.func	__vectors
+__vectors:
+	jmp __init
 	.endfunc
+
+
+	 .section .init0,"ax",@progbits
+     .func   __init
+__init:
+
+
+	.section .init2,"ax",@progbits
+
+	eor r1, r1
+
+	.section .init9,"ax",@progbits
+
+	jmp main

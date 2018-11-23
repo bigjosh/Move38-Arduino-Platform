@@ -54,6 +54,6 @@ struct blinkbios_button_block_t {
 
 };
 
-extern blinkbios_button_block_t blinkbios_button_block;
+volatile extern blinkbios_button_block_t blinkbios_button_block;
 
 #endif /* BLINKBIOS_BUTTON_BLOCK_H_ */
