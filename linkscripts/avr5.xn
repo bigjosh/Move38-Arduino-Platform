@@ -185,18 +185,15 @@ SECTIONS
 	Note that we moved .bss to come right after the shared IPC memory block so that they can both
 	be zeroed out in one pass by the startup code. 
 	
+	However in this script which is for the user code, we move __bss_start down into the bss
+	so only that will get zeroed, and not ipcram which holds the blocks that are actively used
+	(and have already been zeroed) by the BlinkBIOS code. 
+	
   */
   
-  .ipcram :
+  .ipcram (NOLOAD) :
   {
 
-	/* 
-	   HACK ALERT: The startup code references a symbol called `__bss_start` where it really should be called
-				   something like `init_zero` start. Rather than edit the startup, we are just moving that symbol to the beginig 
-				   of ipcram so that ipcram gets zeroed out with bss. 
-	*/	
-		
-		
 	PROVIDE (__ipcram_start = .) ;		
     *(.ipcram1)
 	KEEP (*(.ipcram1))	
@@ -219,7 +216,7 @@ SECTIONS
   
   } > data
   
-  .bss   : 
+  .bss  (NOLOAD) : 
   {
     __bss_start = . ;
   
