@@ -8,6 +8,7 @@
 
 #ifndef PIXELCOLOR_H_
 #define PIXELCOLOR_H_
+
 // Each pixel has 32 brightness levels for each of the three colors (red,green,blue)
 // These brightness levels are normalized to be visually linear with 0=off and 31=max brightness
 
@@ -51,9 +52,8 @@ inline pixelColor_t::pixelColor_t(uint8_t r_in , uint8_t g_in, uint8_t b_in , ui
 
 inline pixelColor_t::pixelColor_t() {
 
-    r=0;
-    g=0;
-    b=0;
+    // Faster than setting the individual elements?
+    as_uint16 = 0;
 
 }
 

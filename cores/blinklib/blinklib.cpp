@@ -783,14 +783,14 @@ uint8_t hasWoken(void) {
 // and the display is updated when loop() returns
 
 // A buffer for the colors.
-// We use a buffer so we can update all faces at once durring a vertcal
+// We use a buffer so we can update all faces at once during a vertical
 // retrace to avoid visual tearing from partially applied updates
 
 Color colorBuffer[FACE_COUNT];
 
 void setColorOnFace( Color newColor , byte face ) {
 
-    colorBuffer[face] =  pixelColor_t( GET_5BIT_R( newColor ) , GET_5BIT_G( newColor) , GET_5BIT_B( newColor ) , 1 );
+    colorBuffer[face] =  newColor;
 
 }
 
@@ -819,9 +819,6 @@ static const uint8_t PROGMEM gamma8[32] = {
     255,254,253,251,250,248,245,242,238,234,230,224,218,211,204,195,186,176,165,153,140,126,111,95,78,59,40,19,13,9,3,1
 };
 
-#warning
-#include <avr/io.h>
-static byte x[] = { 1 , 2 , 3 , 4 };
 
 // This is the main event loop that calls into the arduino program
 // (Compiler is smart enough to jmp here from main rather than call!
@@ -843,8 +840,6 @@ void run(void)  {
 
     while (1) {
 
-        PORTB = x[PORTB];
-
         // Capture time snapshot
         // It is 4 bytes long so we cli() so it can not get updated in the middle of us grabbing it
 
@@ -852,11 +847,11 @@ void run(void)  {
         now = blinkbios_millis_block.millis;
         sei();
 
-
+/*
    blinkbios_pixel_block.rawpixels[0].rawValueR=now&255;
    blinkbios_pixel_block.rawpixels[2].rawValueG=now&255;
    blinkbios_pixel_block.rawpixels[4].rawValueB=now&255;
-
+*/
         loop();
 
         // Update the pixels to match our buffer
@@ -868,18 +863,27 @@ void run(void)  {
         while ( blinkbios_pixel_block.vertical_blanking_interval );
 
         volatile rawpixel_t *p = blinkbios_pixel_block.rawpixels;
-/*
+
         FOREACH_FACE(f) {
 
             Color c = colorBuffer[f];
 
             // Convert our color_t representation into gamma corrected raw PWM values
-            p->rawValueR = gamma8[ c.r ];
-            p->rawValueG = gamma8[ c.g ];
-            p->rawValueB = gamma8[ c.b ];
+
+            p= &blinkbios_pixel_block.rawpixels[f];
+
+
+            // Map our 5 bit color brightness values into gamma corrected raw PWM values
+            // Note that 255 in PWM is full OFF and 0 is full ON< but not linear brightness.
+            // The lookup table is stored directly in flash to save RAM
+            p->rawValueR = pgm_read_byte_near( gamma8 + c.r  );
+            p->rawValueG = pgm_read_byte_near( gamma8 + c.g  );
+            p->rawValueB = pgm_read_byte_near( gamma8 + c.b  );
+
+            //blinkbios_pixel_block.rawpixels[f];
 
         }
-*/
+
         /*
 
 
