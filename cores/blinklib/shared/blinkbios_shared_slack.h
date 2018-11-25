@@ -19,7 +19,7 @@ struct blinkbios_slack_block_t {
 
 };
 
-volatile extern blinkbios_slack_block_t blinkbios_slack_block;
+extern blinkbios_slack_block_t blinkbios_slack_block;
 
 
 #endif /* BLINKBIOS_SLACK_BLOCK_H_ */

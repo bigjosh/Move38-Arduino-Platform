@@ -3,11 +3,11 @@
 // These special sections are defined in a special linker script to make sure that the addresses
 // are the same on both the foreground (this blinklib program) and the background (the BlinkBIOS project compiled to a HEX file)
 
-#include "blinkbios_shared_button.h"
-#include "blinkbios_shared_millis.h"
-#include "blinkbios_shared_pixel.h"
-#include "blinkbios_shared_irdata.h"
-#include "blinkbios_shared_slack.h"
+#include "shared/blinkbios_shared_button.h"
+#include "shared/blinkbios_shared_millis.h"
+#include "shared/blinkbios_shared_pixel.h"
+#include "shared/blinkbios_shared_irdata.h"
+#include "shared/blinkbios_shared_slack.h"
 
 #include "blinklib.h"
 

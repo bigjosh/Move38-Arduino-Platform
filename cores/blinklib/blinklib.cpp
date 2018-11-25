@@ -33,13 +33,13 @@
 
 // The actual memory for these blocks is allocated in main.cpp. Remember, it overlaps with the same blocks in BlinkBIOS code running in the bootloader!
 
-#include "blinkbios_shared_button.h"
-#include "blinkbios_shared_millis.h"
-#include "blinkbios_shared_pixel.h"
-#include "blinkbios_shared_irdata.h"
-#include "blinkbios_shared_slack.h"
+#include "shared/blinkbios_shared_button.h"
+#include "shared/blinkbios_shared_millis.h"
+#include "shared/blinkbios_shared_pixel.h"
+#include "shared/blinkbios_shared_irdata.h"
+#include "shared/blinkbios_shared_slack.h"
 
-#include "blinkbios_shared_functions.h"     // Gets us ir_send_packet()
+#include "shared/blinkbios_shared_functions.h"     // Gets us ir_send_packet()
 
 
 #define TX_PROBE_TIME_MS           150     // How often to do a blind send when no RX has happened recently to trigger ping pong

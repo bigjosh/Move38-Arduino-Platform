@@ -51,7 +51,7 @@ struct blinkbios_irdata_block_t {
 
 };
 
-volatile extern blinkbios_irdata_block_t blinkbios_irdata_block;
+extern blinkbios_irdata_block_t blinkbios_irdata_block;
 
 
 #endif /* BLINKBIOS_IRDATA_BLOCK_H_ */

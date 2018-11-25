@@ -61,7 +61,7 @@ struct blinkbios_pixelblock_t {
 
 };
 
-volatile extern blinkbios_pixelblock_t blinkbios_pixel_block;        // Currently being displayed. You can have direct access to this to save memory,
+extern blinkbios_pixelblock_t blinkbios_pixel_block;        // Currently being displayed. You can have direct access to this to save memory,
                                                   // but use the vertical retrace to avoid visual tearing on updates
 
 #endif /* BLINKBIOS_PIXEL_BLOCK_H_ */
