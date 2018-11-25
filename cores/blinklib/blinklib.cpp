@@ -281,37 +281,14 @@ void markLongPacketRead( uint8_t face ) {
     sei();
 }
 
-
-#warning
-volatile uint8_t block=0xcd;
-#define SP_PINA_1() asm(" sbi 0x0e, 2")
-#define SP_PINA_0() asm(" cbi 0x0e, 2")
-#define SP_TX_NOW(x) ( *( (volatile unsigned char *) 0xc6 ) = x )       // Write to UDR0 Serial port data register
-
-typedef uint8_t (*bfp)(  uint8_t face, const uint8_t *data , uint8_t len );
-
-bfp call3810 = (bfp) 0x3810;
-
-// Jump to the function at vector 4 up in the bootloader
+// Jump to the send packet function all way up in the bootloader
 
 uint8_t blinkbios_irdata_send_packet(  uint8_t face, const uint8_t *data , uint8_t len ) {
 
-    if ( block == 0xcd ) {
+    // Call directly into the function in the bootloader. This symbol is resoved by the linker to a 
+    // direct call to the taget address. 
+    return BLINKBIOS_IRDATA_SEND_PACKET_VECTOR(face,data,len);
 
-        SP_PINA_1();
-        SP_TX_NOW( 'X' );
-        SP_PINA_0();
-
-        // Call directly into the function in the bootloader
-        BLINKBIOS_IRDATA_SEND_PACKET_VECTOR(face,data,len);
-
-        //__asm__ __volatile__ ("call 0x3810" ); //Start bootloader
-
-        return 1;
-        //return blinkbios_irdata_send_packet_address(  face, data , len );
-    } else {
-        return 1;
-    }
 }
 
 #define SBI(x,b) (x|= (1<<b))           // Set bit
