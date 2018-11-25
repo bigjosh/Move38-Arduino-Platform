@@ -53,7 +53,8 @@ inline pixelColor_t::pixelColor_t(uint8_t r_in , uint8_t g_in, uint8_t b_in , ui
 inline pixelColor_t::pixelColor_t() {
 
     // Faster than setting the individual elements?
-    as_uint16 = 0;
+    // We don't need to do this because in bss this will get cleared to 0 anyway.
+    //as_uint16 = 0;
 
 }
 

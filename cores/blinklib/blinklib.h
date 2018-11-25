@@ -25,6 +25,7 @@
 
 // The value of the data sent and received on faces via IR can be between 0 and IR_DATA_VALUE_MAX
 // If you try to send higher than this, the max value will be sent.
+// Note that if you change this, you must also change parityTable[] in blinklib.cpp
 
 #define IR_DATA_VALUE_MAX 63
 
@@ -90,7 +91,7 @@ void markLongPacketRead( uint8_t face );
 // Return 1 if sent.
 // Returns 0 if not able to send because (1) there is currently data being received on that face, (2) the len exceeds IR_LONG_PACKET_MAX_LEN
 
-uint8_t sendPacketOnFace( byte face , const byte *data, byte len );
+uint8_t sendPacketOnFace( byte face , const void *data, byte len );
 
 
 /*
@@ -231,7 +232,7 @@ void setColor( Color newColor);
 void setColorOnFace( Color newColor , byte face );
 
 // DEPREICATED: Use setColorOnFace()
-void setFaceColor( byte face , Color newColor ) __attribute__ ((deprecated));
+//void setFaceColor( byte face , Color newColor ) __attribute__ ((deprecated));
 void setFaceColor(  byte face, Color newColor );
 
 

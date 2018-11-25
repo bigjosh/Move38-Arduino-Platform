@@ -25,6 +25,8 @@
 #define BLINKBIOS_SHARED_FUCNTIONS_H_
 
 
+#warning Figure these out
+/*
 #define BLINKBIOS_BURN_FLASH_PAGE_VECTOR    __vector_8      // This lands at base + 4 bytes per vector * 3rd vector (init is at 0) = 0x0c
 
 inline void __attribute__((naked)) blinkbios_burn_flash_page(  uint8_t face, const uint8_t *data , uint8_t len )  {
@@ -38,16 +40,18 @@ inline void __attribute__((naked)) blinkbios_burn_flash_page(  uint8_t face, con
 inline void __attribute__((naked)) blinkbios_load_builtin(void)  {
     asm("jmp 0x3804" );
 }
+*/
 
 // Send a user data packet
 // See what we did here - we do a naked jump into vector_4, which is a jump to the `uint8_t ir_send_userdata( uint8_t face, const uint8_t *data , uint8_t len )` function
 // it all works out because the params happened to be in the same registers because of the AVR C calling convention.
 //  When compiling the BIOS with LTO, it even puts the send packet function right at the target of the vector.
 
-#define BLINKBIOS_IRDATA_SEND_PACKET_VECTOR __vector_4      // This lands at base + 4 bytes per vector * 4th vector (init is at 0) = 0x10
+// boot_vector4 is defined in the linkerscript and points to the boot loader's interrupt vector 4 at address 0x3810
+// This is just a prototype so gcc knows what args to pass. The linker will resolve it to a jump to the address.
 
-inline void __attribute__((naked)) blinkbios_irdata_send_packet(  uint8_t face, const uint8_t *data , uint8_t len )  {
-    asm("jmp 0x3810" );
-}
+#define BLINKBIOS_IRDATA_SEND_PACKET_VECTOR boot_vector4      // This lands at base + 4 bytes per vector * 4th vector (init is at 0) = 0x10
+
+extern "C" uint8_t BLINKBIOS_IRDATA_SEND_PACKET_VECTOR(  uint8_t face, const uint8_t *data , uint8_t len );
 
 #endif /* BLINKBIOS_SHARED_FUCNTIONS_H_ */

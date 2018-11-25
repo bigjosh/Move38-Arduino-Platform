@@ -166,6 +166,16 @@ SECTIONS
     *(.fini0)  /* Infinite loop after program termination.  */
     KEEP (*(.fini0))
      _etext = . ;
+
+	/* These are our link to the boot loader */
+	/* We can jump to these to call the appropriate function */
+	 
+	PROVIDE( boot_reset   = 0x3800 );
+	PROVIDE( boot_vector1 = 0x3804 );
+	PROVIDE( boot_vector2 = 0x3808 );
+	PROVIDE( boot_vector3 = 0x380c );
+	PROVIDE( boot_vector4 = 0x3810 );
+	
   }  > text
   
   /* The NOLOAD makes it not show in in the HEX file */

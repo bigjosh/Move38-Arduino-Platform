@@ -12,7 +12,7 @@
 
 #define  IR_FACE_COUNT 6
 
-#define IR_RX_PACKET_SIZE     135
+#define IR_RX_PACKET_SIZE     40
 
 // State for each receiving IR LED
 
