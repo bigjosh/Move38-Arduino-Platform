@@ -9,6 +9,8 @@
  * 
  */
 
+// How long should an inidcator stay lit after trigger?  
+static const word fade_time_ms = 200;   
 
 void setup() {
 
@@ -17,45 +19,60 @@ void setup() {
 }
 
 
-class fadingIndicator_t {
+class fadingIndicator_t {  
+
+
+  private: 
 
     bool (*testFunction)();
-  
-    inline void trigger(void) {
-  
-      brightness = 255;
-  
-    }
-    
-    inline void fade(void) {
-  
-      if (brightness) brightness--;
-  
-    }
-  
-  
-  
-  public: 
-  
-    byte brightness;
-  
+
     byte face;
   
     Color color;
+
+
+    unsigned long trigger_time_ms;   
+
+    byte get_current_brightness() {
+
+      if ( millis() > trigger_time_ms + fade_time_ms ) {
+        return 0; 
+      }
+
+      word age_ms = millis() - trigger_time_ms;
+
+      //word brightness = fade_time_ms - age_ms;
+
+      word inverted_brightness = map( age_ms , 0 , fade_time_ms , 0 , 255 );
+
+      return 255-inverted_brightness;
+   
+    }
+    
+  public: 
+
+    inline void trigger(void) {
   
+      trigger_time_ms = millis(); 
+  
+    }
+
+    inline void show() {
+      setFaceColor( face , dim( color ,  get_current_brightness() ) ); 
+    }
+  
+      
     inline void update(void ) {
   
       if ( (*testFunction)() ) {
   
         trigger();
         
-      } else {
-        fade();
-      }
-   
+      } 
+         
     }
 
-    fadingIndicator_t( byte face, Color color , bool (*testFunction)() ) :  brightness(0) , face(face), color(color) , testFunction( testFunction ) {}
+    fadingIndicator_t( byte face, Color color , bool (*testFunction)() ) :  face(face), color(color) , testFunction( testFunction ) {}
       
 };
 
@@ -76,8 +93,7 @@ void loop() {
   for(auto &item : indicators ) {
 
     item.update();
-
-    setFaceColor( item.face , dim( item.color , item.brightness ) );
+    item.show(); 
  
   }
 
