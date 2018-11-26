@@ -19,7 +19,7 @@ struct blinkbios_millis_block_t {
     volatile millis_t sleep_time;   // When millis>sleep_time, then we go to sleep
 };
 
-extern  blinkbios_millis_block_t blinkbios_millis_block;
+extern volatile blinkbios_millis_block_t blinkbios_millis_block;
 
 
 #endif /* BLINKBIOS_MILLIS_BLOCK_H_ */
