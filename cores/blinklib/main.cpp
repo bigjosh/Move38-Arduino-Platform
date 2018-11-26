@@ -17,6 +17,9 @@
 
 // Note that without the `used` attribute, these blocks get tossed even though they are marked as `KEEP` in the linker script
 
+// TODO: These should probably not be volatile to save space. We can instead just force reloads in the user code, maybe by
+//       casting to volatile when apropriate.
+
 volatile blinkbios_pixelblock_t      __attribute__ ((section (".ipcram1") , used ))    blinkbios_pixel_block;
 volatile blinkbios_millis_block_t    __attribute__ ((section (".ipcram2") , used ))    blinkbios_millis_block;
 volatile blinkbios_button_block_t    __attribute__ ((section (".ipcram3") , used ))    blinkbios_button_block;
