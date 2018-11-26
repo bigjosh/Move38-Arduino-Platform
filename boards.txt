@@ -21,13 +21,13 @@ blink.upload.maximum_size=32256
 blink.upload.maximum_data_size=2048
 blink.upload.speed=115200
 
-blink.bootloader.tool=avrdude
-blink.bootloader.low_fuses=0xFF
-blink.bootloader.high_fuses=0xDE
-blink.bootloader.extended_fuses=0xFD
-blink.bootloader.unlock_bits=0x3F
-blink.bootloader.lock_bits=0x0F
-blink.bootloader.file=bin/blinkboot.hex
+#blink.bootloader.tool=avrdude
+#blink.bootloader.low_fuses=0xFF
+#blink.bootloader.high_fuses=0xDE
+#blink.bootloader.extended_fuses=0xFD
+#blink.bootloader.unlock_bits=0x3F
+#blink.bootloader.lock_bits=0x0F
+#blink.bootloader.file=cores/blinklib/shared/BlinkBIOS.hex
 
 blink.build.mcu=atmega168pb
 blink.build.f_cpu=8000000L
