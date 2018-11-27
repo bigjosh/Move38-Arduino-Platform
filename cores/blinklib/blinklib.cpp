@@ -640,8 +640,6 @@ bool buttonLongPressed(void) {
     return grabandclearbuttonflag( BUTTON_BITFLAG_LONGPRESSED );
 }
 
-
-
 // --- Utility functions
 
 Color makeColorRGB( byte red, byte green, byte blue ) {
@@ -813,11 +811,19 @@ uint8_t hasWoken(void) {
 // We use a buffer so we can update all faces at once during a vertical
 // retrace to avoid visual tearing from partially applied updates
 
-Color colorBuffer[FACE_COUNT];
-
 void setColorOnFace( Color newColor , byte face ) {
 
-    colorBuffer[face] =  newColor;
+    // This is so ugly, but we need to match the volatile in the shared block to the newColor
+    // There must be a better way, but I don't know it other than a memcopy which is even uglier!
+
+    // This at least gets the semantics right of coping a snapshot of the actual value.
+
+    blinkbios_pixel_block.pixelBuffer[face].as_uint16 =  newColor.as_uint16;              // Size = 1940 bytes
+
+
+    // This BTW compiles much worse
+
+    //  *( const_cast<Color *> (&blinkbios_pixel_block.pixelBuffer[face])) =  newColor;       // Size = 1948 bytes
 
 }
 
@@ -836,16 +842,6 @@ void setFaceColor(  byte face, Color newColor ) {
     setColorOnFace( newColor , face );
 
 }
-
-
-// Gamma table courtesy of adafruit...
-// https://learn.adafruit.com/led-tricks-gamma-correction/the-quick-fix
-// Compressed down to 32 entries, normalized for our raw values that start at 255 off.
-
-static const uint8_t PROGMEM gamma8[32] = {
-    255,254,253,251,250,248,245,242,238,234,230,224,218,211,204,195,186,176,165,153,140,126,111,95,78,59,40,19,13,9,3,1
-};
-
 
 // This is the main event loop that calls into the arduino program
 // (Compiler is smart enough to jmp here from main rather than call!
@@ -886,31 +882,7 @@ void run(void)  {
 
         // Update the pixels to match our buffer
 
-        // First wait until a pixel refresh just completed so avoid updating
-        // in the middle of a refresh, where people would see an ugly partial update
-
-        blinkbios_pixel_block.vertical_blanking_interval=1;
-        while ( blinkbios_pixel_block.vertical_blanking_interval );
-
-        volatile rawpixel_t *p = blinkbios_pixel_block.rawpixels;
-
-        FOREACH_FACE(f) {
-
-            asm("nop");
-            Color c = colorBuffer[f];
-
-            // Convert our color_t representation into gamma corrected raw PWM values
-
-            // Map our 5 bit color brightness values into gamma corrected raw PWM values
-            // Note that 255 in PWM is full OFF and 0 is full ON< but not linear brightness.
-            // The lookup table is stored directly in flash to save RAM
-            p->rawValueR = pgm_read_byte_near( gamma8 + c.r  );
-            p->rawValueG = pgm_read_byte_near( gamma8 + c.g  );
-            p->rawValueB = pgm_read_byte_near( gamma8 + c.b  );
-
-            p++;
-
-         }
+        BLINKBIOS_DISPLAY_PIXEL_BUFFER_VECTOR();
 
          // Go ahead and release any packets that the loop() forgot to mark as read
          // We count on the fact that markLongPacketRead() here will only release pending packets

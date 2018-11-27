@@ -178,6 +178,10 @@ SECTIONS
 	boot_vector2 = 0x3808;
 	boot_vector3 = 0x380c;
 	boot_vector4 = 0x3810;
+	boot_vector5 = 0x3814;
+	boot_vector6 = 0x3818;
+	boot_vector7 = 0x381c;
+	boot_vector8 = 0x3820;
 
   
   /* The NOLOAD makes it not show in in the HEX file */

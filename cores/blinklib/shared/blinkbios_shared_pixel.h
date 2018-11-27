@@ -37,11 +37,72 @@ struct  rawpixel_t {
 
 const rawpixel_t RAW_PIXEL_OFF( 0xff , 0xff, 0xff );
 
+// pixel_color_t is a higher level view RGB encoded of a pixel
+
+// Each pixel has 32 brightness levels for each of the three colors (red,green,blue)
+// These brightness levels are normalized to be visually linear with 0=off and 31=max brightness
+
+// Note use of anonymous union members to let us switch between bitfield and int
+// https://stackoverflow.com/questions/2468708/converting-bit-field-to-int
+
+union pixelColor_t {
+
+    struct {
+        uint8_t reserved:1;
+        uint8_t r:5;
+        uint8_t g:5;
+        uint8_t b:5;
+    };
+
+    uint16_t as_uint16;
+
+    pixelColor_t();
+    pixelColor_t(uint8_t r_in , uint8_t g_in, uint8_t b_in );
+    pixelColor_t(uint8_t r_in , uint8_t g_in, uint8_t b_in , uint8_t reserverd_in );
+
+};
+
+inline pixelColor_t::pixelColor_t(uint8_t r_in , uint8_t g_in, uint8_t b_in ) {
+
+    r=r_in;
+    g=g_in;
+    b=b_in;
+
+}
+
+inline pixelColor_t::pixelColor_t(uint8_t r_in , uint8_t g_in, uint8_t b_in , uint8_t reserverd_in ) {
+
+    r=r_in;
+    g=g_in;
+    b=b_in;
+    reserved = reserverd_in;
+
+}
+
+
+inline pixelColor_t::pixelColor_t() {
+
+    // Faster than setting the individual elements?
+    // We don't need to do this because in bss this will get cleared to 0 anyway.
+    //as_uint16 = 0;
+
+}
+
+
+
 // We need these struct gymnastics because C fixed array typedefs do not work
 // as you (I?) think they would...
 // https://stackoverflow.com/questions/4523497/typedef-fixed-length-array
 
 struct blinkbios_pixelblock_t {
+
+    // RGB pixel buffer
+    // Call displayPixelBuffer() to decode and copy this into the raw pixel buffer
+    // so it will appear on the LEDs
+
+    pixelColor_t pixelBuffer[PIXEL_COUNT];
+
+    // Below is some global state that is probably not interesting to user code
 
     rawpixel_t rawpixels[PIXEL_COUNT];
 
@@ -54,14 +115,12 @@ struct blinkbios_pixelblock_t {
     volatile uint8_t vertical_blanking_interval;
 
 
-    // Below is some global state that is probably not interesting to user code
-
     uint8_t currentPixelIndex;  // Which pixel are we currently lighting? Pixels are multiplexed and only refreshed one at a time in sequence.
     uint8_t phase;              // Phase up updating the current pixel. There are 5 phases that include lighting each color, charging the charge pump, and resting the charge pump.
 
 };
 
 extern volatile blinkbios_pixelblock_t blinkbios_pixel_block;        // Currently being displayed. You can have direct access to this to save memory,
-                                                  // but use the vertical retrace to avoid visual tearing on updates
+                                                                     // but use the vertical retrace to avoid visual tearing on updates
 
 #endif /* BLINKBIOS_PIXEL_BLOCK_H_ */

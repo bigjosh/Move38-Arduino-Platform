@@ -21,8 +21,6 @@
 #include <limits.h>         // UINTLONG_MAX for NEVER
 #include "ArduinoTypes.h"
 
-#include "pixelcolor.h"
-
 // The value of the data sent and received on faces via IR can be between 0 and IR_DATA_VALUE_MAX
 // If you try to send higher than this, the max value will be sent.
 // Note that if you change this, you must also change parityTable[] in blinklib.cpp
@@ -147,6 +145,16 @@ bool buttonLongPressed(void);
 
 */
 
+
+// Ok, it kills be to include this #include here because it pulls all of these symbols into
+// the Arduino namespace... but, dude, Arduino pulls in everything anyway!!!!
+// To do it right we'd break out the only thing we actually want (pixelColor_t) into
+// its own header file and only include that. Maybe someday.
+// TODO: Break pixelColor_t into blinkbios_shared_pixelcolor_t.h just for neatness counts
+
+#include "shared/blinkbios_shared_pixel.h"
+
+
 // Set our state to newState. This state is repeatedly broadcast to any
 // neighboring tiles.
 // Note that setting our state to 0 make us stop broadcasting and effectively
@@ -164,6 +172,7 @@ bool buttonLongPressed(void);
 
 // Argh, these macros are so ugly... but so idiomatic arduino. Maybe use a class with bitfields like
 // we did in pixel.cpp just so we can sleep at night?
+
 
 typedef pixelColor_t Color;
 
