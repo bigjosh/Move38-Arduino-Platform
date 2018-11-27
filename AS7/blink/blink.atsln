@@ -3,11 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Atmel Studio Solution File, Format Version 11.00
 VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "blinkcore", "blinkcore\blinkcore.cppproj", "{DCE6C7E3-EE26-4D79-826B-08594B9AD897}"
-EndProject
 Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "Blink", "Sketches\Blink\Blink.cppproj", "{C3728EB0-DD95-4D36-9694-C16A953BBF73}"
-EndProject
-Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "blinkos", "..\blinkos\blinkos\blinkos.cppproj", "{75C30A81-EDD6-4DE5-8D7E-D379AA89F81A}"
 EndProject
 Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "blinklib", "..\blinklib\blinklib\blinklib.cppproj", "{1D617D28-32B2-45AB-BA7F-EE884B221598}"
 EndProject
@@ -23,18 +19,10 @@ Global
 		Release|AVR = Release|AVR
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{DCE6C7E3-EE26-4D79-826B-08594B9AD897}.Debug|AVR.ActiveCfg = Debug|AVR
-		{DCE6C7E3-EE26-4D79-826B-08594B9AD897}.Debug|AVR.Build.0 = Debug|AVR
-		{DCE6C7E3-EE26-4D79-826B-08594B9AD897}.Release|AVR.ActiveCfg = Release|AVR
-		{DCE6C7E3-EE26-4D79-826B-08594B9AD897}.Release|AVR.Build.0 = Release|AVR
 		{C3728EB0-DD95-4D36-9694-C16A953BBF73}.Debug|AVR.ActiveCfg = Debug|AVR
 		{C3728EB0-DD95-4D36-9694-C16A953BBF73}.Debug|AVR.Build.0 = Debug|AVR
 		{C3728EB0-DD95-4D36-9694-C16A953BBF73}.Release|AVR.ActiveCfg = Release|AVR
 		{C3728EB0-DD95-4D36-9694-C16A953BBF73}.Release|AVR.Build.0 = Release|AVR
-		{75C30A81-EDD6-4DE5-8D7E-D379AA89F81A}.Debug|AVR.ActiveCfg = Debug|AVR
-		{75C30A81-EDD6-4DE5-8D7E-D379AA89F81A}.Debug|AVR.Build.0 = Debug|AVR
-		{75C30A81-EDD6-4DE5-8D7E-D379AA89F81A}.Release|AVR.ActiveCfg = Release|AVR
-		{75C30A81-EDD6-4DE5-8D7E-D379AA89F81A}.Release|AVR.Build.0 = Release|AVR
 		{1D617D28-32B2-45AB-BA7F-EE884B221598}.Debug|AVR.ActiveCfg = Debug|AVR
 		{1D617D28-32B2-45AB-BA7F-EE884B221598}.Debug|AVR.Build.0 = Debug|AVR
 		{1D617D28-32B2-45AB-BA7F-EE884B221598}.Release|AVR.ActiveCfg = Release|AVR

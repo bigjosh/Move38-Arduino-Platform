@@ -173,17 +173,5 @@
       <SubType>compile</SubType>
     </Compile>
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\blinkos\blinkos\blinkos.cppproj">
-      <Name>blinkos</Name>
-      <Project>{75c30a81-edd6-4de5-8d7e-d379aa89f81a}</Project>
-      <Private>True</Private>
-    </ProjectReference>
-    <ProjectReference Include="..\blinkcore\blinkcore.cppproj">
-      <Name>blinkcore</Name>
-      <Project>{dce6c7e3-ee26-4d79-826b-08594b9ad897}</Project>
-      <Private>True</Private>
-    </ProjectReference>
-  </ItemGroup>
   <Import Project="$(AVRSTUDIO_EXE_PATH)\\Vs\\Compiler.targets" />
 </Project>

@@ -33,6 +33,8 @@ struct blinkbios_button_block_t {
     volatile uint8_t bitflags;
 
     volatile uint8_t clickcount;         // Number of clicks on most recent multiclick
+    
+    uint8_t wokeFlag;                    // Set to 0 upon waking from sleep 
 
     // The variables below are used to track the intermediate button state
     // and probably not interesting to user programs

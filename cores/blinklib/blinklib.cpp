@@ -285,8 +285,8 @@ void markLongPacketRead( uint8_t face ) {
 
 uint8_t blinkbios_irdata_send_packet(  uint8_t face, const uint8_t *data , uint8_t len ) {
 
-    // Call directly into the function in the bootloader. This symbol is resoved by the linker to a 
-    // direct call to the taget address. 
+    // Call directly into the function in the bootloader. This symbol is resoved by the linker to a
+    // direct call to the taget address.
     return BLINKBIOS_IRDATA_SEND_PACKET_VECTOR(face,data,len);
 
 }
@@ -786,7 +786,13 @@ byte getSerialNumberByte( byte n ) {
 
 uint8_t hasWoken(void) {
 
-    // TODO: Must add woke to bios when we add sleep.
+    if (blinkbios_button_block.wokeFlag == 0 ) {        // We have woken since last check
+
+        blinkbios_button_block.wokeFlag = 1;
+
+        return 1;
+
+    }
 
     return 0;
 
@@ -847,6 +853,10 @@ static const uint8_t PROGMEM gamma8[32] = {
 //     Thanks for the extra 4 bytes of flash gcc!)
 
 void run(void)  {
+
+    // TODO: Is this right? Should hasWoke() return true or false on the first check after start up?
+
+    blinkbios_button_block.wokeFlag = 1;
 
     setup();
 
