@@ -28,7 +28,7 @@
 
         // User code sees this
 
-        #define BIOS_VOLATILE
+        #define BIOS_VOLATILE 
         #define USER_VOLATILE volatile
         #define BOTH_VOLATILE volatile
 

@@ -357,7 +357,7 @@ uint8_t hasWoken(void);
 
 // Called by main(), this is the main event loop that calls into the Arduino loop()
 
-void run(void);
+void  __attribute__((noreturn)) run(void);
 
 // Called when this sketch is first loaded and then
 // every time the tile wakes from sleep

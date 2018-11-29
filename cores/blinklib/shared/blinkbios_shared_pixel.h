@@ -108,10 +108,6 @@ struct blinkbios_pixelblock_t {
 
     BIOS_VOLATILE pixelColor_t pixelBuffer[PIXEL_COUNT];
 
-    // Below is some global state that is probably not interesting to user code
-
-    rawpixel_t rawpixels[PIXEL_COUNT];
-
     // This is cleared when we are done displaying the current buffer values and about to reset and start again
     // Once this is cleared, you have one pixel interrupt period to get your new data into the pixel buffer
     // before the next refresh cycle starts.
@@ -120,6 +116,10 @@ struct blinkbios_pixelblock_t {
 
     BOTH_VOLATILE uint8_t vertical_blanking_interval;
 
+
+    // Below is some global state that is probably not interesting to user code
+
+    rawpixel_t rawpixels[PIXEL_COUNT];
 
     uint8_t currentPixelIndex;  // Which pixel are we currently lighting? Pixels are multiplexed and only refreshed one at a time in sequence.
     uint8_t phase;              // Phase up updating the current pixel. There are 5 phases that include lighting each color, charging the charge pump, and resting the charge pump.

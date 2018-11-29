@@ -848,7 +848,7 @@ void setFaceColor(  byte face, Color newColor ) {
 //     It even omits the trailing ret!
 //     Thanks for the extra 4 bytes of flash gcc!)
 
-void run(void)  {
+void __attribute__((noreturn)) run(void)  {
 
     // TODO: Is this right? Should hasWoke() return true or false on the first check after start up?
 
@@ -873,15 +873,15 @@ void run(void)  {
         blinkbios_button_block.bitflags=0;                              // Clear out the flags now that we have them
         buttonSnapshotClickcount = blinkbios_button_block.clickcount;
         sei();
-        
+
         if (buttonSnapshotBitflags & BUTTON_BITFLAG_6SECPRESSED ) {
-            
+
             // Enter SEED mode!
-            
-            BLINKBIOS_BOOTLOADER_SEED_VECTOR(); 
-            
-             __builtin_unreachable();            
-        }            
+
+            //BLINKBIOS_BOOTLOADER_SEED_VECTOR();
+
+             __builtin_unreachable();
+        }
 
         // Update the IR RX state
         // Receive any pending packets
