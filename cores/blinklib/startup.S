@@ -64,7 +64,8 @@ __init:
 
 	.section .init2,"ax",@progbits
 
-	eor r1, r1
+	//eor r1, r1		// The boot loader always does this for us, so dont bother repeating
+						// We also always get a clean stack
 
 	.section .init9,"ax",@progbits
 

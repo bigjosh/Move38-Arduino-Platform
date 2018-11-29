@@ -8,11 +8,14 @@
 #ifndef BLINKBIOS_IRDATA_BLOCK_H_
 #define BLINKBIOS_IRDATA_BLOCK_H_
 
+// #define USER_VOLATILE or BIOS_VOLATILE based on the presence of #define BIOS_VOLATILE_FLAG
+#include "blinkbios_shared_volatile.h"
+
 #include <stdint.h>
 
 #define  IR_FACE_COUNT 6
 
-#define IR_RX_PACKET_SIZE     40
+#define IR_RX_PACKET_SIZE     135
 
 // State for each receiving IR LED
 
@@ -34,12 +37,12 @@ struct ir_rx_state_t {
     // we can also test for '1' in top position to see if full byte received.
 
 
-    uint8_t packetBuffer[ IR_RX_PACKET_SIZE];        // Assemble incoming packet here
+    USER_VOLATILE uint8_t packetBuffer[ IR_RX_PACKET_SIZE];        // Assemble incoming packet here
     // TODO: Deeper data buffer here?
 
-    uint8_t packetBufferLen;                         // How many bytes currently in the packet buffer?
+    USER_VOLATILE uint8_t packetBufferLen;                         // How many bytes currently in the packet buffer?
 
-    volatile uint8_t packetBufferReady;              // 1 if we got the trailing sync byte. Foreground reader will set this back to 0 to enable next read.
+    BOTH_VOLATILE uint8_t packetBufferReady;                       // 1 if we got the trailing sync byte. Foreground reader will set this back to 0 to enable next read.
 
     // This struct should be even power of 2 in length for more efficient array indexing.
 
@@ -51,7 +54,7 @@ struct blinkbios_irdata_block_t {
 
 };
 
-extern volatile blinkbios_irdata_block_t blinkbios_irdata_block;
+extern blinkbios_irdata_block_t blinkbios_irdata_block;
 
 
 #endif /* BLINKBIOS_IRDATA_BLOCK_H_ */

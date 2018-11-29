@@ -873,6 +873,15 @@ void run(void)  {
         blinkbios_button_block.bitflags=0;                              // Clear out the flags now that we have them
         buttonSnapshotClickcount = blinkbios_button_block.clickcount;
         sei();
+        
+        if (buttonSnapshotBitflags & BUTTON_BITFLAG_6SECPRESSED ) {
+            
+            // Enter SEED mode!
+            
+            BLINKBIOS_BOOTLOADER_SEED_VECTOR(); 
+            
+             __builtin_unreachable();            
+        }            
 
         // Update the IR RX state
         // Receive any pending packets

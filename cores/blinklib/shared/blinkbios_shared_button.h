@@ -8,6 +8,9 @@
 #ifndef BLINKBIOS_BUTTON_BLOCK_H_
 #define BLINKBIOS_BUTTON_BLOCK_H_
 
+// #define USER_VOLATILE or BIOS_VOLATILE based on the presence of #define BIOS_VOLATILE_FLAG
+#include "blinkbios_shared_volatile.h"
+
 #include <stdint.h>
 
 // I know this is ugly, but keeping them in a single byte lets us pass them by value
@@ -23,18 +26,18 @@
 #define BUTTON_BITFLAG_DOUBLECLICKED    0b00010000
 #define BUTTON_BITFLAG_MULITCLICKED     0b00100000
 
-#define BUTTON_BITFLAG_3SECPRESSED      0b01000000
-#define BUTTON_BITFLAG_5SECPRESSED      0b10000000
+#define BUTTON_BITFLAG_6SECPRESSED      0b01000000
+#define BUTTON_BITFLAG_7SECPRESSED      0b10000000
 
 struct blinkbios_button_block_t {
 
-    volatile uint8_t down;               // 1 if button is currently down (debounced)
+    USER_VOLATILE  uint8_t down;                // 1 if button is currently down (debounced)
 
-    volatile uint8_t bitflags;
+    BOTH_VOLATILE uint8_t bitflags;
 
-    volatile uint8_t clickcount;         // Number of clicks on most recent multiclick
-    
-    uint8_t wokeFlag;                    // Set to 0 upon waking from sleep 
+    USER_VOLATILE uint8_t clickcount;           // Number of clicks on most recent multiclick
+
+    BOTH_VOLATILE uint8_t wokeFlag;             // Set to 0 upon waking from sleep
 
     // The variables below are used to track the intermediate button state
     // and probably not interesting to user programs
@@ -56,6 +59,8 @@ struct blinkbios_button_block_t {
 
 };
 
-extern volatile blinkbios_button_block_t blinkbios_button_block;
+// Everything in here is volatile to the user code
+
+extern blinkbios_button_block_t blinkbios_button_block;
 
 #endif /* BLINKBIOS_BUTTON_BLOCK_H_ */

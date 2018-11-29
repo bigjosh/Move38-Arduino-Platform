@@ -9,6 +9,9 @@
 #ifndef BLINKBIOS_PIXEL_BLOCK_H_
 #define BLINKBIOS_PIXEL_BLOCK_H_
 
+// #define USER_VOLATILE or BIOS_VOLATILE based on the presence of #define BIOS_VOLATILE_FLAG
+#include "blinkbios_shared_volatile.h"
+
 /** Display interface ***/
 
 #define PIXEL_COUNT 6
@@ -79,6 +82,9 @@ inline pixelColor_t::pixelColor_t(uint8_t r_in , uint8_t g_in, uint8_t b_in , ui
 
 }
 
+// Maximum value you can assign to one of the primaries in a pixelColor_t
+#define PIXELCOLOR_PRIMARY_MAX 31
+
 
 inline pixelColor_t::pixelColor_t() {
 
@@ -100,7 +106,7 @@ struct blinkbios_pixelblock_t {
     // Call displayPixelBuffer() to decode and copy this into the raw pixel buffer
     // so it will appear on the LEDs
 
-    pixelColor_t pixelBuffer[PIXEL_COUNT];
+    BIOS_VOLATILE pixelColor_t pixelBuffer[PIXEL_COUNT];
 
     // Below is some global state that is probably not interesting to user code
 
@@ -112,7 +118,7 @@ struct blinkbios_pixelblock_t {
 
     // We picked to clear this rather than set to 1 because in the ISR is is faster to set to 0 since R1 is always loaded with 0
 
-    volatile uint8_t vertical_blanking_interval;
+    BOTH_VOLATILE uint8_t vertical_blanking_interval;
 
 
     uint8_t currentPixelIndex;  // Which pixel are we currently lighting? Pixels are multiplexed and only refreshed one at a time in sequence.
@@ -120,7 +126,7 @@ struct blinkbios_pixelblock_t {
 
 };
 
-extern volatile blinkbios_pixelblock_t blinkbios_pixel_block;        // Currently being displayed. You can have direct access to this to save memory,
+extern blinkbios_pixelblock_t blinkbios_pixel_block;        // Currently being displayed. You can have direct access to this to save memory,
                                                                      // but use the vertical retrace to avoid visual tearing on updates
 
 #endif /* BLINKBIOS_PIXEL_BLOCK_H_ */

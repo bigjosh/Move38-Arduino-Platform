@@ -4,9 +4,9 @@
 
 #include <util/delay.h>
 
-#include "bitfun.h"
+//#include "bitfun.h"
 
-#include "adc.h"
+//#include "adc.h"
 
 #include "Serial.h"
 

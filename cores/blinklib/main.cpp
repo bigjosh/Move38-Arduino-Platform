@@ -18,13 +18,13 @@
 // Note that without the `used` attribute, these blocks get tossed even though they are marked as `KEEP` in the linker script
 
 // TODO: These should probably not be volatile to save space. We can instead just force reloads in the user code, maybe by
-//       casting to volatile when apropriate.
+//       casting to volatile when appropriate.
 
-volatile blinkbios_pixelblock_t      __attribute__ ((section (".ipcram1") , used ))    blinkbios_pixel_block;
-volatile blinkbios_millis_block_t    __attribute__ ((section (".ipcram2") , used ))    blinkbios_millis_block;
-volatile blinkbios_button_block_t    __attribute__ ((section (".ipcram3") , used ))    blinkbios_button_block;
-volatile blinkbios_irdata_block_t    __attribute__ ((section (".ipcram4") , used ))    blinkbios_irdata_block;
-volatile blinkbios_slack_block_t     __attribute__ ((section (".ipcram5") , used ))    blinkbios_slack_block;
+blinkbios_pixelblock_t      __attribute__ ((section (".ipcram1") , used ))    blinkbios_pixel_block;
+blinkbios_millis_block_t    __attribute__ ((section (".ipcram2") , used ))    blinkbios_millis_block;
+blinkbios_button_block_t    __attribute__ ((section (".ipcram3") , used ))    blinkbios_button_block;
+blinkbios_irdata_block_t    __attribute__ ((section (".ipcram4") , used ))    blinkbios_irdata_block;
+blinkbios_slack_block_t     __attribute__ ((section (".ipcram5") , used ))    blinkbios_slack_block;
 
 // Here is our entry point. We are called by the BlinkBIOS after everything is set up and ready
 // Note that this is not a normal startup, we are staring right from flash address 0x000 with no

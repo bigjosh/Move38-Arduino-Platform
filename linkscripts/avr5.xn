@@ -173,15 +173,19 @@ SECTIONS
 	/* These are our link to the boot loader */
 	/* We can jump to these to call the appropriate function */
 	 
-	boot_reset   = 0x3800;
-	boot_vector1 = 0x3804;
-	boot_vector2 = 0x3808;
-	boot_vector3 = 0x380c;
-	boot_vector4 = 0x3810;
-	boot_vector5 = 0x3814;
-	boot_vector6 = 0x3818;
-	boot_vector7 = 0x381c;
-	boot_vector8 = 0x3820;
+	boot_reset   	= 0x3800;
+	boot_vector1 	= 0x3804;
+	boot_vector2 	= 0x3808;
+	boot_vector3 	= 0x380c;
+	boot_vector4 	= 0x3810;
+	boot_vector5 	= 0x3814;
+	boot_vector6 	= 0x3818;
+	boot_vector7 	= 0x381c;
+	boot_vector8 	= 0x3820;
+	boot_vector9 	= 0x3824;
+	boot_vector10 	= 0x3828;
+	boot_vector11 	= 0x382c;
+	boot_vector12 	= 0x3830;
 
   
   /* The NOLOAD makes it not show in in the HEX file */

@@ -180,10 +180,6 @@ typedef pixelColor_t Color;
 #define BRIGHTNESS_LEVELS_5BIT 32
 #define MAX_BRIGHTNESS_5BIT    (BRIGHTNESS_LEVELS_5BIT-1)
 
-#define GET_5BIT_R(color) (color.r)
-#define GET_5BIT_G(color) (color.g)
-#define GET_5BIT_B(color) (color.b)
-
 // R,G,B are all in the domain 0-31
 // Here we expose the internal color representation, but it is worth it
 // to get the performance and size benefits of static compilation
@@ -203,18 +199,14 @@ typedef pixelColor_t Color;
 
 #define OFF         MAKECOLOR_5BIT_RGB( 0                 , 0                    , 0)
 
-// This maps 0-255 values to 0-31 values with the special case that 0 (in 0-255) is the only value that maps to 0 (in 0-31)
-// This leads to some slight non-linearity since there are not a uniform integral number of 1-255 values
-// to map to each of the 1-31 values.
-
-// Make a new color from RGB values. Each value can be 0-255.
-
-Color makeColorRGB( byte red, byte green, byte blue );
-
-#define MAX_BRIGHTNESS (255)
+#define GET_5BIT_R(color) (color.r)
+#define GET_5BIT_G(color) (color.g)
+#define GET_5BIT_B(color) (color.b)
 
 // Dim the specified color. Brightness is 0-255 (0=off, 255=don't dim at all-keep original color)
 // Inlined to allow static simplification at compile time
+
+#define MAX_BRIGHTNESS (255)
 
 inline Color dim( Color color, byte brightness) {
     return MAKECOLOR_5BIT_RGB(
@@ -223,6 +215,14 @@ inline Color dim( Color color, byte brightness) {
         (GET_5BIT_B(color)*brightness)/255
     );
 }
+
+// This maps 0-255 values to 0-31 values with the special case that 0 (in 0-255) is the only value that maps to 0 (in 0-31)
+// This leads to some slight non-linearity since there are not a uniform integral number of 1-255 values
+// to map to each of the 1-31 values.
+
+// Make a new color from RGB values. Each value can be 0-255.
+
+Color makeColorRGB( byte red, byte green, byte blue );
 
 // Make a new color in the HSB colorspace. All values are 0-255.
 

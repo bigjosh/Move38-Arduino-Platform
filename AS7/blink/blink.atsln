@@ -9,8 +9,6 @@ Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "blinklib", "..\blinklib\bli
 EndProject
 Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "bareblinkOS", "bareblinkOS\bareblinkOS\bareblinkOS.cppproj", "{B750FA7B-22DE-43C4-A796-F95418271EDD}"
 EndProject
-Project("{E66E83B9-2572-4076-B26E-6BE79FF3018A}") = "blinkboot", "..\..\bootloader\blinkboot\blinkboot.cppproj", "{05B8462F-C048-4509-8CB7-4121C0CF6082}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|AVR = Debug|AVR
@@ -29,10 +27,6 @@ Global
 		{B750FA7B-22DE-43C4-A796-F95418271EDD}.Debug|AVR.Build.0 = Debug|AVR
 		{B750FA7B-22DE-43C4-A796-F95418271EDD}.Release|AVR.ActiveCfg = Release|AVR
 		{B750FA7B-22DE-43C4-A796-F95418271EDD}.Release|AVR.Build.0 = Release|AVR
-		{05B8462F-C048-4509-8CB7-4121C0CF6082}.Debug|AVR.ActiveCfg = Debug|AVR
-		{05B8462F-C048-4509-8CB7-4121C0CF6082}.Debug|AVR.Build.0 = Debug|AVR
-		{05B8462F-C048-4509-8CB7-4121C0CF6082}.Release|AVR.ActiveCfg = Release|AVR
-		{05B8462F-C048-4509-8CB7-4121C0CF6082}.Release|AVR.Build.0 = Release|AVR
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

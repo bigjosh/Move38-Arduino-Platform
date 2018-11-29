@@ -24,24 +24,6 @@
 #ifndef BLINKBIOS_SHARED_FUCNTIONS_H_
 #define BLINKBIOS_SHARED_FUCNTIONS_H_
 
-
-#warning Figure these out
-/*
-#define BLINKBIOS_BURN_FLASH_PAGE_VECTOR    __vector_8      // This lands at base + 4 bytes per vector * 3rd vector (init is at 0) = 0x0c
-
-inline void __attribute__((naked)) blinkbios_burn_flash_page(  uint8_t face, const uint8_t *data , uint8_t len )  {
-    asm("jmp 0x380C" );
-}
-
-// Copy the built in game to the active area
-
-#define BLINKBIOS_LOAD_BUILTIN    __vector_1                   // This lands at base + 4 bytes per vector * 1st vector (init is at 0) = 0x04
-
-inline void __attribute__((naked)) blinkbios_load_builtin(void)  {
-    asm("jmp 0x3804" );
-}
-*/
-
 // Send a user data packet
 // See what we did here - we do a naked jump into vector_4, which is a jump to the `uint8_t ir_send_userdata( uint8_t face, const uint8_t *data , uint8_t len )` function
 // it all works out because the params happened to be in the same registers because of the AVR C calling convention.
@@ -66,5 +48,12 @@ extern "C" uint8_t BLINKBIOS_IRDATA_SEND_PACKET_VECTOR(  uint8_t face, const uin
 #define BLINKBIOS_DISPLAY_PIXEL_BUFFER_VECTOR boot_vector8
 
 extern "C" void BLINKBIOS_DISPLAY_PIXEL_BUFFER_VECTOR()  __attribute__((used));
+
+
+
+#define BLINKBIOS_BOOTLOADER_SEED_VECTOR boot_vector9
+
+extern "C" void BLINKBIOS_BOOTLOADER_SEED_VECTOR()  __attribute__((used));
+
 
 #endif /* BLINKBIOS_SHARED_FUCNTIONS_H_ */
