@@ -847,16 +847,12 @@ void setFaceColor(  byte face, Color newColor ) {
 #define SP_INIT() do{  _SFR_MEM8(0xC0)=0x01; _SFR_MEM8(0xC1)=0x03;  _SFR_MEM16(0xC4) = 0; } while (0)       // Set TX 1Mbs
 #define SP_TX_NOW(x) ( _SFR_MEM8(0xc6 ) = x )                                                                           // Write to UDR0 Serial port data register
 
-
 // This is the main event loop that calls into the arduino program
 // (Compiler is smart enough to jmp here from main rather than call!
 //     It even omits the trailing ret!
 //     Thanks for the extra 4 bytes of flash gcc!)
 
 void __attribute__((noreturn)) run(void)  {
-
-    SP_INIT();
-    SP_TX_NOW('0');
 
     // TODO: Is this right? Should hasWoke() return true or false on the first check after start up?
 
@@ -873,9 +869,6 @@ void __attribute__((noreturn)) run(void)  {
         now = blinkbios_millis_block.millis;
         sei();
 
-        SP_TX_NOW('1');
-        // Capture button snapshot
-
         cli();
         buttonSnapshotDown       = blinkbios_button_block.down;
         buttonSnapshotBitflags  |= blinkbios_button_block.bitflags;     // Or any new flags into the ones we got
@@ -883,13 +876,11 @@ void __attribute__((noreturn)) run(void)  {
         buttonSnapshotClickcount = blinkbios_button_block.clickcount;
         sei();
 
-        SP_TX_NOW('2');
-
         if (buttonSnapshotBitflags & BUTTON_BITFLAG_6SECPRESSED ) {
 
             // Enter SEED mode!
 
-            //BLINKBIOS_BOOTLOADER_SEED_VECTOR();
+            BLINKBIOS_BOOTLOADER_SEED_VECTOR();
 
              __builtin_unreachable();
         }
