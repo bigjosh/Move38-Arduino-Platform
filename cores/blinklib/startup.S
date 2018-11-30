@@ -53,6 +53,8 @@
 	.global	__vectors
 	.func	__vectors
 __vectors:
+	ldi	r24, 'J'	; 110
+    sts	0x00C6, r24	;
 	jmp __init
 	.endfunc
 
@@ -63,7 +65,9 @@ __init:
 
 	.section .init2,"ax",@progbits
 
-	//eor r1, r1		// The boot loader always does this for us, so dont bother repeating
+
+	#warning dont need this!
+	eor r1, r1			// The boot loader always does this for us, so dont bother repeating
 						// We also always get a clean stack
 
 
@@ -79,11 +83,9 @@ __init:
 
 	sei
 
-	.section .init9,"ax",@progbits
-
-
 	ldi	r24, 'K'	; 110
     sts	0x00C6, r24	;
 
+	.section .init9,"ax",@progbits
 
 	jmp mainx
