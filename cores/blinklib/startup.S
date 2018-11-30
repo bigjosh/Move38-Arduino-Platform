@@ -61,12 +61,29 @@ __vectors:
      .func   __init
 __init:
 
-
 	.section .init2,"ax",@progbits
 
 	//eor r1, r1		// The boot loader always does this for us, so dont bother repeating
 						// We also always get a clean stack
 
+
+	#warning we dont need this just for testiung
+	cli
+
+	// Reset the stack pointer
+	ldi	r29, 0x04
+	out	0x3e, r29
+
+	ldi	r29, 0xff
+	out	0x3d, r29
+
+	sei
+
 	.section .init9,"ax",@progbits
 
-	jmp main
+
+	ldi	r24, 'K'	; 110
+    sts	0x00C6, r24	;
+
+
+	jmp mainx

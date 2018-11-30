@@ -32,13 +32,20 @@ blinkbios_slack_block_t     __attribute__ ((section (".ipcram5") , used ))    bl
 
 #include <avr/io.h>
 
-//int main(void)  __attribute__ ((used)) __attribute__ ((naked));
+#warning debug
+#define _SFR_MEM8X(mem_addr)  (*(volatile uint8_t *)(mem_addr))
+#define SP_INIT() do{  _SFR_MEM8X(0xC0)=0x01;} while (0)            // Set TX enabled, x2 speed. Assumes baudrate regs at default 0
+#define SP_TX_NOW(x) ( _SFR_MEM8X(0xc6 ) = x )                      // Write to UDR0 Serial port data register
 
-int main(void) {
+extern "C" void mainx(void)  __attribute__ ((used));// __attribute__ ((noreturn));
+#include <util/delay.h>
+extern "C" void mainx(void) {
+
+    //SP_TX_NOW('M');
 
     run();
 
-    __builtin_unreachable();
+    //__builtin_unreachable();
 
     // Don't fall off the edge of the earth here!
     // Make sure we stop above!
