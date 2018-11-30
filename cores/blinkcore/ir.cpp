@@ -44,8 +44,9 @@
 
 #define IR_CHARGE_TIME_US 10         // How long to charge the LED though the pull-up
 
-#define IR_PULSE_TIME_US 10         // How long to turn IR LED on to send a pulse
+#define IR_PULSE_TIME_US 15         // How long to turn IR LED on to send a pulse
 
+// 15µs is the longest pulse time tested with the bare metal tester, shows more robust communication in various conditions with cloudy lenses
 
 // Currently chosen empirically to work with some tile cases Jon made 7/28/17
 
