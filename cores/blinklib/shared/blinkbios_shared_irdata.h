@@ -15,6 +15,7 @@
 
 #define  IR_FACE_COUNT 6
 
+// Must be big enough to hold the biggest packet, which internally is PUSH packet.
 #define IR_RX_PACKET_SIZE     40
 
 // State for each receiving IR LED
@@ -36,7 +37,6 @@ struct ir_rx_state_t {
     // This way we can test for 0 to see if currently receiving a byte, and
     // we can also test for '1' in top position to see if full byte received.
 
-
     USER_VOLATILE uint8_t packetBuffer[ IR_RX_PACKET_SIZE];        // Assemble incoming packet here
     // TODO: Deeper data buffer here?
 
@@ -51,6 +51,8 @@ struct ir_rx_state_t {
 struct blinkbios_irdata_block_t {
 
     ir_rx_state_t ir_rx_states[ IR_FACE_COUNT ];
+
+    uint8_t download_in_progress_flag;          // Set if a download is in progress so subsequent SEED packets will be ignored
 
 };
 

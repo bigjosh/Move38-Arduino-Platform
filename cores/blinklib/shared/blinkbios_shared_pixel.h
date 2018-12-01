@@ -83,7 +83,8 @@ inline pixelColor_t::pixelColor_t(uint8_t r_in , uint8_t g_in, uint8_t b_in , ui
 }
 
 // Maximum value you can assign to one of the primaries in a pixelColor_t
-#define PIXELCOLOR_PRIMARY_MAX 31
+#define PIXELCOLOR_PRIMARY_MAX  31
+#define PIXELCOLOR_PRIMARY_HALF 15
 
 
 inline pixelColor_t::pixelColor_t() {

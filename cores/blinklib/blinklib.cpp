@@ -856,7 +856,9 @@ void __attribute__((noreturn)) run(void)  {
 
     // TODO: Is this right? Should hasWoke() return true or false on the first check after start up?
 
-    blinkbios_button_block.wokeFlag = 1;
+    blinkbios_button_block.wokeFlag = 1;        // Clear any old wakes (wokeFlag is cleared to 0 on wake)
+
+    blinkbios_button_block.bitflags = 0x00;     // Clear any old button actions and start fresh
 
     setup();
 
