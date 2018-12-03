@@ -49,8 +49,6 @@ extern "C" uint8_t BLINKBIOS_IRDATA_SEND_PACKET_VECTOR(  uint8_t face, const uin
 
 extern "C" void BLINKBIOS_DISPLAY_PIXEL_BUFFER_VECTOR()  __attribute__((used));
 
-
-
 #define BLINKBIOS_BOOTLOADER_SEED_VECTOR boot_vector9
 
 extern "C" void BLINKBIOS_BOOTLOADER_SEED_VECTOR()  __attribute__((used));
