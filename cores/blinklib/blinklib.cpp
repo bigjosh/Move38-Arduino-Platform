@@ -881,7 +881,7 @@ void __attribute__((noreturn)) run(void)  {
 
         // Here we check to enter seed mode. The button must be held down for 6 seconds and we must not have any neighbors
         // Note that we directly read the shared block rather than our snapshot. This lets the 6 second flag latch and
-        // so to the user program if we do not enter seed mode becuase we have enighboors. See?
+        // so to the user program if we do not enter seed mode because we have neighbors. See?
 
         if (( blinkbios_button_block.bitflags & BUTTON_BITFLAG_6SECPRESSED) && isAlone() ) {
 
@@ -892,6 +892,13 @@ void __attribute__((noreturn)) run(void)  {
             __builtin_unreachable();
         }
 
+        if (( blinkbios_button_block.bitflags & BUTTON_BITFLAG_7SECPRESSED)  ) {
+
+            // Forced sleep mode
+            // Really need button down detection in bios so we only wake on lift...
+            BLINKBIOS_SLEEP_NOW_VECTOR();
+
+        }
 
         cli();
         buttonSnapshotDown       = blinkbios_button_block.down;

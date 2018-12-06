@@ -59,4 +59,14 @@ extern "C" void BLINKBIOS_BOOTLOADER_SEED_VECTOR()  __attribute__((used));
 extern "C" void BLINKBIOS_POSTPONE_SLEEP_VECTOR()  __attribute__((used));
 
 
+#define BLINKBIOS_POSTPONE_SLEEP_VECTOR boot_vector10
+
+extern "C" void BLINKBIOS_POSTPONE_SLEEP_VECTOR()  __attribute__((used));
+
+
+#define BLINKBIOS_SLEEP_NOW_VECTOR boot_vector12
+
+extern "C" void BLINKBIOS_SLEEP_NOW_VECTOR()  __attribute__((used));
+
+
 #endif /* BLINKBIOS_SHARED_FUCNTIONS_H_ */
