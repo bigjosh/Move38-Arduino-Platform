@@ -640,6 +640,14 @@ bool buttonLongPressed(void) {
     return grabandclearbuttonflag( BUTTON_BITFLAG_LONGPRESSED );
 }
 
+// 6 second press. Note that this will trigger seed mode if the blink is alone so
+// you will only ever see this if blink has neighbors when the button hits the 6 second mark.
+// Remember that a long press fires while the button is still down
+bool buttonLongLongPressed(void) {
+    return grabandclearbuttonflag( BUTTON_BITFLAG_6SECPRESSED );
+}
+
+
 // --- Utility functions
 
 Color makeColorRGB( byte red, byte green, byte blue ) {
@@ -871,6 +879,20 @@ void __attribute__((noreturn)) run(void)  {
         now = blinkbios_millis_block.millis;
         sei();
 
+        // Here we check to enter seed mode. The button must be held down for 6 seconds and we must not have any neighbors
+        // Note that we directly read the shared block rather than our snapshot. This lets the 6 second flag latch and
+        // so to the user program if we do not enter seed mode becuase we have enighboors. See?
+
+        if (( blinkbios_button_block.bitflags & BUTTON_BITFLAG_6SECPRESSED) && isAlone() ) {
+
+            // Enter SEED mode!
+
+            BLINKBIOS_BOOTLOADER_SEED_VECTOR();
+
+            __builtin_unreachable();
+        }
+
+
         cli();
         buttonSnapshotDown       = blinkbios_button_block.down;
         buttonSnapshotBitflags  |= blinkbios_button_block.bitflags;     // Or any new flags into the ones we got
@@ -878,14 +900,6 @@ void __attribute__((noreturn)) run(void)  {
         buttonSnapshotClickcount = blinkbios_button_block.clickcount;
         sei();
 
-        if (buttonSnapshotBitflags & BUTTON_BITFLAG_6SECPRESSED ) {
-
-            // Enter SEED mode!
-
-            BLINKBIOS_BOOTLOADER_SEED_VECTOR();
-
-             __builtin_unreachable();
-        }
 
         // Update the IR RX state
         // Receive any pending packets

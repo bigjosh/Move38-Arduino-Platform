@@ -139,6 +139,11 @@ byte buttonClickCount(void);
 // Remember that a long press fires while the button is still down
 bool buttonLongPressed(void);
 
+// 6 second press. Note that this will trigger seed mode if the blink is alone so
+// you will only ever see this if blink has neighbors when the button hits the 6 second mark.
+// Remember that a long press fires while the button is still down
+bool buttonLongLongPressed(void);
+
 /*
 
 	This set of functions lets you control the colors on the face RGB LEDs
