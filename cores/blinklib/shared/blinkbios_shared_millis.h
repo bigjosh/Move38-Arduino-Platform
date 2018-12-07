@@ -13,14 +13,18 @@
 #define __STDC_CONSTANT_MACROS
 #define __STDC_LIMIT_MACROS
 
-#include <stdint.h>     // UINT32_MAX (NB THis does not work :/ )
+//C++ implementations should define these macros only when __STDC_LIMIT_MACROS is defined before <stdint.h> is included.
+// Gets us the UINT*_MAX macros
+#define __STDC_LIMIT_MACROS
+
+#include <stdint.h>
 
 // #define USER_VOLATILE or BIOS_VOLATILE based on the presence of #define BIOS_VOLATILE_FLAG
 #include "blinkbios_shared_volatile.h"
 
 typedef uint32_t millis_t;
 
-#define MILLIS_MAX ( (uint32_t) -1 )        // This is a hack because it seems our compiled does not have UINT32_MAX correctly defined. :/
+#define MILLIS_MAX ( UINT32_MAX )        // This is a hack because it seems our compiled does not have UINT32_MAX correctly defined. :/
 
 struct blinkbios_millis_block_t {
 

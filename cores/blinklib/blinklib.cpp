@@ -192,7 +192,14 @@ static const uint8_t PROGMEM parityTable[] = {
 // This is a special byte that signals that this is a long data packet
 // It must appear in the first byte of the data, and the final byte is an inverted checksum of all bytes including header byte
 
-#define LONG_DATA_PACKET_HEADER 0b10101010
+#define LONG_DATA_SPECIAL_VALUE     0b10101010
+
+// This is a special byte that triggers a force sleep cycle when received
+// It must appear in the first byte of data, and the second byte muct be a 2nd copy.
+// When we get it, we virally send out force sleep packets on all the faces that we did not get it on,
+// and then we go to sleep.
+
+#define FORCE_SLEEP_SPECIAL_VALUE   0b01010101
 
 static uint8_t parityEncode( uint8_t d ) {
     return pgm_read_byte_near( parityTable+ d );
@@ -333,11 +340,11 @@ uint8_t sendPacketOnFace( byte face , const void *data, byte len ) {
 
     // Build up the packet in the buffer
 
-    *b++= LONG_DATA_PACKET_HEADER;
+    *b++= LONG_DATA_SPECIAL_VALUE;
 
     uint8_t packetLen = len+2;      // One extra byte for the LONG_DATA_PACKET_HEADER and one for the checksum
 
-    uint8_t computedChecksum= LONG_DATA_PACKET_HEADER;    // The header bytes are included in the checksum
+    uint8_t computedChecksum= LONG_DATA_SPECIAL_VALUE;    // The header bytes are included in the checksum
 
     while (len--) {
 
@@ -362,6 +369,55 @@ uint8_t sendPacketOnFace( byte face , const void *data, byte len ) {
 
 }
 
+
+static void force_sleep_cycle() {
+
+    FOREACH_FACE(f) {
+        blinkbios_pixel_block.rawpixels[f] = rawpixel_t(255,255,255);     // TODO: Check and make sure this doesn't constructor each time
+    }
+
+    // Ok, now we are virally sending FORCE_SLEEP out on all faces to spread the word
+    // and the pixels are off so the user is happy and we are saving power.
+
+    // First send the force sleep packet out to all our neighbors
+    // We are indiscriminate, just splat it 100 times everywhere.
+    // This is a brute force approach to make sure we get though even with collisons
+    // and long packets in flight.
+
+
+    // We need a pointer for the value to send it...
+    uint8_t force_sleep_packet = FORCE_SLEEP_SPECIAL_VALUE;
+
+    for( uint8_t n=0; n<100; n++ ) {
+
+        FOREACH_FACE(f) {
+
+            //while ( blinkbios_is_rx_in_progress( f ) );     // Wait to clear to send (no guarantee, but better than just blink sending)
+
+            blinkbios_irdata_send_packet( f , &force_sleep_packet , sizeof( force_sleep_packet ) );
+
+        }
+
+    }
+
+    // Forced sleep mode
+    // Really need button down detection in bios so we only wake on lift...
+    BLINKBIOS_SLEEP_NOW_VECTOR();
+
+    // Clear out old packets (including any old FORCE_SLEEP packets so we don't go right back to bed)
+
+    FOREACH_FACE(f) {
+
+        blinkbios_irdata_block.ir_rx_states[f].packetBufferReady = 0;
+
+    }
+
+}
+
+// Are we in forced sleep mode?
+
+uint8_t forced_sleep_flag =0;
+
 static void RX_IRFaces() {
 
     //  Use these pointers to step though the arrays
@@ -383,68 +439,72 @@ static void RX_IRFaces() {
             volatile const uint8_t *packetData = (ir_rx_state->packetBuffer)+1;    // Start at the byte after the header
             uint8_t packetDataLen = (ir_rx_state->packetBufferLen)-1;     // deduct the packet header byte
 
-            if ( packetDataLen == 1 ) {         // One header byte + One data byte
+            if ( packetDataLen == 1 ) {         // normal user face value, One header byte + One data byte
 
                 // This is a normal blinklib 1-byte face value
 
                 uint8_t receivedByte = packetData[0];
 
-                uint8_t decodedByte = parityDecode( receivedByte );
+                if (receivedByte==FORCE_SLEEP_SPECIAL_VALUE) {
 
-                // Is this a valid symbol in our parity system?
-
-                if ( receivedByte == parityEncode( decodedByte ) ) {
-
-                    // This looks like a valid value!
-
-                    // OK, everything checks out, we got a good face value!
-
-                    face->inValue =decodedByte;
-
-                    // Clear to send on this face immediately to ping-pong messages at max speed without collisions
-                    face->sendTime = 0;
-
-                    SBI( rx_buffer_fresh_bitflag , f );     // Mark that we just got a valid message on this face so we can ping pong with packets. Code smell!
-
-                } //  if ( receivedByte == parityEncode( decodedByte ) )
-
-                // Mark the data buffer as consumed. This clears it out so it will be ready to receive the next packet
-                // If we don't do this, then we might miss the response to our ping
-
-                ir_rx_state->packetBufferReady=0;
-
-            }   else { // if ( ir_data_buffer->len == 1 )
-
-                if (packetDataLen>2 && packetData[0] == LONG_DATA_PACKET_HEADER ) {
-
-                    if ( computeChecksum( packetData , packetDataLen-1)  ==  packetData[ packetDataLen - 1 ] ) {
-
-                        // Ok this packet checks out folks!
-
-                        longPacketLen[f] = packetDataLen-2;           // We deduct 2 from he length to account for the header byte and the trailing checksum byte
-                        longPacketData[f] = (byte *) (packetData+ 1);       // Skip the header bytes
-
-                    }
-
-                    // NOTE that we do not mark this packet as read! This will give the suer a chance to read it directly from the IR buffer.
-
-                    // Clear to send on this face immediately to ping-pong messages at max speed without collisions
-                    face->sendTime = 0;
+                    force_sleep_cycle();
 
                 } else {
 
-                    // Note that we do not clear to send on this face. There was some kind of problem, maybe corruption
-                    // so there might still be stuff in flight and we don't want to step on it.
-                    // Instead we let the timer take over and let things cool down until one side blinks sends to
-                    // start things up again.
+                    uint8_t decodedByte = parityDecode( receivedByte );
 
-                    // Packet too short so consume it to make room for next.
+                    // Is this a valid symbol in our parity system?
 
-                    ir_rx_state->packetBufferReady=0;
+                    if ( receivedByte == parityEncode( decodedByte ) ) {
+
+                        // This looks like a valid value!
+
+                        // OK, everything checks out, we got a good face value!
+
+                        face->inValue =decodedByte;
+
+                        // Clear to send on this face immediately to ping-pong messages at max speed without collisions
+                        face->sendTime = 0;
+
+                        SBI( rx_buffer_fresh_bitflag , f );     // Mark that we just got a valid message on this face so we can ping pong with packets. Code smell!
+
+                    } //  if ( receivedByte == parityEncode( decodedByte ) )
+
+                    // Mark the data buffer as consumed. This clears it out so it will be ready to receive the next packet
+                    // If we don't do this, then we might miss the response to our ping
+                }
+
+                ir_rx_state->packetBufferReady=0;
+
+            } else if (packetDataLen>2 && packetData[0] == LONG_DATA_SPECIAL_VALUE ) {
+
+                if ( computeChecksum( packetData , packetDataLen-1)  ==  packetData[ packetDataLen - 1 ] ) {
+
+                    // Ok this packet checks out folks!
+
+                    longPacketLen[f] = packetDataLen-2;           // We deduct 2 from he length to account for the header byte and the trailing checksum byte
+                    longPacketData[f] = (byte *) (packetData+ 1);       // Skip the header bytes
 
                 }
 
+                // NOTE that we do not mark this packet as read! This will give the suer a chance to read it directly from the IR buffer.
+
+                // Clear to send on this face immediately to ping-pong messages at max speed without collisions
+                face->sendTime = 0;
+
+            } else {        // We don't recognize this packet
+
+                // Note that we do not clear to send on this face. There was some kind of problem, maybe corruption
+                // so there might still be stuff in flight and we don't want to step on it.
+                // Instead we let the timer take over and let things cool down until one side blinks sends to
+                // start things up again.
+
+                // Packet too short so consume it to make room for next.
+
+                ir_rx_state->packetBufferReady=0;
+
             }
+
 
 
         }  // if ( ir_data_buffer->ready_flag )
@@ -822,7 +882,7 @@ uint8_t hasWoken(void) {
 void setColorOnFace( Color newColor , byte face ) {
 
     // This is so ugly, but we need to match the volatile in the shared block to the newColor
-    // There must be a better way, but I don't know it other than a memcopy which is even uglier!
+    // There must be a better way, but I don't know it other than a memcpy which is even uglier!
 
     // This at least gets the semantics right of coping a snapshot of the actual value.
 
@@ -892,11 +952,13 @@ void __attribute__((noreturn)) run(void)  {
             __builtin_unreachable();
         }
 
-        if (( blinkbios_button_block.bitflags & BUTTON_BITFLAG_7SECPRESSED)  ) {
+        if ( ( blinkbios_button_block.bitflags & BUTTON_BITFLAG_7SECPRESSED)  ) {
 
-            // Forced sleep mode
-            // Really need button down detection in bios so we only wake on lift...
-            BLINKBIOS_SLEEP_NOW_VECTOR();
+            force_sleep_cycle();
+
+            // Clear out the press that put us to sleep so we do not see it again
+            // Also clear out everything else so we start with a clean slate on waking
+            blinkbios_button_block.bitflags = 0;
 
         }
 
@@ -906,6 +968,7 @@ void __attribute__((noreturn)) run(void)  {
         blinkbios_button_block.bitflags=0;                              // Clear out the flags now that we have them
         buttonSnapshotClickcount = blinkbios_button_block.clickcount;
         sei();
+
 
 
         // Update the IR RX state

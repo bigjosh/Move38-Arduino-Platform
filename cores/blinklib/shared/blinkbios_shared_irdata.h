@@ -22,7 +22,16 @@
 
 struct ir_rx_state_t {
 
-    // These internal variables are only updated in ISR, so don't need to be volatile.
+    BOTH_VOLATILE uint8_t packetBufferReady;                        // 1 if we got the trailing sync byte. Foreground reader will set this back to 0 to enable next read.
+
+    USER_VOLATILE uint8_t packetBufferLen;                          // How many bytes currently in the packet buffer? Does not include checksum when bufferReady is set
+
+    USER_VOLATILE uint8_t packetBuffer[ IR_RX_PACKET_SIZE+1 ];      // Assemble incoming packet here. +1 to hold the checksum byte
+    // TODO: Deeper data buffer here?
+
+
+    // These internal variables not interesting to user code.
+    // They are only updated in ISR, so don't need to be volatile.
 
     uint8_t windowsSinceLastTrigger;                // How long since we last saw a trigger on this IR LED?
 
@@ -37,12 +46,6 @@ struct ir_rx_state_t {
     // This way we can test for 0 to see if currently receiving a byte, and
     // we can also test for '1' in top position to see if full byte received.
 
-    USER_VOLATILE uint8_t packetBuffer[ IR_RX_PACKET_SIZE];        // Assemble incoming packet here
-    // TODO: Deeper data buffer here?
-
-    USER_VOLATILE uint8_t packetBufferLen;                         // How many bytes currently in the packet buffer?
-
-    BOTH_VOLATILE uint8_t packetBufferReady;                       // 1 if we got the trailing sync byte. Foreground reader will set this back to 0 to enable next read.
 
     // This struct should be even power of 2 in length for more efficient array indexing.
 
@@ -57,6 +60,19 @@ struct blinkbios_irdata_block_t {
 };
 
 extern blinkbios_irdata_block_t blinkbios_irdata_block;
+
+// You can use this function to see if there is an RX in progress on a face
+// Don't transmit if there is an RX in progress or you'll make a collision
+
+inline uint8_t blinkbios_is_rx_in_progress( uint8_t face ) {
+
+    // This uses the fact that anytime we are actively receiving a byte, the byte buffer will
+    // be nonzero. Even if we are getting an all-0 byte, the top bit will be marching up.
+    // This is handy, but it does allow a collision during the leading sync. See below.
+
+    return blinkbios_irdata_block.ir_rx_states[face].byteBuffer;
+
+}
 
 
 #endif /* BLINKBIOS_IRDATA_BLOCK_H_ */
