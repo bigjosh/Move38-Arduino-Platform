@@ -21,6 +21,8 @@
 #include <avr/pgmspace.h>   // PROGMEM for parity lookup table
 #include <avr/interrupt.h>  // cli() and sei() so we can get snapshots of multibyte variables
 
+#include <avr/sleep.h>      // sleep_cpu() so we can rest between interrupts.
+
 #include <stddef.h>
 
 #include "ArduinoTypes.h"
@@ -370,7 +372,25 @@ uint8_t sendPacketOnFace( byte face , const void *data, byte len ) {
 }
 
 
+static void clear_packet_buffers() {
+
+    FOREACH_FACE(f) {
+
+        blinkbios_irdata_block.ir_rx_states[f].packetBufferReady = 0;
+
+    }
+}
+
+#warning debug
+#define SP_PINA_1() asm(" sbi 0x0e, 2")
+#define SP_PINA_0() asm(" cbi 0x0e, 2")
+#define _SFR_MEM8X(mem_addr)  (*(volatile uint8_t *)(mem_addr))
+ #define SP_TX_NOW(x) ( _SFR_MEM8X(0xc6 ) = x )
+#define SP_TX(x)   do { while (!(_SFR_MEM8X(0xC0)&(1<<5))); SP_TX_NOW(x);}while (0)         // Wait for buffer to be clear so we don't overwrite in progress
+
 static void force_sleep_cycle() {
+
+
 
     FOREACH_FACE(f) {
         blinkbios_pixel_block.rawpixels[f] = rawpixel_t(255,255,255);     // TODO: Check and make sure this doesn't constructor each time
@@ -388,7 +408,7 @@ static void force_sleep_cycle() {
     // We need a pointer for the value to send it...
     uint8_t force_sleep_packet = FORCE_SLEEP_SPECIAL_VALUE;
 
-    for( uint8_t n=0; n<100; n++ ) {
+    for( uint8_t n=0; n<5; n++ ) {
 
         FOREACH_FACE(f) {
 
@@ -399,18 +419,100 @@ static void force_sleep_cycle() {
         }
 
     }
+    
+    // We need to save the time now because it will keep ticking while we are in pre-sleep (where were can get 
+    // woken back up by a packet). If we did not save it and then restore it later, then all the user timers
+    // would be expired when we woke. 
+
+    // Save the time now so we can go back in time when we wake up
+    cli();
+    millis_t save_time = blinkbios_millis_block.millis;
+    sei();
+
+    // OK we now appear asleep
+    // We are not sending IR so some power savings
+    // For the next 2 hours will will wait for a wake up signal
+    // TODO: Make this even more power efficient by sleeping between checks for incoming IR.
+
+    blinkbios_button_block.bitflags=0;
+
+    // Here we explicitly set the register rather than using functions to save a few bytes.
+    // We not only save the 2 bytes here, but also because we do not need an explict sleep_mode_enable() elsewhere.
+
+    //set_sleep_mode( SLEEP_MODE_IDE );      // Wake on pin change and Timer2. <1uA
+
+    /*
+        3caa:	83 b7       	in	r24, 0x33	; 51
+        3cac:	81 7f       	andi	r24, 0xF1	; 241
+        3cae:	84 60       	ori	r24, 0x04	; 4
+        3cb0:	83 bf       	out	0x33, r24	; 51
+    */
+
+    SMCR = _BV(SE);     // Enable sleep, idle mode
+    /*
+        3caa:	85 e0       	ldi	r24, 0x05	; 0
+        3cac:	83 bf       	out	0x33, r24	; 51
+        3cae:	88 95       	sleep
+    */
+
+    clear_packet_buffers();     // Clear out any left over packets that were there when we started this sleep cyclel and might trigger us to wake unapropriately
+
+    uint8_t saw_packet_flag =0;
+
+    SP_TX('I');
+
+    // Wait in idle mode until we either see a non-force-sleep packet or a button press or woke.
+    // Why woke? Because eventually the BIOS will make us powerdown sleep inside this loop
+    // When that happens, it will take a button press to wake us
+
+    blinkbios_button_block.wokeFlag = 1;    // // Set to 0 upon waking from sleep
+
+    while (!saw_packet_flag && !(blinkbios_button_block.bitflags & BUTTON_BITFLAG_PRESSED) && blinkbios_button_block.wokeFlag) {
+
+        // TODO: This sleep mode currently uses about 2mA. We can get that way down by...
+        //       1. Adding a supporess_display_flag to pixel_block to skip all of the display code when in this mode
+        //       2. Adding a new_pack_recieved_flag to ir_block so we only scan when there is a new packet
+
+        sleep_cpu();
+
+        ir_rx_state_t *ir_rx_state = blinkbios_irdata_block.ir_rx_states;
+
+        FOREACH_FACE( f ) {
+
+            if (ir_rx_state->packetBufferReady) {
+
+                if (ir_rx_state->packetBuffer[1] != FORCE_SLEEP_SPECIAL_VALUE ) {
+
+                    SP_TX('M');
+                    SP_TX(ir_rx_state->packetBuffer[0] );
+                    SP_TX(ir_rx_state->packetBuffer[1] );
+
+                    saw_packet_flag =1;
+
+                }
+
+                ir_rx_state->packetBufferReady=0;
+
+            }
+
+            ir_rx_state++;
+        }
+
+    }
+
+
+    cli();
+    blinkbios_millis_block.millis = save_time;
+    BLINKBIOS_POSTPONE_SLEEP_VECTOR();              // It is ok top call like this to reset the inactivity timer
+    sei();
 
     // Forced sleep mode
     // Really need button down detection in bios so we only wake on lift...
-    BLINKBIOS_SLEEP_NOW_VECTOR();
+    // BLINKBIOS_SLEEP_NOW_VECTOR();
 
     // Clear out old packets (including any old FORCE_SLEEP packets so we don't go right back to bed)
 
-    FOREACH_FACE(f) {
-
-        blinkbios_irdata_block.ir_rx_states[f].packetBufferReady = 0;
-
-    }
+    clear_packet_buffers();
 
 }
 
@@ -844,7 +946,10 @@ byte getSerialNumberByte( byte n ) {
 
 }
 
+// Remembers if we have woken from either a BIOS sleep or
+// a blinklib forced sleep.
 
+uint8_t hasWokenFlag =0;
 
 // Returns 1 if we have slept and woken since last time we checked
 // Best to check as last test at the end of loop() so you can
@@ -852,15 +957,19 @@ byte getSerialNumberByte( byte n ) {
 
 uint8_t hasWoken(void) {
 
-    if (blinkbios_button_block.wokeFlag == 0 ) {        // We have woken since last check
+    uint8_t ret = 0;
 
-        blinkbios_button_block.wokeFlag = 1;
-
-        return 1;
-
+    if (hasWokenFlag) {
+        ret =1;
+        hasWokenFlag = 0;
     }
 
-    return 0;
+    if (blinkbios_button_block.wokeFlag==0) {       // This flag is set to 0 when waking!
+        ret=1;
+        blinkbios_button_block.wokeFlag==1;
+    }
+
+    return ret;
 
 }
 
