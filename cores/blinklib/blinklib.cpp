@@ -51,6 +51,10 @@
 #define RX_EXPIRE_TIME_MS         200      // If we do not see a message in this long, then show that face as expired
 
 
+#define WARM_SLEEP_TIMEOUT_MS   (5 * 60 * 1000UL )  // 5 mins 
+                                                    // We will warm sleep if we do not see a button press or remote button press
+                                                    // in this long 
+
 // This is a parity check that I came up with that I think is robust to close together bitflips and
 // also efficient to calculate.
 // We keep the 6 data bits in the middle of the byte, and then send parity bits at the top and bottom
@@ -196,12 +200,12 @@ static const uint8_t PROGMEM parityTable[] = {
 
 #define LONG_DATA_SPECIAL_VALUE     0b10101010
 
-// This is a special byte that triggers a force sleep cycle when received
-// It must appear in the first byte of data, and the second byte muct be a 2nd copy.
-// When we get it, we virally send out force sleep packets on all the faces that we did not get it on,
-// and then we go to sleep.
+// This is a special byte that triggers a warm sleep cycle when received
+// It must appear in the first byte of data
+// When we get it, we virally send out more warm sleep packets on all the faces 
+// and then we go to warm sleep.
 
-#define FORCE_SLEEP_SPECIAL_VALUE   0b01010101
+#define TRIGGER_WARM_SLEEP_SPECIAL_VALUE   0b01010101
 
 static uint8_t parityEncode( uint8_t d ) {
     return pgm_read_byte_near( parityTable+ d );
@@ -214,7 +218,6 @@ static uint8_t parityDecode( uint8_t d ) {
     return (d & 0b01111110) >> 1 ;
 
 }
-
 
 // TODO: These structs even better if they are padded to a power of 2 like https://stackoverflow.com/questions/1239855/pad-a-c-structure-to-a-power-of-two
 
@@ -381,6 +384,18 @@ static void clear_packet_buffers() {
     }
 }
 
+// When will we warm sleep due to inactivity
+// reset by a button press or seeing a button press bit on
+// an incoming packet
+
+Timer warm_sleep_time;
+
+void reset_warm_sleep_timer() {
+    
+    warm_sleep_time.set( WARM_SLEEP_TIMEOUT_MS ); 
+    
+}    
+
 #warning debug
 #define SP_PINA_1() asm(" sbi 0x0e, 2")
 #define SP_PINA_0() asm(" cbi 0x0e, 2")
@@ -388,7 +403,7 @@ static void clear_packet_buffers() {
  #define SP_TX_NOW(x) ( _SFR_MEM8X(0xc6 ) = x )
 #define SP_TX(x)   do { while (!(_SFR_MEM8X(0xC0)&(1<<5))); SP_TX_NOW(x);}while (0)         // Wait for buffer to be clear so we don't overwrite in progress
 
-static void force_sleep_cycle() {
+static void warm_sleep_cycle() {
 
 
 
@@ -401,12 +416,12 @@ static void force_sleep_cycle() {
 
     // First send the force sleep packet out to all our neighbors
     // We are indiscriminate, just splat it 100 times everywhere.
-    // This is a brute force approach to make sure we get though even with collisons
+    // This is a brute force approach to make sure we get though even with collisions
     // and long packets in flight.
 
 
     // We need a pointer for the value to send it...
-    uint8_t force_sleep_packet = FORCE_SLEEP_SPECIAL_VALUE;
+    uint8_t force_sleep_packet = TRIGGER_WARM_SLEEP_SPECIAL_VALUE;
 
     for( uint8_t n=0; n<5; n++ ) {
 
@@ -419,10 +434,14 @@ static void force_sleep_cycle() {
         }
 
     }
-    
-    // We need to save the time now because it will keep ticking while we are in pre-sleep (where were can get 
+
+    BLINKBIOS_POSTPONE_SLEEP_VECTOR();      // Postpone clod sleep so we can warm sleep for a while
+                                            // The cold sleep will eventually kick in if we
+                                            // do not wake from warm sleep in time.
+
+    // We need to save the time now because it will keep ticking while we are in pre-sleep (where were can get
     // woken back up by a packet). If we did not save it and then restore it later, then all the user timers
-    // would be expired when we woke. 
+    // would be expired when we woke.
 
     // Save the time now so we can go back in time when we wake up
     cli();
@@ -481,7 +500,7 @@ static void force_sleep_cycle() {
 
             if (ir_rx_state->packetBufferReady) {
 
-                if (ir_rx_state->packetBuffer[1] != FORCE_SLEEP_SPECIAL_VALUE ) {
+                if (ir_rx_state->packetBuffer[1] != TRIGGER_WARM_SLEEP_SPECIAL_VALUE ) {
 
                     SP_TX('M');
                     SP_TX(ir_rx_state->packetBuffer[0] );
@@ -505,6 +524,8 @@ static void force_sleep_cycle() {
     blinkbios_millis_block.millis = save_time;
     BLINKBIOS_POSTPONE_SLEEP_VECTOR();              // It is ok top call like this to reset the inactivity timer
     sei();
+    
+    reset_warm_sleep_timer();
 
     // Forced sleep mode
     // Really need button down detection in bios so we only wake on lift...
@@ -515,10 +536,6 @@ static void force_sleep_cycle() {
     clear_packet_buffers();
 
 }
-
-// Are we in forced sleep mode?
-
-uint8_t forced_sleep_flag =0;
 
 static void RX_IRFaces() {
 
@@ -547,9 +564,9 @@ static void RX_IRFaces() {
 
                 uint8_t receivedByte = packetData[0];
 
-                if (receivedByte==FORCE_SLEEP_SPECIAL_VALUE) {
+                if (receivedByte==TRIGGER_WARM_SLEEP_SPECIAL_VALUE) {
 
-                    force_sleep_cycle();
+                    warm_sleep_cycle();
 
                 } else {
 
@@ -966,7 +983,7 @@ uint8_t hasWoken(void) {
 
     if (blinkbios_button_block.wokeFlag==0) {       // This flag is set to 0 when waking!
         ret=1;
-        blinkbios_button_block.wokeFlag==1;
+        blinkbios_button_block.wokeFlag=1;
     }
 
     return ret;
@@ -1022,7 +1039,8 @@ void setFaceColor(  byte face, Color newColor ) {
 
 #warning debug
 #define SP_INIT() do{  _SFR_MEM8(0xC0)=0x01; _SFR_MEM8(0xC1)=0x03;  _SFR_MEM16(0xC4) = 0; } while (0)       // Set TX 1Mbs
-#define SP_TX_NOW(x) ( _SFR_MEM8(0xc6 ) = x )                                                                           // Write to UDR0 Serial port data register
+#define SP_TX_NOW(x) ( _SFR_MEM8(0xc6 ) = x )                                                                        // Write to UDR0 Serial port data register
+
 
 // This is the main event loop that calls into the arduino program
 // (Compiler is smart enough to jmp here from main rather than call!
@@ -1036,9 +1054,11 @@ void __attribute__((noreturn)) run(void)  {
     blinkbios_button_block.wokeFlag = 1;        // Clear any old wakes (wokeFlag is cleared to 0 on wake)
 
     blinkbios_button_block.bitflags = 0x00;     // Clear any old button actions and start fresh
+    
+    reset_warm_sleep_timer();        
 
     setup();
-
+    
     while (1) {
 
         // Capture time snapshot
@@ -1063,13 +1083,26 @@ void __attribute__((noreturn)) run(void)  {
 
         if ( ( blinkbios_button_block.bitflags & BUTTON_BITFLAG_7SECPRESSED)  ) {
 
-            force_sleep_cycle();
+            warm_sleep_cycle();
 
             // Clear out the press that put us to sleep so we do not see it again
             // Also clear out everything else so we start with a clean slate on waking
             blinkbios_button_block.bitflags = 0;
 
         }
+        
+        if ( blinkbios_button_block.bitflags & BUTTON_BITFLAG_PRESSED  ) {  // Any button press resets the warm sleep timeout
+            
+            reset_warm_sleep_timer();
+
+        }
+        
+        if (warm_sleep_time.isExpired()) {            
+            
+            warm_sleep_cycle();            
+            
+        }            
+        
 
         cli();
         buttonSnapshotDown       = blinkbios_button_block.down;

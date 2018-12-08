@@ -49,15 +49,17 @@ extern "C" uint8_t BLINKBIOS_IRDATA_SEND_PACKET_VECTOR(  uint8_t face, const uin
 
 extern "C" void BLINKBIOS_DISPLAY_PIXEL_BUFFER_VECTOR()  __attribute__((used));
 
+
+
 #define BLINKBIOS_BOOTLOADER_SEED_VECTOR boot_vector9
 
 extern "C" void BLINKBIOS_BOOTLOADER_SEED_VECTOR()  __attribute__((used));
 
 
-#define BLINKBIOS_POSTPONE_SLEEP_VECTOR boot_vector10
-
-extern "C" void BLINKBIOS_POSTPONE_SLEEP_VECTOR()  __attribute__((used));
-
+// Push back the inactivity sleep timer
+// Can be called with interrupts off, so you can adjust the
+// blinkbios_millis_block.millis and then call BLINKBIOS_POSTPONE_SLEEP_VECTOR
+// to reset the sleep_time to match the new timebase
 
 #define BLINKBIOS_POSTPONE_SLEEP_VECTOR boot_vector10
 
@@ -68,5 +70,13 @@ extern "C" void BLINKBIOS_POSTPONE_SLEEP_VECTOR()  __attribute__((used));
 
 extern "C" void BLINKBIOS_SLEEP_NOW_VECTOR()  __attribute__((used));
 
+// Fill the flash page buffer using the boot_page_fill() function,
+// then call here. Will write the page to flash, wait for it to complete,
+// re-enable the rww part of flash, then return - so you can call this from
+// the non-bootloader part of memory
+
+#define BLINKBIOS_WRITE_FLASH_PAGE_VECTOR boot_vector13
+
+extern "C" void BLINKBIOS_WRITE_FLASH_PAGE_VECTOR(uint8_t page)  __attribute__((used));
 
 #endif /* BLINKBIOS_SHARED_FUCNTIONS_H_ */
