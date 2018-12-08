@@ -51,9 +51,9 @@
 #define RX_EXPIRE_TIME_MS         200      // If we do not see a message in this long, then show that face as expired
 
 
-#define WARM_SLEEP_TIMEOUT_MS   (5 * 60 * 1000UL )  // 5 mins 
+#define WARM_SLEEP_TIMEOUT_MS   (5 * 60 * 1000UL )  // 5 mins
                                                     // We will warm sleep if we do not see a button press or remote button press
-                                                    // in this long 
+                                                    // in this long
 
 // This is a parity check that I came up with that I think is robust to close together bitflips and
 // also efficient to calculate.
@@ -202,7 +202,7 @@ static const uint8_t PROGMEM parityTable[] = {
 
 // This is a special byte that triggers a warm sleep cycle when received
 // It must appear in the first byte of data
-// When we get it, we virally send out more warm sleep packets on all the faces 
+// When we get it, we virally send out more warm sleep packets on all the faces
 // and then we go to warm sleep.
 
 #define TRIGGER_WARM_SLEEP_SPECIAL_VALUE   0b01010101
@@ -391,10 +391,15 @@ static void clear_packet_buffers() {
 Timer warm_sleep_time;
 
 void reset_warm_sleep_timer() {
-    
-    warm_sleep_time.set( WARM_SLEEP_TIMEOUT_MS ); 
-    
-}    
+
+    warm_sleep_time.set( WARM_SLEEP_TIMEOUT_MS );
+
+}
+
+// Remembers if we have woken from either a BIOS sleep or
+// a blinklib forced sleep.
+
+uint8_t hasWarmWokenFlag =0;
 
 #warning debug
 #define SP_PINA_1() asm(" sbi 0x0e, 2")
@@ -524,7 +529,8 @@ static void warm_sleep_cycle() {
     blinkbios_millis_block.millis = save_time;
     BLINKBIOS_POSTPONE_SLEEP_VECTOR();              // It is ok top call like this to reset the inactivity timer
     sei();
-    
+
+    hasWarmWokenFlag = 1;           // Remember that we warm slept
     reset_warm_sleep_timer();
 
     // Forced sleep mode
@@ -963,10 +969,6 @@ byte getSerialNumberByte( byte n ) {
 
 }
 
-// Remembers if we have woken from either a BIOS sleep or
-// a blinklib forced sleep.
-
-uint8_t hasWokenFlag =0;
 
 // Returns 1 if we have slept and woken since last time we checked
 // Best to check as last test at the end of loop() so you can
@@ -976,9 +978,9 @@ uint8_t hasWoken(void) {
 
     uint8_t ret = 0;
 
-    if (hasWokenFlag) {
+    if (hasWarmWokenFlag) {
         ret =1;
-        hasWokenFlag = 0;
+        hasWarmWokenFlag = 0;
     }
 
     if (blinkbios_button_block.wokeFlag==0) {       // This flag is set to 0 when waking!
@@ -1054,11 +1056,11 @@ void __attribute__((noreturn)) run(void)  {
     blinkbios_button_block.wokeFlag = 1;        // Clear any old wakes (wokeFlag is cleared to 0 on wake)
 
     blinkbios_button_block.bitflags = 0x00;     // Clear any old button actions and start fresh
-    
-    reset_warm_sleep_timer();        
+
+    reset_warm_sleep_timer();
 
     setup();
-    
+
     while (1) {
 
         // Capture time snapshot
@@ -1090,19 +1092,19 @@ void __attribute__((noreturn)) run(void)  {
             blinkbios_button_block.bitflags = 0;
 
         }
-        
+
         if ( blinkbios_button_block.bitflags & BUTTON_BITFLAG_PRESSED  ) {  // Any button press resets the warm sleep timeout
-            
+
             reset_warm_sleep_timer();
 
         }
-        
-        if (warm_sleep_time.isExpired()) {            
-            
-            warm_sleep_cycle();            
-            
-        }            
-        
+
+        if (warm_sleep_time.isExpired()) {
+
+            warm_sleep_cycle();
+
+        }
+
 
         cli();
         buttonSnapshotDown       = blinkbios_button_block.down;
