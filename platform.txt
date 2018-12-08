@@ -38,7 +38,9 @@ compiler.objcopy.eep.flags=-O ihex -j .eeprom --set-section-flags=.eeprom=alloc,
 # We need to explicitly remove .BSS from the hex file since the linker inexplicably includes .bss in .text
 # when we include .ipcram in .bss. 
 
-compiler.elf2hex.flags=-O ihex -R .eepromm 
+# This 0x1700 is is the physical start address of the `built-in` program image area. This is
+# defined in the blinkbios as `FLASH_BUILTIN_IMAGE_START_ADDRESS`. 
+compiler.elf2hex.flags=--change-addresses 0x1700 -O ihex -R .eepromm 
 compiler.elf2hex.cmd=avr-objcopy
 compiler.ldflags=
 compiler.size.cmd=avr-size
