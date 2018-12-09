@@ -116,8 +116,7 @@ struct blinkbios_pixelblock_t {
     // We picked to clear this rather than set to 1 because in the ISR is is faster to set to 0 since R1 is always loaded with 0
 
     BOTH_VOLATILE uint8_t vertical_blanking_interval;
-
-
+    
     // Below is some global state that is probably not interesting to user code
 
     rawpixel_t rawpixels[PIXEL_COUNT];

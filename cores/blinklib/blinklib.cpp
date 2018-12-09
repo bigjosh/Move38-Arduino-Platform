@@ -390,7 +390,7 @@ uint8_t hasWarmWokenFlag =0;
 
 static void warm_sleep_cycle() {
 
-
+    // Clear the screen. Off pixels use less power and this makes us look off.
 
     FOREACH_FACE(f) {
         blinkbios_pixel_block.rawpixels[f] = rawpixel_t(255,255,255);     // TODO: Check and make sure this doesn't constructor each time
@@ -476,6 +476,7 @@ static void warm_sleep_cycle() {
         // TODO: This sleep mode currently uses about 2mA. We can get that way down by...
         //       1. Adding a supporess_display_flag to pixel_block to skip all of the display code when in this mode
         //       2. Adding a new_pack_recieved_flag to ir_block so we only scan when there is a new packet
+        // UPDATE: Tried all that and it only saved like 0.1-0.2mA and added dozens of bytes of code so not worth it.
 
         sleep_cpu();
 
@@ -486,10 +487,6 @@ static void warm_sleep_cycle() {
             if (ir_rx_state->packetBufferReady) {
 
                 if (ir_rx_state->packetBuffer[1] != TRIGGER_WARM_SLEEP_SPECIAL_VALUE ) {
-
-                    SP_TX('M');
-                    SP_TX(ir_rx_state->packetBuffer[0] );
-                    SP_TX(ir_rx_state->packetBuffer[1] );
 
                     saw_packet_flag =1;
 
@@ -503,7 +500,6 @@ static void warm_sleep_cycle() {
         }
 
     }
-
 
     cli();
     blinkbios_millis_block.millis = save_time;
@@ -1067,7 +1063,7 @@ void __attribute__((noreturn)) run(void)  {
             while ( blinkbios_button_block.down && ! ( blinkbios_button_block.bitflags & BUTTON_BITFLAG_7SECPRESSED)  ) {
 
                 // Show a very fast blue spin that it would be hard for a user program to make
-                // Durring the 1 secont they have to let for to enter seed mode
+                // during the 1 second they have to let for to enter seed mode
 
                 setColor(OFF);
                 setColorOnFace( BLUE , face++ );
