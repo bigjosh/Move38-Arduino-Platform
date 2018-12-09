@@ -67,54 +67,33 @@
 // https://www.onlinegdb.com/online_c++_compiler
 
 /*
-
 #include <iostream>
-
 using namespace std;
-
 uint8_t paritygenerator( uint8_t d ) {
-
     // TODO: We are only counting the bottom 6 bits, so could replace popcount()
     //       with some asm that only counts those with 5 shifts
     //       https://www.avrfreaks.net/forum/avr-gcc-de-optimizing-my-code
-
     uint8_t topbits   = d & 0b00010101;
     uint8_t topbitcount = __builtin_popcount( topbits );
     uint8_t topparitybit = !(topbitcount & 0b00000001 );
-
-
     uint8_t bottombits = d & 0b00101010;
     uint8_t bottombitcount = __builtin_popcount( bottombits );
     uint8_t bottomparitybit = (bottombitcount & 0b00000001 );
-
-
     return ( ( topparitybit << 7 ) | ( d << 1 ) | ( bottomparitybit ) );
-
 }
-
 #include <iostream>
 #include <iomanip>
-
 #include <bitset>
 using std::setw;
-
 void generateParityTable( void ) {
-
     for( uint8_t d =0; d < 64 ; d++ ) {
-
         std::bitset<8> x(paritygenerator( d ) );
         std::cout << "    0b" << x << ",   // " << setw(2) << (int) d << "\n";
-
     }
-
 }
-
-
 int main()
 {
-
     generateParityTable();
-
     return 0;
 }
 */
@@ -194,6 +173,7 @@ static const uint8_t PROGMEM parityTable[] = {
     0b11111101,   // 62
     0b01111111,   // 63
 };
+
 
 // This is a special byte that signals that this is a long data packet
 // It must appear in the first byte of the data, and the final byte is an inverted checksum of all bytes including header byte
@@ -1076,11 +1056,50 @@ void __attribute__((noreturn)) run(void)  {
 
         if (( blinkbios_button_block.bitflags & BUTTON_BITFLAG_6SECPRESSED) && isAlone() ) {
 
-            // Enter SEED mode!
+            // Button has been down for 6 seconds and we are alone...
+            // Signal that we are about to go into seed mode with full blue...
 
-            BLINKBIOS_BOOTLOADER_SEED_VECTOR();
+            // Now wait until either the button is lifted or is held down past 7 second mark
+            // so we know what to do
 
-            __builtin_unreachable();
+            uint8_t face = 0;
+
+            while ( blinkbios_button_block.down && ! ( blinkbios_button_block.bitflags & BUTTON_BITFLAG_7SECPRESSED)  ) {
+
+                // Show a very fast blue spin that it would be hard for a user program to make
+                // Durring the 1 secont they have to let for to enter seed mode
+
+                setColor(OFF);
+                setColorOnFace( BLUE , face++ );
+                if (face==FACE_COUNT) face=0;
+                BLINKBIOS_DISPLAY_PIXEL_BUFFER_VECTOR();
+
+            }
+
+            if ( blinkbios_button_block.bitflags & BUTTON_BITFLAG_7SECPRESSED ) {
+
+                // Held down past the 7 second mark, so this is a force sleep request
+
+                warm_sleep_cycle();
+
+                // Clear out the press that put us to sleep so we do not see it again
+                // Also clear out everything else so we start with a clean slate on waking
+                blinkbios_button_block.bitflags = 0;
+
+            } else {
+
+                // They let go before we got to 7 seconds, so enter SEED mode! (and never return!)
+
+                // Give instant visual feedback that we know they let go of the button
+                // Costs a few bytes, but the checksum in the bootloader takes a a sec to complete before we start sending)
+                setColor( OFF );
+                BLINKBIOS_DISPLAY_PIXEL_BUFFER_VECTOR();
+
+                BLINKBIOS_BOOTLOADER_SEED_VECTOR();
+
+                __builtin_unreachable();
+
+            }
         }
 
         if ( ( blinkbios_button_block.bitflags & BUTTON_BITFLAG_7SECPRESSED)  ) {
