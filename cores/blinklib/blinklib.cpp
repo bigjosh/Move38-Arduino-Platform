@@ -264,7 +264,6 @@ const byte *getPacketDataOnFace( uint8_t face ) {
 
 void markLongPacketRead( uint8_t face ) {
     // We don't want to mark it read if it is not actually pending because then we might be throwing away an unread packet
-    #warning
     cli();
     if ( longPacketLen[face] ) {
         longPacketLen[face]=0;
@@ -381,13 +380,6 @@ void reset_warm_sleep_timer() {
 
 uint8_t hasWarmWokenFlag =0;
 
-#warning debug
-#define SP_PINA_1() asm(" sbi 0x0e, 2")
-#define SP_PINA_0() asm(" cbi 0x0e, 2")
-#define _SFR_MEM8X(mem_addr)  (*(volatile uint8_t *)(mem_addr))
- #define SP_TX_NOW(x) ( _SFR_MEM8X(0xc6 ) = x )
-#define SP_TX(x)   do { while (!(_SFR_MEM8X(0xC0)&(1<<5))); SP_TX_NOW(x);}while (0)         // Wait for buffer to be clear so we don't overwrite in progress
-
 static void warm_sleep_cycle() {
 
     // Clear the screen. Off pixels use less power and this makes us look off.
@@ -462,8 +454,6 @@ static void warm_sleep_cycle() {
     clear_packet_buffers();     // Clear out any left over packets that were there when we started this sleep cyclel and might trigger us to wake unapropriately
 
     uint8_t saw_packet_flag =0;
-
-    SP_TX('I');
 
     // Wait in idle mode until we either see a non-force-sleep packet or a button press or woke.
     // Why woke? Because eventually the BIOS will make us powerdown sleep inside this loop
@@ -918,9 +908,63 @@ uint16_t random( uint16_t limit ) {
     return retval;
 }
 
-long map(word x, word in_min, word in_max, word out_min, word out_max)
+/*
+
+    The original Arduino map function which is wrong in at least 3 ways.
+
+    We replace it with a map function that has proper types, does not overflow, has even distribution, and clamps the output range.
+
+    Our code is based on this...
+
+    https://github.com/arduino/Arduino/issues/2466
+
+    ...downscaled to `word` width and with up casts added to avoid overflows (yep, even the corrected code
+    in the `map() function equation wrong` discoussion would still overflow :/ ).
+
+    In the casts, we try to keep everything at the smallest possible width as long as possible to hold the result, but we have to bump up
+    to do the multiply. We then cast back down to (word) once we divide the (uint32_t) by a (word) since we know that will fit.
+
+    We could trade code for performance here by special casing out each possible overflow condition and reordering the operations to avoid the overflow,
+    but for now space more important than speed. User programs can alwasy implement thier own map() if they need it since this will not link in if it is
+    not called.
+
+    Here is some example code on how you might efficiently handle those multiplys...
+
+    http://ww1.microchip.com/downloads/en/AppNotes/Atmel-1631-Using-the-AVR-Hardware-Multiplier_ApplicationNote_AVR201.pdf
+
+*/
+
+
+word map(word x, word in_min, word in_max, word out_min, word out_max)
 {
-    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+    // if input is smaller/bigger than expected return the min/max out ranges value
+    if (x < in_min) {
+
+        return out_min;
+
+    } else if (x > in_max) {
+
+        return out_max;
+
+    } else {
+
+        // map the input to the output range.
+        if ((in_max - in_min) > (out_max - out_min)) {
+
+            // round up if mapping bigger ranges to smaller ranges
+            // the only time we need full width to avoid overflow is after the multiply but before the divide,
+            // and the single (uint32_t) of the first operand should promote the entire expression - hopefully optimally.
+            return (word) ( ((uint32_t) (x - in_min)) * (out_max - out_min + 1) / (in_max - in_min + 1) ) + out_min;
+
+        } else {
+
+            // round down if mapping smaller ranges to bigger ranges
+            // the only time we need full width to avoid overflow is after the multiply but before the divide,
+            // and the single (uint32_t) of the first operand should promote the entire expression - hopefully optimally.
+            return (word) ( ((uint32_t) (x - in_min)) *  (out_max - out_min)  / (in_max - in_min) ) + out_min;
+
+        }
+    }
 }
 
 // Returns the device's unique 8-byte serial number
@@ -1014,11 +1058,6 @@ void setFaceColor(  byte face, Color newColor ) {
     setColorOnFace( newColor , face );
 
 }
-
-#warning debug
-#define SP_INIT() do{  _SFR_MEM8(0xC0)=0x01; _SFR_MEM8(0xC1)=0x03;  _SFR_MEM16(0xC4) = 0; } while (0)       // Set TX 1Mbs
-#define SP_TX_NOW(x) ( _SFR_MEM8(0xc6 ) = x )                                                                        // Write to UDR0 Serial port data register
-
 
 // This is the main event loop that calls into the arduino program
 // (Compiler is smart enough to jmp here from main rather than call!
