@@ -309,7 +309,7 @@ byte getSerialNumberByte( byte n );
 
 // Map one set to another
 
-long map(word x, word in_min, word in_max, word out_min, word out_max);
+word map(word x, word in_min, word in_max, word out_min, word out_max);
 
 
 
