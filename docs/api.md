@@ -116,7 +116,7 @@ bool isAlone();
 ## Time
 ```
 unsigned long millis();
-// get the value of the timer
+// monotonically incrementing timer
 // remains constant in a single pass of loop()
 // i.e. millis() will return the same value at the top 
 // of loop() and the bottom.
