@@ -23,6 +23,8 @@
 
 #include <avr/sleep.h>      // sleep_cpu() so we can rest between interrupts.
 
+#include <avr/wdt.h>        // Used in randomize() to get some entropy from the skew between the WDT osicilator and the system clock. 
+
 #include <stddef.h>
 
 #include "ArduinoTypes.h"
@@ -876,7 +878,36 @@ Color makeColorHSB( uint8_t hue, uint8_t saturation, uint8_t brightness ) {
 
 /* The state word must be initialized to non-zero */
 
-static uint32_t rand_state=1;
+// Here we use Marsaglia's seed (page 4)
+// https://www.jstatsoft.org/article/view/v008i14
+static uint32_t rand_state=2463534242UL;
+
+
+// Generate a new seed using entropy from the watchdog timer
+// This takes about 16ms * 32 bits = 0.5s
+
+void randomize() {
+    
+    WDTCSR =  _BV(WDIE);                // Enable WDT interrupt, leave timeout at 16ms (this is the shortest timeout)
+              
+    // The WDT timer is now generating an interrupt about every 16ms
+    // https://electronics.stackexchange.com/a/322817    
+    
+    for( uint8_t bit=32; bit; bit-- ) {
+                               
+        blinkbios_pixel_block.capturedEntropy=0;                                   // Clear this so we can check to see when it gets set in the background               
+        while (blinkbios_pixel_block.capturedEntropy==0 || blinkbios_pixel_block.capturedEntropy==1  );   // Wait for this to get set in the background when the WDT ISR fires
+                                                            // We also ignore 1 to stay balanced since 0 is a valid possible TCNT value that we will ignore
+                
+               
+        rand_state <<=1;
+        rand_state |= blinkbios_pixel_block.capturedEntropy & 0x01;            // Grab just the bottom bit each time to try and maximum entropy
+                       
+    }   
+    
+    wdt_disable();
+        
+}
 
 static uint32_t nextrand32()
 {
@@ -892,7 +923,7 @@ static uint32_t nextrand32()
 
 #define GETNEXTRANDUINT_MAX ( (word) -1 )
 
-static word GetNextRandUint(void) {
+word randomWord(void) {
 	
 	// Grab bottom 16 bits
 	
@@ -904,13 +935,13 @@ static word GetNextRandUint(void) {
 // TODO: Use entropy from the button or decaying IR LEDs
 // https://stackoverflow.com/a/2999130/3152071
 
-uint16_t random( uint16_t limit ) {
+word random( uint16_t limit ) {
 
     word divisor = GETNEXTRANDUINT_MAX/(limit+1);
     word retval;
 
     do {
-        retval = GetNextRandUint() / divisor;
+        retval = randomWord() / divisor;
     } while (retval > limit);
 
     return retval;
@@ -1208,9 +1239,3 @@ void __attribute__((noreturn)) run(void)  {
 
 
 }
-
-void seedMe() {
-
-   // JUMP_TO_BOOTLOADER_SEED();
-
-}    

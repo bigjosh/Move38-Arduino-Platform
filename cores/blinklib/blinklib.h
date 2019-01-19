@@ -299,8 +299,22 @@ class Timer {
 
 
 // Return a random number between 0 and limit inclusive.
+// By default uses a hardcoded seed. If you need different blinks
+// to generate different streams of random numbers, then call
+// randomize() once to generate a truely random seed. 
 
-uint16_t random( word limit );
+word random( word limit );
+
+// Generate a random 16 bit word. Slightly faster than random(),
+// but be careful because you will not get a uniform distribution
+// unless your desired range is a power of 2. 
+
+word randomWord(void);
+
+// Generate a new random seed using entropy from the watchdog timer
+// This takes about 16ms * 32 bits = 0.5s
+
+void randomize();
 
 // Read the unique serial number for this blink tile
 // There are 9 bytes in all, so n can be 0-8
@@ -331,11 +345,6 @@ bool irIsReadyOnFace( uint8_t face );
 // Read the most recently received data. Blocks if no data ready. Data is 6-bits wide (0-63 value).
 
 uint8_t irGetData( uint8_t face );
-
-// Enter seed mode - Copies current built-in game (not necessarily you!) to active game, then spreads, then runs
-// Never returns!
-
-void seedMe();
 
 /* Power functions */
 

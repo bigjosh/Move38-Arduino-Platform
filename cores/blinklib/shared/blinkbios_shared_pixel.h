@@ -123,6 +123,14 @@ struct blinkbios_pixelblock_t {
 
     uint8_t currentPixelIndex;  // Which pixel are we currently lighting? Pixels are multiplexed and only refreshed one at a time in sequence.
     uint8_t phase;              // Phase up updating the current pixel. There are 5 phases that include lighting each color, charging the charge pump, and resting the charge pump.
+    
+    
+    // Here we keep the value of TCNT0 that was captured at the last watchdog timer interrupt
+    // We put this here because the pixel code enables and sets up Timer0, and really not other good place for it.
+    // User code is responsible for enabling the WDT interrupt and then checking this value to see
+    // when it gets set asynchronously by the bios WDT ISR. 
+    
+    volatile uint8_t capturedEntropy;
 
 };
 
