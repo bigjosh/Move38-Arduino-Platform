@@ -631,7 +631,11 @@ static void TX_IRFaces() {
                 // If ir_send_userdata() returns 0, then we could not send becuase there was an RX in progress on this face.
                 // Because we do not reset the sentTime in that case, we will automatically try again next pass.
 
-                face->sendTime = now + TX_PROBE_TIME_MS;
+				// We add the face index here to try to spread the sends out in time
+				// otherwise the degenerate case is that they can all happen repeatedly in the same
+				// pass thugh loop() every time when there are no neighbors.
+				 
+                face->sendTime = now + TX_PROBE_TIME_MS + f;	
             }
 
         } // if ( face->sendTime <= now )
@@ -867,28 +871,32 @@ Color makeColorHSB( uint8_t hue, uint8_t saturation, uint8_t brightness ) {
 
 // OMG, the Ardiuno rand() function is just a mod! We at least want a uniform distibution.
 
-// Here we implement the SimpleRNG pseudo-random number generator based on this code...
-// https://www.johndcook.com/SimpleRNG.cpp
+// We base our generator on a 32-bit Marsaglia XOR shifter
+// https://en.wikipedia.org/wiki/Xorshift
 
-// TODO: Make this calculation smaller with shorter ints, add a way to put entropy into the seeds
+/* The state word must be initialized to non-zero */
+
+static uint32_t rand_state=1;
+
+static uint32_t nextrand32()
+{
+	/* Algorithm "xor" from p. 4 of Marsaglia, "Xorshift RNGs" */
+	uint32_t x = rand_state;
+	x ^= x << 13;
+	x ^= x >> 17;
+	x ^= x << 5;
+	rand_state = x;
+	return x;
+}
+
 
 #define GETNEXTRANDUINT_MAX ( (word) -1 )
 
 static word GetNextRandUint(void) {
-
-    // These values are not magical, just the default values Marsaglia used.
-    // Any unit should work.
-
-    // We make them local static so that we only consume the storage if the random()
-    // functions are actually ever called.
-
-    static unsigned long u = 521288629UL;
-    static unsigned long v = 362436069UL;
-
-    v = 36969*(v & 65535) + (v >> 16);
-    u = 18000*(u & 65535) + (u >> 16);
-
-    return (v << 16) + u;
+	
+	// Grab bottom 16 bits
+	
+	return ( (uint16_t) nextrand32() );
 
 }
 
