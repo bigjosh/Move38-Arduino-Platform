@@ -321,6 +321,11 @@ void randomize();
 
 byte getSerialNumberByte( byte n );
 
+// Returns the currently blinkbios version number.
+// Useful to check is a newer feature is available on this blink.
+
+byte getBlinkbiosVersion();
+
 // Map one set to another
 
 word map(word x, word in_min, word in_max, word out_min, word out_max);

@@ -1036,6 +1036,12 @@ byte getSerialNumberByte( byte n ) {
 
 }
 
+// Returns the currently blinkbios version number. 
+// Useful to check is a newer feature is available on this blink.
+
+byte getBlinkbiosVersion() {
+    return BLINKBIOS_VERSION_VECTOR();    
+}
 
 // Returns 1 if we have slept and woken since last time we checked
 // Best to check as last test at the end of loop() so you can

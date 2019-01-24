@@ -186,6 +186,8 @@ SECTIONS
 	boot_vector10 	= 0x3828;
 	boot_vector11 	= 0x382c;
 	boot_vector12 	= 0x3830;
+	boot_vector13 	= 0x3834;
+	boot_vector14 	= 0x3838;
 
   
   /* The NOLOAD makes it not show in in the HEX file */
