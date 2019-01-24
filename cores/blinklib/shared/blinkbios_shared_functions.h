@@ -79,4 +79,11 @@ extern "C" void BLINKBIOS_SLEEP_NOW_VECTOR()  __attribute__((used));
 
 extern "C" void BLINKBIOS_WRITE_FLASH_PAGE_VECTOR(uint8_t page)  __attribute__((used));
 
+
+// Returns the version of the blinksbios present
+
+#define BLINKBIOS_VERSION_VECTOR() boot_vector14
+
+extern "C" uint8_t BLINKBIOS_VERSION_VECTOR()  __attribute__((used));
+
 #endif /* BLINKBIOS_SHARED_FUCNTIONS_H_ */

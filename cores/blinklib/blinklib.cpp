@@ -41,7 +41,6 @@
 #include "shared/blinkbios_shared_millis.h"
 #include "shared/blinkbios_shared_pixel.h"
 #include "shared/blinkbios_shared_irdata.h"
-#include "shared/blinkbios_shared_slack.h"
 
 #include "shared/blinkbios_shared_functions.h"     // Gets us ir_send_packet()
 

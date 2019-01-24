@@ -131,6 +131,18 @@ struct blinkbios_pixelblock_t {
     // when it gets set asynchronously by the bios WDT ISR. 
     
     volatile uint8_t capturedEntropy;
+    
+    // Setting this to 1 will skip the low battery check and let the blink run down until the chip 
+    // dies. This will happen about 2.4V at the standard 8Mhz speed, but you can switch the prescaller to 4Mhz
+    // and run all the way down to 1.8V, but knw that IR timing (inter alia) will be hosed. 
+    
+    // (We really only have this so that the low battery display can re-use the pixel code and not be 
+    // re-entrant since otherwise the pixel ISR code ends up calling the low battery check code)
+    
+    volatile uint8_t skip_low_voltage_check;
+
+    // For future use?    
+    uint8_t slack[8];
 
 };
 

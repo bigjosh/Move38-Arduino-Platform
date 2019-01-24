@@ -217,10 +217,6 @@
       <SubType>compile</SubType>
       <Link>blinkbios_shared_pixel.h</Link>
     </Compile>
-    <Compile Include="..\..\..\cores\blinklib\shared\blinkbios_shared_slack.h">
-      <SubType>compile</SubType>
-      <Link>blinkbios_shared_slack.h</Link>
-    </Compile>
     <Compile Include="..\..\..\cores\blinklib\sp.cpp">
       <SubType>compile</SubType>
       <Link>sp.cpp</Link>

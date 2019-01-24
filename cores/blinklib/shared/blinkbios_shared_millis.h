@@ -32,6 +32,9 @@ struct blinkbios_millis_block_t {
     USER_VOLATILE  uint8_t step_8us;               // Carry over of sub-millis since our clock does not go evenly into 1ms. This is the number of 8us steps past the value in millis. Never gets above 125.
 
     USER_VOLATILE  millis_t sleep_time;            // When millis>sleep_time, then we go to sleep
+    
+    // For future use?
+    uint8_t slack[4];    
 };
 
 extern blinkbios_millis_block_t blinkbios_millis_block;

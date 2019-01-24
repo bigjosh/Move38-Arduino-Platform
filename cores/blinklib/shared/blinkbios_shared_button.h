@@ -55,7 +55,10 @@ struct blinkbios_button_block_t {
                                                    // We could keep an independent longpressCountup, but that would be a 16 bit so heavy to increment and compare.
 
     uint16_t pressCountup;                         // Start counting up when the button goes down to detect long presses. Has to be 16 bit because long presses are >255 centiseconds.
-
+    
+    // For future use?
+    uint8_t slack[4];
+    
 
 };
 
