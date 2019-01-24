@@ -107,6 +107,8 @@ int main()
 // HINT: The first and last bits are simple odd parity. Odd because all 0's data would fail.
 //       One is of all the middle bits, the other is only of the even bit slots.
 
+// NOte that this table is symmetric about the center element with bits flipped. 
+
 // NOTE: If you want to change this, it must still match IR_MAX_VALUE
 
 static const uint8_t PROGMEM parityTable[] = {
@@ -142,7 +144,7 @@ static const uint8_t PROGMEM parityTable[] = {
     0b00111011,   // 29
     0b10111100,   // 30
     0b00111110,   // 31
-    0b11000001,   // 32
+/*  0b11000001,   // 32
     0b01000011,   // 33
     0b11000100,   // 34
     0b01000110,   // 35
@@ -173,7 +175,7 @@ static const uint8_t PROGMEM parityTable[] = {
     0b11111000,   // 60
     0b01111010,   // 61
     0b11111101,   // 62
-    0b01111111,   // 63
+    0b01111111,   // 63 */
 };
 
 
@@ -190,7 +192,14 @@ static const uint8_t PROGMEM parityTable[] = {
 #define TRIGGER_WARM_SLEEP_SPECIAL_VALUE   0b01010101
 
 static uint8_t parityEncode( uint8_t d ) {
-    return pgm_read_byte_near( parityTable+ d );
+    
+    if ( d < 32 ) {
+        return pgm_read_byte_near( parityTable+ d );
+    } else {    
+        
+        // Exploit the symmetry of the parity table to save 30 bytes flash at the time cost of a SUB + a XOR. 
+        return ~ pgm_read_byte_near( parityTable+ 63 -  d  );        
+    }
 }
 
 // The actual data is hidden in the middle
@@ -895,11 +904,9 @@ void randomize() {
     
     for( uint8_t bit=32; bit; bit-- ) {
                                
-        blinkbios_pixel_block.capturedEntropy=0;                                   // Clear this so we can check to see when it gets set in the background               
+        blinkbios_pixel_block.capturedEntropy=0;                                                          // Clear this so we can check to see when it gets set in the background               
         while (blinkbios_pixel_block.capturedEntropy==0 || blinkbios_pixel_block.capturedEntropy==1  );   // Wait for this to get set in the background when the WDT ISR fires
-                                                            // We also ignore 1 to stay balanced since 0 is a valid possible TCNT value that we will ignore
-                
-               
+                                                                                                          // We also ignore 1 to stay balanced since 0 is a valid possible TCNT value that we will ignore                               
         rand_state <<=1;
         rand_state |= blinkbios_pixel_block.capturedEntropy & 0x01;            // Grab just the bottom bit each time to try and maximum entropy
                        
@@ -908,6 +915,9 @@ void randomize() {
     wdt_disable();
         
 }
+
+// Note that rand executes the shift feedback register before returning the next result
+// so hopefully we will be spreading out the entropy we get from randomize() on the first invokaton. 
 
 static uint32_t nextrand32()
 {
@@ -932,7 +942,6 @@ word randomWord(void) {
 }
 
 // return a random number between 0 and limit inclusive.
-// TODO: Use entropy from the button or decaying IR LEDs
 // https://stackoverflow.com/a/2999130/3152071
 
 word random( uint16_t limit ) {
