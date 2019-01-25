@@ -82,20 +82,43 @@ inline pixelColor_t::pixelColor_t(uint8_t r_in , uint8_t g_in, uint8_t b_in , ui
 
 }
 
+/*
+
+template<uint8_t r , uint8_t g , uint8_t b > pixelColor_t preset_pixelcolor_t {
+{
+    pixelColor_t p = pixelColor_t( r , g , b );
+    
+    
+};
+
+*/
+
 // Maximum value you can assign to one of the primaries in a pixelColor_t
-#define PIXELCOLOR_PRIMARY_MAX  31
+#define PIXELCOLOR_PRIMARY_FULL 31
 #define PIXELCOLOR_PRIMARY_HALF 15
 
+// So this mess below is my way of emulating constexpr in C++ <11
+// These defines will expand and eval at compile time down to a single uint16_t load
+// if instead we tried using a `const pixelColor_r`, then it would blow up into
+// a constructor call at runtime. Yuck. 
+
+#define PIXEL_COLOR_FULL_GREEN pixelColor_t( 0 , PIXELCOLOR_PRIMARY_FULL , 0  )
+#define PIXEL_COLOR_HALF_GREEN pixelColor_t( 0 , PIXELCOLOR_PRIMARY_HALF , 0  )
+
+#define PIXEL_COLOR_FULL_RED pixelColor_t(  PIXELCOLOR_PRIMARY_FULL , 0  , 0 )
+#define PIXEL_COLOR_HALF_RED pixelColor_t(  PIXELCOLOR_PRIMARY_HALF , 0  , 0 )
+
+#define PIXEL_COLOR_FULL_BLUE pixelColor_t( 0 , 0 , PIXELCOLOR_PRIMARY_FULL  )
+
+#define PIXEL_COLOR_OFF pixelColor_t()
 
 inline pixelColor_t::pixelColor_t() {
 
     // Faster than setting the individual elements?
     // We don't need to do this because in bss this will get cleared to 0 anyway.
-    //as_uint16 = 0;
-
-}
-
-
+    // as_uint16 = 0;
+    
+}    
 
 // We need these struct gymnastics because C fixed array typedefs do not work
 // as you (I?) think they would...
