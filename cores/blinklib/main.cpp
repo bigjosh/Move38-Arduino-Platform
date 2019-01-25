@@ -7,7 +7,6 @@
 #include "shared/blinkbios_shared_millis.h"
 #include "shared/blinkbios_shared_pixel.h"
 #include "shared/blinkbios_shared_irdata.h"
-#include "shared/blinkbios_shared_slack.h"
 
 #include "blinklib.h"
 
@@ -21,7 +20,6 @@ blinkbios_pixelblock_t      __attribute__ ((section (".ipcram1") , used ))    bl
 blinkbios_millis_block_t    __attribute__ ((section (".ipcram2") , used ))    blinkbios_millis_block;
 blinkbios_button_block_t    __attribute__ ((section (".ipcram3") , used ))    blinkbios_button_block;
 blinkbios_irdata_block_t    __attribute__ ((section (".ipcram4") , used ))    blinkbios_irdata_block;
-blinkbios_slack_block_t     __attribute__ ((section (".ipcram5") , used ))    blinkbios_slack_block;
 
 // Here is our entry point. We are called by the BlinkBIOS after everything is set up and ready
 // Note that this is not a normal startup, we are staring right from flash address 0x000 with no
@@ -32,13 +30,8 @@ blinkbios_slack_block_t     __attribute__ ((section (".ipcram5") , used ))    bl
 
 #include <avr/io.h>
 
-#warning debug
-#define _SFR_MEM8X(mem_addr)  (*(volatile uint8_t *)(mem_addr))
-#define SP_INIT() do{  _SFR_MEM8X(0xC0)=0x01;} while (0)            // Set TX enabled, x2 speed. Assumes baudrate regs at default 0
-#define SP_TX_NOW(x) ( _SFR_MEM8X(0xc6 ) = x )                      // Write to UDR0 Serial port data register
-
 extern "C" void mainx(void)  __attribute__ ((used)) __attribute__ ((noreturn));
-#include <util/delay.h>
+
 extern "C" void mainx(void) {
 
     run();

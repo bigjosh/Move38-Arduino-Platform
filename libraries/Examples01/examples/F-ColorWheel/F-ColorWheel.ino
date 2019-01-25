@@ -22,10 +22,8 @@ void loop() {
     // (255 is 11111111 in binary, and 11111111 + 00000001 = 00000000)
     hue++;      
 
-    nextStep.set(10);     // Step to (slightly) different color 100 timer per second - whole cycle will take ~2.5 seconds. 
+    nextStep.set(10);     // Step to (slightly) different color 100 times per second - whole cycle will take 255 steps *10ms = ~2.5 seconds. 
 
   }
 
 }
-
-

@@ -47,7 +47,11 @@ struct ir_rx_state_t {
     // we can also test for '1' in top position to see if full byte received.
 
 
-    // This struct should be even power of 2 in length for more efficient array indexing.
+    // This struct should be even power of 2 in length for more efficient array indexing. 
+    
+    // For future use?
+    uint8_t slack[4];
+          
 
 };
 
@@ -56,6 +60,10 @@ struct blinkbios_irdata_block_t {
     ir_rx_state_t ir_rx_states[ IR_FACE_COUNT ];
 
     uint8_t download_in_progress_flag;          // Set if a download is in progress so subsequent SEED packets will be ignored
+    
+    // For future use?
+    uint8_t slack[4];
+    
 
 };
 

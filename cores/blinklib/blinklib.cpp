@@ -23,6 +23,8 @@
 
 #include <avr/sleep.h>      // sleep_cpu() so we can rest between interrupts.
 
+#include <avr/wdt.h>        // Used in randomize() to get some entropy from the skew between the WDT osicilator and the system clock. 
+
 #include <stddef.h>
 
 #include "ArduinoTypes.h"
@@ -39,7 +41,6 @@
 #include "shared/blinkbios_shared_millis.h"
 #include "shared/blinkbios_shared_pixel.h"
 #include "shared/blinkbios_shared_irdata.h"
-#include "shared/blinkbios_shared_slack.h"
 
 #include "shared/blinkbios_shared_functions.h"     // Gets us ir_send_packet()
 
@@ -105,6 +106,8 @@ int main()
 // HINT: The first and last bits are simple odd parity. Odd because all 0's data would fail.
 //       One is of all the middle bits, the other is only of the even bit slots.
 
+// NOte that this table is symmetric about the center element with bits flipped. 
+
 // NOTE: If you want to change this, it must still match IR_MAX_VALUE
 
 static const uint8_t PROGMEM parityTable[] = {
@@ -140,7 +143,7 @@ static const uint8_t PROGMEM parityTable[] = {
     0b00111011,   // 29
     0b10111100,   // 30
     0b00111110,   // 31
-    0b11000001,   // 32
+/*  0b11000001,   // 32
     0b01000011,   // 33
     0b11000100,   // 34
     0b01000110,   // 35
@@ -171,7 +174,7 @@ static const uint8_t PROGMEM parityTable[] = {
     0b11111000,   // 60
     0b01111010,   // 61
     0b11111101,   // 62
-    0b01111111,   // 63
+    0b01111111,   // 63 */
 };
 
 
@@ -188,7 +191,14 @@ static const uint8_t PROGMEM parityTable[] = {
 #define TRIGGER_WARM_SLEEP_SPECIAL_VALUE   0b01010101
 
 static uint8_t parityEncode( uint8_t d ) {
-    return pgm_read_byte_near( parityTable+ d );
+    
+    if ( d < 32 ) {
+        return pgm_read_byte_near( parityTable+ d );
+    } else {    
+        
+        // Exploit the symmetry of the parity table to save 30 bytes flash at the time cost of a SUB + a XOR. 
+        return ~ pgm_read_byte_near( parityTable+ 63 -  d  );        
+    }
 }
 
 // The actual data is hidden in the middle
@@ -631,7 +641,11 @@ static void TX_IRFaces() {
                 // If ir_send_userdata() returns 0, then we could not send becuase there was an RX in progress on this face.
                 // Because we do not reset the sentTime in that case, we will automatically try again next pass.
 
-                face->sendTime = now + TX_PROBE_TIME_MS;
+				// We add the face index here to try to spread the sends out in time
+				// otherwise the degenerate case is that they can all happen repeatedly in the same
+				// pass thugh loop() every time when there are no neighbors.
+				 
+                face->sendTime = now + TX_PROBE_TIME_MS + f;	
             }
 
         } // if ( face->sendTime <= now )
@@ -867,42 +881,75 @@ Color makeColorHSB( uint8_t hue, uint8_t saturation, uint8_t brightness ) {
 
 // OMG, the Ardiuno rand() function is just a mod! We at least want a uniform distibution.
 
-// Here we implement the SimpleRNG pseudo-random number generator based on this code...
-// https://www.johndcook.com/SimpleRNG.cpp
+// We base our generator on a 32-bit Marsaglia XOR shifter
+// https://en.wikipedia.org/wiki/Xorshift
 
-// TODO: Make this calculation smaller with shorter ints, add a way to put entropy into the seeds
+/* The state word must be initialized to non-zero */
+
+// Here we use Marsaglia's seed (page 4)
+// https://www.jstatsoft.org/article/view/v008i14
+static uint32_t rand_state=2463534242UL;
+
+
+// Generate a new seed using entropy from the watchdog timer
+// This takes about 16ms * 32 bits = 0.5s
+
+void randomize() {
+    
+    WDTCSR =  _BV(WDIE);                // Enable WDT interrupt, leave timeout at 16ms (this is the shortest timeout)
+              
+    // The WDT timer is now generating an interrupt about every 16ms
+    // https://electronics.stackexchange.com/a/322817    
+    
+    for( uint8_t bit=32; bit; bit-- ) {
+                               
+        blinkbios_pixel_block.capturedEntropy=0;                                                          // Clear this so we can check to see when it gets set in the background               
+        while (blinkbios_pixel_block.capturedEntropy==0 || blinkbios_pixel_block.capturedEntropy==1  );   // Wait for this to get set in the background when the WDT ISR fires
+                                                                                                          // We also ignore 1 to stay balanced since 0 is a valid possible TCNT value that we will ignore                               
+        rand_state <<=1;
+        rand_state |= blinkbios_pixel_block.capturedEntropy & 0x01;            // Grab just the bottom bit each time to try and maximum entropy
+                       
+    }   
+    
+    wdt_disable();
+        
+}
+
+// Note that rand executes the shift feedback register before returning the next result
+// so hopefully we will be spreading out the entropy we get from randomize() on the first invokaton. 
+
+static uint32_t nextrand32()
+{
+	/* Algorithm "xor" from p. 4 of Marsaglia, "Xorshift RNGs" */
+	uint32_t x = rand_state;
+	x ^= x << 13;
+	x ^= x >> 17;
+	x ^= x << 5;
+	rand_state = x;
+	return x;
+}
+
 
 #define GETNEXTRANDUINT_MAX ( (word) -1 )
 
-static word GetNextRandUint(void) {
-
-    // These values are not magical, just the default values Marsaglia used.
-    // Any unit should work.
-
-    // We make them local static so that we only consume the storage if the random()
-    // functions are actually ever called.
-
-    static unsigned long u = 521288629UL;
-    static unsigned long v = 362436069UL;
-
-    v = 36969*(v & 65535) + (v >> 16);
-    u = 18000*(u & 65535) + (u >> 16);
-
-    return (v << 16) + u;
+word randomWord(void) {
+	
+	// Grab bottom 16 bits
+	
+	return ( (uint16_t) nextrand32() );
 
 }
 
 // return a random number between 0 and limit inclusive.
-// TODO: Use entropy from the button or decaying IR LEDs
 // https://stackoverflow.com/a/2999130/3152071
 
-uint16_t random( uint16_t limit ) {
+word random( uint16_t limit ) {
 
     word divisor = GETNEXTRANDUINT_MAX/(limit+1);
     word retval;
 
     do {
-        retval = GetNextRandUint() / divisor;
+        retval = randomWord() / divisor;
     } while (retval > limit);
 
     return retval;
@@ -989,6 +1036,12 @@ byte getSerialNumberByte( byte n ) {
 
 }
 
+// Returns the currently blinkbios version number. 
+// Useful to check is a newer feature is available on this blink.
+
+byte getBlinkbiosVersion() {
+    return BLINKBIOS_VERSION_VECTOR();    
+}
 
 // Returns 1 if we have slept and woken since last time we checked
 // Best to check as last test at the end of loop() so you can
@@ -1200,9 +1253,3 @@ void __attribute__((noreturn)) run(void)  {
 
 
 }
-
-void seedMe() {
-
-   // JUMP_TO_BOOTLOADER_SEED();
-
-}    
