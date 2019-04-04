@@ -54,11 +54,13 @@ Open Arduino IDE, and a new category in the boards menu called "Move38-manual" w
 
 * The "**~/Documents/Arduino/hardware/Move38-manual/avr**" folder is a Git repo and is also set up for easy editing in Atmel Studio with a solution inside the `\AS7` sub-folder. 
 
+* If you want to leave the git repo in a directory that is not inside the Arduino tree (I do), then you can add a directory symlink from the Arduino tree to the repo tree. This repo needs to be at `arduino\hardware\move38\avr` where `arduino` is your Arduino home directory as set in `File->Preferences->Sketchbook Location` in the IDE.  You have to manually create `hardware` and then `move38` and then put the `avr` symlink in then. On my windows machine the command for that was `D:\Documents\Arduino\hardware\move38\avr>mklink /D avr "D:\Github\Move38-Arduino-Platform"` 
+
 ## Helllo Blink!
 
-* Open the **Tools > Board** menu item, and select `Blinks` from the `Move38` submenu.
+* Open the **Tools > Board** menu item, and select `Blink` from the `Move38` submenu.
 * Select what kind of programmer you're using under the **Programmers** menu.
-* Select "File->Examples->Examples for Blink Tile" and choose "HelloBlink".
+* Select "File->Examples->Examples for Blink->Getting Started" and choose "F-ColorWheel".
 * Hit the Play button.
 
 The IDE should compile the code and program the Blinks tile... and you should see pretty blinking lights!

@@ -17,22 +17,25 @@ blink.pid.3=0x0243
 
 blink.upload.tool=avrdude
 blink.upload.protocol=arduino
-blink.upload.maximum_size=32256
+
+# This is the maximum size of a program image. It comes from 
+# `blinkbios.h` and is the result of `FLASH_PAGES_PER_IMAGE` * `FLASH_BYTES_PER_PAGE`
+blink.upload.maximum_size=5632
 blink.upload.maximum_data_size=2048
 blink.upload.speed=115200
 
-blink.bootloader.tool=avrdude
-blink.bootloader.low_fuses=0xFF
-blink.bootloader.high_fuses=0xDE
-blink.bootloader.extended_fuses=0xFD
-blink.bootloader.unlock_bits=0x3F
-blink.bootloader.lock_bits=0x0F
-blink.bootloader.file=bin/blinkboot.hex
+#blink.bootloader.tool=avrdude
+#blink.bootloader.low_fuses=0xFF
+#blink.bootloader.high_fuses=0xDE
+#blink.bootloader.extended_fuses=0xFD
+#blink.bootloader.unlock_bits=0x3F
+#blink.bootloader.lock_bits=0x0F
+#blink.bootloader.file=cores/blinklib/shared/BlinkBIOS.hex
 
 blink.build.mcu=atmega168pb
 blink.build.f_cpu=8000000L
 blink.build.board=AVR_BLINK
-blink.build.core=blinkcore
+blink.build.core=blinklib
 blink.build.variant=standard
 
 ##############################################################

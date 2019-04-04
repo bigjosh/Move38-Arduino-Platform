@@ -4,10 +4,10 @@
 ## Display
 ```
 void setColor(color);
-// sets all 6 pixels on all faces to the same color
+// sets all 6 pixels on all faces to the same Color
     
-void setFaceColor(face, color);
-// sets a single pixel on a face to this color
+void setColorOnFace(color, face);
+// sets a single pixel on a face (0-5) to this Color
 ```
 
 ## Colors
@@ -119,21 +119,27 @@ unsigned long millis();
 // monotonically incrementing timer
 // remains constant in a single pass of loop()
 // i.e. millis() will return the same value at the top 
-// of loop() and the bottom does not
-// increment while asleep
-// resets after ~50 days
+// of loop() and the bottom.
+// This does not increment while asleep.
+// The value will reset (roll over) after ~50 days.
     
-    
-void Timer.set(duration);
-// a timer that will expire after duration milliseconds
+void set(duration);
+// Duration should be set in milliseconds
 // used like this:
 // Timer myTimer;
 // myTimer.set(millisTilExpired);
     
 bool Timer.isExpired();
-// a timer remains expired once it become 
-// expired until set again or if
-// a timer is set to NEVER, it will never expire
+// Check whether a timer has expired like this:
+// Timer.myTimer;
+// if ( myTimer.isExpired() ) {
+//   // the set duration has passed
+// }
+
+void never();
+// set the timer to never expire, like this:
+// Timer.myTimer;
+// myTimer.never();
 ```
 
 ## Types
@@ -170,16 +176,13 @@ COUNT_OF(array);
 // Note: brightness actually only has 31 different values,
 // however, we scale them to 0-255 to match a familia 8-bit color scheme 
 
-#define NEVER ( (uint32_t)-1 )
-// If you would like the timer to effectively never expire, set it to this constant
-
 #define SERIAL_NUMBER_LEN 9
 // Length of the globally unique serial number (9 bytes long)
 ```
 
 ## Uniqueness
 ```
-uint16_t rand( uint16_t limit );
+uint16_t random( uint16_t limit );
 // Return a random number between 0 and limit inclusive.
 
 byte getSerialNumberByte( byte n );
