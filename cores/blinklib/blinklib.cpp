@@ -112,7 +112,7 @@ int main()
 // HINT: The first and last bits are simple odd parity. Odd because all 0's data would fail.
 //       One is of all the middle bits, the other is only of the even bit slots.
 
-// NOte that this table is symmetric about the center element with bits flipped. 
+// Note that this table is symmetric about the center element with bits flipped. 
 
 // NOTE: If you want to change this, it must still match IR_MAX_VALUE
 
@@ -149,40 +149,7 @@ static const uint8_t PROGMEM parityTable[] = {
     0b00111011,   // 29
     0b10111100,   // 30
     0b00111110,   // 31
-/*  0b11000001,   // 32
-    0b01000011,   // 33
-    0b11000100,   // 34
-    0b01000110,   // 35
-    0b01001001,   // 36
-    0b11001011,   // 37
-    0b01001100,   // 38
-    0b11001110,   // 39
-    0b11010000,   // 40
-    0b01010010,   // 41
-    0b11010101,   // 42
-    0b01010111,   // 43
-    0b01011000,   // 44
-    0b11011010,   // 45
-    0b01011101,   // 46
-    0b11011111,   // 47
-    0b01100001,   // 48
-    0b11100011,   // 49
-    0b01100100,   // 50
-    0b11100110,   // 51
-    0b11101001,   // 52
-    0b01101011,   // 53
-    0b11101100,   // 54
-    0b01101110,   // 55
-    0b01110000,   // 56
-    0b11110010,   // 57
-    0b01110101,   // 58
-    0b11110111,   // 59
-    0b11111000,   // 60
-    0b01111010,   // 61
-    0b11111101,   // 62
-    0b01111111,   // 63 */
 };
-
 
 // This is a special byte that signals that this is a long data packet
 // It must appear in the first byte of the data, and the final byte is an inverted checksum of all bytes including header byte
@@ -195,6 +162,9 @@ static const uint8_t PROGMEM parityTable[] = {
 // and then we go to warm sleep.
 
 #define TRIGGER_WARM_SLEEP_SPECIAL_VALUE   0b01010101
+
+#define VIRAL_BUTTON_PRESS_SEEN_SPECIAL_VALUE 0b11011011
+
 
 static uint8_t parityEncode( uint8_t d ) {
     
