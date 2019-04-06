@@ -19,7 +19,9 @@
 
 // TODO: Maybe more RAM but less flash to have these as individual bytes?
 
+#define BUTTON_BITFLAG_PRESSED          0b00000001
 #define BUTTON_BITFLAG_LONGPRESSED      0b00000010
+#define BUTTON_BITFLAG_RELEASED         0b00000100
 #define BUTTON_BITFLAG_SINGLECLICKED    0b00001000
 #define BUTTON_BITFLAG_DOUBLECLICKED    0b00010000
 #define BUTTON_BITFLAG_MULITCLICKED     0b00100000
@@ -29,13 +31,13 @@
 
 struct blinkbios_button_block_t {
 
-    USER_VOLATILE uint8_t down;                 // 1 if button is currently down (debounced)
+    USER_VOLATILE  uint8_t down;                // 1 if button is currently down (debounced)
 
     BOTH_VOLATILE uint8_t bitflags;
 
     USER_VOLATILE uint8_t clickcount;           // Number of clicks on most recent multiclick
 
-    BOTH_VOLATILE uint8_t wokeFlag;             // Set to 1 upon waking from sleep
+    BOTH_VOLATILE uint8_t wokeFlag;             // Set to 0 upon waking from sleep
 
     // The variables below are used to track the intermediate button state
     // and probably not interesting to user programs

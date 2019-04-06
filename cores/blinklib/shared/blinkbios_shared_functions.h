@@ -50,14 +50,10 @@ extern "C" uint8_t BLINKBIOS_IRDATA_SEND_PACKET_VECTOR(  uint8_t face, const uin
 extern "C" void BLINKBIOS_DISPLAY_PIXEL_BUFFER_VECTOR()  __attribute__((used));
 
 
-// Enter bootloader
-// If we_are_root is 1, then we copy the built-in game to the active area and then start sending it to our neighbors
-// If we_are_root is 0, then we check all the IR faces to find the incoming seed packet and start downloading from there and recursively sending also
- // Assumes button is up on entry. A button down will abort the download.
 
-#define BLINKBIOS_BOOTLOADER_VECTOR boot_vector9
+#define BLINKBIOS_BOOTLOADER_SEED_VECTOR boot_vector9
 
-extern "C" void BLINKBIOS_BOOTLOADER_VECTOR(uint8_t we_are_root) __attribute__((used));
+extern "C" void BLINKBIOS_BOOTLOADER_SEED_VECTOR()  __attribute__((used));
 
 
 // Push back the inactivity sleep timer

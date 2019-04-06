@@ -52,15 +52,9 @@
 #define RX_EXPIRE_TIME_MS         200      // If we do not see a message in this long, then show that face as expired
 
 
-// We will warm sleep if we do not see a button press or remote button press
-// in this long
-
 #define WARM_SLEEP_TIMEOUT_MS   (5 * 60 * 1000UL )  // 5 mins
-
-//#warning testing sleep
-// #define WARM_SLEEP_TIMEOUT_MS   ( 10 * 1000UL )  // 10 sec for testing
-
-
+                                                    // We will warm sleep if we do not see a button press or remote button press
+                                                    // in this long
 
 // This is a parity check that I came up with that I think is robust to close together bitflips and
 // also efficient to calculate.
@@ -391,32 +385,18 @@ void reset_warm_sleep_timer() {
 
 }
 
-// Turn off the pixels without messing up the pixel buffer
-
-void clearRawPixels() {
-
-    FOREACH_FACE(f) {
-        blinkbios_pixel_block.rawpixels[f] = rawpixel_t(255,255,255);     // TODO: Check and make sure this doesn't constructor each time
-    }    
-    
-}
-
 // Remembers if we have woken from either a BIOS sleep or
 // a blinklib forced sleep.
 
 uint8_t hasWarmWokenFlag =0;
 
-// A warm sleep cycle will send a viral sleep message to neighboring blinks and then
-// go into a warm sleep for a set period of time. In warm sleep it can be woken by a
-// "wake now" packet from a neighboor. After the warm sleep period, it will then drop to 
-// cold sleep which is handled in the bios. The only way to wake from cold sleep is a 
-// button press. 
-
 static void warm_sleep_cycle() {
 
     // Clear the screen. Off pixels use less power and this makes us look off.
 
-    clearRawPixels();
+    FOREACH_FACE(f) {
+        blinkbios_pixel_block.rawpixels[f] = rawpixel_t(255,255,255);     // TODO: Check and make sure this doesn't constructor each time
+    }
 
     // Ok, now we are virally sending FORCE_SLEEP out on all faces to spread the word
     // and the pixels are off so the user is happy and we are saving power.
@@ -425,16 +405,16 @@ static void warm_sleep_cycle() {
     // We are indiscriminate, just splat it 100 times everywhere.
     // This is a brute force approach to make sure we get though even with collisions
     // and long packets in flight.
-    
+
+
     // We need a pointer for the value to send it...
     uint8_t force_sleep_packet = TRIGGER_WARM_SLEEP_SPECIAL_VALUE;
 
-    // Sned the sleep packet on each face 5 times to increase changes of it getting though
     for( uint8_t n=0; n<5; n++ ) {
 
         FOREACH_FACE(f) {
 
-            //while ( blinkbios_is_rx_in_progress( f ) );     // Wait to clear to send (no guarantee, but better than just blind sending)
+            //while ( blinkbios_is_rx_in_progress( f ) );     // Wait to clear to send (no guarantee, but better than just blink sending)
 
             blinkbios_irdata_send_packet( f , &force_sleep_packet , sizeof( force_sleep_packet ) );
 
@@ -442,7 +422,7 @@ static void warm_sleep_cycle() {
 
     }
 
-    BLINKBIOS_POSTPONE_SLEEP_VECTOR();      // Postpone cold sleep so we can warm sleep for a while
+    BLINKBIOS_POSTPONE_SLEEP_VECTOR();      // Postpone clod sleep so we can warm sleep for a while
                                             // The cold sleep will eventually kick in if we
                                             // do not wake from warm sleep in time.
 
@@ -454,16 +434,13 @@ static void warm_sleep_cycle() {
     cli();
     millis_t save_time = blinkbios_millis_block.millis;
     sei();
-    
-
-    clear_packet_buffers();     // Clear out any left over packets that were there when we started this sleep cycle and might trigger us to wake inappropriately
-
-    uint8_t saw_packet_flag =0;
-    
 
     // OK we now appear asleep
     // We are not sending IR so some power savings
     // For the next 2 hours will will wait for a wake up signal
+    // TODO: Make this even more power efficient by sleeping between checks for incoming IR.
+
+    blinkbios_button_block.bitflags=0;
 
     // Here we explicitly set the register rather than using functions to save a few bytes.
     // We not only save the 2 bytes here, but also because we do not need an explict sleep_mode_enable() elsewhere.
@@ -484,32 +461,30 @@ static void warm_sleep_cycle() {
         3cae:	88 95       	sleep
     */
 
+    clear_packet_buffers();     // Clear out any left over packets that were there when we started this sleep cyclel and might trigger us to wake unapropriately
+
+    uint8_t saw_packet_flag =0;
+
     // Wait in idle mode until we either see a non-force-sleep packet or a button press or woke.
     // Why woke? Because eventually the BIOS will make us powerdown sleep inside this loop
     // When that happens, it will take a button press to wake us
-        
-    blinkbios_button_block.wokeFlag = 0; 
 
-    while ( !saw_packet_flag && !(blinkbios_button_block.down ) && !blinkbios_button_block.wokeFlag ) {
+    blinkbios_button_block.wokeFlag = 1;    // // Set to 0 upon waking from sleep
 
-        // TODO: This sleep mode currently uses about 1.6mA. We can get that way down by...
-        //       1. Adding a suppress_display_flag to pixel_block to skip all of the display code when in this mode
+    while (!saw_packet_flag && !(blinkbios_button_block.bitflags & BUTTON_BITFLAG_PRESSED) && blinkbios_button_block.wokeFlag) {
+
+        // TODO: This sleep mode currently uses about 2mA. We can get that way down by...
+        //       1. Adding a supporess_display_flag to pixel_block to skip all of the display code when in this mode
         //       2. Adding a new_pack_recieved_flag to ir_block so we only scan when there is a new packet
         // UPDATE: Tried all that and it only saved like 0.1-0.2mA and added dozens of bytes of code so not worth it.
 
         sleep_cpu();
-        
-        // Check to see if any valid packets have been recieved. 
 
         ir_rx_state_t *ir_rx_state = blinkbios_irdata_block.ir_rx_states;
 
         FOREACH_FACE( f ) {
 
             if (ir_rx_state->packetBufferReady) {
-                
-                // Discard a warm sleep trigger packet since we could get one of those right after we go to sleep from a neighbor
-                // who has not go to sleep yet themselves. 
-              
 
                 if (ir_rx_state->packetBuffer[1] != TRIGGER_WARM_SLEEP_SPECIAL_VALUE ) {
 
@@ -537,6 +512,10 @@ static void warm_sleep_cycle() {
     // Forced sleep mode
     // Really need button down detection in bios so we only wake on lift...
     // BLINKBIOS_SLEEP_NOW_VECTOR();
+
+    // Clear out old packets (including any old FORCE_SLEEP packets so we don't go right back to bed)
+
+    clear_packet_buffers();
 
 }
 
@@ -795,25 +774,12 @@ static bool grabandclearbuttonflag( uint8_t flagbit ) {
     return r;
 }
 
-uint8_t buttonPressedFlag;
-
 bool buttonPressed(void) {
-    if (buttonPressedFlag) {
-        buttonPressedFlag=0;
-        return 1;
-    }
-    return 0;
+    return grabandclearbuttonflag( BUTTON_BITFLAG_PRESSED );
 }
 
-uint8_t buttonReleasedFlag;
-
 bool buttonReleased(void) {
-    
-    if (buttonReleasedFlag) {
-        buttonReleasedFlag=0;
-        return 1;
-    }
-    return 0;
+    return grabandclearbuttonflag( BUTTON_BITFLAG_RELEASED );
 }
 
 bool buttonSingleClicked() {
@@ -1077,20 +1043,25 @@ byte getBlinkbiosVersion() {
     return BLINKBIOS_VERSION_VECTOR();    
 }
 
-uint8_t hasWokenFlag=0; 
-
 // Returns 1 if we have slept and woken since last time we checked
 // Best to check as last test at the end of loop() so you can
 // avoid intermediate display upon waking.
 
 uint8_t hasWoken(void) {
 
-    if (hasWokenFlag) {
-        hasWokenFlag=0;
-        return 1;
+    uint8_t ret = 0;
+
+    if (hasWarmWokenFlag) {
+        ret =1;
+        hasWarmWokenFlag = 0;
     }
-    
-    return 0;
+
+    if (blinkbios_button_block.wokeFlag==0) {       // This flag is set to 0 when waking!
+        ret=1;
+        blinkbios_button_block.wokeFlag=1;
+    }
+
+    return ret;
 
 }
 
@@ -1141,55 +1112,37 @@ void setFaceColor(  byte face, Color newColor ) {
 
 }
 
-// Remember previous so we can detect changes
-uint8_t prevButtonSnapshotDown;
-
 // This is the main event loop that calls into the arduino program
 // (Compiler is smart enough to jmp here from main rather than call!
 //     It even omits the trailing ret!
 //     Thanks for the extra 4 bytes of flash gcc!)
 
 void __attribute__((noreturn)) run(void)  {
-    
+
+    // TODO: Is this right? Should hasWoke() return true or false on the first check after start up?
+
+    blinkbios_button_block.wokeFlag = 1;        // Clear any old wakes (wokeFlag is cleared to 0 on wake)
+
+    blinkbios_button_block.bitflags = 0x00;     // Clear any old button actions and start fresh
+
     reset_warm_sleep_timer();
 
     setup();
 
     while (1) {
 
-        // Capture coherent state snapshot
+        // Capture time snapshot
+        // It is 4 bytes long so we cli() so it can not get updated in the middle of us grabbing it
 
         cli();
         now = blinkbios_millis_block.millis;
-        buttonSnapshotDown       = blinkbios_button_block.down;
-        buttonSnapshotBitflags  |= blinkbios_button_block.bitflags;     // Or any new flags into the ones we got
-        blinkbios_button_block.bitflags=0;                              // Clear out the flags now that we have them
-        buttonSnapshotClickcount = blinkbios_button_block.clickcount;
         sei();
-        
-        if (buttonSnapshotDown != prevButtonSnapshotDown  ) {
-                        
-            reset_warm_sleep_timer();
-            
-            prevButtonSnapshotDown = buttonSnapshotDown;
-            
-            if (buttonSnapshotDown) {   // IS this a new down?
-                
-                buttonPressedFlag=1;
-            
-            } else {                    // ...or up?
-                
-                buttonReleasedFlag=1;
-                                
-            }            
-        
-        }        
 
         // Here we check to enter seed mode. The button must be held down for 6 seconds and we must not have any neighbors
         // Note that we directly read the shared block rather than our snapshot. This lets the 6 second flag latch and
         // so to the user program if we do not enter seed mode because we have neighbors. See?
 
-        if (( buttonSnapshotBitflags & BUTTON_BITFLAG_6SECPRESSED) && isAlone() ) {
+        if (( blinkbios_button_block.bitflags & BUTTON_BITFLAG_6SECPRESSED) && isAlone() ) {
 
             // Button has been down for 6 seconds and we are alone...
             // Signal that we are about to go into seed mode with full blue...
@@ -1219,6 +1172,7 @@ void __attribute__((noreturn)) run(void)  {
 
                 // Clear out the press that put us to sleep so we do not see it again
                 // Also clear out everything else so we start with a clean slate on waking
+                blinkbios_button_block.bitflags = 0;
 
             } else {
 
@@ -1229,57 +1183,49 @@ void __attribute__((noreturn)) run(void)  {
                 setColor( OFF );
                 BLINKBIOS_DISPLAY_PIXEL_BUFFER_VECTOR();
 
-                // Launch the bootloader with us as root which will (1) copy the built-in game to active and, (2) start seeding it to our neighbors. 
-                BLINKBIOS_BOOTLOADER_VECTOR(1);
+                BLINKBIOS_BOOTLOADER_SEED_VECTOR();
 
                 __builtin_unreachable();
 
             }
-        } //    if (( buttonSnapshotBitflags & BUTTON_BITFLAG_6SECPRESSED) && isAlone() ) 
+        }
 
-
-        // Update the IR RX state
-        // Receive any pending packets
-        // Note that this could make a sleep if we get a sleep packet        
-        RX_IRFaces();
-        
-        if ( ( blinkbios_button_block.bitflags & BUTTON_BITFLAG_7SECPRESSED) || warm_sleep_time.isExpired() ) {
+        if ( ( blinkbios_button_block.bitflags & BUTTON_BITFLAG_7SECPRESSED)  ) {
 
             warm_sleep_cycle();
 
             // Clear out the press that put us to sleep so we do not see it again
             // Also clear out everything else so we start with a clean slate on waking
-            
-            
-        }
-        
-        
-        // Have we woken from sleep since last pass?
-        
-        if ( blinkbios_button_block.wokeFlag || hasWarmWokenFlag ) {
-            
-            // If so, then blank slate
-            
-            // Note that we don't mess with the down flag since this matches the actual button state
-            // we also don't mess with pressed or released since these are calculated off the down flag
-            // to show a consistent state to the user code.
-            
-            // We do clear these button states since there has been a dicontinuity in time 
-            
-            buttonSnapshotBitflags=0;
-            buttonSnapshotClickcount=0;
-            
-            clear_packet_buffers();
-            
-            blinkbios_button_block.wokeFlag=0;
-            hasWarmWokenFlag=0;
-            
-            // Signal to the user code
-            hasWokenFlag = 1;
-            
+            blinkbios_button_block.bitflags = 0;
+
         }
 
-        
+        if ( blinkbios_button_block.bitflags & BUTTON_BITFLAG_PRESSED  ) {  // Any button press resets the warm sleep timeout
+
+            reset_warm_sleep_timer();
+
+        }
+
+        if (warm_sleep_time.isExpired()) {
+
+            warm_sleep_cycle();
+
+        }
+
+
+        cli();
+        buttonSnapshotDown       = blinkbios_button_block.down;
+        buttonSnapshotBitflags  |= blinkbios_button_block.bitflags;     // Or any new flags into the ones we got
+        blinkbios_button_block.bitflags=0;                              // Clear out the flags now that we have them
+        buttonSnapshotClickcount = blinkbios_button_block.clickcount;
+        sei();
+
+
+
+        // Update the IR RX state
+        // Receive any pending packets
+        RX_IRFaces();
+
         loop();
 
         // Update the pixels to match our buffer
@@ -1300,7 +1246,7 @@ void __attribute__((noreturn)) run(void)  {
          // Note that we do this after loop had a chance to update them.
          TX_IRFaces();
 
-         rx_buffer_fresh_bitflag = 0;      // We missed our chance to send one the messages received on this pass.
+         rx_buffer_fresh_bitflag = 0;      // We missed our chance to send on the messages received on this pass.
                                            // RX_IRfaces() will set these again for messages received on the next pass.
 
     }
