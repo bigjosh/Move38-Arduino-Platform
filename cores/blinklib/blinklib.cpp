@@ -809,7 +809,7 @@ bool buttonLongPressed(void) {
 // you will only ever see this if blink has neighbors when the button hits the 6 second mark.
 // Remember that a long press fires while the button is still down
 bool buttonLongLongPressed(void) {
-    return grabandclearbuttonflag( BUTTON_BITFLAG_3SECPRESSED );
+    return grabandclearbuttonflag( BUTTON_BITFLAG_4SECPRESSED );
 }
 
 
@@ -1142,7 +1142,7 @@ void __attribute__((noreturn)) run(void)  {
         // Note that we directly read the shared block rather than our snapshot. This lets the 6 second flag latch and
         // so to the user program if we do not enter seed mode because we have neighbors. See?
 
-        if (( blinkbios_button_block.bitflags & BUTTON_BITFLAG_3SECPRESSED) && isAlone() ) {
+        if (( blinkbios_button_block.bitflags & BUTTON_BITFLAG_4SECPRESSED) && isAlone() ) {
 
             // Button has been down for 6 seconds and we are alone...
             // Signal that we are about to go into seed mode with full blue...
