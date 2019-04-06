@@ -809,7 +809,7 @@ bool buttonLongPressed(void) {
 // you will only ever see this if blink has neighbors when the button hits the 6 second mark.
 // Remember that a long press fires while the button is still down
 bool buttonLongLongPressed(void) {
-    return grabandclearbuttonflag( BUTTON_BITFLAG_6SECPRESSED );
+    return grabandclearbuttonflag( BUTTON_BITFLAG_3SECPRESSED );
 }
 
 
@@ -1142,7 +1142,7 @@ void __attribute__((noreturn)) run(void)  {
         // Note that we directly read the shared block rather than our snapshot. This lets the 6 second flag latch and
         // so to the user program if we do not enter seed mode because we have neighbors. See?
 
-        if (( blinkbios_button_block.bitflags & BUTTON_BITFLAG_6SECPRESSED) && isAlone() ) {
+        if (( blinkbios_button_block.bitflags & BUTTON_BITFLAG_3SECPRESSED) && isAlone() ) {
 
             // Button has been down for 6 seconds and we are alone...
             // Signal that we are about to go into seed mode with full blue...
@@ -1152,7 +1152,7 @@ void __attribute__((noreturn)) run(void)  {
 
             uint8_t face = 0;
 
-            while ( blinkbios_button_block.down && ! ( blinkbios_button_block.bitflags & BUTTON_BITFLAG_7SECPRESSED)  ) {
+            while ( blinkbios_button_block.down && ! ( blinkbios_button_block.bitflags & BUTTON_BITFLAG_6SECPRESSED)  ) {
 
                 // Show a very fast blue spin that it would be hard for a user program to make
                 // during the 1 second they have to let for to enter seed mode
@@ -1164,7 +1164,7 @@ void __attribute__((noreturn)) run(void)  {
 
             }
 
-            if ( blinkbios_button_block.bitflags & BUTTON_BITFLAG_7SECPRESSED ) {
+            if ( blinkbios_button_block.bitflags & BUTTON_BITFLAG_6SECPRESSED ) {
 
                 // Held down past the 7 second mark, so this is a force sleep request
 
@@ -1190,7 +1190,7 @@ void __attribute__((noreturn)) run(void)  {
             }
         }
 
-        if ( ( blinkbios_button_block.bitflags & BUTTON_BITFLAG_7SECPRESSED)  ) {
+        if ( ( blinkbios_button_block.bitflags & BUTTON_BITFLAG_6SECPRESSED)  ) {
 
             warm_sleep_cycle();
 
