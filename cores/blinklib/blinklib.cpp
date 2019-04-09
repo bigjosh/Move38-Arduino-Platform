@@ -203,6 +203,16 @@ static face_t faces[FACE_COUNT];
 // Millis snapshot for this pass though loop
 millis_t now;
 
+
+// Capture time snapshot
+// It is 4 bytes long so we cli() so it can not get updated in the middle of us grabbing it
+
+void updateNow() {
+    cli();
+    now = blinkbios_millis_block.millis;
+    sei();
+}
+
 unsigned long millis() {
     return now;
 }
@@ -350,6 +360,17 @@ static void clear_packet_buffers() {
     }
 }
 
+// Set the color and display it immedeately
+// for internal use where we do not want the loop buffering
+
+static void setColorNow( Color newColor ) {
+    
+    setColor( newColor );
+    BLINKBIOS_DISPLAY_PIXEL_BUFFER_VECTOR();
+    
+    
+}
+
 // When will we warm sleep due to inactivity
 // reset by a button press or seeing a button press bit on
 // an incoming packet
@@ -367,13 +388,51 @@ void reset_warm_sleep_timer() {
 
 uint8_t hasWarmWokenFlag =0;
 
-static void warm_sleep_cycle() {
+// We need to save the pixel buffer when we warm sleep so we display our 
+// sleep and wake animations and then restore the original game pixels before restarting the game
 
-    // Clear the screen. Off pixels use less power and this makes us look off.
+pixelColor_t savedPixelBuffer[PIXEL_COUNT];
 
+void savePixels() {
+   // Save game pixels
+   
+   FOREACH_FACE(f) {
+       
+       savedPixelBuffer[f] = blinkbios_pixel_block.pixelBuffer[f];
+       
+   }    
+}
+
+void restorePixels() {
+    // Save game pixels
+    
     FOREACH_FACE(f) {
-        blinkbios_pixel_block.rawpixels[f] = rawpixel_t(255,255,255);     // TODO: Check and make sure this doesn't constructor each time
+        
+        blinkbios_pixel_block.pixelBuffer[f] = savedPixelBuffer[f];
+        
     }
+}
+
+
+#define SLEEP_ANIMATION_DURATION_MS     300
+#define SLEEP_ANIMATION_MAX_BRIGHTNESS  200
+
+
+
+static void warm_sleep_cycle() {
+    
+    BLINKBIOS_POSTPONE_SLEEP_VECTOR();      // Postpone cold sleep so we can warm sleep for a while
+    // The cold sleep will eventually kick in if we
+    // do not wake from warm sleep in time.
+        
+    // Save the games pixels so we can restore them on waking
+    // we need to do this because the sleep and wake animations
+    // will overwrite whatever is there. 
+            
+    savePixels(); 
+
+    // Show them the first step in the animation while we send out the packets
+    setColorNow( dim( BLUE , SLEEP_ANIMATION_MAX_BRIGHTNESS ) );
 
     // Ok, now we are virally sending FORCE_SLEEP out on all faces to spread the word
     // and the pixels are off so the user is happy and we are saving power.
@@ -398,11 +457,29 @@ static void warm_sleep_cycle() {
         }
 
     }
+    
+    // now show our smooth power down animation
+    // note that we do this after we send the packets so that there will be less delay
+    // in propagating the sleep
+    
+    
+    Timer sleepAnimationTimer;
 
-    BLINKBIOS_POSTPONE_SLEEP_VECTOR();      // Postpone clod sleep so we can warm sleep for a while
-                                            // The cold sleep will eventually kick in if we
-                                            // do not wake from warm sleep in time.
+    updateNow();    
+    sleepAnimationTimer.set( SLEEP_ANIMATION_DURATION_MS );
+    
+    while (!sleepAnimationTimer.isExpired()) {
+        
+        // Update time snapshot
+        // Used by millis() and Timer thus functions
 
+        updateNow();
+
+        setColorNow( dim( BLUE , map(sleepAnimationTimer.getRemaining(),0,SLEEP_ANIMATION_DURATION_MS,0,SLEEP_ANIMATION_MAX_BRIGHTNESS)) );
+        
+    }
+    
+    
     // We need to save the time now because it will keep ticking while we are in pre-sleep (where were can get
     // woken back up by a packet). If we did not save it and then restore it later, then all the user timers
     // would be expired when we woke.
@@ -438,7 +515,7 @@ static void warm_sleep_cycle() {
         3cae:	88 95       	sleep
     */
 
-    clear_packet_buffers();     // Clear out any left over packets that were there when we started this sleep cyclel and might trigger us to wake unapropriately
+    clear_packet_buffers();     // Clear out any left over packets that were there when we started this sleep cycle and might trigger us to wake unapropriately
 
     uint8_t saw_packet_flag =0;
 
@@ -493,7 +570,27 @@ static void warm_sleep_cycle() {
     // Clear out old packets (including any old FORCE_SLEEP packets so we don't go right back to bed)
 
     clear_packet_buffers();
+    
+    // Show smooth wake animation
+    
+    updateNow();    
+    sleepAnimationTimer.set( SLEEP_ANIMATION_DURATION_MS );
+    
+    while (!sleepAnimationTimer.isExpired()) {
 
+        // Update time snapshot
+        // Used by millis() and Timer thus functions
+
+        updateNow();
+                
+        setColorNow( dim( WHITE , SLEEP_ANIMATION_MAX_BRIGHTNESS- map(sleepAnimationTimer.getRemaining(),0,SLEEP_ANIMATION_DURATION_MS,0,SLEEP_ANIMATION_MAX_BRIGHTNESS)) );
+        
+    }
+            
+    // restore game pixels
+    
+    restorePixels();
+    
 }
 
 // Called anytime a the button is pressed or anytime we get a viral button press form a neighbor over IR
@@ -1125,11 +1222,9 @@ void __attribute__((noreturn)) run(void)  {
     while (1) {
 
         // Capture time snapshot
-        // It is 4 bytes long so we cli() so it can not get updated in the middle of us grabbing it
+        // Used by millis() and Timer thus functions
 
-        cli();
-        now = blinkbios_millis_block.millis;
-        sei();
+        updateNow();
 
         // Here we check to enter seed mode. The button must be held down for 6 seconds and we must not have any neighbors
         // Note that we directly read the shared block rather than our snapshot. This lets the 6 second flag latch and
@@ -1139,6 +1234,12 @@ void __attribute__((noreturn)) run(void)  {
 
             // Button has been down for 6 seconds and we are alone...
             // Signal that we are about to go into seed mode with full blue...
+            
+            // First save the game pixels because our blue seed spin is going to mess them up
+            // and we will need to get them back if the user continues to hold past the seed phase
+            // and into the warm sleep phase.
+
+            savePixels();            
 
             // Now wait until either the button is lifted or is held down past 7 second mark
             // so we know what to do
@@ -1156,6 +1257,8 @@ void __attribute__((noreturn)) run(void)  {
                 BLINKBIOS_DISPLAY_PIXEL_BUFFER_VECTOR();
 
             }
+            
+            restorePixels();
 
             if ( blinkbios_button_block.bitflags & BUTTON_BITFLAG_6SECPRESSED ) {
 
@@ -1173,8 +1276,7 @@ void __attribute__((noreturn)) run(void)  {
 
                 // Give instant visual feedback that we know they let go of the button
                 // Costs a few bytes, but the checksum in the bootloader takes a a sec to complete before we start sending)
-                setColor( OFF );
-                BLINKBIOS_DISPLAY_PIXEL_BUFFER_VECTOR();
+                setColorNow( OFF );
 
                 BLINKBIOS_BOOTLOADER_SEED_VECTOR();
 
