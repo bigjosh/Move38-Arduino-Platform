@@ -143,38 +143,6 @@ static const uint8_t PROGMEM parityTable[] = {
     0b00111011,   // 29
     0b10111100,   // 30
     0b00111110,   // 31
-/*  0b11000001,   // 32
-    0b01000011,   // 33
-    0b11000100,   // 34
-    0b01000110,   // 35
-    0b01001001,   // 36
-    0b11001011,   // 37
-    0b01001100,   // 38
-    0b11001110,   // 39
-    0b11010000,   // 40
-    0b01010010,   // 41
-    0b11010101,   // 42
-    0b01010111,   // 43
-    0b01011000,   // 44
-    0b11011010,   // 45
-    0b01011101,   // 46
-    0b11011111,   // 47
-    0b01100001,   // 48
-    0b11100011,   // 49
-    0b01100100,   // 50
-    0b11100110,   // 51
-    0b11101001,   // 52
-    0b01101011,   // 53
-    0b11101100,   // 54
-    0b01101110,   // 55
-    0b01110000,   // 56
-    0b11110010,   // 57
-    0b01110101,   // 58
-    0b11110111,   // 59
-    0b11111000,   // 60
-    0b01111010,   // 61
-    0b11111101,   // 62
-    0b01111111,   // 63 */
 };
 
 
@@ -189,6 +157,15 @@ static const uint8_t PROGMEM parityTable[] = {
 // and then we go to warm sleep.
 
 #define TRIGGER_WARM_SLEEP_SPECIAL_VALUE   0b01010101
+
+
+// This gets sent every time a button is pressed to tell neighbors to reset sleep timer.
+// It also gets sent every time we see one so it is viral across all connected blinks
+// We need a lockout so we don't just keep circulating the same one infinitely
+
+#define VIRAL_BUTTON_PRESS_SEEN_SPECIAL_VALUE 0b11011011
+
+#define VIRAL_BUTTON_PRESS_LOCKOUT_MS 2000      // 2s should be long enough even for massive massive assemblages of blinks
 
 static uint8_t parityEncode( uint8_t d ) {
     
@@ -519,6 +496,22 @@ static void warm_sleep_cycle() {
 
 }
 
+// Called anytime a the button is pressed or anytime we get a viral button press form a neighbor over IR
+
+ // TODO: Finish this
+
+Timer viral_button_press_lockout_timer;     // Ignore any new viral button presses until this time
+
+void viralButtonPress() {
+    
+    if (viral_button_press_lockout_timer.isExpired()) {
+        
+        viral_button_press_lockout_timer.set( VIRAL_BUTTON_PRESS_LOCKOUT_MS );
+    }
+    
+    
+}
+
 static void RX_IRFaces() {
 
     //  Use these pointers to step though the arrays
@@ -549,7 +542,7 @@ static void RX_IRFaces() {
                 if (receivedByte==TRIGGER_WARM_SLEEP_SPECIAL_VALUE) {
 
                     warm_sleep_cycle();
-
+                    
                 } else {
 
                     uint8_t decodedByte = parityDecode( receivedByte );
@@ -809,7 +802,7 @@ bool buttonLongPressed(void) {
 // you will only ever see this if blink has neighbors when the button hits the 6 second mark.
 // Remember that a long press fires while the button is still down
 bool buttonLongLongPressed(void) {
-    return grabandclearbuttonflag( BUTTON_BITFLAG_4SECPRESSED );
+    return grabandclearbuttonflag( BUTTON_BITFLAG_3SECPRESSED );
 }
 
 
@@ -1142,7 +1135,7 @@ void __attribute__((noreturn)) run(void)  {
         // Note that we directly read the shared block rather than our snapshot. This lets the 6 second flag latch and
         // so to the user program if we do not enter seed mode because we have neighbors. See?
 
-        if (( blinkbios_button_block.bitflags & BUTTON_BITFLAG_4SECPRESSED) && isAlone() ) {
+        if (( blinkbios_button_block.bitflags & BUTTON_BITFLAG_3SECPRESSED) && isAlone() ) {
 
             // Button has been down for 6 seconds and we are alone...
             // Signal that we are about to go into seed mode with full blue...
