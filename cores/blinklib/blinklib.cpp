@@ -52,7 +52,7 @@
 #define RX_EXPIRE_TIME_MS         200      // If we do not see a message in this long, then show that face as expired
 
 
-#define WARM_SLEEP_TIMEOUT_MS   (5 * 60 * 1000UL )  // 5 mins
+#define WARM_SLEEP_TIMEOUT_MS   (2 * 60 * 1000UL )  // 5 mins
                                                     // We will warm sleep if we do not see a button press or remote button press
                                                     // in this long
 
