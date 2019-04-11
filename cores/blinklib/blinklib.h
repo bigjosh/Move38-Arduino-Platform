@@ -25,7 +25,7 @@
 // If you try to send higher than this, the max value will be sent.
 // Note that if you change this, you must also change parityTable[] in blinklib.cpp
 
-#define IR_DATA_VALUE_MAX 63
+#define IR_DATA_VALUE_MAX 31
 
 // Returns the last received value on the indicated face
 // Between 0 and IR_DATA_VALUE_MAX inclusive
