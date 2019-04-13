@@ -25,7 +25,7 @@
 // If you try to send higher than this, the max value will be sent.
 // Note that if you change this, you must also change parityTable[] in blinklib.cpp
 
-#define IR_DATA_VALUE_MAX 31
+#define IR_DATA_VALUE_MAX 63
 
 // Returns the last received value on the indicated face
 // Between 0 and IR_DATA_VALUE_MAX inclusive
@@ -338,18 +338,6 @@ word map(word x, word in_min, word in_max, word out_min, word out_max);
 
 */
 
-
-// Broadcast data on all faces. Data is 6-bits wide (0-63 value).
-
-void irBroadcastData( uint8_t data );
-
-// Is there a received data ready to be read on the indicated face? Returns 0 if none.
-
-bool irIsReadyOnFace( uint8_t face );
-
-// Read the most recently received data. Blocks if no data ready. Data is 6-bits wide (0-63 value).
-
-uint8_t irGetData( uint8_t face );
 
 /* Power functions */
 
