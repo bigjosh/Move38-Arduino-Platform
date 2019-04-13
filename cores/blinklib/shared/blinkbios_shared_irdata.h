@@ -13,7 +13,8 @@
 
 #include <stdint.h>
 
-#define  IR_FACE_COUNT 6
+#define IR_FACE_COUNT 6
+#define IR_FACE_BITMASK 0b00111111      // Mask for the 6 faces. Fails hard when we start making nonagon tiles. 
 
 // Must be big enough to hold the biggest packet, which internally is PUSH packet.
 #define IR_RX_PACKET_SIZE     40

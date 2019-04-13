@@ -12,6 +12,8 @@
 #include "pixelcolor.h"
 
 #define IR_FACE_COUNT 6
+#define IR_FACE_BITMASK 0b00111111  // 1's in each bit for every face (will break if we ever make a nonagon or higher)
+
 #define PIXEL_FACE_COUNT 6
 
 // TODO: Change time to uint24 _t
