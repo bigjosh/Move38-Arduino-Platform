@@ -56,10 +56,9 @@
 #define VIRAL_BUTTON_PRESS_LOCKOUT_MS   2000    // Any viral button presses received from IR within this time period are ignored 
                                                 // since insures that a single press can not circulate around indefinitely.                                                
 
-#warning
-#define WARM_SLEEP_TIMEOUT_MS   (  10 * 1000UL )  // 5 mins
-                                                    // We will warm sleep if we do not see a button press or remote button press
-                                                    // in this long
+#define WARM_SLEEP_TIMEOUT_MS   (  10 * 60 * 1000UL )   // 10 mins
+                                                        // We will warm sleep if we do not see a button press or remote button press
+                                                        // in this long
 
 // This is a special byte that signals that this is a long data packet
 // Note that this is also a value value, but we can tell that it is a data by looking at the IR packet len. Datagrams are always >2 bytes. 
@@ -552,10 +551,7 @@ static void RX_IRFaces() {
                     
                     // The blink on on the other side of this connection is telling us that a button was pressed recently
                     // Send the viral message to all neighbors.
-                                        
-                    #warning
-                    setColorNow( RED );                                        
-                                        
+                                                                                
                     viralPostponeWarmSleep();
                    
                     // We also need to extend hardware sleep
