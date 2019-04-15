@@ -125,9 +125,7 @@ static uint8_t irValueEncode( uint8_t d , uint8_t postponeSleepFlag ) {
 
 
 static uint8_t irValueCheckValid( uint8_t d ) {
-    
-    return 1;
-    
+        
     return oddParity( d );      // Odd parity
 
 }
@@ -504,18 +502,20 @@ static void warm_sleep_cycle() {
 }
 
 // Called anytime a the button is pressed or anytime we get a viral button press form a neighbor over IR
+// Note that we know that this can not become cyclical becuase of the lockout delay 
 
-void viralPostponeSleep() {
+void viralPostponeWarmSleep() {
     
     if (viralButtonPressLockoutTimer.isExpired()) {
         
         viralButtonPressLockoutTimer.set( VIRAL_BUTTON_PRESS_LOCKOUT_MS );
         
         viralButtonPressSendOnFaceBitflags = IR_FACE_BITMASK;
-                
-    }
-    
-    BLINKBIOS_POSTPONE_SLEEP_VECTOR();
+
+        // Prevent warm sleep
+        reset_warm_sleep_timer();
+                    
+    }    
         
 }
 
@@ -553,8 +553,15 @@ static void RX_IRFaces() {
                     // The blink on on the other side of this connection is telling us that a button was pressed recently
                     // Send the viral message to all neighbors.
                                         
-                   viralPostponeSleep();
+                    #warning
+                    setColorNow( RED );                                        
                                         
+                    viralPostponeWarmSleep();
+                   
+                    // We also need to extend hardware sleep
+                    // since we did not get a physical button press
+                    BLINKBIOS_POSTPONE_SLEEP_VECTOR();
+                                                           
                 } 
                 
                 // If we get here, then we know this is a valid packet
@@ -610,8 +617,10 @@ static void RX_IRFaces() {
 
             } else {
                 
-                #warning
-                setColorNow( RED );
+                // Invalid packet received. No good way to show or log this. :/
+                
+                //#warning
+                //setColorNow( RED );                
 
             }
             
@@ -695,6 +704,7 @@ static void TX_IRFaces() {
                 encodedIrValue=  irValueEncode( outgoiungPacketHeaderValue , 1 );
                 
                 CBI( viralButtonPressSendOnFaceBitflags , f );
+                
                                 
             } else {
                 
@@ -702,7 +712,7 @@ static void TX_IRFaces() {
                 
             }
             
-            ir_send_packet_buffer[0] = outgoiungPacketHeaderValue;  // store the encoded header into the outgoing buffer
+            ir_send_packet_buffer[0] = encodedIrValue;  // store the encoded header into the outgoing buffer
 
             if (blinkbios_irdata_send_packet( f , ir_send_packet_buffer  , outgoingPacketLen ) ) {
                 
@@ -1288,7 +1298,7 @@ void __attribute__((noreturn)) run(void)  {
 
         if ( blinkbios_button_block.bitflags & BUTTON_BITFLAG_PRESSED  ) {  // Any button press resets the warm sleep timeout
 
-            reset_warm_sleep_timer();
+            viralPostponeWarmSleep();
 
         }
 
