@@ -27,6 +27,8 @@
 
 #include <stddef.h>
 
+#include <string.h>
+
 #include "ArduinoTypes.h"
 
 #include "blinklib.h"
@@ -51,140 +53,101 @@
 
 #define RX_EXPIRE_TIME_MS         200      // If we do not see a message in this long, then show that face as expired
 
+#define VIRAL_BUTTON_PRESS_LOCKOUT_MS   2000    // Any viral button presses received from IR within this time period are ignored 
+                                                // since insures that a single press can not circulate around indefinitely.                                                
 
-#define WARM_SLEEP_TIMEOUT_MS   (2 * 60 * 1000UL )  // 5 mins
+#warning
+#define WARM_SLEEP_TIMEOUT_MS   (  10 * 1000UL )  // 5 mins
                                                     // We will warm sleep if we do not see a button press or remote button press
                                                     // in this long
 
-// This is a parity check that I came up with that I think is robust to close together bitflips and
-// also efficient to calculate.
-// We keep the 6 data bits in the middle of the byte, and then send parity bits at the top and bottom
-// that cover alternating data bits. This should catch any 1 or 2 consecutive flips.
-// Top parity is even, bottom is odd. The idea here is that a string of all 1's or 0's will fail.
-
-// A hamming code would have been better, but we need 6 data bits rather than 4.
-
-// Commented code below generates the output parity checked bytes for all 63 valid input values.
-// https://www.onlinegdb.com/online_c++_compiler
-
-/*
-#include <iostream>
-using namespace std;
-uint8_t paritygenerator( uint8_t d ) {
-    // TODO: We are only counting the bottom 6 bits, so could replace popcount()
-    //       with some asm that only counts those with 5 shifts
-    //       https://www.avrfreaks.net/forum/avr-gcc-de-optimizing-my-code
-    uint8_t topbits   = d & 0b00010101;
-    uint8_t topbitcount = __builtin_popcount( topbits );
-    uint8_t topparitybit = !(topbitcount & 0b00000001 );
-    uint8_t bottombits = d & 0b00101010;
-    uint8_t bottombitcount = __builtin_popcount( bottombits );
-    uint8_t bottomparitybit = (bottombitcount & 0b00000001 );
-    return ( ( topparitybit << 7 ) | ( d << 1 ) | ( bottomparitybit ) );
-}
-#include <iostream>
-#include <iomanip>
-#include <bitset>
-using std::setw;
-void generateParityTable( void ) {
-    for( uint8_t d =0; d < 64 ; d++ ) {
-        std::bitset<8> x(paritygenerator( d ) );
-        std::cout << "    0b" << x << ",   // " << setw(2) << (int) d << "\n";
-    }
-}
-int main()
-{
-    generateParityTable();
-    return 0;
-}
-*/
-
-// We precompute the parity table for efficiency
-// Look how nicely those bits encode! Try and change two bits in a row - bet you can't! Good hamming!
-
-// Want to know how the magic is done?
-// HINT: The first and last bits are simple odd parity. Odd because all 0's data would fail.
-//       One is of all the middle bits, the other is only of the even bit slots.
-
-// NOte that this table is symmetric about the center element with bits flipped. 
-
-// NOTE: If you want to change this, it must still match IR_MAX_VALUE
-
-static const uint8_t PROGMEM parityTable[] = {
-    0b10000000,   //  0
-    0b00000010,   //  1
-    0b10000101,   //  2
-    0b00000111,   //  3
-    0b00001000,   //  4
-    0b10001010,   //  5
-    0b00001101,   //  6
-    0b10001111,   //  7
-    0b10010001,   //  8
-    0b00010011,   //  9
-    0b10010100,   // 10
-    0b00010110,   // 11
-    0b00011001,   // 12
-    0b10011011,   // 13
-    0b00011100,   // 14
-    0b10011110,   // 15
-    0b00100000,   // 16
-    0b10100010,   // 17
-    0b00100101,   // 18
-    0b10100111,   // 19
-    0b10101000,   // 20
-    0b00101010,   // 21
-    0b10101101,   // 22
-    0b00101111,   // 23
-    0b00110001,   // 24
-    0b10110011,   // 25
-    0b00110100,   // 26
-    0b10110110,   // 27
-    0b10111001,   // 28
-    0b00111011,   // 29
-    0b10111100,   // 30
-    0b00111110,   // 31
-};
-
-
 // This is a special byte that signals that this is a long data packet
-// It must appear in the first byte of the data, and the final byte is an inverted checksum of all bytes including header byte
+// Note that this is also a value value, but we can tell that it is a data by looking at the IR packet len. Datagrams are always >2 bytes. 
+// It must appear in the first byte of the data, and the final byte is an inverted checksum of all bytes including this header byte
 
-#define LONG_DATA_SPECIAL_VALUE     0b10101010
+#define DATAGRAM_SPECIAL_VALUE     0b00101010
 
 // This is a special byte that triggers a warm sleep cycle when received
-// It must appear in the first byte of data
+// It must appear in the first & second byte of data
 // When we get it, we virally send out more warm sleep packets on all the faces
 // and then we go to warm sleep.
 
-#define TRIGGER_WARM_SLEEP_SPECIAL_VALUE   0b01010101
+#define TRIGGER_WARM_SLEEP_SPECIAL_VALUE   0b00010101
 
+// We use bit 6 in the IR data to indicate that a button has been pressed so we should 
+// postpone sleeping. This spreads a button press to all connected tiles so 
+// they will stay awake if any tile in the group gets pressed.
 
-// This gets sent every time a button is pressed to tell neighbors to reset sleep timer.
-// It also gets sent every time we see one so it is viral across all connected blinks
-// We need a lockout so we don't just keep circulating the same one infinitely
+// We use bit 7 in the IR data as ODD parity check. We do ODD to make sure at least 1 bit is always
+// set (otherwise 0x00 would be 0x00 with parity). 
 
-#define VIRAL_BUTTON_PRESS_SEEN_SPECIAL_VALUE 0b11011011
+// Assumes ( d < IR_DATA_VALUE_MAX )
 
-#define VIRAL_BUTTON_PRESS_LOCKOUT_MS 2000      // 2s should be long enough even for massive massive assemblages of blinks
+#if IR_DATA_VALUE_MAX > 63
+    #warning THe following code assumes that the top two bits of the header byte are available
+#endif
 
-static uint8_t parityEncode( uint8_t d ) {
+// Returns true if odd number of bits set
+// TODO: make asm
+
+uint8_t oddParity( uint8_t d ) {
     
-    if ( d < 32 ) {
-        return pgm_read_byte_near( parityTable+ d );
-    } else {    
+    uint8_t bits=0;
+    
+    while (d) {
         
-        // Exploit the symmetry of the parity table to save 30 bytes flash at the time cost of a SUB + a XOR. 
-        return ~ pgm_read_byte_near( parityTable+ 63 -  d  );        
+        if (d & 0b00000001 ) {
+            bits++;
+        }
+        
+        d >>=1;
+        
     }
+    
+    return bits & 0xb00000001;
 }
+
+static uint8_t irValueEncode( uint8_t d , uint8_t postponeSleepFlag ) {
+        
+    if (postponeSleepFlag) {
+        d |= 0b01000000;            // 6th bit button pressed flag
+    }
+    
+    if ( !oddParity( d )) {
+        
+        d |= 0b10000000;            // Top bit ODD parity (including postpone sleep flag)
+        
+    }
+    
+    return d;
+    
+}
+
+
+static uint8_t irValueCheckValid( uint8_t d ) {
+    
+    return 1;
+    
+    return oddParity( d );      // Odd parity
+
+}
+
 
 // The actual data is hidden in the middle
 
-static uint8_t parityDecode( uint8_t d ) {
+static uint8_t irValueDecodeData( uint8_t d ) {
 
-    return (d & 0b01111110) >> 1 ;
+    return (d & 0b00111111) ;
 
 }
+
+
+static uint8_t irValueDecodePostponeSleepFlag( uint8_t d ) {
+
+    return d & 0b01000000 ;
+
+}
+
 
 // TODO: These structs even better if they are padded to a power of 2 like https://stackoverflow.com/questions/1239855/pad-a-c-structure-to-a-power-of-two
 
@@ -192,17 +155,24 @@ struct face_t {
 
     uint8_t inValue;        // Last received value on this face, or 0 if no neighbor ever seen since startup
     uint8_t outValue;       // Value we send out on this face
-    millis_t expireTime;    // When this face will be consider to be expired (no neighbor there)
+    millis_t expireTime;    // When this face will be considered to be expired (no neighbor there)
     millis_t sendTime;      // Next time we will transmit on this face (set to 0 every time we get a good message so we ping-pong across the link)
+    
+    uint8_t inDatagramLen;  // 0= No datagram waiting to be read
+    uint8_t inDatagramData[IR_DATAGRAM_LEN];
 
+    uint8_t outDatagramLen;  // 0= No datagram waiting to be sent
+    uint8_t outDatagramData[IR_DATAGRAM_LEN];
 };
-
 
 static face_t faces[FACE_COUNT];
 
+uint8_t viralButtonPressSendOnFaceBitflags;   // A 1 here means send the viral button press bit on the next IR packet on this face. Cleared when it gets sent. 
+
+Timer viralButtonPressLockoutTimer;     // Set each time we send a viral button press to avoid sending getting into a circular loop
+
 // Millis snapshot for this pass though loop
 millis_t now;
-
 
 // Capture time snapshot
 // It is 4 bytes long so we cli() so it can not get updated in the middle of us grabbing it
@@ -219,7 +189,7 @@ unsigned long millis() {
 
 // Returns the inverted checksum of all bytes
 
-uint8_t computeChecksum( volatile const uint8_t *buffer , uint8_t len ) {
+uint8_t computePacketChecksum( volatile const uint8_t *buffer , uint8_t len ) {
 
     uint8_t computedChecksum = 0;
 
@@ -240,40 +210,27 @@ uint8_t computeChecksum( volatile const uint8_t *buffer , uint8_t len ) {
 
 #endif
 
-// The length of the long packet in each face buffer
-// The packet starts at byte 3 because there are 2 header bytes
-// This len already has the header bytes deducted and also the checksum at the end.
-// TODO: If we share the static packetbuffers directly up from blinkOS then this could all be shorted and sweeter
-static byte  longPacketLen[FACE_COUNT];
-static byte *longPacketData[FACE_COUNT];
-
-byte getPacketLengthOnFace( uint8_t face ) {
-    return longPacketLen[ face ];
+byte getDatagramLengthOnFace( uint8_t face ) {    
+    return faces[face].inDatagramLen;
 }
 
-boolean isPacketReadyOnFace( uint8_t face ) {
-    return getPacketLengthOnFace(face) != 0;
+boolean isDatagramReadyOnFace( uint8_t face ) {
+    return getDatagramLengthOnFace(face) != 0;
 }
 
-const byte *getPacketDataOnFace( uint8_t face ) {
-    return longPacketData[face];
+const byte *getDatagramOnFace( uint8_t face ) {
+    return faces[face].inDatagramData;
 }
 
-void markLongPacketRead( uint8_t face ) {
-    // We don't want to mark it read if it is not actually pending because then we might be throwing away an unread packet
-    cli();
-    if ( longPacketLen[face] ) {
-        longPacketLen[face]=0;
-        blinkbios_irdata_block.ir_rx_states[face].packetBufferReady=0;
-    }
-    sei();
-}
+void markDatagramReadOnFace( uint8_t face ) {
+    faces[face].inDatagramLen = 0;
+}    
 
 // Jump to the send packet function all way up in the bootloader
 
 uint8_t blinkbios_irdata_send_packet(  uint8_t face, const uint8_t *data , uint8_t len ) {
 
-    // Call directly into the function in the bootloader. This symbol is resoved by the linker to a
+    // Call directly into the function in the bootloader. This symbol is resolved by the linker to a
     // direct call to the taget address.
     return BLINKBIOS_IRDATA_SEND_PACKET_VECTOR(face,data,len);
 
@@ -283,71 +240,21 @@ uint8_t blinkbios_irdata_send_packet(  uint8_t face, const uint8_t *data , uint8
 #define CBI(x,b) (x&=~(1<<b))           // Clear bit
 #define TBI(x,b) (x&(1<<b))             // Test bit
 
-uint8_t rx_buffer_fresh_bitflag;    // One bit per IR LED indicates that we just got a new state update packet on this face
-                                    // Needed to know when it is clear to send on that face to keep up the ping-pong
-                                    // when packets are involved
-                                    // We could also expose a "valueOnFaceJustRefreshed()" function but we are getting so far
-                                    // away from the original blink state model here! Really packets do not even fit in this model
-                                    // but give the people what they want!
+void sendDatagramOnFace( byte face , const void *data, byte len ) {
 
-// This is the easy way to do this, but uses RAM unnecessarily.
-// TODO: Make a scatter version of this to save RAM & time
-
-static uint8_t ir_send_packet_buffer[ IR_LONG_PACKET_MAX_LEN + 3 ];
-
-uint8_t sendPacketOnFace( byte face , const void *data, byte len ) {
-
-    if ( len > IR_LONG_PACKET_MAX_LEN ) {
+    if ( len > IR_DATAGRAM_LEN ) {
 
         // Ignore request to send oversized packet
 
-        return 0;
+        return;
 
     }
-
-    if ( ! TBI( rx_buffer_fresh_bitflag , face ) ) {
-        // We never blind send a packet. Instead we wait for a normal (short) value message to come in
-        // and then we reply with the packet to avoid collisions. We depend on the value messages to
-        // do handshaking and also to discover when there is a neighbor on the other side.
-
-        // The caller should see this 0 and then try to send again until they hit a moment when we know it is safe to send
-        return 0;
-
-    }
-
-    const uint8_t *s = (const uint8_t *) data ;           // Just to convert from void to uint8_t
-
-    uint8_t *b = ir_send_packet_buffer;
-
-    // Build up the packet in the buffer
-
-    *b++= LONG_DATA_SPECIAL_VALUE;
-
-    uint8_t packetLen = len+2;      // One extra byte for the LONG_DATA_PACKET_HEADER and one for the checksum
-
-    uint8_t computedChecksum= LONG_DATA_SPECIAL_VALUE;    // The header bytes are included in the checksum
-
-    while (len--) {
-
-        computedChecksum += *s;
-
-        *b++= *s++;
-
-    }
-
-    *b = computedChecksum ^ 0xff;   // invert checksum
-
-    // Note that this automatically adds the correct packet header byte for us so we do not include it!
-    uint8_t sent_flag = blinkbios_irdata_send_packet( face , ir_send_packet_buffer , packetLen );
-
-    if (sent_flag) {
-
-          faces[face].sendTime = now + TX_PROBE_TIME_MS;
-
-    }
-
-    return sent_flag ;
-
+    
+    face_t *f = &faces[face];
+    
+    f->outDatagramLen = len;
+    memcpy( f->outDatagramData , data , len ); 
+    
 }
 
 
@@ -360,7 +267,7 @@ static void clear_packet_buffers() {
     }
 }
 
-// Set the color and display it immedeately
+// Set the color and display it immediately
 // for internal use where we do not want the loop buffering
 
 static void setColorNow( Color newColor ) {
@@ -417,7 +324,10 @@ void restorePixels() {
 #define SLEEP_ANIMATION_DURATION_MS     300
 #define SLEEP_ANIMATION_MAX_BRIGHTNESS  200
 
+// A special warm sleep trigger packet has len 2 and the two bytes are both the special cookie value
+// Because it must be 2 long, this means that the cookie can still be a data value since that value would only have a 1 byte packet
 
+static uint8_t force_sleep_packet[2] = { TRIGGER_WARM_SLEEP_SPECIAL_VALUE , TRIGGER_WARM_SLEEP_SPECIAL_VALUE};
 
 static void warm_sleep_cycle() {
     
@@ -444,7 +354,7 @@ static void warm_sleep_cycle() {
 
 
     // We need a pointer for the value to send it...
-    uint8_t force_sleep_packet = TRIGGER_WARM_SLEEP_SPECIAL_VALUE;
+    
 
     for( uint8_t n=0; n<5; n++ ) {
 
@@ -452,7 +362,7 @@ static void warm_sleep_cycle() {
 
             //while ( blinkbios_is_rx_in_progress( f ) );     // Wait to clear to send (no guarantee, but better than just blink sending)
 
-            blinkbios_irdata_send_packet( f , &force_sleep_packet , sizeof( force_sleep_packet ) );
+            blinkbios_irdata_send_packet( f , force_sleep_packet , sizeof( force_sleep_packet ) );      // Note that we can use sizeof() here becuase the arrayt is explicity uint8_t which is always a byte on AVR
 
         }
 
@@ -595,18 +505,18 @@ static void warm_sleep_cycle() {
 
 // Called anytime a the button is pressed or anytime we get a viral button press form a neighbor over IR
 
- // TODO: Finish this
-
-Timer viral_button_press_lockout_timer;     // Ignore any new viral button presses until this time
-
-void viralButtonPress() {
+void viralPostponeSleep() {
     
-    if (viral_button_press_lockout_timer.isExpired()) {
+    if (viralButtonPressLockoutTimer.isExpired()) {
         
-        viral_button_press_lockout_timer.set( VIRAL_BUTTON_PRESS_LOCKOUT_MS );
+        viralButtonPressLockoutTimer.set( VIRAL_BUTTON_PRESS_LOCKOUT_MS );
+        
+        viralButtonPressSendOnFaceBitflags = IR_FACE_BITMASK;
+                
     }
     
-    
+    BLINKBIOS_POSTPONE_SLEEP_VECTOR();
+        
 }
 
 static void RX_IRFaces() {
@@ -625,79 +535,90 @@ static void RX_IRFaces() {
             // TODO: Should we require the received packet to pass error checks?
             face->expireTime = now + RX_EXPIRE_TIME_MS;
 
-            // This is slightly ugly. To save a buffer, we get the full packet with the header byte.
+            // This is slightly ugly. To save a buffer, we get the full packet with the BlinkBIOS IR packet type byte.
 
-            volatile const uint8_t *packetData = (ir_rx_state->packetBuffer)+1;    // Start at the byte after the header
-            uint8_t packetDataLen = (ir_rx_state->packetBufferLen)-1;     // deduct the packet header byte
-
-            if ( packetDataLen == 1 ) {         // normal user face value, One header byte + One data byte
-
-                // This is a normal blinklib 1-byte face value
-
-                uint8_t receivedByte = packetData[0];
-
-                if (receivedByte==TRIGGER_WARM_SLEEP_SPECIAL_VALUE) {
-
-                    warm_sleep_cycle();
+            volatile const uint8_t *packetData = (ir_rx_state->packetBuffer)+1;     // Start at the byte after the type byte (which we always ignore it is an ugly implementation detail that we see it. 
+            uint8_t packetDataLen = (ir_rx_state->packetBufferLen)-1;               // deduct the BlinkBIOS packet type  byte 
+            
+            // blinkBIOS will only pass use packets with len >0 
+            
+            uint8_t irDataFirstByte = *packetData;
+                                                                   
+            if (irValueCheckValid( irDataFirstByte )) {                                
+                                               
+                // The header byte passes checks
+                
+                if (irValueDecodePostponeSleepFlag(irDataFirstByte )) {
                     
-                } else {
-
-                    uint8_t decodedByte = parityDecode( receivedByte );
-
-                    // Is this a valid symbol in our parity system?
-
-                    if ( receivedByte == parityEncode( decodedByte ) ) {
-
-                        // This looks like a valid value!
-
-                        // OK, everything checks out, we got a good face value!
-
-                        face->inValue =decodedByte;
-
-                        // Clear to send on this face immediately to ping-pong messages at max speed without collisions
-                        face->sendTime = 0;
-
-                        SBI( rx_buffer_fresh_bitflag , f );     // Mark that we just got a valid message on this face so we can ping pong with packets. Code smell!
-
-                    } //  if ( receivedByte == parityEncode( decodedByte ) )
-
-                    // Mark the data buffer as consumed. This clears it out so it will be ready to receive the next packet
-                    // If we don't do this, then we might miss the response to our ping
-                }
-
-                ir_rx_state->packetBufferReady=0;
-
-            } else if (packetDataLen>2 && packetData[0] == LONG_DATA_SPECIAL_VALUE ) {
-
-                if ( computeChecksum( packetData , packetDataLen-1)  ==  packetData[ packetDataLen - 1 ] ) {
-
-                    // Ok this packet checks out folks!
-
-                    longPacketLen[f] = packetDataLen-2;           // We deduct 2 from he length to account for the header byte and the trailing checksum byte
-                    longPacketData[f] = (byte *) (packetData+ 1);       // Skip the header bytes
-
-                }
-
-                // NOTE that we do not mark this packet as read! This will give the suer a chance to read it directly from the IR buffer.
-
+                    // The blink on on the other side of this connection is telling us that a button was pressed recently
+                    // Send the viral message to all neighbors.
+                                        
+                   viralPostponeSleep();
+                                        
+                } 
+                
+                // If we get here, then we know this is a valid packet
+                                
                 // Clear to send on this face immediately to ping-pong messages at max speed without collisions
                 face->sendTime = 0;
 
-            } else {        // We don't recognize this packet
+                uint8_t decodedByte = irValueDecodeData( irDataFirstByte );
+                
+                if ( packetDataLen == 1 ) {         // normal user face value, One header byte + One data byte
 
-                // Note that we do not clear to send on this face. There was some kind of problem, maybe corruption
-                // so there might still be stuff in flight and we don't want to step on it.
-                // Instead we let the timer take over and let things cool down until one side blinks sends to
-                // start things up again.
+                    // We got a face value! Save it!
 
-                // Packet too short so consume it to make room for next.
+                    face->inValue =decodedByte;
 
-                ir_rx_state->packetBufferReady=0;
+
+                } else {        // (packetDataLen>1)  
+                    
+                
+                    if ( decodedByte == DATAGRAM_SPECIAL_VALUE) {
+                        
+                        uint8_t datagramPayloadLen = packetDataLen-2;           // We deduct 2 from he length to account for the header byte and the trailing checksum byte                        
+                        const uint8_t *datagramPayloadData =   packetData+1;    // Skip the packet header byte
+                        
+                        // Long packets are kind of a special case since we do not mark them read immediately
+                        if ( computePacketChecksum( datagramPayloadData , datagramPayloadLen )  ==  datagramPayloadData[ datagramPayloadLen ] ) {        // Run checksum on payload bytes after the header, compare that to the checksum at the end
+
+                            // Ok this packet checks out folks!
+                            
+                            if ( face->inDatagramLen == 0 ) {        // Check if buffer free
+
+                                face->inDatagramLen = datagramPayloadLen;
+                                
+                                memcpy( face->inDatagramData  , datagramPayloadData , datagramPayloadLen);       // Skip the header bytes
+                                    
+                            }
+                                                                                    
+                        }
+
+                    } else {    // packetLen > 1 &&  decodedByte != LONG_DATA_SPECIAL_VALUE
+                            
+                        // Here is look for a magic packet that has 2 bytes of data and both are the special sleep trigger cookie
+                            
+                        if ( packetDataLen == 2 && decodedByte == TRIGGER_WARM_SLEEP_SPECIAL_VALUE && packetData[1] == TRIGGER_WARM_SLEEP_SPECIAL_VALUE ) {
+                                
+                            warm_sleep_cycle();                                
+                                
+                        }
+                            
+                    }  //  ( decodedByte == LONG_DATA_SPECIAL_VALUE)                     
+                    
+                }    //  (packetDataLen>1)              
+
+            } else {
+                
+                #warning
+                setColorNow( RED );
 
             }
-
-
-
+            
+            // No matter what, mark buffer as read so we can get next packet
+            ir_rx_state->packetBufferReady=0;
+            
+            
         }  // if ( ir_data_buffer->ready_flag )
 
         face++;
@@ -707,22 +628,84 @@ static void RX_IRFaces() {
 
 }
 
+
+// Buffer to build each outgoing IR packet
+// This is the easy way to do this, but uses RAM unnecessarily.
+// TODO: Make a scatter version of this to save RAM & time
+
+static uint8_t ir_send_packet_buffer[ IR_DATAGRAM_LEN + 2 ];    // header byte + Datagram payload  + checksum byte
+
+
 static void TX_IRFaces() {
 
     //  Use these pointers to step though the arrays
     face_t *face = faces;
 
     for( uint8_t f=0; f < FACE_COUNT ; f++ ) {
+        
         // Send one out too if it is time....
 
         if ( face->sendTime <= now ) {        // Time to send on this face?
                                               // Note that we do not use the rx_fresh flag here because we want the timeout
                                               // to do automatic retries to kickstart things when a new neighbor shows up or
                                               // when an IR message gets missed
+                   
+            uint8_t outgoingPacketLen;              // Total length of the outgoing packet in ir_send_packet_buffer
+            uint8_t outgoiungPacketHeaderValue;     // Value to encode into first byte of outgoing IR packet before transmitting
+                                                                      
+            // Ok, it is time to send something on this face
+            // Do we have a pending datagram? If so, datagrams get priority over face values
+                                    
+            if (face->outDatagramLen) {
+                
+                outgoiungPacketHeaderValue = DATAGRAM_SPECIAL_VALUE;
 
-            uint8_t data = parityEncode( face->outValue );
+                // Build a datagram into the outgoing buffer including checksum
+                                
+                uint8_t *d = ir_send_packet_buffer+1;           // Data goes after the 1st byte header            
+                const uint8_t *s = face->outDatagramData ;      // Just to convert from void to uint8_t
 
-            if (blinkbios_irdata_send_packet( f , &data  , sizeof(data) ) ) {
+                uint8_t datagramPayloadLen  = face->outDatagramLen;
+                                
+                memcpy( d, s , datagramPayloadLen );
+                                                
+                // First header, then payload, when checksum 
+                 ir_send_packet_buffer[1+datagramPayloadLen] = computePacketChecksum( s , datagramPayloadLen );
+
+                outgoingPacketLen = 1 + datagramPayloadLen +1;       // include header byte + payload + checksum (header added below)
+                                
+                // Note that the outgoing datagram buffer will be cleared below if the IR send succeeds
+                
+            } else {    
+                
+                // Just send a normal face value                                
+                outgoiungPacketHeaderValue = face->outValue;
+                outgoingPacketLen=1;
+                                
+            }       
+
+            // Encode the header byte with the parity and viral button flag            
+                                              
+            uint8_t encodedIrValue; 
+                                              
+            if ( TBI(  viralButtonPressSendOnFaceBitflags , f )) {
+                
+                // We need to send the viral button press on this face right now
+                
+                encodedIrValue=  irValueEncode( outgoiungPacketHeaderValue , 1 );
+                
+                CBI( viralButtonPressSendOnFaceBitflags , f );
+                                
+            } else {
+                
+                encodedIrValue=  irValueEncode( outgoiungPacketHeaderValue , 0 );
+                
+            }
+            
+            ir_send_packet_buffer[0] = outgoiungPacketHeaderValue;  // store the encoded header into the outgoing buffer
+
+            if (blinkbios_irdata_send_packet( f , ir_send_packet_buffer  , outgoingPacketLen ) ) {
+                
                 // Here we set a timeout to keep periodically probing on this face, but
                 // if there is a neighbor, they will send back to us as soon as they get what we
                 // just transmitted, which will make us immediately send again. So the only case
@@ -734,8 +717,16 @@ static void TX_IRFaces() {
 				// We add the face index here to try to spread the sends out in time
 				// otherwise the degenerate case is that they can all happen repeatedly in the same
 				// pass thugh loop() every time when there are no neighbors.
+                
 				 
                 face->sendTime = now + TX_PROBE_TIME_MS + f;	
+                
+                
+                // Mark any pending datagram as sent
+                // safe to do this blindly because datagram always gets priority so it would have been 
+                // what was just sent if there was one pending
+                face->outDatagramLen = 0;
+                
             }
 
         } // if ( face->sendTime <= now )
@@ -1327,23 +1318,11 @@ void __attribute__((noreturn)) run(void)  {
 
         BLINKBIOS_DISPLAY_PIXEL_BUFFER_VECTOR();
 
-         // Go ahead and release any packets that the loop() forgot to mark as read
-         // We count on the fact that markLongPacketRead() here will only release pending packets
-         // If we did not do this, then if the game forgot to clear a buffer then that face would be blocked
-         // From OS messages forever. We could work around that by having separate user and OS buffers, but more memory
-         // and complexity.
+        // Transmit any IR packets waiting to go out
+        // Note that we do this after loop had a chance to update them.
+        TX_IRFaces();
 
-         FOREACH_FACE(f) {
-            markLongPacketRead(f);
-         }
-
-         // Transmit any IR packets waiting to go out
-         // Note that we do this after loop had a chance to update them.
-         TX_IRFaces();
-
-         rx_buffer_fresh_bitflag = 0;      // We missed our chance to send on the messages received on this pass.
-                                           // RX_IRfaces() will set these again for messages received on the next pass.
-
+        
     }
 
 

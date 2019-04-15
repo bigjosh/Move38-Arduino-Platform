@@ -60,36 +60,42 @@ void setValueSentOnFace( byte value , byte face );
 
 void setValueSentOnAllFaces( byte value );
 
-/* --- Long packet processing */
+/* --- Datagram processing */
 
-// Note that long packets have a 1 byte checksum added by blinklib. Packets with the wrong checksum are tossed.
+// A datagram is a set of 1-IR_DATAGRAM_MAX_LEN bytes that are atomically sent over the IR link
+// The datagram is sent immediately on a best efforts basis. If it is not received by the other side then
+// it is lost forever. Each datagram sent is received at most 1 time. Once you have processed a received datagram
+// then you must mark it as read before you can receive the next one. 
 
-#define IR_LONG_PACKET_MAX_LEN 32
+#define IR_DATAGRAM_LEN 32
 
 // Returns the number of bytes waiting in the data buffer, or 0 if no packet ready.
-byte getPacketLengthOnFace( uint8_t face );
+byte getDatagramLengthOnFace( uint8_t face );
 
 // Returns true if a packet is available in the buffer
-boolean isPacketReadyOnFace( uint8_t face );
+boolean isDatagramReadyOnFace( uint8_t face );
 
  // Returns a pointer to the actual received data
  // This should really be a (void *) so it can be assigned to any pointer type,
  // but in C++ you can not case a (void *) into something else so it doesn't really work there
  // and I think too ugly to have these functions that are inverses of each other to take/return different types.
  // Thanks, Stroustrup.
-const byte *getPacketDataOnFace( uint8_t face );
+const byte *getDatagramOnFace( uint8_t face );
 
 // Frees up the buffer holding the long packet. This is not necessary because the
 // buffer will be automatically released when loop() returns, but it is good
 // practice to manually release it as soon as you are done with to to make room
 // for new incoming data.
-void markLongPacketRead( uint8_t face );
+void markDatagramReadOnFace( uint8_t face );
 
-// Send a long data packet.  Packet is protected by checksum.
-// Return 1 if sent.
-// Returns 0 if not able to send because (1) there is currently data being received on that face, (2) the len exceeds IR_LONG_PACKET_MAX_LEN
+// Send a datagtam.  
+// Datagram is sent as soon as possible and takes priority over sending value on face.
+// If you call sendDatagramOnFace() and there is already a pending datagram, the older pending
+// one will be repalced with the new one. 
 
-uint8_t sendPacketOnFace( byte face , const void *data, byte len );
+// Note that if the len>IR_DATAGRAM_LEN then packet will never be sent or recieved
+
+void sendDatagramOnFace( byte face , const void *data, byte len );
 
 
 /*
