@@ -87,7 +87,7 @@
 #endif
 
 // Returns true if odd number of bits set
-// TODO: make asm
+// Note that I tried the library parity_even() function here and it increased code size by 8 bytes.
 
 uint8_t oddParity( uint8_t d ) {
     
@@ -207,6 +207,7 @@ uint8_t computePacketChecksum( volatile const uint8_t *buffer , uint8_t len ) {
 
 #endif
 
+/*
 byte getDatagramLengthOnFace( uint8_t face ) {    
     return faces[face].inDatagramLen;
 }
@@ -223,6 +224,8 @@ void markDatagramReadOnFace( uint8_t face ) {
     faces[face].inDatagramLen = 0;
 }    
 
+*/
+
 // Jump to the send packet function all way up in the bootloader
 
 uint8_t blinkbios_irdata_send_packet(  uint8_t face, const uint8_t *data , uint8_t len ) {
@@ -236,6 +239,8 @@ uint8_t blinkbios_irdata_send_packet(  uint8_t face, const uint8_t *data , uint8
 #define SBI(x,b) (x|= (1<<b))           // Set bit
 #define CBI(x,b) (x&=~(1<<b))           // Clear bit
 #define TBI(x,b) (x&(1<<b))             // Test bit
+
+/*
 
 void sendDatagramOnFace( byte face , const void *data, byte len ) {
 
@@ -254,6 +259,7 @@ void sendDatagramOnFace( byte face , const void *data, byte len ) {
     
 }
 
+*/ 
 
 static void clear_packet_buffers() {
 
@@ -263,6 +269,8 @@ static void clear_packet_buffers() {
 
     }
 }
+
+
 
 // Set the color and display it immediately
 // for internal use where we do not want the loop buffering
@@ -574,42 +582,15 @@ static void RX_IRFaces() {
                     face->inValue =decodedByte;
 
 
-                } else {        // (packetDataLen>1)  
-                    
-                
-                    if ( decodedByte == DATAGRAM_SPECIAL_VALUE) {
-                        
-                        uint8_t datagramPayloadLen = packetDataLen-2;           // We deduct 2 from he length to account for the header byte and the trailing checksum byte                        
-                        const uint8_t *datagramPayloadData =   packetData+1;    // Skip the packet header byte
-                        
-                        // Long packets are kind of a special case since we do not mark them read immediately
-                        if ( computePacketChecksum( datagramPayloadData , datagramPayloadLen )  ==  datagramPayloadData[ datagramPayloadLen ] ) {        // Run checksum on payload bytes after the header, compare that to the checksum at the end
-
-                            // Ok this packet checks out folks!
-                            
-                            if ( face->inDatagramLen == 0 ) {        // Check if buffer free
-
-                                face->inDatagramLen = datagramPayloadLen;
+                } else  if ( packetDataLen == 2 && decodedByte == TRIGGER_WARM_SLEEP_SPECIAL_VALUE && packetData[1] == TRIGGER_WARM_SLEEP_SPECIAL_VALUE ) {
+                     
+                    // Here is look for a magic packet that has 2 bytes of data and both are the special sleep trigger cookie
+                                                            
+                    warm_sleep_cycle();                                
                                 
-                                memcpy( face->inDatagramData  , datagramPayloadData , datagramPayloadLen);       // Skip the header bytes
-                                    
-                            }
-                                                                                    
-                        }
-
-                    } else {    // packetLen > 1 &&  decodedByte != LONG_DATA_SPECIAL_VALUE
+                }
                             
-                        // Here is look for a magic packet that has 2 bytes of data and both are the special sleep trigger cookie
-                            
-                        if ( packetDataLen == 2 && decodedByte == TRIGGER_WARM_SLEEP_SPECIAL_VALUE && packetData[1] == TRIGGER_WARM_SLEEP_SPECIAL_VALUE ) {
-                                
-                            warm_sleep_cycle();                                
-                                
-                        }
-                            
-                    }  //  ( decodedByte == LONG_DATA_SPECIAL_VALUE)                     
-                    
-                }    //  (packetDataLen>1)              
+                   
 
             } else {
                 
@@ -661,7 +642,7 @@ static void TX_IRFaces() {
             // Ok, it is time to send something on this face
             // Do we have a pending datagram? If so, datagrams get priority over face values
                                     
-            if (face->outDatagramLen) {
+            if ( 0 && face->outDatagramLen) {
                 
                 outgoiungPacketHeaderValue = DATAGRAM_SPECIAL_VALUE;
 
