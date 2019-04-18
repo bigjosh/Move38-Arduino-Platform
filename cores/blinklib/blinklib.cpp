@@ -370,9 +370,13 @@ static void warm_sleep_cycle() {
     // in propagating the sleep
     
     
+    /*
+    
     Timer sleepAnimationTimer;
 
     updateNow();    
+    
+    
     sleepAnimationTimer.set( SLEEP_ANIMATION_DURATION_MS );
     
     while (!sleepAnimationTimer.isExpired()) {
@@ -385,6 +389,8 @@ static void warm_sleep_cycle() {
         setColorNow( dim( BLUE , map(sleepAnimationTimer.getRemaining(),0,SLEEP_ANIMATION_DURATION_MS,0,SLEEP_ANIMATION_MAX_BRIGHTNESS)) );
         
     }
+    
+    */
     
     
     // We need to save the time now because it will keep ticking while we are in pre-sleep (where were can get
@@ -478,8 +484,10 @@ static void warm_sleep_cycle() {
 
     clear_packet_buffers();
     
-    // Show smooth wake animation
+    /*
     
+    // Show smooth wake animation
+       
     updateNow();    
     sleepAnimationTimer.set( SLEEP_ANIMATION_DURATION_MS );
     
@@ -493,6 +501,8 @@ static void warm_sleep_cycle() {
         setColorNow( dim( WHITE , SLEEP_ANIMATION_MAX_BRIGHTNESS- map(sleepAnimationTimer.getRemaining(),0,SLEEP_ANIMATION_DURATION_MS,0,SLEEP_ANIMATION_MAX_BRIGHTNESS)) );
         
     }
+    
+    */
             
     // restore game pixels
     
@@ -977,7 +987,6 @@ Color makeColorHSB( uint8_t hue, uint8_t saturation, uint8_t brightness ) {
 // https://www.jstatsoft.org/article/view/v008i14
 static uint32_t rand_state=2463534242UL;
 
-
 // Generate a new seed using entropy from the watchdog timer
 // This takes about 16ms * 32 bits = 0.5s
 
@@ -1007,7 +1016,7 @@ void randomize() {
 
 static uint32_t nextrand32()
 {
-	/* Algorithm "xor" from p. 4 of Marsaglia, "Xorshift RNGs" */
+	// Algorithm "xor" from p. 4 of Marsaglia, "Xorshift RNGs" 
 	uint32_t x = rand_state;
 	x ^= x << 13;
 	x ^= x >> 17;
@@ -1067,6 +1076,7 @@ word random( uint16_t limit ) {
     http://ww1.microchip.com/downloads/en/AppNotes/Atmel-1631-Using-the-AVR-Hardware-Multiplier_ApplicationNote_AVR201.pdf
 
 */
+
 
 
 word map(word x, word in_min, word in_max, word out_min, word out_max)
@@ -1198,6 +1208,7 @@ void setFaceColor(  byte face, Color newColor ) {
     setColorOnFace( newColor , face );
 
 }
+
 
 // This is the main event loop that calls into the arduino program
 // (Compiler is smart enough to jmp here from main rather than call!
