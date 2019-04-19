@@ -33,7 +33,6 @@
         // Best to limit yourself interactions with plenty of time (or an ACK) between each incoming byte.
 
         virtual int read(void);                 // Read a byte - returns byte read or -1 if no byte ready.
-        virtual uint8_t readWait(void);            // Blocking read (faster)
 
         virtual size_t write(uint8_t);
         void flush(void);                       // Block until all pending transmits complete

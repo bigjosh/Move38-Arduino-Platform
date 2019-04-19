@@ -511,7 +511,7 @@ static void warm_sleep_cycle() {
 }
 
 // Called anytime a the button is pressed or anytime we get a viral button press form a neighbor over IR
-// Note that we know that this can not become cyclical becuase of the lockout delay 
+// Note that we know that this can not become cyclical because of the lockout delay 
 
 void viralPostponeWarmSleep() {
     

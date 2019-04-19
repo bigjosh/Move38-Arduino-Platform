@@ -24,7 +24,7 @@ void loop() {
 
   if (Serial.available()) {
 
-    int c = Serial.readWait();
+    int c = Serial.read();    // We know this will return a non-negative value since we checked that there was a byte available above
 
     switch (c) {
 
@@ -57,6 +57,15 @@ void loop() {
     }
 
   }
+
+
+  if (buttonPressed()) {
+
+    
+        Serial.println("Button pressed.");                
+        setColor(WHITE);
+        Serial.println("Color set to WHITE.");                
+
+  }
+  
 }
-
-

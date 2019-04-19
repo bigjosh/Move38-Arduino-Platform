@@ -57,12 +57,6 @@ int ServicePortSerial::read(void)
   }
 }
 
-byte ServicePortSerial::readWait(void)
-{
-    while (!sp_serial_rx_ready());
-    return sp_serial_rx();
-}
-
 // We don't implement flush because it would require adding a flag to remember if we ever sent.
 // This is because the hardware only gives us a bit that tells us when a tx completes, not if
 // no TX was ever started. Ardunio does this with the `_writen` flag.
