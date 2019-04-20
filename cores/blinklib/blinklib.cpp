@@ -236,7 +236,7 @@ void markDatagramReadOnFace( uint8_t face ) {
 uint8_t blinkbios_irdata_send_packet(  uint8_t face, const uint8_t *data , uint8_t len ) {
 
     // Call directly into the function in the bootloader. This symbol is resolved by the linker to a
-    // direct call to the taget address.
+    // direct call to the target address.
     return BLINKBIOS_IRDATA_SEND_PACKET_VECTOR(face,data,len);
 
 }
@@ -245,7 +245,7 @@ uint8_t blinkbios_irdata_send_packet(  uint8_t face, const uint8_t *data , uint8
 #define CBI(x,b) (x&=~(1<<b))           // Clear bit
 #define TBI(x,b) (x&(1<<b))             // Test bit
 
-void sendDatagramOnFace( byte face , const void *data, byte len ) {
+void sendDatagramOnFace( const void *data, byte len , byte face ) {
 
     if ( len > IR_DATAGRAM_LEN ) {
 

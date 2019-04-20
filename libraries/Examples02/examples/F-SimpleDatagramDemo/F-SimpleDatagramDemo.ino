@@ -118,7 +118,7 @@ void loop() {
 
         FOREACH_FACE(f) {
 
-          sendDatagramOnFace( f , &sampleDatagram , sizeof( sampleDatagram )  );
+          sendDatagramOnFace( &sampleDatagram , sizeof( sampleDatagram ) , f );
           
         }
 

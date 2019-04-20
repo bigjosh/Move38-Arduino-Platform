@@ -97,7 +97,7 @@ void markDatagramReadOnFace( uint8_t face );
 
 // Note that if the len>IR_DATAGRAM_LEN then packet will never be sent or recieved
 
-void sendDatagramOnFace( byte face , const void *data, byte len );
+void sendDatagramOnFace(  const void *data, byte len , byte face );
 
 
 /*
