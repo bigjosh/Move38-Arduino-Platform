@@ -148,6 +148,10 @@ static uint8_t irValueDecodePostponeSleepFlag( uint8_t d ) {
 
 // TODO: These structs even better if they are padded to a power of 2 like https://stackoverflow.com/questions/1239855/pad-a-c-structure-to-a-power-of-two
 
+#if IR_DATAGRAM_LEN > IR_RX_PACKET_SIZE
+    #error IR_DATAGRAM_LEN must not be bigger than IR_RX_PACKET_SIZE
+#endif
+
 struct face_t {
 
     uint8_t inValue;        // Last received value on this face, or 0 if no neighbor ever seen since startup
@@ -597,7 +601,7 @@ static void RX_IRFaces() {
 
                             // Ok this packet checks out folks!
                             
-                            if ( face->inDatagramLen == 0 ) {        // Check if buffer free
+                            if ( face->inDatagramLen == 0 && !(datagramPayloadLen > IR_DATAGRAM_LEN) ) {        // Check if buffer free and datagram not too long
 
                                 face->inDatagramLen = datagramPayloadLen;
                                 

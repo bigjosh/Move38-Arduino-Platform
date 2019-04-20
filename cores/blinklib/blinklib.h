@@ -67,7 +67,7 @@ void setValueSentOnAllFaces( byte value );
 // it is lost forever. Each datagram sent is received at most 1 time. Once you have processed a received datagram
 // then you must mark it as read before you can receive the next one. 
 
-#define IR_DATAGRAM_LEN 16
+#define IR_DATAGRAM_LEN 32
 
 // Returns the number of bytes waiting in the data buffer, or 0 if no packet ready.
 byte getDatagramLengthOnFace( uint8_t face );
