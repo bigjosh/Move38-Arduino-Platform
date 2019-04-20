@@ -83,7 +83,7 @@
 // Assumes ( d < IR_DATA_VALUE_MAX )
 
 #if IR_DATA_VALUE_MAX > 63
-    #warning THe following code assumes that the top two bits of the header byte are available
+    #warning The following code assumes that the top two bits of the header byte are available
 #endif
 
 // Returns true if odd number of bits set
