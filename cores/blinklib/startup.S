@@ -66,3 +66,5 @@ __init:
 	.section .init9,"ax",@progbits
 
 	jmp mainx
+
+    .endfunc
