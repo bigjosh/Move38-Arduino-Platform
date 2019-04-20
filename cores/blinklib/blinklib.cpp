@@ -60,6 +60,10 @@
                                                         // We will warm sleep if we do not see a button press or remote button press
                                                         // in this long
 
+#warning
+#define WARM_SLEEP_TIMEOUT_MS   (  15 * 1000UL )   // 15 seconds for testing 
+
+
 // This is a special byte that signals that this is a long data packet
 // Note that this is also a value value, but we can tell that it is a data by looking at the IR packet len. Datagrams are always >2 bytes. 
 // It must appear in the first byte of the data, and the final byte is an inverted checksum of all bytes including this header byte
@@ -372,26 +376,15 @@ static void warm_sleep_cycle() {
     // now show our smooth power down animation
     // note that we do this after we send the packets so that there will be less delay
     // in propagating the sleep
-    
-          
-    Timer sleepAnimationTimer;
 
-    updateNow();    
-    
-    
-    sleepAnimationTimer.set( SLEEP_ANIMATION_DURATION_MS );
-    
-    while (!sleepAnimationTimer.isExpired()) {
-        
-        // Update time snapshot
-        // Used by millis() and Timer thus functions
-
-        updateNow();
-
-        setColorNow( dim( BLUE , map(sleepAnimationTimer.getRemaining(),0,SLEEP_ANIMATION_DURATION_MS,0,SLEEP_ANIMATION_MAX_BRIGHTNESS)) );
-        
+    // This loop emperically works out to be about the reight delay.     
+    // I know this hardcode is hackyish, but we need to save flash space
+               
+    for( uint8_t fade_brightness = SLEEP_ANIMATION_MAX_BRIGHTNESS ; fade_brightness >0 ; fade_brightness -=2 ) {
+            
+        setColorNow( dim( BLUE, fade_brightness ) );
+            
     }
-    
     
     // We need to save the time now because it will keep ticking while we are in pre-sleep (where were can get
     // woken back up by a packet). If we did not save it and then restore it later, then all the user timers
@@ -485,18 +478,14 @@ static void warm_sleep_cycle() {
     clear_packet_buffers();
             
     // Show smooth wake animation
-       
-    updateNow();    
-    sleepAnimationTimer.set( SLEEP_ANIMATION_DURATION_MS );
     
-    while (!sleepAnimationTimer.isExpired()) {
-
-        // Update time snapshot
-        // Used by millis() and Timer thus functions
-
-        updateNow();
-                
-        setColorNow( dim( WHITE , SLEEP_ANIMATION_MAX_BRIGHTNESS- map(sleepAnimationTimer.getRemaining(),0,SLEEP_ANIMATION_DURATION_MS,0,SLEEP_ANIMATION_MAX_BRIGHTNESS)) );
+    // This loop emperically works out to be about the reight delay.
+    // I know this hardcode is hackyish, but we need to save flash space
+    
+    
+    for( uint8_t fade_brightness = 0 ; fade_brightness < SLEEP_ANIMATION_MAX_BRIGHTNESS; fade_brightness+=2 ) {
+                        
+        setColorNow( dim( WHITE , fade_brightness ) );
         
     }
                 
