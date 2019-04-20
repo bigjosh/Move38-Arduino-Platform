@@ -3,9 +3,14 @@
    Copying and distribution of this script, with or without modification,
    are permitted in any medium without royalty provided the copyright
    notice and this notice are preserved.  */
+      
 OUTPUT_FORMAT("elf32-avr","elf32-avr","elf32-avr")
 OUTPUT_ARCH(avr:5)
-__TEXT_REGION_LENGTH__ = DEFINED(__TEXT_REGION_LENGTH__) ? __TEXT_REGION_LENGTH__ : 0x1600;
+
+/* I have no idea where these TEXT and DATA length numbers come from */
+/* I overwrite them with the correct values in the MEMORY declarations */
+
+__TEXT_REGION_LENGTH__ = DEFINED(__TEXT_REGION_LENGTH__) ? __TEXT_REGION_LENGTH__ : 128K;
 __DATA_REGION_LENGTH__ = DEFINED(__DATA_REGION_LENGTH__) ? __DATA_REGION_LENGTH__ : 0xffa0;
 __EEPROM_REGION_LENGTH__ = DEFINED(__EEPROM_REGION_LENGTH__) ? __EEPROM_REGION_LENGTH__ : 64K;
 __FUSE_REGION_LENGTH__ = DEFINED(__FUSE_REGION_LENGTH__) ? __FUSE_REGION_LENGTH__ : 1K;
@@ -17,10 +22,20 @@ __USER_SIGNATURE_REGION_LENGTH__ = DEFINED(__USER_SIGNATURE_REGION_LENGTH__) ? _
 /* `blink.upload.maximum_size` in boards.txt for the Arduinio IDE to */
 /* Show the correct `Sketch uses x bytes...` after compilization. */
 
+/* The TEXT length reflects the maximum size of the built-in game in the flash */
+/* This is defined by the bootloader code in the BlinkBIOS project. */
+/* Remember that there is the built-in game at the base of flash, then the */
+/* current active game, then the BIOS at the top of flash. */
+
+/* The DATA length comes right frm the datasheets. While SRAM nominally starts at */
+/* 0x60, the first 160 bytes are IO registers so not really allocatable. To be clean */
+/* I start the data region where usable RAM really starts. The LENGTH if 0x0400 comes */
+/* straight from the datasheets (1,024 dec bytes). */
+
 MEMORY
 {
   text   (rx)   : ORIGIN = 0, LENGTH = 0x1600
-  data   (rw!x) : ORIGIN = 0x800060, LENGTH = __DATA_REGION_LENGTH__
+  data   (rw!x) : ORIGIN = 0x800100, LENGTH = (0x0400)
   eeprom (rw!x) : ORIGIN = 0x810000, LENGTH = __EEPROM_REGION_LENGTH__
   fuse      (rw!x) : ORIGIN = 0x820000, LENGTH = __FUSE_REGION_LENGTH__
   lock      (rw!x) : ORIGIN = 0x830000, LENGTH = __LOCK_REGION_LENGTH__
@@ -194,12 +209,25 @@ SECTIONS
 	boot_vector13 	= 0x3834;
 	boot_vector14 	= 0x3838;
 
+  /*
   
-  /* The NOLOAD makes it not show in in the HEX file */
-
-  .bss 0x0800100 (NOLOAD) : AT (ADDR (.bss))  
+	Ideally we would want to either move noinit to the bottom of data so we could
+	put our shared data block there, or at least make a new section called something like
+	.shared-noinit but sadly we can not do that becuase the .data is hardcoded in the "special devices"	file in gcc so it gets fixed at 0x800100.
+	
+	So instead we slightly hacky include our shared ipcram input sections at the very
+	top of the data section and then just push the data_start export to be after these
+	shared blocks. This ends up working becuase the C library code begins coping the 
+	data init block to whatever data_start is defined as. 	
+	
+  */
+  
+  .data          :
   {
   
+	/* Here are the data blocks that are shared with the BlinkBIOS. They *must* be at */ /* fixed addreses that the base of SRAM, so they must come first here. They also */
+	/* must *not* get zeroed out, so the data_start *must* come after them. */
+	
 	*(.ipcram1)
 	KEEP( *(.ipcram1) )
 	*(.ipcram2)
@@ -209,29 +237,10 @@ SECTIONS
 	*(.ipcram4)
 	KEEP( *(.ipcram4) )
 	*(.ipcram5)
-	KEEP( *(.ipcram5) )
-	
-	/* 
-	   This __bss_start is used by the startup code to clear the bss to 0's 
-	   We put it below the ipcram so those do NOT get cleared 
-	*/
-			
-     PROVIDE (__bss_start = .) ;
-    *(.bss)
-     *(.bss*)
-    *(COMMON)
-     PROVIDE (__bss_end = .) ;
-  }  > data
+	KEEP( *(.ipcram5) ) 
 
-  /*
+	/* Here starts the normally initialized data section */
   
-	We have to rename .data to .datax becuase the .data is hardcoded in the "special devices"
-	file in gcc so it gets fixed at 0x800100, but we want it to float so it can come behind the bss
-	
-  */
-  
-  .datax          :
-  {
      PROVIDE (__data_start = .) ;
     *(.data)
      *(.data*)
@@ -243,12 +252,18 @@ SECTIONS
      _edata = . ;
      PROVIDE (__data_end = .) ;
   }  > data AT> text
-  
-   __data_load_start = LOADADDR(.datax);
-   __data_load_end = __data_load_start + SIZEOF(.datax);
-   
+  .bss  ADDR(.data) + SIZEOF (.data)   : AT (ADDR (.bss))
+  {
+     PROVIDE (__bss_start = .) ;
+    *(.bss)
+     *(.bss*)
+    *(COMMON)
+     PROVIDE (__bss_end = .) ;
+  }  > data
+   __data_load_start = LOADADDR(.data);
+   __data_load_end = __data_load_start + SIZEOF(.data);
   /* Global data not cleared after reset.  */
-  .noinit  ADDR(.datax) + SIZEOF (.datax)  :  AT (ADDR (.noinit))
+  .noinit  ADDR(.bss) + SIZEOF (.bss)  :  AT (ADDR (.noinit))
   {
      PROVIDE (__noinit_start = .) ;
     *(.noinit*)
@@ -256,6 +271,7 @@ SECTIONS
      _end = . ;
      PROVIDE (__heap_start = .) ;
   }  > data
+  
   .eeprom  :
   {
     /* See .data above...  */
