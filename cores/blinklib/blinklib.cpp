@@ -373,9 +373,7 @@ static void warm_sleep_cycle() {
     // note that we do this after we send the packets so that there will be less delay
     // in propagating the sleep
     
-    
-    /*
-    
+          
     Timer sleepAnimationTimer;
 
     updateNow();    
@@ -393,8 +391,6 @@ static void warm_sleep_cycle() {
         setColorNow( dim( BLUE , map(sleepAnimationTimer.getRemaining(),0,SLEEP_ANIMATION_DURATION_MS,0,SLEEP_ANIMATION_MAX_BRIGHTNESS)) );
         
     }
-    
-    */
     
     
     // We need to save the time now because it will keep ticking while we are in pre-sleep (where were can get
@@ -487,9 +483,7 @@ static void warm_sleep_cycle() {
     // Clear out old packets (including any old FORCE_SLEEP packets so we don't go right back to bed)
 
     clear_packet_buffers();
-    
-    /*
-    
+            
     // Show smooth wake animation
        
     updateNow();    
@@ -505,9 +499,7 @@ static void warm_sleep_cycle() {
         setColorNow( dim( WHITE , SLEEP_ANIMATION_MAX_BRIGHTNESS- map(sleepAnimationTimer.getRemaining(),0,SLEEP_ANIMATION_DURATION_MS,0,SLEEP_ANIMATION_MAX_BRIGHTNESS)) );
         
     }
-    
-    */
-            
+                
     // restore game pixels
     
     restorePixels();
