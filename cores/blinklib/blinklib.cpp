@@ -60,10 +60,6 @@
                                                         // We will warm sleep if we do not see a button press or remote button press
                                                         // in this long
 
-#warning
-#define WARM_SLEEP_TIMEOUT_MS   (  15 * 1000UL )   // 15 seconds for testing 
-
-
 // This is a special byte that signals that this is a long data packet
 // Note that this is also a value value, but we can tell that it is a data by looking at the IR packet len. Datagrams are always >2 bytes. 
 // It must appear in the first byte of the data, and the final byte is an inverted checksum of all bytes including this header byte
@@ -536,11 +532,15 @@ static void RX_IRFaces() {
             
             // blinkBIOS will only pass use packets with len >0 
             
-            uint8_t irDataFirstByte = *packetData;
+            uint8_t irDataFirstByte = *packetData;                       
                                                                    
             if (irValueCheckValid( irDataFirstByte )) {                                
-                                               
-                // The header byte passes checks
+                
+                // If we get here, then we know this is a valid packet
+                
+                // Clear to send on this face immediately to ping-pong messages at max speed without collisions
+                face->sendTime = 0;
+                
                 
                 if (irValueDecodePostponeSleepFlag(irDataFirstByte )) {
                     
@@ -555,10 +555,6 @@ static void RX_IRFaces() {
                                                            
                 } 
                 
-                // If we get here, then we know this is a valid packet
-                                
-                // Clear to send on this face immediately to ping-pong messages at max speed without collisions
-                face->sendTime = 0;
 
                 uint8_t decodedByte = irValueDecodeData( irDataFirstByte );
                 
@@ -617,8 +613,7 @@ static void RX_IRFaces() {
             
             // No matter what, mark buffer as read so we can get next packet
             ir_rx_state->packetBufferReady=0;
-            
-            
+                        
         }  // if ( ir_data_buffer->ready_flag )
 
         face++;
