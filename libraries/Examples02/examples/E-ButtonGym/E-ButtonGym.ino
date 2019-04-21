@@ -1,7 +1,7 @@
 /*
  * 
  * Exercise the button functions to see how they work and 
- * and also show off osme fancy C++ footwork!
+ * and also show off some fancy C++ footwork!
  * 
  * Each of the button events lights one of the pixels 
  * so you can see that it happened. Check `indicators` for the
