@@ -11,16 +11,8 @@
 *  its newly found neighbors. A non-moved neighbor with a new neighbor looses 5 seconds
 *  and animates in the direction it lost the life (i.e. where the neighbor showed up)
 *
-*   Tiles resets health to full when triple press occurs
-*
-*    States for game piece.
-*    Alive/Dead
-*    Team
-*    Attack, Injured
-*
-*  Technical Details:
-*  A long press on the tile changes the color of the tile for prototyping (switch state 1 or 2)
-*
+*   A double click resets health to full 
+*   A long press changes the color (team) of the tile
 *
 */
 
@@ -51,7 +43,6 @@ Timer modeTimeout;     // Started when we enter ATTACKING, when it expires we sw
 // Started when we are injured to make sure we don't get injured multiple times on the same attack
 
 void setup() {
-  blinkStateBegin();
 }
 
 
@@ -178,5 +169,3 @@ void loop() {
   setValueSentOnAllFaces( mode );       // Tell everyone around how we are feeling
   
 }
-
-
