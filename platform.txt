@@ -38,9 +38,15 @@ compiler.objcopy.eep.flags=-O ihex -j .eeprom --set-section-flags=.eeprom=alloc,
 # We need to explicitly remove .BSS from the hex file since the linker inexplicably includes .bss in .text
 # when we include .ipcram in .bss. 
 
-# This 0x1600 is is the physical start address of the `built-in` program image area. This is
+# This 0x1700 is is the physical start address of the `built-in` program image area. This is
 # defined in the blinkbios as `FLASH_BUILTIN_IMAGE_START_ADDRESS`. 
-compiler.elf2hex.flags=--change-addresses 0x1600 -O ihex -R .eepromm 
+# If you change this, then you must also update the LENGTH of the TEXT
+# area in the MEMORY section of linkscripts/avr5.xn to match.
+# Finally you must also update `blink.upload.maximum_size` in boards.txt
+# so that the Arduino IDE reports the correct values for program size after a compile. 
+# Also remember that AVR flash memory is 16 bits wide so this number
+# is 1/2 what you expect it to be if you are thinking in bytes. 
+compiler.elf2hex.flags=--change-addresses 0x1700 -O ihex -R .eepromm 
 compiler.elf2hex.cmd=avr-objcopy
 compiler.ldflags=
 compiler.size.cmd=avr-size
