@@ -327,6 +327,8 @@ void randomize();
 // Read the unique serial number for this blink tile
 // There are 9 bytes in all, so n can be 0-8
 
+#define SERIAL_NUMBER_LEN 9
+
 byte getSerialNumberByte( byte n );
 
 // Returns the currently blinkbios version number.
