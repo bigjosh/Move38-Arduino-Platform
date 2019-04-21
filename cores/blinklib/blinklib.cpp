@@ -73,6 +73,13 @@
 
 #define TRIGGER_WARM_SLEEP_SPECIAL_VALUE   0b00010101
 
+// This is a special byte that does nothing. 
+// It must appear in the first & second byte of data.
+// We send it when we warm wake to warm wake our neighbors. 
+
+#define NOP_SPECIAL_VALUE   0b00110011
+
+
 // We use bit 6 in the IR data to indicate that a button has been pressed so we should 
 // postpone sleeping. This spreads a button press to all connected tiles so 
 // they will stay awake if any tile in the group gets pressed.
@@ -330,6 +337,13 @@ void restorePixels() {
 
 static uint8_t force_sleep_packet[2] = { TRIGGER_WARM_SLEEP_SPECIAL_VALUE , TRIGGER_WARM_SLEEP_SPECIAL_VALUE};
 
+// This packet does nothing except wake up our neighbors
+
+static uint8_t nop_wake_packet[2] = { NOP_SPECIAL_VALUE , NOP_SPECIAL_VALUE};
+
+
+#define SLEEP_PACKET_REPEAT_COUNT 5     // How many times do we send the sleep and wake packets for redunancy?
+
 static void warm_sleep_cycle() {
     
     BLINKBIOS_POSTPONE_SLEEP_VECTOR();      // Postpone cold sleep so we can warm sleep for a while
@@ -342,24 +356,35 @@ static void warm_sleep_cycle() {
             
     savePixels(); 
 
-    // Show them the first step in the animation while we send out the packets
-    setColorNow( dim( BLUE , SLEEP_ANIMATION_MAX_BRIGHTNESS ) );
 
     // Ok, now we are virally sending FORCE_SLEEP out on all faces to spread the word
     // and the pixels are off so the user is happy and we are saving power.
 
     // First send the force sleep packet out to all our neighbors
-    // We are indiscriminate, just splat it 100 times everywhere.
+    // We are indiscriminate, just splat it 5 times everywhere.
     // This is a brute force approach to make sure we get though even with collisions
     // and long packets in flight.
-
-
-    // We need a pointer for the value to send it...
     
+    // We also show a little animation while transmitting the packets
+    
+    // Figure out how much brightness to animate on each packet
+        
+    const int animation_fade_step = SLEEP_ANIMATION_MAX_BRIGHTNESS / ( SLEEP_PACKET_REPEAT_COUNT * FACE_COUNT );
+    
+    uint8_t fade_brightness;
+    
+    // For the sleep animation we start bright and dim to 0 by the end
 
-    for( uint8_t n=0; n<5; n++ ) {
+    // This code picks a start near to SLEEP_ANIMATION_MAX_BRIGHTNESS that makes sure we end up at 0    
+    fade_brightness = SLEEP_ANIMATION_MAX_BRIGHTNESS;
+    
+    for( uint8_t n=0; n<SLEEP_PACKET_REPEAT_COUNT; n++ ) {
 
         FOREACH_FACE(f) {
+            
+            setColorNow( dim( BLUE, fade_brightness ) );
+            
+            fade_brightness -= animation_fade_step;
 
             //while ( blinkbios_is_rx_in_progress( f ) );     // Wait to clear to send (no guarantee, but better than just blink sending)
 
@@ -369,19 +394,9 @@ static void warm_sleep_cycle() {
 
     }
     
-    // now show our smooth power down animation
-    // note that we do this after we send the packets so that there will be less delay
-    // in propagating the sleep
-
-    // This loop emperically works out to be about the reight delay.     
-    // I know this hardcode is hackyish, but we need to save flash space
-               
-    for( uint8_t fade_brightness = SLEEP_ANIMATION_MAX_BRIGHTNESS ; fade_brightness >0 ; fade_brightness -=2 ) {
-            
-        setColorNow( dim( BLUE, fade_brightness ) );
-            
-    }
-    
+    // Ensure that we end up completely off 
+    setColorNow( OFF );
+        
     // We need to save the time now because it will keep ticking while we are in pre-sleep (where were can get
     // woken back up by a packet). If we did not save it and then restore it later, then all the user timers
     // would be expired when we woke.
@@ -475,16 +490,28 @@ static void warm_sleep_cycle() {
             
     // Show smooth wake animation
     
-    // This loop emperically works out to be about the reight delay.
+    // This loop empirically works out to be about the right delay.
     // I know this hardcode is hackyish, but we need to save flash space
+
+    // For the wake animation we start off and dim to MAX by the end
+
+    // This code picks a start near to SLEEP_ANIMATION_MAX_BRIGHTNESS that makes sure we end up at 0
+    fade_brightness = 0;
     
-    
-    for( uint8_t fade_brightness = 0 ; fade_brightness < SLEEP_ANIMATION_MAX_BRIGHTNESS; fade_brightness+=2 ) {
-                        
-        setColorNow( dim( WHITE , fade_brightness ) );
-        
+    for( uint8_t n=0; n<SLEEP_PACKET_REPEAT_COUNT; n++ ) {
+
+        FOREACH_FACE(f) {
+            
+            // INcrement first - they are already seeing OFF when we start
+            fade_brightness += animation_fade_step;                        
+            setColorNow( dim( BLUE, fade_brightness ) );
+            
+            blinkbios_irdata_send_packet( f ,  nop_wake_packet , sizeof( nop_wake_packet ) );      // Note that we can use sizeof() here becuase the arrayt is explicity uint8_t which is always a byte on AVR
+
+        }
+
     }
-                
+                       
     // restore game pixels
     
     restorePixels();
