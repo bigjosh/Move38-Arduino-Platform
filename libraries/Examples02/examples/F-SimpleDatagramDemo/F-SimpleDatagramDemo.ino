@@ -14,7 +14,7 @@
 
 // Send somethign on all faces so we can check that we got it
 
-#define MAGIC_VALUE 43
+#define MAGIC_VALUE 42
 
 // Leave the current color on this face until this timer expires
 static Timer showColorOnFaceTimer[ FACE_COUNT ];
