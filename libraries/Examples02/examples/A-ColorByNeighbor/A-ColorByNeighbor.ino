@@ -9,7 +9,7 @@
 
 // color by number of neighbors
 Color colors[] = {  
-  dim(WHITE,5),   // 0 neighbors
+  dim(WHITE,40),   // 0 neighbors
   RED,            // 1 neighbors
   YELLOW,         // 2 neighbors
   GREEN,          // 3 neighbors
