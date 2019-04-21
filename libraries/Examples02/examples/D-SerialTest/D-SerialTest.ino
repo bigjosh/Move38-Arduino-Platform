@@ -1,6 +1,9 @@
 /*
  * Example showing how to use the serial port.
  * 
+ * Enter the letters "R", "G", or "B" over the serial port to change the color of the blink.
+ * Push the button on the blink to set back to WHITE. 
+ * 
  * To use this you'll need to connect a serial terminal to the Blinks service port. 
  * More info on how to do that here...
  * https://github.com/bigjosh/Move38-Arduino-Platform/blob/master/Service%20Port.MD
