@@ -19,17 +19,23 @@ void setup() {
 // Pick some unlikely values so we are more likely to show an error if a different 
 // game is runnning on the oposing blink
 
-#define VALUE_BUTTON_UP   'U'
-#define VALUE_BUTTON_DOWN 'D'
+#define VALUE_BUTTON_UP   12
+#define VALUE_BUTTON_DOWN 21
 
 // Did we get an error onthis face recently?
-Timer errorOnFaceTimer[ FACE_COUNT ];
+Timer errorOnFaceTimer[ FACE_COUNT ]; 
 
 const int showErrTime_ms = 500;    // Show the errror for 0.5 second so people can see it 
 
 void loop() {
 
+  // Make a little pulsation so we know it is working
+
+  uint8_t brightness = sin8_C( (millis()/4) & 0xff );
+
   FOREACH_FACE(f) {
+
+    Color color;     
 
     // Set the color on this face based on what we see...
 
@@ -38,14 +44,11 @@ void loop() {
       switch ( getLastValueReceivedOnFace( f ) ) {
         
         case VALUE_BUTTON_UP : 
-
-          // A zero is idle - we have a neighbor and his button is not down
-          setColorOnFace( dim( BLUE , 100 ) , f );
+          color = BLUE;
           break;
            
         case VALUE_BUTTON_DOWN: 
-          // A 1 means other side button down, so show green
-          setColorOnFace( GREEN , f );
+          color=GREEN;
           break;
 
         default: 
@@ -60,7 +63,7 @@ void loop() {
 
         // No neighbor on this face right now
 
-        setColorOnFace( dim( YELLOW , 40 ) , f );
+        color=YELLOW;
         
       }
 
@@ -68,10 +71,11 @@ void loop() {
 
       if ( !errorOnFaceTimer[f].isExpired() ) {
 
-        setColorOnFace( RED , f );
+        color = RED; 
         
       } 
-            
+      
+      setColorOnFace( dim( color , brightness ) , f );           
 
   }
 
