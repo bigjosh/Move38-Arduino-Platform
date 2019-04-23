@@ -1216,6 +1216,55 @@ void setFaceColor(  byte face, Color newColor ) {
 
 }
 
+#warning
+#include "Serial.h"
+
+ServicePortSerial Serial;
+
+// This truly lovely code from the FastLED library
+// https://github.com/FastLED/FastLED/blob/master/lib8tion/trig8.h
+// ...adapted to save RAM by stroing the table in PROGMEM
+
+/// Fast 8-bit approximation of sin(x). This approximation never varies more than
+/// 2% from the floating point value you'd get by doing
+///
+///     float s = (sin(x) * 128.0) + 128;
+///
+/// @param theta input angle from 0-255
+/// @returns sin of theta, value between 0 and 255
+
+PROGMEM const uint8_t b_m16_interleave[] = { 0, 49, 49, 41, 90, 27, 117, 10 };
+
+byte sin8_C( byte theta)
+{
+    uint8_t offset = theta;
+    if( theta & 0x40 ) {
+        offset = (uint8_t)255 - offset;
+    }
+    offset &= 0x3F; // 0..63
+
+    uint8_t secoffset  = offset & 0x0F; // 0..15
+    if( theta & 0x40) secoffset++;
+
+    uint8_t section = offset >> 4; // 0..3
+    uint8_t s2 = section * 2;
+    const uint8_t* p = b_m16_interleave;
+    p += s2;
+    
+    uint8_t b   =  pgm_read_byte(p);
+    p++;
+    uint8_t m16 =  pgm_read_byte(p);
+
+    uint8_t mx = (m16 * secoffset) >> 4;
+
+    int8_t y = mx + b;
+    if( theta & 0x80 ) y = -y;
+
+    y += 128;
+
+    return y;
+}
+
 
 // This is the main event loop that calls into the arduino program
 // (Compiler is smart enough to jmp here from main rather than call!
@@ -1223,23 +1272,18 @@ void setFaceColor(  byte face, Color newColor ) {
 //     Thanks for the extra 4 bytes of flash gcc!)
 
 void __attribute__((noreturn)) run(void)  {
-
+    
     // TODO: Is this right? Should hasWoke() return true or false on the first check after start up?
 
     blinkbios_button_block.wokeFlag = 1;        // Clear any old wakes (wokeFlag is cleared to 0 on wake)
 
-    blinkbios_button_block.bitflags = 0x00;     // Clear any old button actions and start fresh
-
+    updateNow();                    // Initialize out internal millis so that when we reset the warm sleep counter it is right, and so setup sees the right millis time
     reset_warm_sleep_timer();
 
     setup();
 
     while (1) {
 
-        // Capture time snapshot
-        // Used by millis() and Timer thus functions
-
-        updateNow();
 
         // Here we check to enter seed mode. The button must be held down for 6 seconds and we must not have any neighbors
         // Note that we directly read the shared block rather than our snapshot. This lets the 6 second flag latch and
@@ -1283,6 +1327,7 @@ void __attribute__((noreturn)) run(void)  {
 
                 // Clear out the press that put us to sleep so we do not see it again
                 // Also clear out everything else so we start with a clean slate on waking
+                                
                 blinkbios_button_block.bitflags = 0;
 
             } else {
@@ -1310,18 +1355,15 @@ void __attribute__((noreturn)) run(void)  {
 
         }
 
+        // Capture time snapshot
+        // Used by millis() and Timer thus functions
+        // This comes after the possible button holding to enter seed mode
+       
+        updateNow();
+                
         if ( blinkbios_button_block.bitflags & BUTTON_BITFLAG_PRESSED  ) {  // Any button press resets the warm sleep timeout
-
             viralPostponeWarmSleep();
-
         }
-
-        if (warm_sleep_time.isExpired()) {
-
-            warm_sleep_cycle();
-
-        }
-
 
         cli();
         buttonSnapshotDown       = blinkbios_button_block.down;
@@ -1329,7 +1371,6 @@ void __attribute__((noreturn)) run(void)  {
         blinkbios_button_block.bitflags=0;                              // Clear out the flags now that we have them
         buttonSnapshotClickcount = blinkbios_button_block.clickcount;
         sei();
-
 
 
         // Update the IR RX state
@@ -1345,6 +1386,12 @@ void __attribute__((noreturn)) run(void)  {
         // Transmit any IR packets waiting to go out
         // Note that we do this after loop had a chance to update them.
         TX_IRFaces();
+
+        if (warm_sleep_time.isExpired()) {
+
+            warm_sleep_cycle();
+
+        }
 
         
     }

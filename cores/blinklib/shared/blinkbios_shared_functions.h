@@ -60,6 +60,7 @@ extern "C" void BLINKBIOS_BOOTLOADER_SEED_VECTOR()  __attribute__((used));
 // Can be called with interrupts off, so you can adjust the
 // blinkbios_millis_block.millis and then call BLINKBIOS_POSTPONE_SLEEP_VECTOR
 // to reset the sleep_time to match the new timebase
+// Leaves with interrupts ON 
 
 #define BLINKBIOS_POSTPONE_SLEEP_VECTOR boot_vector10
 

@@ -340,7 +340,11 @@ byte getBlinkbiosVersion();
 
 word map(word x, word in_min, word in_max, word out_min, word out_max);
 
+// Maps values 0-255 to values 0-255 in a sine wave
+// Based on fabulous FastLED library code here...
+// https://github.com/FastLED/FastLED/blob/master/lib8tion/trig8.h#L159
 
+byte sin8_C( byte theta);
 
 /*
 
@@ -359,10 +363,7 @@ word map(word x, word in_min, word in_max, word out_min, word out_max);
 // where it left off. It is up to the programmer to check to see if the blink has slept and then
 // woken and react accordingly if desired.
 
-
-// Returns 1 if we have slept and woken since last time we checked
-// Best to check as last test at the end of loop() so you can
-// avoid intermediate display upon waking.
+// Returns 1 if we have woken from sleep since last time we checked
 
 uint8_t hasWoken(void);
 

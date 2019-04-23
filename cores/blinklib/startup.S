@@ -65,6 +65,9 @@ __init:
 
 	.section .init9,"ax",@progbits
 
+    // Note that we do not need to clear `r1` or set up the stack here 
+    // becuase the BlinkBIOS has already done that by the time we get started. 
+
 	jmp mainx
 
     .endfunc
