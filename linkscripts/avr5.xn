@@ -216,6 +216,7 @@ SECTIONS
 	boot_vector12 	= 0x3830;
 	boot_vector13 	= 0x3834;
 	boot_vector14 	= 0x3838;
+	boot_vector15 	= 0x383c;
 
  
   /* The NOLOAD makes it not show in in the HEX file */
@@ -289,7 +290,7 @@ SECTIONS
      PROVIDE (__heap_start = .) ;
   }  > data
   
-  .stackwatcher :
+  .stackwatcher (NOLOAD) :
   
   {
 	/* This comes at the very end of the data section, so will be */
