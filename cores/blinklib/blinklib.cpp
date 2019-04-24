@@ -159,6 +159,9 @@ static uint8_t irValueDecodePostponeSleepFlag( uint8_t d ) {
     #error IR_DATAGRAM_LEN must not be bigger than IR_RX_PACKET_SIZE
 #endif
 
+// All semantics chosen to have sane startup 0 so we can
+// keep this in bss section and have it zeroed out at startup. 
+
 struct face_t {
 
     uint8_t inValue;        // Last received value on this face, or 0 if no neighbor ever seen since startup
@@ -800,6 +803,14 @@ byte isValueReceivedOnFaceExpired( byte face ) {
 
 }
 
+#warning
+
+millis_t faceExpiredTime( byte face ) {
+
+    return faces[face].expireTime ;
+
+}
+
 // Returns false if their has been a neighbor seen recently on any face, true otherwise.
 
 bool isAlone() {
@@ -1216,10 +1227,6 @@ void setFaceColor(  byte face, Color newColor ) {
 
 }
 
-#warning
-#include "Serial.h"
-
-ServicePortSerial Serial;
 
 // This truly lovely code from the FastLED library
 // https://github.com/FastLED/FastLED/blob/master/lib8tion/trig8.h
@@ -1265,6 +1272,42 @@ byte sin8_C( byte theta)
     return y;
 }
 
+// #define NO_STACK_WATCHER to disable the stack overflow detection.
+// saves a few bytes of flash and 2 bytes RAM
+
+#ifdef NO_STACK_WATCHER
+
+
+    void statckwatcher_init() {
+    }
+
+    uint8_t stackwatcher_intact() {
+        return 1;
+    }
+
+
+#else 
+
+    // We use this sentinel to see if we blew the stack
+    // Note that we can not statically initialize this because it is not
+    // in the initialized part of the data section.
+    // We check it periodically from the ISR
+
+    uint16_t __attribute__(( section(".stackwatcher") )) stackwatcher;
+
+    #define STACKWATCHER_MAGIC_VALUE 0xBABE
+
+    void statckwatcher_init() {
+        stackwatcher = STACKWATCHER_MAGIC_VALUE;
+    }
+
+    uint8_t stackwatcher_intact() {
+        return stackwatcher == STACKWATCHER_MAGIC_VALUE;
+    }
+    
+    
+
+#endif
 
 // This is the main event loop that calls into the arduino program
 // (Compiler is smart enough to jmp here from main rather than call!
@@ -1279,11 +1322,12 @@ void __attribute__((noreturn)) run(void)  {
 
     updateNow();                    // Initialize out internal millis so that when we reset the warm sleep counter it is right, and so setup sees the right millis time
     reset_warm_sleep_timer();
+    
+    statckwatcher_init();   // Set up the sentinel byte at the top of RAM used by variables so we can tell if stack clobbered it
 
     setup();
 
     while (1) {
-
 
         // Here we check to enter seed mode. The button must be held down for 6 seconds and we must not have any neighbors
         // Note that we directly read the shared block rather than our snapshot. This lets the 6 second flag latch and
@@ -1392,7 +1436,6 @@ void __attribute__((noreturn)) run(void)  {
             warm_sleep_cycle();
 
         }
-
         
     }
 

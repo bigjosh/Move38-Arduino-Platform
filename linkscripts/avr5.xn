@@ -288,6 +288,18 @@ SECTIONS
      _end = . ;
      PROVIDE (__heap_start = .) ;
   }  > data
+  
+  .stackwatcher :
+  
+  {
+	/* This comes at the very end of the data section, so will be */
+	/* the first thing clobbered by a blown stack. We can put a special value */
+	/* here and if it gets clobbered then we know we blew the stack. */
+	*.(.stackwatcher*)
+		
+  } > data
+  
+  
   .eeprom  :
   {
     /* See .data above...  */

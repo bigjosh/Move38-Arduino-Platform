@@ -46,6 +46,10 @@ byte didValueOnFaceChange( byte face );
 
 byte isValueReceivedOnFaceExpired( byte face );
 
+#warning
+unsigned long  faceExpiredTime( byte face );
+
+
 // Returns false if their has been a neighbor seen recently on any face, returns true otherwise.
 bool isAlone();
 
@@ -284,7 +288,7 @@ class Timer {
 
 	public:
 
-		Timer() : m_expireTime(0) {};		// Timers come into this world pre-expired.
+		Timer() {};		                    // Timers come into this world pre-expired.
 
 		bool isExpired();
 

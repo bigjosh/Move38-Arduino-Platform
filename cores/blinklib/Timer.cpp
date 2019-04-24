@@ -7,8 +7,12 @@
 
 #define NEVER (ULONG_MAX)
 
+// All Timers come into this world pre-expired, so their expireTime is 0
+// Here we leave the constructor empty and depend in the BBS section clearing
+// to set it to 0 (the constructor mechanism uses lots of flash). 
+
 bool Timer::isExpired() {
-    return millis() >= m_expireTime;
+    return millis() > m_expireTime;
 }
 
 void Timer::set( uint32_t ms ) {

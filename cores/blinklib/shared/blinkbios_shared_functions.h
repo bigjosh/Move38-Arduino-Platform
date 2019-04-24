@@ -39,7 +39,7 @@
 
 #define BLINKBIOS_IRDATA_SEND_PACKET_VECTOR boot_vector4      // This lands at base + 4 bytes per vector * 4th vector (init is at 0) = 0x10
 
-extern "C" uint8_t BLINKBIOS_IRDATA_SEND_PACKET_VECTOR(  uint8_t face, const uint8_t *data , uint8_t len )  __attribute__((used));
+extern "C" uint8_t BLINKBIOS_IRDATA_SEND_PACKET_VECTOR(  uint8_t face, const uint8_t *data , uint8_t len )  __attribute__((used)) __attribute__((noinline));
 
 // Translate and copy the RGB values in the pixel buffer to raw PWM values in the
 // raw pixel buffer. Waits for next vertical blanking interval to avoid
@@ -47,13 +47,13 @@ extern "C" uint8_t BLINKBIOS_IRDATA_SEND_PACKET_VECTOR(  uint8_t face, const uin
 
 #define BLINKBIOS_DISPLAY_PIXEL_BUFFER_VECTOR boot_vector8
 
-extern "C" void BLINKBIOS_DISPLAY_PIXEL_BUFFER_VECTOR()  __attribute__((used));
+extern "C" void BLINKBIOS_DISPLAY_PIXEL_BUFFER_VECTOR()  __attribute__((used)) __attribute__((noinline));
 
 
 
 #define BLINKBIOS_BOOTLOADER_SEED_VECTOR boot_vector9
 
-extern "C" void BLINKBIOS_BOOTLOADER_SEED_VECTOR()  __attribute__((used));
+extern "C" void BLINKBIOS_BOOTLOADER_SEED_VECTOR()  __attribute__((used)) __attribute__((noinline));
 
 
 // Push back the inactivity sleep timer
@@ -64,12 +64,12 @@ extern "C" void BLINKBIOS_BOOTLOADER_SEED_VECTOR()  __attribute__((used));
 
 #define BLINKBIOS_POSTPONE_SLEEP_VECTOR boot_vector10
 
-extern "C" void BLINKBIOS_POSTPONE_SLEEP_VECTOR()  __attribute__((used));
+extern "C" void BLINKBIOS_POSTPONE_SLEEP_VECTOR()  __attribute__((used)) __attribute__((noinline));
 
 
 #define BLINKBIOS_SLEEP_NOW_VECTOR boot_vector12
 
-extern "C" void BLINKBIOS_SLEEP_NOW_VECTOR()  __attribute__((used));
+extern "C" void BLINKBIOS_SLEEP_NOW_VECTOR()  __attribute__((used)) __attribute__((noinline));
 
 // Fill the flash page buffer using the boot_page_fill() function,
 // then call here. Will write the page to flash, wait for it to complete,
@@ -78,13 +78,20 @@ extern "C" void BLINKBIOS_SLEEP_NOW_VECTOR()  __attribute__((used));
 
 #define BLINKBIOS_WRITE_FLASH_PAGE_VECTOR boot_vector13
 
-extern "C" void BLINKBIOS_WRITE_FLASH_PAGE_VECTOR(uint8_t page)  __attribute__((used));
+extern "C" void BLINKBIOS_WRITE_FLASH_PAGE_VECTOR(uint8_t page) __attribute__((used)) __attribute__((noinline));
 
 
 // Returns the version of the blinksbios present
 
 #define BLINKBIOS_VERSION_VECTOR boot_vector14
 
-extern "C" uint8_t BLINKBIOS_VERSION_VECTOR()  __attribute__((used));
+extern "C" uint8_t BLINKBIOS_VERSION_VECTOR()  __attribute__((used)) __attribute__((noinline));
+
+
+// Error mode. Blinks red until button pressed, then soft reset
+
+#define BLINKBIOS_ABEND_VECTOR boot_vector15
+
+extern "C" void BLINKBIOS_ABEND_VECTOR( uint8_t blinkCount ) __attribute__((used)) __attribute__((noinline)) __attribute__((noreturn));
 
 #endif /* BLINKBIOS_SHARED_FUCNTIONS_H_ */

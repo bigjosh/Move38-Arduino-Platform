@@ -12,7 +12,6 @@ C:\Program Files (x86)\Arduino\hardware\tools\avr\avr\lib\ldscripts
 
 We add a new group of sections called `ipcram1`-`ipcram9` which hold the shared memory block. 
 
-
 Note also that we mark these sections as `KEEP`, but they still seem to get garbage collected if not referenced, so we should make sure to reference them in the foreground code or else the foreground will put variables here and overwrite the bootloader's info. 
 
 We had to make a new `.dataX` segment because the origin of the normal `.data` segment seems to be hardcoded into the "specific device" file in gcc...  
@@ -45,3 +44,8 @@ byte __attribute__((section ("ipcram1"))) counter=0;
 More info:
 https://gcc.gnu.org/onlinedocs/gcc-3.2/gcc/Variable-Attributes.html
 
+### Stack Overflow Detector
+
+We put the input section `.stackwatcher` after all the other stuff in the `data` memory section. We can then have the code put a special value here and periodically check that value to see if it changed. Since the stack grows down from the top of RAM, it will hit this first and so if anything here changes then we know that the stack got too big and overwrote it. 
+
+ 
