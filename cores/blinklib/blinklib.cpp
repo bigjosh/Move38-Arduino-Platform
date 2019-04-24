@@ -803,14 +803,6 @@ byte isValueReceivedOnFaceExpired( byte face ) {
 
 }
 
-#warning
-
-millis_t faceExpiredTime( byte face ) {
-
-    return faces[face].expireTime ;
-
-}
-
 // Returns false if their has been a neighbor seen recently on any face, true otherwise.
 
 bool isAlone() {
@@ -1328,6 +1320,13 @@ void __attribute__((noreturn)) run(void)  {
     setup();
 
     while (1) {
+        
+        // Did we blow the stack?
+        
+        if (!stackwatcher_intact()) {
+            // If so, show error code to user
+            BLINKBIOS_ABEND_VECTOR(4);
+        }
 
         // Here we check to enter seed mode. The button must be held down for 6 seconds and we must not have any neighbors
         // Note that we directly read the shared block rather than our snapshot. This lets the 6 second flag latch and

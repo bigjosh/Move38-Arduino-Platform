@@ -46,10 +46,6 @@ byte didValueOnFaceChange( byte face );
 
 byte isValueReceivedOnFaceExpired( byte face );
 
-#warning
-unsigned long  faceExpiredTime( byte face );
-
-
 // Returns false if their has been a neighbor seen recently on any face, returns true otherwise.
 bool isAlone();
 
