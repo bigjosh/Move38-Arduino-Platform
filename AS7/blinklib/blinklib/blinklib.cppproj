@@ -189,6 +189,10 @@
       <SubType>compile</SubType>
       <Link>Print.h</Link>
     </Compile>
+    <Compile Include="..\..\..\cores\blinklib\run.h">
+      <SubType>compile</SubType>
+      <Link>run.h</Link>
+    </Compile>
     <Compile Include="..\..\..\cores\blinklib\Serial.cpp">
       <SubType>compile</SubType>
       <Link>Serial.cpp</Link>

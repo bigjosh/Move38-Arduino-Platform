@@ -21,9 +21,18 @@
 #include <limits.h>         // UINTLONG_MAX for NEVER
 #include "ArduinoTypes.h"
 
+// Number of faces on a blink. Looks nicer than hardcoding '6' everywhere.
+
+#define FACE_COUNT 6
+
+/*
+
+    IR communications functions
+
+*/
+
 // The value of the data sent and received on faces via IR can be between 0 and IR_DATA_VALUE_MAX
 // If you try to send higher than this, the max value will be sent.
-// Note that if you change this, you must also change parityTable[] in blinklib.cpp
 
 #define IR_DATA_VALUE_MAX 63
 
@@ -65,7 +74,7 @@ void setValueSentOnAllFaces( byte value );
 // A datagram is a set of 1-IR_DATAGRAM_MAX_LEN bytes that are atomically sent over the IR link
 // The datagram is sent immediately on a best efforts basis. If it is not received by the other side then
 // it is lost forever. Each datagram sent is received at most 1 time. Once you have processed a received datagram
-// then you must mark it as read before you can receive the next one. 
+// then you must mark it as read before you can receive the next one on that face. 
 
 // Must be smaller than IR_RX_PACKET_SIZE
 
@@ -77,21 +86,22 @@ byte getDatagramLengthOnFace( uint8_t face );
 // Returns true if a packet is available in the buffer
 boolean isDatagramReadyOnFace( uint8_t face );
 
- // Returns a pointer to the actual received data
+ // Returns a pointer to the actual received datagram data
  // This should really be a (void *) so it can be assigned to any pointer type,
- // but in C++ you can not case a (void *) into something else so it doesn't really work there
+ // but in C++ you can not cast a (void *) into something else so it doesn't really work there
  // and I think too ugly to have these functions that are inverses of each other to take/return different types.
  // Thanks, Stroustrup.
 const byte *getDatagramOnFace( uint8_t face );
 
-// Frees up the buffer holding the long packet. This is not necessary because the
-// buffer will be automatically released when loop() returns, but it is good
-// practice to manually release it as soon as you are done with to to make room
-// for new incoming data.
+// Frees up the buffer holding the datagram data. Do this as soon as possible after you have
+// processed the datagram to free up the slot for the next incoming datagram on this face.
+// If a new datagram is recieved on a face before markDatagramReadOnFace() is called then
+// the new datagram is siliently discarded. 
+
 void markDatagramReadOnFace( uint8_t face );
 
 // Send a datagram.  
-// Datagram is sent as soon as possible and takes priority over sending value on face.
+// Datagram is sent as soon as possible and takes priority over sending a value on face.
 // If you call sendDatagramOnFace() and there is already a pending datagram, the older pending
 // one will be replaced with the new one. 
 
@@ -159,7 +169,7 @@ bool buttonLongLongPressed(void);
 */
 
 
-// Ok, it kills be to include this #include here because it pulls all of these symbols into
+// Ok, it kills me to include this #include here because it pulls all of these symbols into
 // the Arduino namespace... but, dude, Arduino pulls in everything anyway!!!!
 // To do it right we'd break out the only thing we actually want (pixelColor_t) into
 // its own header file and only include that. Maybe someday.
@@ -167,29 +177,9 @@ bool buttonLongLongPressed(void);
 
 #include "shared/blinkbios_shared_pixel.h"
 
-
-// Set our state to newState. This state is repeatedly broadcast to any
-// neighboring tiles.
-// Note that setting our state to 0 make us stop broadcasting and effectively
-// disappear from the view of neighboring tiles.
-
-// TODO: State view not implemented yet. You can use irBroadcastData() instead.
-
-// void setState( byte newState );
-
-// Color type holds 4 bits for each R,G,B. Top bit is currently unused.
-
-// TODO: Do we need 5 bits of resolution for each color?
-// TODO: Use top bit(s) for something useful like automatic
-//       blink or twinkle or something like that.
-
-// Argh, these macros are so ugly... but so idiomatic arduino. Maybe use a class with bitfields like
-// we did in pixel.cpp just so we can sleep at night?
-
-
 typedef pixelColor_t Color;
 
-// Number of brightness levels in each channel of a color
+// Number of visible brightness levels in each channel of a color
 #define BRIGHTNESS_LEVELS_5BIT 32
 #define MAX_BRIGHTNESS_5BIT    (BRIGHTNESS_LEVELS_5BIT-1)
 
@@ -221,13 +211,7 @@ typedef pixelColor_t Color;
 
 #define MAX_BRIGHTNESS (255)
 
-inline Color dim( Color color, byte brightness) {
-    return MAKECOLOR_5BIT_RGB(
-        (GET_5BIT_R(color)*brightness)/255,
-        (GET_5BIT_G(color)*brightness)/255,
-        (GET_5BIT_B(color)*brightness)/255
-    );
-}
+Color dim( Color color, byte brightness);
 
 // This maps 0-255 values to 0-31 values with the special case that 0 (in 0-255) is the only value that maps to 0 (in 0-31)
 // This leads to some slight non-linearity since there are not a uniform integral number of 1-255 values
@@ -256,7 +240,6 @@ void setColorOnFace( Color newColor , byte face );
 // DEPREICATED: Use setColorOnFace()
 //void setFaceColor( byte face , Color newColor ) __attribute__ ((deprecated));
 void setFaceColor(  byte face, Color newColor );
-
 
 /*
 
@@ -309,7 +292,7 @@ class Timer {
 // Return a random number between 0 and limit inclusive.
 // By default uses a hardcoded seed. If you need different blinks
 // to generate different streams of random numbers, then call
-// randomize() once to generate a truely random seed. 
+// randomize() once (probably in setup()) to generate a truely random seed. 
 
 word random( word limit );
 
@@ -331,35 +314,30 @@ void randomize();
 
 byte getSerialNumberByte( byte n );
 
-// Returns the currently blinkbios version number.
+// Returns the current blinkbios version number.
 // Useful to check is a newer feature is available on this blink.
 
 byte getBlinkbiosVersion();
 
 // Map one set to another
+// Note that this explodes to big code, so do the explicit calculations
+// by hand if you are running out of flash space. 
 
 word map(word x, word in_min, word in_max, word out_min, word out_max);
 
-// Maps values 0-255 to values 0-255 in a sine wave
+// Maps theta 0-255 to values 0-255 in a sine wave
 // Based on fabulous FastLED library code here...
 // https://github.com/FastLED/FastLED/blob/master/lib8tion/trig8.h#L159
 
 byte sin8_C( byte theta);
 
-/*
-
-    IR communications functions
-
-*/
-
-
 /* Power functions */
 
 // The blink will automatically sleep if the button has not been pressed in
-// more than 10 minutes. The sleep is preemptive - the tile stops in the middle of whatever it
+// more than 10 minutes. The sleep is preemptive - the blink stops in the middle of whatever it
 // happens to be doing.
 
-// The tile wakes from sleep when the button is pressed. Upon waking, it picks up from exactly
+// The blink wakes from sleep when the button is pressed. Upon waking, it picks up from exactly
 // where it left off. It is up to the programmer to check to see if the blink has slept and then
 // woken and react accordingly if desired.
 
@@ -373,9 +351,6 @@ uint8_t hasWoken(void);
 
 */
 
-// Called by main(), this is the main event loop that calls into the Arduino loop()
-
-void  __attribute__((noreturn)) run(void);
 
 // Called when this sketch is first loaded and then
 // every time the tile wakes from sleep
@@ -395,7 +370,6 @@ void loop();
 */
 
 
-#define FACE_COUNT 6
 
 // 'Cause C ain't got no iterators and all those FOR loops are too ugly.
 // TODO: Yuck, gcc expands this loop index to a word, which costs a load, a compare, and a multiply. :/

@@ -10,6 +10,8 @@
 
 #include "blinklib.h"
 
+#include "run.h"
+
 // Here are the actual allocations for the shared memory blocks
 
 // We put each in its own section so that the separately compiled blinkos will be able to find them.

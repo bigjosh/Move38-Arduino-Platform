@@ -285,9 +285,18 @@ static void setColorNow( Color newColor ) {
     
     setColor( newColor );
     BLINKBIOS_DISPLAY_PIXEL_BUFFER_VECTOR();
-    
-    
+        
 }
+
+
+Color dim( Color color, byte brightness) {
+    return MAKECOLOR_5BIT_RGB(
+    (GET_5BIT_R(color)*brightness)/255,
+    (GET_5BIT_G(color)*brightness)/255,
+    (GET_5BIT_B(color)*brightness)/255
+    );
+}
+
 
 // When will we warm sleep due to inactivity
 // reset by a button press or seeing a button press bit on
