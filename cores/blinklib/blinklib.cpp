@@ -516,7 +516,7 @@ static void warm_sleep_cycle() {
             
             // INcrement first - they are already seeing OFF when we start
             fade_brightness += animation_fade_step;                        
-            setColorNow( dim( BLUE, fade_brightness ) );
+            setColorNow( dim( WHITE, fade_brightness ) );
             
             blinkbios_irdata_send_packet( f ,  nop_wake_packet , sizeof( nop_wake_packet ) );      // Note that we can use sizeof() here becuase the arrayt is explicity uint8_t which is always a byte on AVR
 
