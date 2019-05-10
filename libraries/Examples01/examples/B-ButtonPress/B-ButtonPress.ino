@@ -12,7 +12,7 @@ void loop() {
 
   } else {
     
-    setColor( OFF );
+    setColor( GREEN );
     
   }
 }

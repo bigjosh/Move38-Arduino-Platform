@@ -13,8 +13,8 @@ void setup() {
 // ~1.17 secs/ramp
 // We do an up ramp and then a down ramp for each color
 
-#define STEP_SIZE 30  
-#define STEP_TIME_MS 100
+#define STEP_SIZE 10  
+#define STEP_TIME_MS 30
 
 Color colors[] = { BLUE ,   RED , GREEN   };
 
