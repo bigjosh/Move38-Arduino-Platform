@@ -25,6 +25,8 @@ struct ir_rx_state_t {
 
     BOTH_VOLATILE uint8_t packetBufferReady;                        // 1 if we got the trailing sync byte. Foreground reader will set this back to 0 to enable next read.
 
+    BOTH_VOLATILE uint8_t txInProgressFlag;                        // Are we currently transmitting? If so, then ignore any incoming SYNC.
+
     USER_VOLATILE uint8_t packetBufferLen;                          // How many bytes currently in the packet buffer? Does not include checksum when bufferReady is set
 
     USER_VOLATILE uint8_t packetBuffer[ IR_RX_PACKET_SIZE+1 ];      // Assemble incoming packet here. +1 to hold the type byte. Type byte comes first, but shoul;d be ignored since the BIOS consumes anything with a type besides USERDATA
