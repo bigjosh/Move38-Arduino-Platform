@@ -568,7 +568,7 @@ static void RX_IRFaces() {
 
             volatile const uint8_t *packetData = (ir_rx_state->packetBuffer);       
             
-            if ( *packetData == IR_USER_DATA_HEADER_BYTE ) {        // We only process user data and ignore (and consume) anything else. This is ugly. Sorry. 
+            if ( *packetData++ == IR_USER_DATA_HEADER_BYTE ) {        // We only process user data and ignore (and consume) anything else. This is ugly. Sorry. 
             
                 uint8_t packetDataLen = (ir_rx_state->packetBufferLen)-1;               // deduct the BlinkBIOS packet type  byte 
             
