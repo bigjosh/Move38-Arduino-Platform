@@ -564,91 +564,95 @@ static void RX_IRFaces() {
             // TODO: Should we require the received packet to pass error checks?
             face->expireTime = now + RX_EXPIRE_TIME_MS;
 
-            // This is slightly ugly. To save a buffer, we get the full packet with the BlinkBIOS IR packet type byte.
+            // This is slightly ugly. To save a buffer, we get the full packet with the BlinkBIOS IR packet type byte.                       
 
-            volatile const uint8_t *packetData = (ir_rx_state->packetBuffer)+1;     // Start at the byte after the type byte (which we always ignore it is an ugly implementation detail that we see it. 
-            uint8_t packetDataLen = (ir_rx_state->packetBufferLen)-1;               // deduct the BlinkBIOS packet type  byte 
+            volatile const uint8_t *packetData = (ir_rx_state->packetBuffer);       
             
-            // blinkBIOS will only pass use packets with len >0 
+            if ( *packetData++ == IR_USER_DATA_HEADER_BYTE ) {        // We only process user data and ignore (and consume) anything else. This is ugly. Sorry. 
             
-            uint8_t irDataFirstByte = *packetData;                       
+                uint8_t packetDataLen = (ir_rx_state->packetBufferLen)-1;               // deduct the BlinkBIOS packet type  byte 
+            
+                // blinkBIOS will only pass use packets with len >0 
+            
+                uint8_t irDataFirstByte = *packetData;                       
                                                                    
-            if (irValueCheckValid( irDataFirstByte )) {                                
+                if (irValueCheckValid( irDataFirstByte )) {                                
                 
-                // If we get here, then we know this is a valid packet
+                    // If we get here, then we know this is a valid packet
                 
-                // Clear to send on this face immediately to ping-pong messages at max speed without collisions
-                face->sendTime = 0;
-                
-                
-                if (irValueDecodePostponeSleepFlag(irDataFirstByte )) {
+                    // Clear to send on this face immediately to ping-pong messages at max speed without collisions
+                    face->sendTime = 0;
+                                
+                    if (irValueDecodePostponeSleepFlag(irDataFirstByte )) {
                     
-                    // The blink on on the other side of this connection is telling us that a button was pressed recently
-                    // Send the viral message to all neighbors.
+                        // The blink on on the other side of this connection is telling us that a button was pressed recently
+                        // Send the viral message to all neighbors.
                                                                                 
-                    viralPostponeWarmSleep();
+                        viralPostponeWarmSleep();
                    
-                    // We also need to extend hardware sleep
-                    // since we did not get a physical button press
-                    BLINKBIOS_POSTPONE_SLEEP_VECTOR();
+                        // We also need to extend hardware sleep
+                        // since we did not get a physical button press
+                        BLINKBIOS_POSTPONE_SLEEP_VECTOR();
                                                            
-                } 
+                    } 
                 
 
-                uint8_t decodedByte = irValueDecodeData( irDataFirstByte );
+                    uint8_t decodedByte = irValueDecodeData( irDataFirstByte );
                 
-                if ( packetDataLen == 1 ) {         // normal user face value, One header byte + One data byte
+                    if ( packetDataLen == 1 ) {         // normal user face value, One header byte + One data byte
 
-                    // We got a face value! Save it!
+                        // We got a face value! Save it!
 
-                    face->inValue =decodedByte;
+                        face->inValue =decodedByte;
 
 
-                } else {        // (packetDataLen>1)  
+                    } else {        // (packetDataLen>1)  
                     
                 
-                    if ( decodedByte == DATAGRAM_SPECIAL_VALUE) {
+                        if ( decodedByte == DATAGRAM_SPECIAL_VALUE) {
                         
-                        uint8_t datagramPayloadLen = packetDataLen-2;           // We deduct 2 from he length to account for the header byte and the trailing checksum byte                        
-                        const uint8_t *datagramPayloadData =   packetData+1;    // Skip the packet header byte
+                            uint8_t datagramPayloadLen = packetDataLen-2;           // We deduct 2 from he length to account for the header byte and the trailing checksum byte                        
+                            const uint8_t *datagramPayloadData =   packetData+1;    // Skip the packet header byte
                         
-                        // Long packets are kind of a special case since we do not mark them read immediately
-                        if ( computePacketChecksum( datagramPayloadData , datagramPayloadLen )  ==  datagramPayloadData[ datagramPayloadLen ] ) {        // Run checksum on payload bytes after the header, compare that to the checksum at the end
+                            // Long packets are kind of a special case since we do not mark them read immediately
+                            if ( computePacketChecksum( datagramPayloadData , datagramPayloadLen )  ==  datagramPayloadData[ datagramPayloadLen ] ) {        // Run checksum on payload bytes after the header, compare that to the checksum at the end
 
-                            // Ok this packet checks out folks!
+                                // Ok this packet checks out folks!
                             
-                            if ( face->inDatagramLen == 0 && !(datagramPayloadLen > IR_DATAGRAM_LEN) ) {        // Check if buffer free and datagram not too long
+                                if ( face->inDatagramLen == 0 && !(datagramPayloadLen > IR_DATAGRAM_LEN) ) {        // Check if buffer free and datagram not too long
 
-                                face->inDatagramLen = datagramPayloadLen;
+                                    face->inDatagramLen = datagramPayloadLen;
                                 
-                                memcpy( face->inDatagramData  , datagramPayloadData , datagramPayloadLen);       // Skip the header bytes
+                                    memcpy( face->inDatagramData  , datagramPayloadData , datagramPayloadLen);       // Skip the header bytes
                                     
-                            }
+                                }
                                                                                     
-                        }
+                            }
 
-                    } else {    // packetLen > 1 &&  decodedByte != LONG_DATA_SPECIAL_VALUE
+                        } else {    // packetLen > 1 &&  decodedByte != LONG_DATA_SPECIAL_VALUE
                             
-                        // Here is look for a magic packet that has 2 bytes of data and both are the special sleep trigger cookie
+                            // Here is look for a magic packet that has 2 bytes of data and both are the special sleep trigger cookie
                             
-                        if ( packetDataLen == 2 && decodedByte == TRIGGER_WARM_SLEEP_SPECIAL_VALUE && packetData[1] == TRIGGER_WARM_SLEEP_SPECIAL_VALUE ) {
+                            if ( packetDataLen == 2 && decodedByte == TRIGGER_WARM_SLEEP_SPECIAL_VALUE && packetData[1] == TRIGGER_WARM_SLEEP_SPECIAL_VALUE ) {
                                 
-                            warm_sleep_cycle();                                
+                                warm_sleep_cycle();                                
                                 
-                        }
+                            }
                             
-                    }  //  ( decodedByte == LONG_DATA_SPECIAL_VALUE)                     
+                        }  //  ( decodedByte == LONG_DATA_SPECIAL_VALUE)                     
                     
-                }    //  (packetDataLen>1)              
+                    }    //  (packetDataLen>1)              
 
-            } else {
+                } else {
                 
-                // Invalid packet received. No good way to show or log this. :/
+                    // Invalid packet received. No good way to show or log this. :/
                 
-                //#warning
-                //setColorNow( RED );                
+                    //#warning
+                    //setColorNow( RED );                
 
-            }
+                }
+                
+            }                
             
             // No matter what, mark buffer as read so we can get next packet
             ir_rx_state->packetBufferReady=0;
@@ -668,7 +672,6 @@ static void RX_IRFaces() {
 // TODO: Make a scatter version of this to save RAM & time
 
 static uint8_t ir_send_packet_buffer[ IR_DATAGRAM_LEN + 2 ];    // header byte + Datagram payload  + checksum byte
-
 
 static void TX_IRFaces() {
 
