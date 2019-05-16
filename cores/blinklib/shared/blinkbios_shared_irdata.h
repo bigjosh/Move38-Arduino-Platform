@@ -21,6 +21,12 @@
 
 // State for each receiving IR LED
 
+
+// User programs should only pay attention to messages with the header byte
+// they should silently consume any messages with other header bytes.
+
+#define IR_USER_DATA_HEADER_BYTE 0b00110111
+
 struct ir_rx_state_t {
 
     BOTH_VOLATILE uint8_t packetBufferReady;                        // 1 if we got the trailing sync byte. Foreground reader will set this back to 0 to enable next read.
@@ -29,9 +35,9 @@ struct ir_rx_state_t {
 
     USER_VOLATILE uint8_t packetBufferLen;                          // How many bytes currently in the packet buffer? Does not include checksum when bufferReady is set
 
+    
     USER_VOLATILE uint8_t packetBuffer[ IR_RX_PACKET_SIZE+1 ];      // Assemble incoming packet here. +1 to hold the type byte. Type byte comes first, but shoul;d be ignored since the BIOS consumes anything with a type besides USERDATA
-    // TODO: Deeper data buffer here?
-
+                                                                    // First byte is header, which user code must check for USERDATA
 
     // These internal variables not interesting to user code.
     // They are only updated in ISR, so don't need to be volatile.
