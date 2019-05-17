@@ -48,6 +48,8 @@ byte deathBrightness = 0;
 
 bool attackSuccess[6];
 
+bool bChangeTeam = false;
+
 enum State {
   DEAD,
   ALIVE,
@@ -78,6 +80,10 @@ void setup() {
 
 
 void loop() {
+  // discard the change team from a force sleep
+  if(hasWoken()) {
+    bChangeTeam = false;
+  }
 
   if (buttonSingleClicked()) {
     if (gameState == WAITING) {
@@ -94,7 +100,15 @@ void loop() {
 
   if (buttonLongPressed()) {
     // change team
-    team = getNextTeam();
+    bChangeTeam = true;
+  }
+
+  if(buttonReleased()) {
+    if(bChangeTeam) {
+      // now change the team
+      team = getNextTeam();
+      bChangeTeam = false;
+    }
   }
 
   // get our neighbor data
@@ -239,6 +253,18 @@ void loop() {
     case PLAY:     playUpdate();      break;
     case WAITING:  waitingUpdate();   break;
     case START:    startUpdate();     break;
+  }
+
+  if(bChangeTeam) {
+    // display a team change signal
+    FOREACH_FACE(f){
+      if(f<3) {
+        setColorOnFace(teamColor(team),f);
+      }
+      else {
+        setColorOnFace(teamColor(getNextTeam()),f);
+      }
+    }
   }
 
   byte data = (gameState << 3) + mode;
