@@ -1,19 +1,19 @@
 /*
- *  ZenFlow
- *  by Move38, Inc. 2019
- *  Lead development by Dan King
- *  original game by Dan King, Jonathan Bobrow
- *
- *  Rules: https://github.com/Move38/ZenFlow/blob/master/README.md
- *
- *  --------------------
- *  Blinks by Move38
- *  Brought to life via Kickstarter 2018
- *
- *  @madewithblinks
- *  www.move38.com
- *  --------------------
- */
+    ZenFlow
+    by Move38, Inc. 2019
+    Lead development by Dan King
+    original game by Dan King, Jonathan Bobrow
+
+    Rules: https://github.com/Move38/ZenFlow/blob/master/README.md
+
+    --------------------
+    Blinks by Move38
+    Brought to life via Kickstarter 2018
+
+    @madewithblinks
+    www.move38.com
+    --------------------
+*/
 
 //#include "Serial.h"
 //ServicePortSerial Serial;
@@ -56,7 +56,7 @@ void setup() {
 void loop() {
 
   // discard the change mode from a force sleep
-  if(hasWoken()) {
+  if (hasWoken()) {
     bChangeMode = false;
   }
 
@@ -97,7 +97,7 @@ void loop() {
 
   // if change mode
   if (buttonReleased()) {
-    if(bChangeMode) {
+    if (bChangeMode) {
       switch (currentMode) {
         case CONNECT:   currentMode = SPREAD;   break;
         case SPREAD:    currentMode = CONNECT;  break;
@@ -152,8 +152,8 @@ void loop() {
     connectDisplay();
   }
 
-  if(bChangeMode) {
-      setColor(WHITE);    
+  if (bChangeMode) {
+    setColor(WHITE);
   }
 
 }
@@ -290,19 +290,19 @@ byte getHue(byte data) {
 // this code uses ~100 Bytes
 void inertDisplay() {
 
-  setColor(makeColorHSB(hues[currentHue],255,255)); // much less interesting, but fits in memory
- // FOREACH_FACE(f) {
- //   // minimum of 125, maximum of 255
- //   byte phaseShift = 60 * f;
- //   byte amplitude = 55;
- //   byte midline = 185;
- //   byte rate = 4;
- //   byte brightness = midline + amplitude * sin_d( (phaseShift + millis() / rate) % 360);
- //   byte saturation = 255;
+  //  setColor(makeColorHSB(hues[currentHue],255,255)); // much less interesting, but fits in memory
+  FOREACH_FACE(f) {
+    // minimum of 125, maximum of 255
+    byte phaseShift = 60 * f;
+    byte amplitude = 55;
+    byte midline = 185;
+    byte rate = 4;
+    byte brightness = midline + (amplitude * sin8_C( (phaseShift + millis() / rate) % 255)) / 255;
+    byte saturation = 255;
 
- //   Color faceColor = makeColorHSB(hues[currentHue], 255, brightness);
- //   setColorOnFace(faceColor, f);
- // }
+    Color faceColor = makeColorHSB(hues[currentHue], 255, brightness);
+    setColorOnFace(faceColor, f);
+  }
 }
 
 // this code uses ~200 Bytes
@@ -327,7 +327,7 @@ void sendPersistDisplay() {
     byte amplitude = 55;
     byte midline = 185;
     byte rate = 4;
-    byte brightness = midline + amplitude * sin_d ( (phaseShift + millis() / rate) % 360);
+    byte brightness = midline + (amplitude * sin8_C ( (phaseShift + millis() / rate) % 255)) / 255;
     byte saturation = map(delta, 0, SEND_DURATION, 0, 255);
 
     Color faceColor = makeColorHSB(hues[currentHue], saturation, brightness);
@@ -365,7 +365,7 @@ void sendSparkleDisplay() {
       byte amplitude = 55;
       byte midline = 185;
       byte rate = 4;
-      byte lowBri = midline + amplitude * sin_d( (phaseShift + millis() / rate) % 360);
+      byte lowBri = midline + (amplitude * sin8_C( (phaseShift + millis() / rate) % 255)) / 255;
       byte brightness;
       byte saturation;
 
@@ -396,8 +396,8 @@ void connectDisplay() {
     // minimum of 125, maximum of 255
     byte amplitude = 30;
     byte midline = 100;
-    byte rate = 3;
-    byte brightness = midline + amplitude * sin_d( (millis() / rate) % 360);
+    byte rate = 4;
+    byte brightness = midline + (amplitude * sin8_C( (millis() / rate) % 255)) / 255;
 
     // if the button recently pressed, dip and then raise up
     brightness = map(delta, 0, 300, 0, brightness);
@@ -460,11 +460,4 @@ void changeInternalState(byte state) {
 byte nextHue(byte h) {
   byte nextHue = (h + 1) % COUNT_OF(hues);
   return nextHue;
-}
-
-// Sin in degrees ( standard sin() takes radians )
-
-float sin_d( uint16_t degrees ) {
-
-  return sin( ( degrees / 360.0F ) * 2.0F * PI   );
 }
