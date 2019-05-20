@@ -41,6 +41,8 @@ Timer transitionTimer;
 
 byte sendData;
 
+bool bChangeMode = false;
+
 void setup() {
   // put your setup code here, to run once:
   //Serial.begin();
@@ -52,6 +54,11 @@ void setup() {
 }
 
 void loop() {
+
+  // discard the change mode from a force sleep
+  if(hasWoken()) {
+    bChangeMode = false;
+  }
 
   // BUTTON HANDLING
   //if single clicked, move to SEND_PERSIST
@@ -85,13 +92,21 @@ void loop() {
 
   //if long-pressed, move to CONNECT mode
   if (buttonLongPressed()) {
-    switch (currentMode) {
-      case CONNECT:   currentMode = SPREAD;   break;
-      case SPREAD:    currentMode = CONNECT;  break;
+    bChangeMode = true;
+  }
+
+  // if change mode
+  if (buttonReleased()) {
+    if(bChangeMode) {
+      switch (currentMode) {
+        case CONNECT:   currentMode = SPREAD;   break;
+        case SPREAD:    currentMode = CONNECT;  break;
+      }
+      // reset our states
+      changeInternalState(INERT);
+      commandState = INERT;
+      bChangeMode = false;
     }
-    // reset our states
-    changeInternalState(INERT);
-    commandState = INERT;
   }
 
 
@@ -135,6 +150,10 @@ void loop() {
     }
   } else if (currentMode == CONNECT) {
     connectDisplay();
+  }
+
+  if(bChangeMode) {
+      setColor(WHITE);    
   }
 
 }
@@ -271,18 +290,19 @@ byte getHue(byte data) {
 // this code uses ~100 Bytes
 void inertDisplay() {
 
-//  FOREACH_FACE(f) {
-//    // minimum of 125, maximum of 255
-//    byte phaseShift = 60 * f;
-//    byte amplitude = 55;
-//    byte midline = 185;
-//    byte rate = 4;
-//    byte brightness = midline + amplitude * sin_d( (phaseShift + millis() / rate) % 360);
-//    byte saturation = 255;
-//
-//    Color faceColor = makeColorHSB(hues[currentHue], 255, brightness);
-//    setColorOnFace(faceColor, f);
-//  }
+  setColor(makeColorHSB(hues[currentHue],255,255)); // much less interesting, but fits in memory
+ // FOREACH_FACE(f) {
+ //   // minimum of 125, maximum of 255
+ //   byte phaseShift = 60 * f;
+ //   byte amplitude = 55;
+ //   byte midline = 185;
+ //   byte rate = 4;
+ //   byte brightness = midline + amplitude * sin_d( (phaseShift + millis() / rate) % 360);
+ //   byte saturation = 255;
+
+ //   Color faceColor = makeColorHSB(hues[currentHue], 255, brightness);
+ //   setColorOnFace(faceColor, f);
+ // }
 }
 
 // this code uses ~200 Bytes
@@ -350,7 +370,7 @@ void sendSparkleDisplay() {
       byte saturation;
 
       if ( delta < sparkleEnd ) {
-        brightness = map(delta, sparkleStart, sparkleStart + SEND_DURATION - (6 * offset), 255, lowBri);
+        brightness = lowBri + 255 - map(delta, sparkleStart, sparkleStart + SEND_DURATION - (6 * offset), lowBri, 255);
         saturation = map(delta, sparkleStart, sparkleStart + SEND_DURATION - (6 * offset), 0, 255);
       }
       else {
@@ -448,9 +468,3 @@ float sin_d( uint16_t degrees ) {
 
   return sin( ( degrees / 360.0F ) * 2.0F * PI   );
 }
-
-// map value
-//long map_m(long x, long in_min, long in_max, long out_min, long out_max)
-//{
-//  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-//}
