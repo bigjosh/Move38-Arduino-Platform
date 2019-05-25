@@ -31,7 +31,10 @@ blink.upload.speed=115200
 #blink.bootloader.extended_fuses=0xFD
 #blink.bootloader.unlock_bits=0x3F
 #blink.bootloader.lock_bits=0x0F
-#blink.bootloader.file=cores/blinklib/shared/BlinkBIOS.hex
+
+# Note that the folder `bootloaders` seems to be hardcoded into the Ardunio IDE
+
+blink.bootloader.file=BlinkBIOS.hex
 
 blink.build.mcu=atmega168pb
 blink.build.f_cpu=8000000L
