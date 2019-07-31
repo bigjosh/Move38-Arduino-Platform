@@ -42,6 +42,10 @@
         </dependencies>
       </framework-data>
     </AsfFrameworkConfig>
+    <AAFDebugger>
+      <AAFDebugFiles xmlns="">
+      </AAFDebugFiles>
+    </AAFDebugger>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
     <ToolchainSettings>

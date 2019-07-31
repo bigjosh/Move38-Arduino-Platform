@@ -56,6 +56,10 @@
       <ToolNumber>0000B3020609</ToolNumber>
       <ToolName>AVRISP mkII</ToolName>
     </com_atmel_avrdbg_tool_ispmk2>
+    <AAFDebugger>
+      <AAFDebugFiles xmlns="">
+      </AAFDebugFiles>
+    </AAFDebugger>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
     <ToolchainSettings>
