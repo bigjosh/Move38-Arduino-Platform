@@ -43,6 +43,7 @@ enum timerStates {SETTING, TIMING, COMPLETE};
 byte timerState = SETTING;
 
 void setup() {
+  randomize();
 }
 
 ////////////////
