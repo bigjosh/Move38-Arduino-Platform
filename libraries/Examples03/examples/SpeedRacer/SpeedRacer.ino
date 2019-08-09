@@ -1,717 +1,679 @@
 /*
- *  Speed Racer
- *  by Move38, Inc. 2019
- *  Lead development by Dan King
- *  original game by Dan King, Jonathan Bobrow
- *
- *  Rules: https://github.com/Move38/SpeedRacer/blob/master/README.md
- *
- *  --------------------
- *  Blinks by Move38
- *  Brought to life via Kickstarter 2018
- *
- *  @madewithblinks
- *  www.move38.com
- *  --------------------
- */
+    Speed Racer
+    by Move38, Inc. 2019
+    Lead development by Dan King
+    original game by Dan King, Jonathan Bobrow
 
-#include "Serial.h"
-ServicePortSerial sp;
+    Rules: https://github.com/Move38/SpeedRacer/blob/master/README.md
 
-enum gameStates {SETUP, PATHFIND, PLAY, CRASH};
-byte gameState = SETUP;
+    --------------------
+    Blinks by Move38
+    Brought to life via Kickstarter 2018
 
-//SETUP DATA
-bool connectedFaces[6];
-bool isOrigin = false;
+    @madewithblinks
+    www.move38.com
+    --------------------
+*/
 
-//PATHFIND DATA
-bool isPathfinding = false;
-bool pathFound = false;
-
-enum faceRoadStates {FREEAGENT, ENTRANCE, EXIT, SIDEWALK};
+enum faceRoadStates {LOOSE, ROAD, SIDEWALK, CRASH};
 byte faceRoadInfo[6];
-bool hasEntrance = false;
-bool hasExit = false;
+
+enum handshakeStates {NOCAR, HAVECAR, READY, CARSENT};
+byte handshakeState[6];
+Timer datagramTimeout;
+#define DATAGRAM_TIMEOUT_LIMIT 150
+
+byte turns[3][6] = { {5, 25, 50, 75, 95, 25}, // left hand turn
+                     {5, 33, 66, 95, 66, 33}, // straight away
+                     {5, 25, 95, 75, 50, 25}  // right hand turn
+                   };
+
+bool isLoose = true;
+
+bool hasDirection = false;
 byte entranceFace = 0;
 byte exitFace = 0;
 
-//PLAY DATA
-enum playStates {LOOSE, THROUGH, ENDPOINT};
-byte playState = LOOSE;
-
-enum handshakeStates {NOCAR, HAVECAR, READY, CARSENT};
-byte handshakeState = NOCAR;
-
 bool haveCar = false;
-bool carPassed = false;
 word carProgress = 0;//from 0-100 is the regular progress
+
+bool isCarPassed[6];
+uint32_t timeCarPassed[6];
+byte carBrightnessOnFace[6];
+
+#define FADE_DURATION       800
+#define FADE_ROAD_DURATION  500
+#define CRASH_DURATION      2000
+
+uint32_t timeOfShockwave = 0;
+
 byte currentSpeed = 1;
-#define SPEED_INCREMENTS 100
+
+enum CarClass {
+  STANDARD,
+  BOOSTED
+};
+
+byte searchOrder[6] = {0, 1, 2, 3, 4, 5}; // used for searching faces, needs to be shuffled
+
+byte currentCarClass = STANDARD;
+
+#define SPEED_INCREMENTS_STANDARD 35
+#define SPEED_INCREMENTS_BOOSTED  70
+
+#define MIN_TRANSIT_TIME_STANDARD 666 // HIGHWAY TO HELL
+#define MAX_TRANSIT_TIME_STANDARD 1200
+#define MIN_TRANSIT_TIME_BOOSTED  200
+#define MAX_TRANSIT_TIME_BOOSTED  1000
+
 word currentTransitTime;
-#define MIN_TRANSIT_TIME 750
-#define MAX_TRANSIT_TIME 1500
+
 Timer transitTimer;
 
-//CRASH DATA
+byte carHues[4] = {60, 90, 120, 150}; // TODO: Set these colors purposefully
+byte currentCarHue = 0; // index of the car color
+
 bool crashHere = false;
+uint32_t timeOfCrash = 0;
+Timer crashTimer;
+#define CRASH_TIME 2500
 
 #define CAR_FADE_IN_DIST   200   // kind of like headlights
-long carFadeOutDistance = 40 * currentSpeed; // the tail should have a relationship with the speed being travelled
+
+enum ShockwaveStates {
+  INERT,
+  SHOCKWAVE,
+  TRANSITION
+};
+byte shockwaveState = INERT;
+
+/*
+    SETUP
+*/
 
 void setup() {
-  gameState = SETUP;
-  sp.begin();
+  randomize();
+  shuffleSearchOrder();
 }
+
+/*
+    LOOP
+*/
 
 void loop() {
-
   //run loops
-  switch (gameState) {
-    case SETUP:
-      setupLoop();
-      break;
-    case PATHFIND:
-      pathfindLoop();
-      break;
-    case PLAY:
-      gameLoop();
-      break;
-    case CRASH:
-      crashLoop();
-      break;
+  if (isLoose) {
+    looseLoop();
+  } else if (crashHere) {
+    crashLoop();
+  } else if (haveCar) {
+    roadLoopCar();
+  } else {
+    roadLoopNoCar();
   }
+
+  //shockwave handling
+  shockwaveLoop();
 
   //run graphics
-  switch (gameState) {
-    case SETUP:
-      setupGraphics();
-      break;
-    case PATHFIND:
-      pathfindGraphics();
-      break;
-    case PLAY:
-      playGraphics();
-      break;
-    case CRASH:
-      crashGraphics();
-      break;
-  }
+  graphics();
 
   //update communication
-  switch (gameState) {
-    case SETUP://this one is simple
-      setValueSentOnAllFaces(SETUP << 4);
-      break;
-    case PATHFIND:
-      FOREACH_FACE(f) {
-        byte sendData = (PATHFIND << 4) + (faceRoadInfo[f] << 2);
-        setValueSentOnFace(sendData, f);
-      }
-      break;
-    case PLAY:
-      FOREACH_FACE(f) {
-        byte sendData = (PLAY << 4) + (faceRoadInfo[f] << 2) + handshakeState;
-        setValueSentOnFace(sendData, f);
-      }
-      break;
-    case CRASH:
-      setValueSentOnAllFaces(CRASH << 4);
-      break;
+  FOREACH_FACE(f) {
+    byte sendData = (faceRoadInfo[f] << 4) + (handshakeState[f] << 2) + shockwaveState;
+    setValueSentOnFace(sendData, f);
   }
 
-  // TODO: Remove this, it is just a tool for reseting the game while in development
-  if (buttonLongPressed()) {
-    gameReset();
-  }
+  //clear button presses
+  buttonSingleClicked();
+  buttonDoubleClicked();
 }
 
-void setupLoop() {
+void looseLoop() {
+  if (!isAlone()) {
+    //so I look at all faces, see what my options are
+    bool foundRoadNeighbor = false;
+    bool foundLooseNeighbor = false;
+    byte currentChoice;
+    FOREACH_FACE(f) {
+      //should I still be looking?
+      if (!foundRoadNeighbor) {//only look if I haven't found a road neighbor
+        if (!isValueReceivedOnFaceExpired(f)) {//neighbor!
+          byte neighborData = getLastValueReceivedOnFace(f);
+          if (getRoadState(neighborData) == ROAD) {//so this neighbor is a road. Sweet!
+            foundRoadNeighbor = true;
+            currentChoice = f;
+          } else if (getRoadState(neighborData) == LOOSE) {
+            foundLooseNeighbor = true;
+            currentChoice = f;
+          }
+        }
+      }
+    }
 
-  //update connected faces array
-  FOREACH_FACE(f) {
-    if (!isValueReceivedOnFaceExpired(f)) { //something here
-      connectedFaces[f] = true;
+    //if we have found any legit neighbor, we can transition out of loose
+    if (foundRoadNeighbor || foundLooseNeighbor) {
+      FOREACH_FACE(f) {
+        faceRoadInfo[f] = SIDEWALK;
+      }
+      faceRoadInfo[currentChoice] = ROAD;
+      entranceFace = currentChoice;       // Helps us draw the road
+      completeRoad(currentChoice);
+      isLoose = false;
+
     } else {
-      connectedFaces[f] = false;
+      //TODO: error state for bad placement
     }
   }
+}
 
-  //listen for transition to PATHFIND
+void completeRoad(byte startFace) {
+  //so we've been fed a starting point
+  //we need to assign an exit point based on some rules
+  bool foundRoadExit = false;
+  byte currentChoice = (startFace + 2 + random(1) + random(1)) % 6; //random(1) + random(1) -> assigns a straightaway 50% of the time
+
+  //now run through the legal exits and check for preferred exits
   FOREACH_FACE(f) {
-    if (!isValueReceivedOnFaceExpired(f)) { //something here
-      if (getGameState(getLastValueReceivedOnFace(f)) == PATHFIND) {//transition to PATHFIND
-        gameState = PATHFIND;
-        //        sp.println(F("PATHFIND"));
-      } else if (getGameState(getLastValueReceivedOnFace(f)) == PLAY) {//transition to PLAY
-        gameState = PLAY;
-      }
-    }
-  }
-
-  //listen for double click
-  if (buttonDoubleClicked()) {
-    //    sp.println(F("I'm starting the PATHFIND"));
-    gameState = PATHFIND;
-    isPathfinding = true;
-    isOrigin = true;
-    currentSpeed = 1;
-    FOREACH_FACE(ff) {
-      faceRoadInfo[ff] = SIDEWALK;
-    }
-    //set up a temporary entrance face, to be fixed later
-    FOREACH_FACE(ff) {
-      if (connectedFaces[ff] == true) {//there's something on this face
-        entranceFace = (ff + 3) % 6;//just the opposite of an occupied face
-        hasEntrance = true;
-      }
-    }
-  }
-}
-
-void pathfindLoop() {
-
-
-  if (!isPathfinding && !pathFound) { //listen for pathfind command
-    FOREACH_FACE(f) {
-      if (!isValueReceivedOnFaceExpired(f)) { //something here
-        byte neighborData = getLastValueReceivedOnFace(f);
-        if (getGameState(neighborData) == PATHFIND) {//a neighbor we should be listening to
-          if (getRoadState(neighborData) == EXIT) {//this neighbor wants us to begin pathfinding
-            isPathfinding = true;//begin pathfinding
-            FOREACH_FACE(ff) {//set all my faces to sidewalk
-              faceRoadInfo[ff] = SIDEWALK;
-            }
-            faceRoadInfo[f] = ENTRANCE;//this is our entrance
-            entranceFace = f;
-            hasEntrance = true;
+    if (isValidExit(startFace, f)) {
+      if (!foundRoadExit) {
+        if (!isValueReceivedOnFaceExpired(f)) {//neighbor!
+          byte neighborData = getLastValueReceivedOnFace(f);
+          if (getRoadState(neighborData) == ROAD) {
+            foundRoadExit = true;
+            currentChoice = f;
+          } else if (getRoadState(neighborData) == LOOSE) {
+            currentChoice = f;
           }
         }
       }
     }
-  }//end of listen for pathfind
+  }//end face loop
 
-  if (isPathfinding) { //do actual pathfinding
-    //make an exit option array
-    byte exitOptions[3] = {(entranceFace + 2) % 6, (entranceFace + 3) % 6, (entranceFace + 4) % 6};
-    //shuffle that shit
-    for (byte s = 0; s < 6; s++) {
-      byte swapA = random(2);
-      byte swapB = random(2);
-      byte temp = exitOptions[swapA];
-      exitOptions[swapA] = exitOptions[swapB];
-      exitOptions[swapB] = temp;
-    }
-
-    //now, check each of them, and if you find a valid one, make it the exit face internally
-    for (byte i = 0; i < 3; i++) {
-      if (!isValueReceivedOnFaceExpired(exitOptions[i])) { //something here
-        byte neighborData = getLastValueReceivedOnFace(exitOptions[i]);
-        if (getGameState(neighborData) == PATHFIND) {//so this on is already in pathfind
-          if (getRoadState(neighborData) == FREEAGENT) {//this neighbor is a legit entrance
-            exitFace = exitOptions[i];
-            hasExit = true;
-          }
-        } else if (getGameState(neighborData) == SETUP) { //this neighbor is in some other mode, theoretically SETUP
-          exitFace = exitOptions[i];
-          hasExit = true;
-        }
-      }
-    }//end possible exit checks
-
-    if (hasExit) { //we actually found a legit exit
-      setRoadInfoOnFace(EXIT, exitFace);
-      //in the special case where we were the origin, we need to reorient the entrance face
-      if (isOrigin) {
-        entranceFace = (exitFace + 3) % 6;
-        setRoadInfoOnFace(ENTRANCE, entranceFace);
-      }
-      pathFound = true;
-      isPathfinding = false;
-      playState = THROUGH;
-    } else {//we didn't find an exit, therefore THE GAME SHALL BEGIN!
-      gameState = PLAY;
-      //      sp.println("I'm starting the GAME");
-      assignExit();
-      playState = ENDPOINT;
-    }
-  }
-
-  FOREACH_FACE(f) { //just straight up listen for the PLAY signal
-    if (!isValueReceivedOnFaceExpired(f)) { //something here
-      byte neighborData = getLastValueReceivedOnFace(f);
-      if (getGameState(neighborData) == PLAY) {
-        gameState = PLAY;
-        //sp.println("Neighbors have commanded me to GAME");
-        if (isOrigin) {
-          haveCar = true;
-          handshakeState = HAVECAR;
-          currentTransitTime = map(SPEED_INCREMENTS - currentSpeed, 0, SPEED_INCREMENTS, MIN_TRANSIT_TIME, MAX_TRANSIT_TIME);
-          transitTimer.set(currentTransitTime);
-        }
-      }
-    }
-  }
+  //so after this process, we can be confident that a ROAD has been chosen
+  //or failing that, a LOOSE has been chosen
+  //or failing that just a random face has been chosen
+  faceRoadInfo[currentChoice] = ROAD;
+  exitFace = currentChoice; // Helps us draw the road
 }
 
-void setRoadInfoOnFace( byte info, byte face) {
-  if ( face < 6 ) {
-    faceRoadInfo[face] = info;
-  }
-  else {
-    sp.println("ERR-1"); // tried to write to out of bounds array
-  }
-}
-
-void gameLoop() {
-
-  if (playState == LOOSE) {
-    gameLoopLoose();
+bool isValidExit(byte startFace, byte exitFace) {
+  if (exitFace == (startFace + 2) % 6) {
+    return true;
+  } else if (exitFace == (startFace + 3) % 6) {
+    return true;
+  } else if (exitFace == (startFace + 4) % 6) {
+    return true;
   } else {
-    gameLoopRoad();
-  }
-
-  //check for crash signal regardless of state
-  FOREACH_FACE(f) {
-    if (!isValueReceivedOnFaceExpired(f)) {
-      byte neighborData = getLastValueReceivedOnFace(f);
-      if (getGameState(neighborData) == CRASH) {
-        crashReset();
-      }
-    }
+    return false;
   }
 }
 
-void gameLoopLoose() {
-  //I need to look for neighbors that make me not alone no more
+void roadLoopNoCar() {
+
   FOREACH_FACE(f) {
-    if (!isValueReceivedOnFaceExpired(f)) {//neighbor!
-      byte neighborData = getLastValueReceivedOnFace(f);
-      if (getGameState(neighborData) == PLAY) {//he's playing the game
-        if (getRoadState(neighborData) == EXIT) {//he wants me to become a road piece!
-          //become a road piece
-          playState = ENDPOINT;
-          entranceFace = f;
-        } else {
-          //TODO: USE CONNECTED FACES ARRAY TO MAKE SOME OH NO SIGNALS
+    if (faceRoadInfo[f] == ROAD) {//things can arrive here
+      if (handshakeState[f] == NOCAR) {//I have no car here. Does my neighbor have a car?
+        if (!isValueReceivedOnFaceExpired(f)) {//there's someone on this face
+          byte neighborData = getLastValueReceivedOnFace(f);
+          if (getHandshakeState(neighborData) == HAVECAR) {
+            handshakeState[f] = READY;
+          }
+        }
+      } else if (handshakeState[f] == READY) {//I am ready. Look for changes
+        //did my neighbor disappear, change to CRASH or NOCAR?
+        if (isValueReceivedOnFaceExpired(f)) {//my neighbor has left. Guess that's not happening
+          handshakeState[f] = NOCAR;
+        } else {//neighbor still there. have they changed in another way?
+          byte neighborData = getLastValueReceivedOnFace(f);
+          if (getRoadState(neighborData) != ROAD) { //huh, I guess they changed in a weird way
+            handshakeState[f] = NOCAR;
+          } else {//they're still a road. did their handshakeState change?
+            if (getHandshakeState(neighborData) == NOCAR || getHandshakeState(neighborData) == READY) {//another weird failure
+              handshakeState[f] = NOCAR;
+            } else if (getHandshakeState(neighborData) == CARSENT) {
+              //look for the speedDatagram
+              if (isDatagramReadyOnFace(f)) {//is there a packet?
+                if (getDatagramLengthOnFace(f) == 3) {//is it the right length?
+                  byte *data = (byte *) getDatagramOnFace(f);//grab the data
+                  currentSpeed = data[0];
+                  currentCarClass = data[1];
+                  currentCarHue = data[2];
+
+                  //THEY HAVE SENT THE CAR. BECOME THE ACTIVE GUY
+                  FOREACH_FACE(ff) {
+                    handshakeState[ff] = NOCAR;
+                  }
+                  haveCar = true;
+                  resetIsCarPassed();
+                  currentTransitTime = map(getSpeedIncrements() - currentSpeed, 0, getSpeedIncrements(), getMinTransitTime(), getMaxTransitTime());
+                  transitTimer.set(currentTransitTime);
+
+                  hasDirection = true;
+                  entranceFace = f;
+                  exitFace = findOtherSide(entranceFace);
+                  handshakeState[entranceFace] = HAVECAR;
+                  handshakeState[exitFace] = HAVECAR;
+
+                  markDatagramReadOnFace( f ); // free datagram buffer
+                }
+              }
+            }
+          }
         }
       }
     }
   }
-  //if I become a road piece, I need to get my info set up
-  if (playState == ENDPOINT) {
-    FOREACH_FACE(f) {
-      setRoadInfoOnFace(SIDEWALK, f);
-    }
-    setRoadInfoOnFace(ENTRANCE, entranceFace);
-    assignExit();
+
+
+  //if you become alone, GO LOOSE
+  if (isAlone()) {
+    goLoose();
   }
+
+  //if I'm clicked, I will attempt to spawn the car (only happens if there is a legitimate exit choice)
+  if (buttonSingleClicked()) {
+    spawnCar(STANDARD);
+  }
+
+  if (buttonDoubleClicked()) {
+    spawnCar(BOOSTED);
+  }
+
 }
 
-void assignExit() {
-  exitFace = (entranceFace + 2 + random(2)) % 6;
-  setRoadInfoOnFace(EXIT, exitFace);
-  hasExit = true;
-  //  sp.println("Exit Assigned");
-}
+void spawnCar(byte carClass) {
+  FOREACH_FACE(face) {
+    byte f = searchOrder[face];
+    if (!hasDirection) {
+      if (faceRoadInfo[f] == ROAD) {//this could be my exit
+        if (!isValueReceivedOnFaceExpired(f)) {//there is someone there
+          byte neighborData = getLastValueReceivedOnFace(f);
+          if (getRoadState(neighborData) == ROAD) {//so this is a road I can send to. DO IT ALL
+            //set direction
+            hasDirection = true;
+            exitFace = f;
+            entranceFace = findOtherSide(exitFace);
 
-void gameLoopRoad() {
+            //set outgoing data
+            FOREACH_FACE(ff) {
+              handshakeState[ff] = NOCAR;
+            }
+            handshakeState[exitFace] = HAVECAR;
 
-  if (playState == ENDPOINT) {
-    //search for a FREEAGENT on your exit face
-    //if you find one, send a speed packet
-    if ( exitFace >= 6 ) {
-      sp.println("ERR-3"); // out of bounds...
-    }
-    else if (!isValueReceivedOnFaceExpired(exitFace)) { //there is someone on my exit face
-      byte neighborData = getLastValueReceivedOnFace(exitFace);
-      if (getGameState(neighborData) == PLAY) {//this neighbor is able to accept a packet
+            // set the car class
+            currentCarClass = carClass;
 
-        playState = THROUGH;
+            // choose a hue for this car
+            currentCarHue = random(3);
 
+            // launch car
+            haveCar = true;
+            resetIsCarPassed();
+            currentTransitTime = map(getSpeedIncrements() - currentSpeed, 0, getSpeedIncrements(), getMinTransitTime(), getMaxTransitTime());
+            transitTimer.set(currentTransitTime);
+          }
+        }
       }
     }
   }
+  shuffleSearchOrder(); // thanks random search order, next.
+}
 
-  if (haveCar) {
+void goLoose() {
+  isLoose = true;
+
+  FOREACH_FACE(f) {
+    faceRoadInfo[f] = LOOSE;
+    isCarPassed[f] = false;
+    timeCarPassed[f] = 0;
+    carBrightnessOnFace[f] = 0;
+  }
+
+  loseCar();
+}
+
+void loseCar() {
+  hasDirection = false;
+  haveCar = false;
+  carProgress = 0;//from 0-100 is the regular progress
+  currentSpeed = 1;
+  crashHere = false;
+  timeOfCrash = 0;
+  FOREACH_FACE(f) {
+    handshakeState[f] = NOCAR;
+  }
+}
+
+void resumeRoad() {
+  FOREACH_FACE(f) {
+    faceRoadInfo[f] = SIDEWALK;
+  }
+  faceRoadInfo[entranceFace] = ROAD;
+  faceRoadInfo[exitFace] = ROAD;
+}
+
+byte findOtherSide(byte entrance) {
+  FOREACH_FACE(f) {
+    if (isValidExit(entrance, f)) {
+      if (faceRoadInfo[f] == ROAD) {
+        return f;
+      }
+    }
+  }
+}
+
+void roadLoopCar() {
+
+  if (handshakeState[exitFace] == HAVECAR) {
+    //wait for the timer to expire and pass the car
     if (transitTimer.isExpired()) {
       //ok, so here is where shit gets tricky
-      if ( !hasExit ) {
-        sp.println("ERR-4"); // out of bounds...
-      }
-      else if (!isValueReceivedOnFaceExpired(exitFace)) {
+      if (!isValueReceivedOnFaceExpired(exitFace)) {//there is someone on my exitFace
         byte neighborData = getLastValueReceivedOnFace(exitFace);
-        if (getRoadState(neighborData) == ENTRANCE) {
+        if (getRoadState(neighborData) == ROAD) {
           if (getHandshakeState(neighborData) == READY) {
-            handshakeState = CARSENT;
-            carPassed = true;
-            haveCar = false;
-            //TODO: DATAGRAM
+            handshakeState[exitFace] = CARSENT;
+
+            byte speedDatagram[3];  // holds speed, car class, car hue
+            if (currentSpeed + 1 <= getSpeedIncrements()) {
+              speedDatagram[0] = currentSpeed + 1;
+            } else {
+              speedDatagram[0] = currentSpeed;
+            }
+            speedDatagram[1] = currentCarClass;
+            speedDatagram[2] = currentCarHue;
+            sendDatagramOnFace(&speedDatagram, sizeof(speedDatagram), exitFace);
+
+            datagramTimeout.set(DATAGRAM_TIMEOUT_LIMIT);
+
           } else {
             //CRASH because not ready
-            //sp.println("CRASH here");
-            gameState = CRASH;
-            crashHere = true;
+            crashBlink();
           }
         } else {
-          //CRASH crash because not entrance
-          //sp.println("CRASH here");
-          gameState = CRASH;
-          crashHere = true;
+          //CRASH crash because not road
+          crashBlink();
         }
       } else {
         //CRASH because not there!
-        //sp.println("CRASH here");
-        gameState = CRASH;
-        crashHere = true;
+        crashBlink();
       }
     }
-  } else {//I don't have the car
-    //under any circumstances, you should go loose if you're alone
-    if (isAlone()) {
-      looseReset();
-    }
-
-    if (!carPassed) {
-      //check your entrance face for... things happening
-      if (!hasEntrance) {
-        sp.println("ERR-2");
+  } else if (handshakeState[exitFace] == CARSENT) {
+    if (!isValueReceivedOnFaceExpired(exitFace)) {//there's someone on my exit face
+      if (getHandshakeState(getLastValueReceivedOnFace(exitFace)) == HAVECAR) {//the car has been successfully passed
+        handshakeState[exitFace] = NOCAR;
+        loseCar();
       }
-      else if (isValueReceivedOnFaceExpired(entranceFace)) { //oh, they're gone! Go LOOSE!
-        looseReset();
-      } else {//so someone is still there. Are they still a road piece?
-        byte neighborData = getLastValueReceivedOnFace(entranceFace);
-        if (getGameState(neighborData) == PLAY) { //this guy is in PLAY state, so I can trust that this isn't the transition period
-          if (getRoadState(neighborData) == FREEAGENT) {//uh oh, it's a loose one. Best become loose as well
-            looseReset();
-          } else if (getRoadState(neighborData) == EXIT) {//ok, so it could send me a car. Is it?
-            if (handshakeState == NOCAR) {//check and see if they are in HAVECAR
-              if (getHandshakeState(neighborData) == HAVECAR) {
-                handshakeState = READY;
-              }
-            } else if (handshakeState == READY) {
-              if (getHandshakeState(neighborData) == CARSENT) {
-                //THEY HAVE SENT THE CAR. BECOME THE ACTIVE GUY
-                handshakeState = HAVECAR;
-                haveCar = true;
-                currentSpeed = 1;
-                currentTransitTime = map(SPEED_INCREMENTS - currentSpeed, 0, SPEED_INCREMENTS, MIN_TRANSIT_TIME, MAX_TRANSIT_TIME);
-                transitTimer.set(currentTransitTime);
-              }
-            }
-          }
-        }
-      }//end neighbor checks
-    }//end carPassed check
-  }//end haveCar checks
+    }
+    //if I'm still in CARSENT and my datagram timeout has expired, then we can assume the car is lost and we've crashed
+    if (handshakeState[exitFace] == CARSENT) {
+      if (datagramTimeout.isExpired()) {
+        //CRASH because timeout
+        crashBlink();
+      }
+    }
+  }
 
-  //and no matter what, check to hear crashes elsewhere
+  // Car progress for animation loop (when did the car pass each face)
   FOREACH_FACE(f) {
-    if (!isValueReceivedOnFaceExpired(f)) {
-      byte neighborData = getLastValueReceivedOnFace(f);
-      if (getGameState(neighborData) == CRASH) {
-        gameState = CRASH;
-        //sp.println("CRASH elsewhere");
+    // did the car just pass us
+    if (!isCarPassed[f]) {
+      carProgress = (100 * (currentTransitTime - transitTimer.getRemaining())) / currentTransitTime;
+      if (didCarPassFace(f, carProgress, entranceFace, exitFace)) {
+        timeCarPassed[f] = millis();
+        isCarPassed[f] = true;
       }
     }
   }
 }
 
-void looseReset() {
-
-  playState = LOOSE;
-  handshakeState = NOCAR;
-  haveCar = false;
-  carPassed = false;
-  currentSpeed = 1;
-  hasEntrance = false;
-  hasExit = false;
-
+void crashBlink() {
+  shockwaveState = SHOCKWAVE;
+  timeOfShockwave = millis();
+  isLoose = false;
+  timeOfCrash = millis();
+  crashHere = true;
   FOREACH_FACE(f) {
-    faceRoadInfo[f] = FREEAGENT;
+    faceRoadInfo[f] = CRASH;
   }
-}
-
-void crashReset() {
-  looseReset();
-  gameState = CRASH;
-  isOrigin = false;
-  isPathfinding = false;
-  pathFound = false;
-  crashHere = false;
-}
-
-void gameReset() {
-  looseReset();
-  crashReset();
-  gameState = SETUP;
-  sp.println("RESET");
+  crashTimer.set(CRASH_TIME);
 }
 
 void crashLoop() {
-  //listen for transition to SETUP
-  FOREACH_FACE(f) {
-    if (!isValueReceivedOnFaceExpired(f)) { //something here
-      if (getGameState(getLastValueReceivedOnFace(f)) == SETUP) {//transition to PATHFIND
-        gameState = SETUP;
-        //sp.println("Sent back to SETUP");
-      } else if (getGameState(getLastValueReceivedOnFace(f)) == PATHFIND) {//transition to PLAY
-        gameState = PATHFIND;
-      }
-    }
-  }
-
-  //listen for double click
-  if (buttonDoubleClicked()) {
-    gameState = SETUP;
-    //sp.println("I'm sending us back to SETUP");
-  }
-}
-
-byte getGameState(byte neighborData) {
-  return (neighborData >> 4);//1st and 2nd bits
-}
-
-byte getRoadState(byte neighborData) {
-  return ((neighborData >> 2) & 3);//3rd and 4th bits
-}
-
-byte getHandshakeState(byte neighborData) {
-  return (neighborData & 3);//5th and 6th bits
-}
-
-void setupGraphics () {
-  setColor(CYAN);
-  FOREACH_FACE(f) {
-    if (connectedFaces[f] == true) {
-      setColorOnFace(YELLOW, f);
-    }
-  }
-}
-
-void pathfindGraphics() {
-  FOREACH_FACE(f) {
-    switch (faceRoadInfo[f]) {
-      case FREEAGENT:
-        setColorOnFace(WHITE, f);
-        break;
-      case ENTRANCE:
-        setColorOnFace(RED, f);
-        break;
-      case EXIT:
-        setColorOnFace(GREEN, f);
-        break;
-      case SIDEWALK:
-        setColorOnFace(OFF, f);
-        break;
-    }
-  }
-}
-
-void playGraphics() {
-  FOREACH_FACE(f) {
-    switch (faceRoadInfo[f]) {
-      case FREEAGENT:
-        setColorOnFace(MAGENTA, f);
-        break;
-      case ENTRANCE:
-        if (handshakeState == READY) {
-          setColorOnFace(GREEN, f);
-        }
-        else {
-          setColorOnFace(YELLOW, f);
-        }
-        break;
-      case EXIT:
-        setColorOnFace(YELLOW, f);
-        break;
-      case SIDEWALK:
-        setColorOnFace(OFF, f);
-        break;
-    }
-  }
-
-  if (haveCar) {
-    carProgress = (100 * (currentTransitTime - transitTimer.getRemaining())) / currentTransitTime;
-    sp.print(F("car: "));
-    sp.println(carProgress);
-    //    sp.print(F("time: "));
-    //    sp.println(transitTimer.getRemaining());
-    //    sp.print(F("cur: "));
-    //    sp.println(currentTransitTime);
-    //    sp.println("-");
-    if (hasEntrance && hasExit) {
-      FOREACH_FACE(f) {
-        setColorOnFace(getFaceColorBasedOnCarPosition(f, carProgress, entranceFace, exitFace), f);
-      }
-    }
-  }
-}
-
-void crashGraphics() {
-  if (crashHere) {
-    setColor(RED);
-  } else {
-    setColor(ORANGE);
+  if (crashTimer.isExpired()) {
+    loseCar();
+    resumeRoad();
   }
 }
 
 /*
-   fade from the first side to the opposite side
-   front of the fade should be faster than the fall off
+  This function does the following:
 
+  if inert
+    if neighbor in shockwave
+      shockwave
+  if shockwave
+    if no neighbors are inert
+      trans
+  if trans
+    if no neighbors in shockwave
+      inert
 */
-Color getFaceColorBasedOnCarPosition(byte face, byte pos, byte from, byte to) {
-  byte hue, saturation, brightness;
-  byte carFadeInDistance = 20;
-  byte carFadeOutDistance = 50;
+void shockwaveLoop() {
+  bool bInert = false;
+  bool bShock = false;
+  bool bTrans = false;
 
-  byte loBound, hiBound;
+  FOREACH_FACE(f) {
+    if (!isValueReceivedOnFaceExpired(f)) {
+      byte state = getShockwaveState(getLastValueReceivedOnFace(f));
+      if (state == INERT) {
+        bInert = true;
+      }
+      else if (state == SHOCKWAVE) {
+        bShock = true;
+      }
+      else if (state == TRANSITION) {
+        bTrans = true;
+      }
+    }
+  }
+
+  if (shockwaveState == INERT) {
+    if (bShock) {
+      shockwaveState = SHOCKWAVE;
+      timeOfShockwave = millis();
+    }
+  }
+  else if (shockwaveState == SHOCKWAVE) {
+    if (!bInert) {
+      shockwaveState = TRANSITION;
+    }
+  }
+  else if (shockwaveState == TRANSITION) {
+    if (!bShock) {
+      shockwaveState = INERT;
+    }
+  }
+}
+
+byte getRoadState(byte neighborData) {
+  return (neighborData >> 4);//1st and 2nd bits
+}
+
+byte getHandshakeState(byte neighborData) {
+  return ((neighborData >> 2) & 3);//3rd and 4th bits
+}
+
+byte getShockwaveState(byte neighborData) {
+  return (neighborData & 3);//5th and 6th bits
+}
+
+/*
+   THE REAL DEAL
+*/
+void graphics() {
+  // clear buffer
+  setColor(OFF);
+
+  FOREACH_FACE(f) {
+
+    // first draw the car fade
+    if (millis() - timeCarPassed[f] > FADE_DURATION) {
+      carBrightnessOnFace[f] = 0;
+
+      // draw the road
+      if (faceRoadInfo[f] == ROAD) {
+        if (millis() - timeCarPassed[f] < FADE_ROAD_DURATION + FADE_DURATION) {
+          byte roadBrightness = (millis() - timeCarPassed[f] - FADE_DURATION) / 2;
+          setColorOnFace(dim(YELLOW, roadBrightness), f);
+        }
+        else {
+          setColorOnFace(YELLOW, f);
+        }
+      }
+
+    }
+    else {
+      // in the beginning, quick fade in
+      if (millis() - timeCarPassed[f] > CAR_FADE_IN_DIST ) {
+        carBrightnessOnFace[f] = 255 - map(millis() - timeCarPassed[f] - CAR_FADE_IN_DIST, 0, FADE_DURATION - CAR_FADE_IN_DIST, 0, 255);
+      }
+      else {
+        carBrightnessOnFace[f] = map(millis() - timeCarPassed[f], 0, CAR_FADE_IN_DIST, 0, 255);
+      }
+
+      // Draw our car
+      if (currentCarClass == STANDARD) {
+        setColorOnFace(makeColorHSB(carHues[currentCarHue], 255, carBrightnessOnFace[f]), f);
+      }
+      else {
+        setColorOnFace(makeColorHSB(carHues[currentCarHue], 0, carBrightnessOnFace[f]), f);
+      }
+
+    }
+  }
+
+  if (isLoose) {
+    standbyGraphics();
+  }
+
+  if (millis() - timeOfShockwave < 255) {
+    setColor(dim(ORANGE, 255 - ((millis() - timeOfShockwave))));  // should really be 3x as long, with a delay for the travel of the effect
+  }
+
+  if ( millis() - timeOfCrash < CRASH_TIME ) {
+    // show fiery wreckage
+    byte bri = 255 - map(millis() - timeOfCrash, 0, CRASH_TIME, 0, 255);
+    setColor(dim(RED, bri));
+    //    crashGraphics();
+  }
+}
+
+/*
+   SPEED CONVENIENCE FUNCTIONS
+*/
+
+word getSpeedIncrements() {
+  if (currentCarClass == STANDARD) {
+    return SPEED_INCREMENTS_STANDARD;
+  }
+  else {
+    return SPEED_INCREMENTS_BOOSTED;
+  }
+}
+
+word getMinTransitTime() {
+  if (currentCarClass == STANDARD) {
+    return MIN_TRANSIT_TIME_STANDARD;
+  }
+  else {
+    return MIN_TRANSIT_TIME_BOOSTED;
+  }
+}
+
+word getMaxTransitTime() {
+  if (currentCarClass == STANDARD) {
+    return MAX_TRANSIT_TIME_STANDARD;
+  }
+  else {
+    return MAX_TRANSIT_TIME_BOOSTED;
+  }
+}
+
+/*
+   RANDOMIZE OUR SEARCH ORDER
+   reference: http://www.cplusplus.com/reference/algorithm/random_shuffle/
+*/
+
+void shuffleSearchOrder() {
+
+  for (byte i = 5; i > 0; i--) {
+    // start with the right most, replace it with one of the 5 to the left
+    // then move one to the left, and do this with the 4 to the left. 3, 2, 1
+    byte swapA = i;
+    byte swapB = random(i - 1);
+    byte temp = searchOrder[swapA];
+    searchOrder[swapA] = searchOrder[swapB];
+    searchOrder[swapB] = temp;
+  }
+}
+
+/*
+   GRAPHICS
+   Fade out the car based on a trail length or timing fade away
+*/
+
+void standbyGraphics() {
+
+  // circle around with a trail
+  // 2 with trails on opposite sides
+  long rotation = (millis() / 3) % 360;
+  byte head = rotation / 60;
+
+  FOREACH_FACE(f) {
+
+    byte distFromHead = (6 + head - f) % 6; // returns # of positions away from the head
+
+    if (distFromHead == 0 || distFromHead == 3) {
+      setColorOnFace(ORANGE, f);
+    }
+  }
+}
+
+void resetIsCarPassed() {
+  FOREACH_FACE(f) {
+    isCarPassed[f] = false;
+  }
+}
+
+bool didCarPassFace(byte face, byte pos, byte from, byte to) {
 
   // are we going straight, turning left, or turning right
-  if ( (from + 6 - to) % 6 == 3 ) {
+  byte center;
+  byte faceRotated = (6 + face - from) % 6;
+  byte dir = ((from + 6 - to) % 6) - 2;
+  
+  return pos > turns[dir][faceRotated];
+}
 
-    byte center;
-    byte faceRotated = (6 + face - from) % 6;
-    switch ( faceRotated ) { //... rotate to the correct direction
-      case 0: center = 0;  break;
-      case 1: center = 33; break;
-      case 2: center = 67; break;
-      case 3: center = 100;  break;
-      case 4: center = 67; break;
-      case 5: center = 33; break;
+void crashGraphics() {
+  if (crashHere) {
+    // Explosion site
+    //    setColor(RED);
+    FOREACH_FACE(f) {
+      setColorOnFace(makeColorHSB((millis() / 200) % 20, 255, sin8_C((f * 40 + millis() / 2) % 255)), f);
     }
-
-    if (carFadeInDistance > center) {
-      loBound = 0;
-    }
-    else {
-      loBound = center - carFadeInDistance;
-    }
-
-    // we are traveling straight
-    if ( pos < loBound || pos > carFadeOutDistance + center ) {
-      // out of range for us...
-      brightness = 0;
-    }
-
-    else if ( pos < center ) {
-      // fade in
-      brightness = (byte) map(pos, loBound, center, 0, 255);
-    }
-
-    else if ( pos == center ) {
-      brightness = 255;
-    }
-
-    else if ( pos > center ) {
-      // fade out
-      if ( pos - center > carFadeOutDistance) {
-        brightness = 0;
-      }
-      else {
-        brightness = 255 - (byte) map(pos, center, carFadeOutDistance + center, 0, 255);
-      }
-    }
-
-  }
-
-  else if ( (from + 6 - to) % 6 == 2 ) {
-    // we are turning right
-    byte center;
-    byte faceRotated = (6 + face - from) % 6;
-    switch ( faceRotated ) { //... rotate to the correct direction
-      case 0: center = 0;  break;
-      case 1: center = 25; break;
-      case 2: center = 50;  break;
-      case 3: center = 75; break;
-      case 4: center = 100;  break;
-      case 5: center = 50;  break;
-    }
-
-    if (carFadeInDistance > center) {
-      loBound = 0;
+  } else {
+    // flashback or shockwave
+    if (millis() - timeOfCrash > CRASH_DURATION) {
+      setColor(OFF);
     }
     else {
-      loBound = center - carFadeInDistance;
-    }
-
-    // inner side shouldn't light up on the turn
-    if ( faceRotated == 5 || pos < loBound || pos > carFadeOutDistance + center ) {
-      // out of range for us...
-      brightness = 0;
-    }
-
-    else if ( pos < center ) {
-      // fade in
-      brightness = (byte) map(pos, loBound, center, 0, 255);
-    }
-
-    else if ( pos == center ) {
-      brightness = 255;
-    }
-
-    else if ( pos > center ) {
-      // fade out
-      if ( pos - center > carFadeOutDistance) {
-        brightness = 0;
-      }
-      else {
-        brightness = 255 - (byte) map(pos, center, carFadeOutDistance + center, 0, 255);
-
-        sp.print(brightness);
-        sp.print(F(", pos: "));
-        sp.println(pos);
-      }
+      byte bri = 255 - map(millis() - timeOfCrash, 0, CRASH_DURATION, 0, 255);
+      setColor(dim(ORANGE, bri));
     }
   }
-
-  else if ( (from + 6 - to) % 6 == 4 ) {
-    // we are turning left
-    byte center;
-    byte faceRotated = (6 + face - from) % 6;
-    switch ( faceRotated ) { //... rotate to the correct direction
-      case 0: center = 0;  break;
-      case 1: center = 50;  break;
-      case 2: center = 100;  break;
-      case 3: center = 75; break;
-      case 4: center = 50;  break;
-      case 5: center = 25; break;
-    }
-
-    if (carFadeInDistance > center) {
-      loBound = 0;
-    }
-    else {
-      loBound = center - carFadeInDistance;
-    }
-
-    // inner side shouldn't light up on the turn
-    if ( faceRotated == 1 || pos < loBound || pos > carFadeOutDistance + center ) {
-      // out of range for us...
-      brightness = 0;
-    }
-
-    else if ( pos < center ) {
-      // fade in
-      //      brightness = 0;
-      brightness = (byte) map(pos, loBound, center, 0, 255);
-    }
-
-    else if ( pos == center ) {
-      brightness = 255;
-    }
-
-    else if ( pos > center ) {
-      // fade out
-      if ( pos - center > carFadeOutDistance) {
-        brightness = 0;
-      }
-      else {
-        brightness = 255 - (byte) map(pos, center, carFadeOutDistance + center, 0, 255);
-      }
-    }
-  }
-
-  return makeColorHSB(0, 0, brightness);
 }
