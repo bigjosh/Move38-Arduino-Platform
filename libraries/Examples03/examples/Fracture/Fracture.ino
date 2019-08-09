@@ -1,7 +1,7 @@
 /*
  *  Fracture
  *  by Move38, Inc. 2019
- *  Lead development by Jonathan Bobrow
+ *  Lead development by Jonathan Bobrow, Daniel King
  *  original game by Celia Pearce, Em Lazer-Walker, Jonathan Bobrow, Joshua Sloane
  *
  *  Rules: https://github.com/Move38/Fracture/blob/master/README.md

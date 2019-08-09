@@ -19,9 +19,10 @@ enum blinkTypes {FLOPPER, FLICKER};
 byte blinkType = FLICKER;
 
 #define TEAM_COUNT 3
-byte displayTeam = 2;
 byte scoringTeam = 0;
 byte signalTeam = 0;
+
+byte displayColor = 0;
 
 enum gameStates {GAME, TRANSITION, SCORE};
 byte gameState = GAME;
@@ -74,12 +75,11 @@ void flopperLoop() {
   } else if (gameState == TRANSITION) {
     if (scoreCheck()) {
       gameState = SCORE;
-      signalTeam = 0; // invalid team, since we are in scoring mode
+      signalTeam = 1;
     }
   } else if (gameState == SCORE) {
     if (buttonDoubleClicked()) {
       if (isAlone()) {
-        signalTeam = 1; // start our signaling on team 1 again
         gameState = GAME;
       }
     }
@@ -91,7 +91,6 @@ void flopperLoop() {
       blinkType = FLICKER;
       scoringTeam = 0;
       signalTeam = 0;
-      displayTeam = 1;
       gameState = GAME;
     }
   }
@@ -130,11 +129,6 @@ void flickerLoop() {
           }
         }
       }
-
-      //also, wait for single clicks to change my display team
-      if (buttonSingleClicked()) {
-        displayTeam = (displayTeam % TEAM_COUNT) + 1;
-      }
     }
 
     //also, time to transition?
@@ -150,7 +144,6 @@ void flickerLoop() {
   } else if (gameState == SCORE) {
     if (buttonDoubleClicked() || gameCheck()) {
       gameState = GAME;
-      displayTeam = scoringTeam;
       scoringTeam = 0;
     }
   }
@@ -189,6 +182,9 @@ void flopperDisplay() {
 void flickerDisplay() {
   if (animTimer.isExpired()) {
     spinFace = (spinFace + 1) % 6;
+    if (spinFace == 0) {
+      displayColor = ((displayColor + 1) % 3) + 1;
+    }
     animTimer.set(ANIMATION_INTERVAL);
   }
 
@@ -205,7 +201,7 @@ void flickerDisplay() {
 
     } else {//we are just chillin
       setColor(OFF);
-      setColorOnFace(makeColorHSB(teamHues[displayTeam], 255, 255), spinFace);
+      setColorOnFace(makeColorHSB(teamHues[displayColor], 255, 255), spinFace);
     }
   } else {//showing final scoring team
     setColor(makeColorHSB(teamHues[scoringTeam], 255, 255));
