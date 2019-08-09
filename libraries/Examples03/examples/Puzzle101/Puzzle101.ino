@@ -44,6 +44,7 @@ byte colorDim = 160;
 byte whiteDim = 64;
 
 void setup() {
+  randomize();
 }
 
 void loop() {
