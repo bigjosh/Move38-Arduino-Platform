@@ -51,6 +51,8 @@ void setup() {
   commandState = INERT;
   internalState = INERT;
   currentHue = 0;
+
+  randomize();
 }
 
 void loop() {
