@@ -91,6 +91,8 @@ void loop() {
       
     }
 
+    boolean sendNowFlag = false;
+
     // *** Incomming
 
     if ( isDatagramReadyOnFace( f ) ) {
@@ -133,8 +135,8 @@ void loop() {
         // We got something, so we know someone is there
         expireFaceTimer[f].set( ExpireTime_ms );
     
-        // Also send our response immedeately (ping pong)
-        nextSendTimer[f].set( 0 ); 
+        // Also send our response immedeately (ping pong)        
+        sendNowFlag = true; 
 
           
       } else {
@@ -154,7 +156,7 @@ void loop() {
 
     // *** Outgoing 
 
-    if (nextSendTimer[f].isExpired()) {
+    if (sendNowFlag || nextSendTimer[f].isExpired()) {
 
       MessageType txMessage;
 
