@@ -112,15 +112,14 @@ void loop() {
           
         } else {
 
-          // If we get here, then packet it the right lenght and the checksum is correct (valid packet) 
+          // If we get here, then packet is the right length and the checksum is correct (valid packet) 
   
           // If the face is expired, or this is a new face from the last message, then no need to show an error on the first message, just sync to it. 
+
+          // We check if the seq matches either the expected seq or +1 or +2. This way, we need to miss three or more consecutive packets to show an error. 
   
-          if ( !expireFaceTimer[f].isExpired() && lastTxFace[f] == rxMessagePtr->txFace &&  rxMessagePtr->seq !=nextSeqIn[f] ) {
-  
-            // Wrong SEQ so show missed
-  
-            //showMissedTimer[f].set( MissedShowTime_ms );
+          if ( !expireFaceTimer[f].isExpired() && lastTxFace[f] == rxMessagePtr->txFace &&  rxMessagePtr->seq !=nextSeqIn[f] && rxMessagePtr->seq != (nextSeqIn[f]+1) && rxMessagePtr->seq != (nextSeqIn[f]+2) ) {
+   
             showMissedFlag[f] = true;
   
           }
