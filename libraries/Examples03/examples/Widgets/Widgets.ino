@@ -1,681 +1,478 @@
 /*
- *  Widgets
- *  by Move38, Inc. 2019
- *  Lead development by Dan King
- *  original game by Dan King, Vanilla Liu, Justin Ha, Junege Hong, Kristina Atanasoski, Jonathan Bobrow
- *
- *  Rules: https://github.com/Move38/Widgets/blob/master/README.md
- *
- *  --------------------
- *  Blinks by Move38
- *  Brought to life via Kickstarter 2018
- *
- *  @madewithblinks
- *  www.move38.com
- *  --------------------
- */
+    Widgets
+    by Move38, Inc. 2019
+    Lead development by Dan King
+    original game by Dan King, Vanilla Liu, Justin Ha, Junege Hong, Kristina Atanasoski, Jonathan Bobrow
 
-////GENERIC VARIABLES
-bool inChooser = true;
-enum widgetModes {COIN, D6, SPINNER, TIMER};
-byte currentWidget = COIN;
-byte currentVal = 1;
-enum goSignals {INERT, GOING, RESOLVING, EXEMPT};
-byte goSignal = EXEMPT;
-bool isAnimating = false;
+    Rules: https://github.com/Move38/Widgets/blob/master/README.md
+
+    --------------------
+    Blinks by Move38
+    Brought to life via Kickstarter 2018
+
+    @madewithblinks
+    www.move38.com
+    --------------------
+*/
+
+////GENERIC VARIABLES////
+enum widgets {DICE, SPINNER, COIN, TIMER};
+byte currentWidget = DICE;
+enum signalTypes {INERT, GO, RESOLVE};
+byte pushSignal = INERT;
+byte goSignal = INERT;
+
 Timer animTimer;
-byte animFrame = 0;
+byte framesRemaining = 0;
+byte outcomeColors[6] = {0, 21, 42, 85, 170, 212};
+byte currentOutcome = 1;
 
-////WIDGET SPECIFIC VARIABLES
-Color spinnerColors[6] = {RED, ORANGE, YELLOW, GREEN, BLUE, MAGENTA};
-int spinInterval = 25;
-byte spinLength;
+bool bChange = false;
 
-Color headsColor;
-Color tailsColor;
-byte targetVal;
+////WIDGET VARIABLES////
+#define DICE_ROLL_INTERVAL 75
+#define COIN_FLIP_INTERVAL 150
 
-int ticksRemaining;
-Timer tickTimer;
-Timer tickOffsetTimer;
-byte tickFace;
-enum timerStates {SETTING, TIMING, COMPLETE};
-byte timerState = SETTING;
+#define SPINNER_INTERVAL_RESET 25
+#define SPINNER_ACTIVE_DIM 196
+#define SPINNER_FINAL_DIM 128
+word spinInterval = SPINNER_INTERVAL_RESET;
+Timer spinnerFinalPulseTimer;
+#define SPINNER_PULSE_DURATION 1000
+
+enum timerModes {SETTING, TIMING, ALARM};
+byte timerMode = SETTING;
+#define TIMER_SETTING_TICK 250
 
 void setup() {
   randomize();
+  startWidget();
 }
 
-////////////////
-//MASTER LOOPS//
-////////////////
-
 void loop() {
-  //listen for long press to switch in and out of chooser
-  if (buttonLongPressed()) {
-    animTimer.set(0);
-    if (inChooser) {//move to the game itself
-      inChooser = false;
-      switch (currentWidget) {
-        case COIN:
-          goSignal = INERT;
-          headsColor = spinnerColors[random(2)];
-          tailsColor = spinnerColors[random(2) + 3];
-          coinDisplay(inChooser, 3);
-          break;
-        case D6:
-          goSignal = INERT;
-          d6Display(currentVal, inChooser);
-          break;
-        case SPINNER:
-          goSignal = INERT;
-          spinnerDisplay(7, false);
-          break;
-        case TIMER:
-          currentVal = 1;
-          break;
-      }
-    } else {
-      inChooser = true;
-      goSignal = EXEMPT;
-      currentVal = 1;
+
+  // discard the change mode from a force sleep
+  if (hasWoken()) {
+    bChange = false;
+    if (currentWidget == DICE) {
+      diceFaceDisplay(currentOutcome);
+    } else if (currentWidget == SPINNER) {
+      spinnerFaceDisplay(currentOutcome, true);
     }
   }
 
-  //run the appropriate loop();
-  if (inChooser) {
-    osLoop();
-  } else {
-    //before the loops, update goSignal if we're not exempt
-    if (goSignal != EXEMPT) {
-      goSignalLoop();
+  //listen for button clicks
+  if (buttonSingleClicked()) {
+    if (currentWidget == TIMER) {//we're in the timer
+      if (timerMode == SETTING) {//it's not currently going
+        if (currentOutcome == 5) {
+          currentOutcome = 1;
+          animTimer.set(TIMER_SETTING_TICK * (currentOutcome + 3));
+        } else {
+          currentOutcome++;
+          animTimer.set(TIMER_SETTING_TICK * (currentOutcome + 3));
+        }
+      }
+    } else {
+      startWidget();
     }
-    //now run the loops
-    switch (currentWidget) {
-      case COIN:
-        coinLoop();
-        break;
-      case D6:
-        d6Loop();
-        break;
-      case SPINNER:
-        spinnerLoop();
-        break;
-      case TIMER:
-        timerLoop();
-        break;
-    }
+  }
+
+  if (buttonLongPressed()) {
+    bChange = true;
+  }
+
+  if (buttonReleased() && bChange) {
+    changeWidget((currentWidget + 1) % 4);
+    bChange = false;
+  }
+
+  //listen for signals
+  pushLoop();
+  goLoop();
+
+  //do things
+  switch (currentWidget) {
+    case DICE:
+      diceLoop();
+      break;
+    case SPINNER:
+      spinnerLoop();
+      break;
+    case COIN:
+      coinLoop();
+      break;
+    case TIMER:
+      timerLoop();
+      break;
   }
 
   //set up communication
-  byte sendData = (inChooser << 5) + (goSignal << 3);
+  byte sendData = (currentWidget << 4) + (pushSignal << 2) + (goSignal);
   setValueSentOnAllFaces(sendData);
 
-  //dump click data
-  buttonSingleClicked();
-  buttonDoubleClicked();
+  //set it to all white if waiting for longpress release
+  if (bChange) {
+    setColor(WHITE);
+  }
 }
 
-void osLoop() {
-  //listen for clicking to cycle through widgets
-  if (buttonSingleClicked()) {
-    nextWidget();
+void changeWidget(byte targetWidget) {
+  currentWidget = targetWidget;
+  //currentWidget = (currentWidget + 1) % 4;
+  pushSignal = GO;
+  if (currentWidget == TIMER) {
+    currentOutcome = 1;
+    timerMode = SETTING;
+    animTimer.set(TIMER_SETTING_TICK * (currentOutcome + 3));
+  } else {
+    startWidget();
   }
+}
 
-  //listen for animation updates
-  if (animTimer.isExpired()) {
-    switch (currentWidget) {
-      case COIN:
-        currentVal ++;
-        if (currentVal == 3) {
-          currentVal = 1;
+void pushLoop() {
+  if (pushSignal == INERT) {
+    //look for neighbors trying to push me
+    FOREACH_FACE(f) {
+      if (!isValueReceivedOnFaceExpired(f)) {//neighbor!
+        byte neighborData = getLastValueReceivedOnFace(f);
+        if (getPushSignal(neighborData) == GO) {
+          //this neighbor is pushing a widget
+          changeWidget(getCurrentWidget(neighborData));
+          //currentWidget = getCurrentWidget(neighborData);
+          pushSignal = GO;
+          //if we're not becoming a TIMER, we gotta also roll/spin/flip
+          if (currentWidget != TIMER) {
+            startWidget();
+          } else {
+            currentOutcome = 1;
+            animTimer.set(TIMER_SETTING_TICK * (currentOutcome + 3));
+          }
         }
-        coinDisplay(inChooser, currentVal);
-        animTimer.set(400);
-        break;
-      case D6:
-        currentVal++;
-        if (currentVal == 7) {
-          currentVal = 1;
+      }
+    }
+  } else if (pushSignal == GO) {
+    pushSignal = RESOLVE;//this is corrected within the face loop if it shouldn't happen
+    FOREACH_FACE(f) {
+      if (!isValueReceivedOnFaceExpired(f)) {//neighbor!
+        byte neighborData = getLastValueReceivedOnFace(f);
+        if (getPushSignal(neighborData) == INERT) {
+          pushSignal = GO;//we should still be in GO, there are neighbors to inform
         }
-        d6Display(currentVal, true);
-        animTimer.set(250);
-        break;
-      case SPINNER:
-        currentVal = nextClockwise(currentVal);
-        spinnerOSDisplay(currentVal);
-        animTimer.set(100);
-        break;
-      case TIMER:
-        currentVal ++;
-        if (currentVal == 10) {
-          currentVal = 0;
+      }
+    }
+  } else if (pushSignal == RESOLVE) {
+    pushSignal = INERT;//this is corrected within the face loop if it shouldn't happen
+    FOREACH_FACE(f) {
+      if (!isValueReceivedOnFaceExpired(f)) {//neighbor!
+        byte neighborData = getLastValueReceivedOnFace(f);
+        if (getPushSignal(neighborData) == GO) {
+          pushSignal = RESOLVE;//we should still be in RESOLVE, there are neighbors to inform
         }
-        timerOSDisplay(currentVal);
-        animTimer.set(100);
-        break;
+      }
     }
   }
 }
 
-void nextWidget() {
+void goLoop() {
+  if (goSignal == INERT) {
+    //look for neighbors trying to push me
+    FOREACH_FACE(f) {
+      if (!isValueReceivedOnFaceExpired(f)) {//neighbor!
+        byte neighborData = getLastValueReceivedOnFace(f);
+        if (getGoSignal(neighborData) == GO) {
+          //this neighbor is pushing a go signal
+          startWidget();
+        }
+      }
+    }
+  } else if (goSignal == GO) {
+    goSignal = RESOLVE;//this is corrected within the face loop if it shouldn't happen
+    FOREACH_FACE(f) {
+      if (!isValueReceivedOnFaceExpired(f)) {//neighbor!
+        byte neighborData = getLastValueReceivedOnFace(f);
+        if (getGoSignal(neighborData) == INERT) {
+          goSignal = GO;//we should still be in GO, there are neighbors to inform
+        }
+      }
+    }
+  } else if (goSignal == RESOLVE) {
+    goSignal = INERT;//this is corrected within the face loop if it shouldn't happen
+    FOREACH_FACE(f) {
+      if (!isValueReceivedOnFaceExpired(f)) {//neighbor!
+        byte neighborData = getLastValueReceivedOnFace(f);
+        if (getGoSignal(neighborData) == GO) {
+          goSignal = RESOLVE;//we should still be in RESOLVE, there are neighbors to inform
+        }
+      }
+    }
+  }
+}
+
+void startWidget() {
   switch (currentWidget) {
-    case COIN:
-      currentWidget = D6;
-      currentVal = 1;
-      break;
-    case D6:
-      currentWidget = SPINNER;
-      currentVal = 0;
+    case DICE:
+      //totalAnimationTimer.set(DICE_ROLL_DURATION);
+      currentOutcome = random(5) + 1;
+      framesRemaining = 20 + random(5);
+      animTimer.set(DICE_ROLL_INTERVAL);
+      diceFaceDisplay(currentOutcome);
       break;
     case SPINNER:
-      currentWidget = TIMER;
-      currentVal = 0;
-      break;
-    case TIMER:
-      currentWidget = COIN;
-      currentVal = 1;
-      animFrame = 0;
-      break;
-  }
-}
-
-void goSignalLoop() {
-  byte currentSignal = goSignal;//this is to avoid the loops automatically completing
-  switch (currentSignal) {
-    case INERT:
-      if (goCheck() == true) {
-        goSignal = GOING;
-      }
-      break;
-    case GOING:
-      if (resolveCheck() == true) {
-        goSignal = RESOLVING;
-      }
-      break;
-    case RESOLVING:
-      if (inertCheck() == true) {
-        goSignal = INERT;
-      }
-      break;
-  }
-}
-
-////////////////
-//WIDGET LOOPS//
-////////////////
-
-void coinLoop() {
-
-  if (!isAnimating) {
-    //there are two ways to start flipping: get clicked or be commanded
-    if (buttonSingleClicked() || goSignal == GOING) {//were we clicked?
-      isAnimating = true;
-      animFrame = 0;
-      goSignal = GOING;
-      currentVal = currentVal % 2;
-      targetVal = random(1) + 12;
-    }
-  }
-
-  if (isAnimating) {
-    if (animTimer.isExpired()) {
-      coinDisplay(inChooser, currentVal % 2);//display the animation at frame X
-      if (animFrame % 4 == 2) {//this is the inversion point of value
-        currentVal++;
-      }
-      animFrame ++;
-      animTimer.set(50);
-    }//end of timer loop
-
-    if (animFrame % 4 == 1 && currentVal == targetVal) {//the stopping point
-      isAnimating = false;
-      currentVal = currentVal % 2;
-    }
-  }
-}
-
-void d6Loop() {
-
-  if (!isAnimating) {
-    //there are two ways to start rolling: get clicked or be commanded
-    if (buttonSingleClicked() || goSignal == GOING) {//were we clicked?
-      isAnimating = true;
-      animFrame = 0;
-      spinInterval = 50;
-      goSignal = GOING;
-    }
-  }
-
-  if (isAnimating) {
-    if (animTimer.isExpired()) {
-      byte prevVal = currentVal;
-      while ( currentVal == prevVal ) {
-        currentVal = random(5) + 1;
-      }
-      d6Display(currentVal, false);
-      animFrame ++;
-      spinInterval += 10;
+      framesRemaining = random(11) + 36;
+      spinInterval = SPINNER_INTERVAL_RESET;
       animTimer.set(spinInterval);
-    }
+      break;
+    case COIN:
+      framesRemaining = random(3) + 22;
+      if (animTimer.isExpired()) {//reset the timer if it isn't currently going
+        animTimer.set(COIN_FLIP_INTERVAL);
+        if (currentOutcome == 0) {
+          currentOutcome = 1;
+        } else {
+          currentOutcome = 0;
+        }
+      }
+      break;
+  }
+  goSignal = GO;//happens regardless of type
+}
 
-    if (animFrame == 20) {
-      isAnimating = false;
-      d6Display(currentVal, false);
+void diceLoop() {
+  if (animTimer.isExpired() && framesRemaining > 0) {
+    animTimer.set(DICE_ROLL_INTERVAL);
+    framesRemaining--;
+    currentOutcome += 5;
+    if (currentOutcome > 6) {
+      currentOutcome = currentOutcome % 6;
     }
+    diceFaceDisplay(currentOutcome);
+  }
+}
+
+void diceFaceDisplay(byte val) {
+  byte orientFace = random(5);
+  setColor(OFF);
+  switch (val) {
+    case 1:
+      setColorOnFace(RED, orientFace);
+      break;
+    case 2:
+      setColorOnFace(RED, orientFace);
+      setColorOnFace(RED, (orientFace + 3) % 6);
+      break;
+    case 3:
+      setColorOnFace(RED, orientFace);
+      setColorOnFace(RED, (orientFace + 2) % 6);
+      setColorOnFace(RED, (orientFace + 4) % 6);
+      break;
+    case 4:
+      setColor(RED);
+      setColorOnFace(OFF, orientFace);
+      setColorOnFace(OFF, (orientFace + 3) % 6);
+      break;
+    case 5:
+      setColor(RED);
+      setColorOnFace(OFF, orientFace);
+      break;
+    case 6:
+      setColor(RED);
+      break;
   }
 }
 
 void spinnerLoop() {
-  if (!isAnimating) {
-    //there are two ways to start spinning: get clicked or be commanded
-    if (buttonSingleClicked() || goSignal == GOING) {
-      isAnimating = true;
-      spinLength = random(5) + 42;
-      spinInterval = 25;
-      goSignal = GOING;
+  if (animTimer.isExpired() && framesRemaining > 0) {//actively spinning
+    framesRemaining--;
+    //determine how long the next frame is
+    if (framesRemaining < 24) {//we're in the slow down
+      spinInterval = (spinInterval * 23) / 20;
+    }
+    animTimer.set(spinInterval);
+
+    currentOutcome = (currentOutcome + 1) % 6;
+    spinnerFaceDisplay(currentOutcome, true);
+    if (framesRemaining == 0) { //this is the last frame
+      spinnerFinalPulseTimer.set(SPINNER_PULSE_DURATION);
+    }
+  } else if (framesRemaining == 0) { //just hanging out
+    spinnerFaceDisplay(currentOutcome, false);
+  }
+}
+
+void spinnerFaceDisplay(byte val, bool spinning) {
+  if (spinning) {
+    FOREACH_FACE(f) {
+      setColorOnFace(makeColorHSB(outcomeColors[f], 255, SPINNER_ACTIVE_DIM), f);
+    }
+    setColorOnFace(WHITE, val);
+  } else {
+    if (spinnerFinalPulseTimer.isExpired()) {
+      spinnerFinalPulseTimer.set(SPINNER_PULSE_DURATION);
+    }
+    byte saturation = sin8_C(map(spinnerFinalPulseTimer.getRemaining(), 0, SPINNER_PULSE_DURATION, 0, 255));
+    setColorOnFace(makeColorHSB(outcomeColors[val], saturation, 255), val);
+  }
+}
+
+void coinLoop() {
+  if (animTimer.isExpired() && framesRemaining > 0) {
+    framesRemaining--;
+    animTimer.set(COIN_FLIP_INTERVAL);
+    //change the outcome from 0 to 1 and back
+    if (currentOutcome == 0) {
+      currentOutcome = 1;
+    } else {
+      currentOutcome = 0;
     }
   }
 
-  if (isAnimating) {
-    if (animTimer.isExpired()) {
-      currentVal = nextClockwise(currentVal);
-      spinnerDisplay(currentVal, false);
-      spinLength--;
-      animTimer.set(spinInterval);
-
-      if (spinLength < 24) {
-        spinInterval = (spinInterval * 23) / 20;
-      }
-    }
-
-    if (spinLength == 0) {
-      isAnimating = false;
-      spinnerDisplay(currentVal, true);
-    }
+  if (framesRemaining == 0) {
+    coinDisplay(true);
+  } else {
+    coinDisplay(false);
   }
+}
+
+void coinDisplay(bool finalFlip) {
+  Color faceColor;
+  if (currentOutcome == 0) {
+    faceColor = YELLOW;
+  } else {
+    faceColor = WHITE;
+  }
+
+  byte animPosition = COIN_FLIP_INTERVAL - animTimer.getRemaining();
+  byte leftStart = 0;
+  byte centerStart = COIN_FLIP_INTERVAL / 6;
+  byte rightStart = COIN_FLIP_INTERVAL / 3;
+  byte edgeDuration = (COIN_FLIP_INTERVAL / 3) * 2;
+
+  setColor(OFF);
+
+  if (animPosition >= leftStart && animPosition <= leftStart + edgeDuration) {
+    byte brightness = sin8_C(map(animPosition, leftStart, leftStart + edgeDuration, 0, 255));
+    setColorOnFace(dim(faceColor, brightness), 0);
+    setColorOnFace(dim(faceColor, brightness), 1);
+  }
+
+  if (finalFlip && animPosition >= leftStart + (edgeDuration / 2)) {
+    setColorOnFace(faceColor, 0);
+    setColorOnFace(faceColor, 1);
+  }
+
+  if (animPosition >= centerStart && animPosition <= centerStart + edgeDuration) {
+    byte brightness = sin8_C(map(animPosition, centerStart, centerStart + edgeDuration, 0, 255));
+    setColorOnFace(dim(faceColor, brightness), 2);
+    setColorOnFace(dim(faceColor, brightness), 5);
+  }
+
+  if (finalFlip && animPosition >= centerStart + (edgeDuration / 2)) {
+    setColorOnFace(faceColor, 2);
+    setColorOnFace(faceColor, 5);
+  }
+
+  if (animPosition >= rightStart && animPosition <= rightStart + edgeDuration) {
+    byte brightness = sin8_C(map(animPosition, rightStart, rightStart + edgeDuration, 0, 255));
+    setColorOnFace(dim(faceColor, brightness), 3);
+    setColorOnFace(dim(faceColor, brightness), 4);
+  }
+
+  if (finalFlip && animPosition >= rightStart + (edgeDuration / 2)) {
+    setColorOnFace(faceColor, 3);
+    setColorOnFace(faceColor, 4);
+  }
+
 }
 
 void timerLoop() {
-  switch (timerState) {
-    case SETTING:
-      //in here we listen for button clicks to increment currentVal, which represents minutes on the timer
-      if (buttonSingleClicked()) {
-        currentVal++;
-        animFrame = 0;
+
+  if (buttonDoubleClicked()) {
+    switch (timerMode) {
+      case SETTING:
+        animTimer.set((currentOutcome * 60000) - 1);
+        timerMode = TIMING;
+        break;
+      case TIMING:
+        timerMode = SETTING;
         animTimer.set(0);
-        if (currentVal == 6) {
-          currentVal = 1;
-        }
-      }
-
-      //if double clicked, we move on
-      if (buttonDoubleClicked()) {
-        ticksRemaining = currentVal * 60;
-        tickFace = 1;
-        tickOffsetTimer.set(500);
-        timerState = TIMING;
-      }
-      break;
-    case TIMING:
-      //first check to make sure we haven't been cancelled via double click
-      if (buttonDoubleClicked()) {
-        timerState = SETTING;
-      }
-      //otherwise we simply count down the remaining ticks
-      if (tickTimer.isExpired()) {
-        timerCountdownDisplay(true);
-
-        tickFace = nextClockwise(tickFace);
-        tickTimer.set(1000);
-        tickOffsetTimer.set(500);
-      }
-      if (tickOffsetTimer.isExpired()) {
-        timerCountdownDisplay(false);
-        ticksRemaining--;
-        tickOffsetTimer.set(1000);
-      }
-      if (ticksRemaining == 0) {
-        timerState = COMPLETE;
-      }
-      break;
-    case COMPLETE:
-      if (buttonSingleClicked()) { //back to SETTING!
-        timerState = SETTING;
-        animFrame = 0;
-      }
-      break;
+        break;
+      case ALARM:
+        timerMode = SETTING;
+        animTimer.set(0);
+        break;
+    }
   }
+
+  if (animTimer.isExpired()) {
+    switch (timerMode) {
+      case SETTING:
+        animTimer.set(TIMER_SETTING_TICK * (currentOutcome + 3));
+        break;
+      case TIMING:
+        timerMode = ALARM;
+        animTimer.set(100);
+        break;
+      case ALARM:
+        animTimer.set(100);
+        break;
+    }
+  }
+
   timerDisplay();
 }
 
-
-
-/////////////////
-//DISPLAY LOOPS//
-/////////////////
-
-void coinDisplay(bool osMode, byte val) {
-  if (osMode) {//OS display
-    switch (val) {
-      case 1:
-        setColor(dim(WHITE, 128));
-        setColorOnFace(WHITE, 0);
-        setColorOnFace(WHITE, 1);
-        setColorOnFace(WHITE, 2);
-        break;
-      case 2:
-        setColor(dim(WHITE, 128));
-        setColorOnFace(WHITE, 3);
-        setColorOnFace(WHITE, 4);
-        setColorOnFace(WHITE, 5);
-        break;
-    }
-  } else {//not in OS mode
-    if (val == 3) { //this is the two face display when you exit chooser
-      setColorOnFace(headsColor, 0);
-      setColorOnFace(headsColor, 1);
-      setColorOnFace(headsColor, 2);
-      setColorOnFace(tailsColor, 3);
-      setColorOnFace(tailsColor, 4);
-      setColorOnFace(tailsColor, 5);
-    } else {//actual animation
-      Color currentColor;
-      if (val == 1) {
-        currentColor = headsColor;
-      } else {
-        currentColor = tailsColor;
-      }
-      switch (animFrame % 4) {
-        case 0:
-          setColor(currentColor);
-          break;
-        case 1:
-          setColor(currentColor);
-          setColorOnFace(OFF, 1);
-          setColorOnFace(OFF, 4);
-          break;
-        case 2:
-          setColor(OFF);
-          break;
-        case 3:
-          setColor(currentColor);
-          setColorOnFace(OFF, 1);
-          setColorOnFace(OFF, 4);
-          break;
-      }
-    }
-  }
-}
-
-void d6Display(byte num, bool osMode) {
-  setColor(OFF);
-  Color displayColor;
-  byte displayBrightness = 255;
-  byte rotationRandomizer = 0;
-  bool displayArr[6] = {false, false, false, false, false, false};
-
-  switch (num) {
-    case 1:
-      if (osMode) {
-        displayArr[0] = true;
-      } else {
-        displayArr[random(5)] = true;
-      }
-      displayColor = RED;
-      break;
-    case 2:
-      if (osMode) {
-        rotationRandomizer = 0;
-      } else {
-        rotationRandomizer = random(2);
-      }
-      displayArr[rotationRandomizer] = true;
-      displayArr[rotationRandomizer + 3] = true;
-      displayColor = ORANGE;
-      break;
-    case 3:
-      if (osMode) {
-        rotationRandomizer = 0;
-      } else {
-        rotationRandomizer = random(1);
-      }
-      displayArr[rotationRandomizer] = true;
-      displayArr[rotationRandomizer + 2] = true;
-      displayArr[rotationRandomizer + 4] = true;
-      displayColor = YELLOW;
-      break;
-    case 4:
-      if (osMode) {
-        rotationRandomizer = 0;
-      } else {
-        rotationRandomizer = random(2);
-      }
-      displayArr[0] = true;
-      displayArr[1] = true;
-      displayArr[2] = true;
-      displayArr[3] = true;
-      displayArr[4] = true;
-      displayArr[5] = true;
-      displayArr[rotationRandomizer] = false;
-      displayArr[rotationRandomizer + 3] = false;
-      displayColor = GREEN;
-      break;
-    case 5:
-      displayArr[0] = true;
-      displayArr[1] = true;
-      displayArr[2] = true;
-      displayArr[3] = true;
-      displayArr[4] = true;
-      displayArr[5] = true;
-      if (osMode) {
-        displayArr[3] = false;
-      } else {
-        displayArr[random(5)] = false;
-      }
-      displayColor = BLUE;
-      break;
-    case 6:
-      displayArr[0] = true;
-      displayArr[1] = true;
-      displayArr[2] = true;
-      displayArr[3] = true;
-      displayArr[4] = true;
-      displayArr[5] = true;
-      displayColor = MAGENTA;
-      break;
-  }
-
-  if (osMode) {
-    displayColor = WHITE;
-    setColor(dim(WHITE, 128));
-  }
-
-  //set brightness
-  if (isAnimating) {
-    displayBrightness = 128;
-  }
-
-  FOREACH_FACE(f) {
-    if (displayArr[f] == true) {
-      setColorOnFace(dim(displayColor, displayBrightness), f);
-    }
-  }
-}
-
-void spinnerDisplay(byte face, bool isFinal) {
-
-  FOREACH_FACE(f) {
-    byte brightness = 160;
-    if (isFinal) {
-      brightness = 100;
-    }
-    setColorOnFace(dim(spinnerColors[f], brightness), f);
-  }
-
-  if (isFinal) {
-    setColorOnFace(spinnerColors[face], face);
-  } else {
-    setColorOnFace(WHITE, face);
-  }
-}
-
-void spinnerOSDisplay(byte face) {
-  setColor(dim(WHITE, 128));
-  setColorOnFace(dim(WHITE, 100), 0);
-  setColorOnFace(dim(WHITE, 100), 2);
-  setColorOnFace(dim(WHITE, 100), 4);
-  setColorOnFace(WHITE, face);
-}
-
-void timerOSDisplay(byte count) {
-  setColor(dim(WHITE, 100));
-  if (count < 6) {
-    setColorOnFace(WHITE, count);
-  }
-  setColorOnFace(WHITE, 0);
-}
-
-void timerDisplay() {//only handles SETTING and COMPLETE display, the actual countdown is handled elsewhere
-  switch (timerState) {
+void timerDisplay() {
+  switch (timerMode) {
     case SETTING:
-      if (animTimer.isExpired()) {
-        //so we need to tick on the lights every second
-        setColor(OFF);
-        if (animFrame < currentVal) {//we are not ready to reset
+      //set color thing going
+      {
+        byte animFrame = ((TIMER_SETTING_TICK * (currentOutcome + 3)) - animTimer.getRemaining()) / TIMER_SETTING_TICK;//0-X
+        if (animFrame == 0) {//the off frame
+          setColor(OFF);
+        } else {//the rest of the frames
           FOREACH_FACE(f) {
-            if (f <= animFrame) {
-              setColorOnFace(spinnerColors[currentVal - 1], f + 1);
+            //should this face be on?
+            if (f < animFrame && f <= currentOutcome) {
+              setColorOnFace(makeColorHSB(outcomeColors[currentOutcome - 1], 255, 255), f);
             }
           }
         }
-
-        animFrame++;
-
-        if (animFrame > currentVal) {
-          animTimer.set(500);
-          animFrame = 0;
-        } else if (animFrame == currentVal) {
-          animTimer.set(500);
-        } else {
-          animTimer.set(100);
-        }
-        setColorOnFace(WHITE, 0);
       }
-      break;
-    case COMPLETE:
-      if (animTimer.isExpired()) {
-        setColor(dim(RED, 128));
-        if (animFrame == 0) {
-          setColor(RED);
-          animFrame = 1;
-        } else if (animFrame == 1) {
-          animFrame = 0;
-        }
-        animTimer.set(50);
-      }
+
       setColorOnFace(WHITE, 0);
       break;
+    case TIMING:
+      //set overall face color
+      {
+        byte minutesRemaining = animTimer.getRemaining() / 60000;//0-4
+        byte progressBrightness = map((minutesRemaining * 60000) - animTimer.getRemaining(), 0, 60000, 127, 255);
+        setColor(makeColorHSB(outcomeColors[minutesRemaining], 255, progressBrightness));
+
+        //set the little ticking color on a specific face
+        if (animTimer.getRemaining() % 1000 <= 500) {
+          setColorOnFace(WHITE, 5 - ((animTimer.getRemaining() / 1000) % 6));
+        }
+      }
+      break;
+    case ALARM:
+      if (animTimer.getRemaining() <= 50) {
+        setColor(makeColorHSB(outcomeColors[0], 255, 128));
+      } else {
+        setColor(makeColorHSB(outcomeColors[0], 255, 255));
+      }
+      break;
   }
 }
 
-void timerCountdownDisplay(bool tickOn) {
-  //first, set background color
-  int dimness = 255 - (((60 - (ticksRemaining - 1) % 60)) * 3);
-  if (ticksRemaining > 240) { //still in the fifth minute
-    setColor(dim(BLUE, dimness));
-  } else if (ticksRemaining > 180) { //in the fourth minute
-    setColor(dim(GREEN, dimness));
-  } else if (ticksRemaining > 120) { //in the third book
-    setColor(dim(YELLOW, dimness));
-  } else if (ticksRemaining > 60) { //in the second minute
-    setColor(dim(ORANGE, dimness));
-  } else {//in the last minute
-    setColor(dim(RED, dimness));
-  }
-
-  //now, if it's the appropriate time, turn on the tick face
-  if (tickOn) {
-    setColorOnFace(WHITE, tickFace);
-  }
+byte getCurrentWidget(byte data) {
+  return (data >> 4);
 }
 
-
-
-///////////////////////////
-//COMMUNICATION FUNCTIONS//
-///////////////////////////
-
-byte getOSMode(byte data) {
-  return (data >> 5);//first bit
+byte getPushSignal(byte data) {
+  return ((data >> 2) & 3);
 }
 
 byte getGoSignal(byte data) {
-  return ((data >> 3) & 3);//second and third bit
-}
-
-bool goCheck() {
-  //check all neighbors for any neighbors giving go signal
-  bool goBool = false;
-  FOREACH_FACE(f) {
-    if (!isValueReceivedOnFaceExpired(f)) {
-      byte neighborData = getLastValueReceivedOnFace(f);
-      if (getGoSignal(neighborData) == GOING) {
-        goBool = true;
-      }
-    }
-  }
-  return goBool;
-}
-
-bool resolveCheck() {
-  bool resolveBool = true;
-  //if all of my neighbors are going, resolving, or exempt, we can resolve
-  //easy to determine, because the only remaining state is INERT
-  FOREACH_FACE(f) {
-    if (!isValueReceivedOnFaceExpired(f)) {
-      byte neighborData = getLastValueReceivedOnFace(f);
-      if (getGoSignal(neighborData) ==  INERT) { //this is the only thing that prevents this transition
-        resolveBool = false;
-      }
-    }
-  }
-
-  return resolveBool;
-}
-
-bool inertCheck() {
-  bool inertBool = true;
-  //if all of my neighbors are resolving, inert, or exempt, we can go inert
-  //easy to determine, because the only remaining state is GOING
-  FOREACH_FACE(f) {
-    if (!isValueReceivedOnFaceExpired(f)) {
-      byte neighborData = getLastValueReceivedOnFace(f);
-      if (getGoSignal(neighborData) ==  GOING) { //this is the only thing that prevents this transition
-        inertBool = false;
-      }
-    }
-  }
-
-  return inertBool;
-}
-
-/////////////////////////
-//CONVENIENCE FUNCTIONS//
-/////////////////////////
-
-byte nextClockwise (byte face) {
-  if (face == 5) {
-    return 0;
-  } else {
-    return face + 1;
-  }
-}
-
-byte nextCounterclockwise (byte face) {
-  if (face == 0) {
-    return 5;
-  } else {
-    return face - 1;
-  }
+  return (data & 3);
 }

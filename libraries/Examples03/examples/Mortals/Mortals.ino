@@ -1,4 +1,4 @@
-/*
+ /*
  *  Mortals
  *  by Move38, Inc. 2019
  *  Lead development by Jonathan Bobrow
@@ -26,7 +26,7 @@
 #define INITIAL_HEALTH             60
 #define MAX_HEALTH                 90
 
-#define MAX_TEAMS                   4
+#define MAX_TEAMS                   2
 
 #define COINTOSS_FLIP_DURATION    100   // how long we commit to our cointoss for
 #define GAME_START_DURATION       300   // wait for all teammates to get the signal to start
@@ -91,20 +91,16 @@ void loop() {
     }
   }
 
-  if (buttonDoubleClicked()) {
-    // reset game and go into waiting mode
-    mode = DEAD;
-    changeGameState( WAITING );
-  }
-
 
   if (buttonLongPressed()) {
-    // change team
-    bChangeTeam = true;
+    if (gameState == WAITING) {
+      // change team
+      bChangeTeam = true;
+    }
   }
 
-  if(buttonReleased()) {
-    if(bChangeTeam) {
+  if (buttonReleased()) {
+    if (bChangeTeam) {
       // now change the team
       team = getNextTeam();
       bChangeTeam = false;
@@ -255,14 +251,14 @@ void loop() {
     case START:    startUpdate();     break;
   }
 
-  if(bChangeTeam) {
+  if (bChangeTeam) {
     // display a team change signal
-    FOREACH_FACE(f){
-      if(f<3) {
-        setColorOnFace(teamColor(team),f);
+    FOREACH_FACE(f) {
+      if (f < 3) {
+        setColorOnFace(teamColor(team), f);
       }
       else {
-        setColorOnFace(teamColor(getNextTeam()),f);
+        setColorOnFace(teamColor(getNextTeam()), f);
       }
     }
   }
@@ -523,10 +519,8 @@ float sin_d( uint16_t degrees ) {
 */
 Color teamColor( byte t ) {
   switch (t) {
-    case 0: return MAGENTA;
-    case 1: return GREEN;
-    case 2: return ORANGE;
-    case 3: return BLUE;
+    case 0: return makeColorRGB(190, 0, 255);
+    case 1: return makeColorRGB(100, 255, 0);
   }
 }
 

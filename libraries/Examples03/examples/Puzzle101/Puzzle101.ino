@@ -1,22 +1,22 @@
 /*
- *  Puzzle101
- *  by Move38, Inc. 2019
- *  Lead development by Dan King
- *  original game by Vanilla Liu, Dan King
- *
- *  Rules: https://github.com/Move38/Puzzle101/blob/master/README.md
- *
- *  --------------------
- *  Blinks by Move38
- *  Brought to life via Kickstarter 2018
- *
- *  @madewithblinks
- *  www.move38.com
- *  --------------------
- */
+    Puzzle101
+    by Move38, Inc. 2019
+    Lead development by Dan King
+    original game by Vanilla Liu, Dan King
+
+    Rules: https://github.com/Move38/Puzzle101/blob/master/README.md
+
+    --------------------
+    Blinks by Move38
+    Brought to life via Kickstarter 2018
+
+    @madewithblinks
+    www.move38.com
+    --------------------
+*/
 
 ////COMMUNICATION VARIABLES////
-enum gameModes {SETUPAUTO, PACKETREADY, PACKETSENDING, PACKETLISTENING, PACKETRECEIVED, GAMEAUTO, TOMANUAL, SETUPMANUAL, LOCKING, GAMEMANUAL, TOAUTO};
+enum gameModes {SETUPAUTO, PACKETREADY, PACKETSENDING, PACKETLISTENING, PACKETRECEIVED, GAMEAUTO};
 byte gameMode = SETUPAUTO;
 byte packetStates[6] = {PACKETREADY, PACKETREADY, PACKETREADY, PACKETREADY, PACKETREADY, PACKETREADY};
 
@@ -36,12 +36,19 @@ Timer packetTimer;
 #define TIMEOUT_DURATION 700
 
 ////GAME VARIABLES////
-Color autoColors[5] = {OFF, RED, YELLOW, BLUE, WHITE};
-Color manualColors[5] = {OFF, ORANGE, GREEN, MAGENTA, WHITE};
+Color autoColors[5] = {OFF, makeColorRGB(255, 0, 128), makeColorRGB(255, 255, 0), makeColorRGB(0, 128, 255), WHITE};
 byte faceColors[6] = {0, 0, 0, 0, 0, 0};
 byte faceBrightness[6] = {0, 0, 0, 0, 0, 0};
+byte faceSolved[6];
 byte colorDim = 160;
 byte whiteDim = 64;
+
+// SYNCHRONIZED CELEBRATION
+Timer syncTimer;
+#define PERIOD_DURATION 2000
+#define BUFFER_DURATION 200
+byte neighborState[6];
+byte syncVal = 0;
 
 void setup() {
   randomize();
@@ -71,37 +78,17 @@ void loop() {
       break;
     case GAMEAUTO:
       gameLoop();
+      syncLoop();
       gameDisplay();
-      break;
-    case TOMANUAL:
-      toManualLoop();
-      assembleDisplay();
-      break;
-    case SETUPMANUAL:
-      setupManualLoop();
-      assembleDisplay();
-      break;
-    case LOCKING:
-      lockingLoop();
-      break;
-    case GAMEMANUAL:
-      gameLoop();
-      gameDisplay();
-      break;
-    case TOAUTO:
-      toAutoLoop();
-      assembleDisplay();
       break;
   }
 
   //clear button presses
-  buttonPressed();
   buttonDoubleClicked();
-  buttonLongPressed();
 
   //set communications
   FOREACH_FACE(f) {
-    byte sendData = (gameMode << 2) + (faceColors[f]);
+    byte sendData = (syncVal << 5) + (gameMode << 2) + (faceColors[f]);
     setValueSentOnFace(sendData, f);
   }
 }
@@ -133,7 +120,7 @@ void setupAutoLoop() {
     canBeginAlgorithm = false;
   }
 
-  if (buttonPressed() && canBeginAlgorithm == true) {//this lets us become the master blink
+  if (buttonDoubleClicked() && canBeginAlgorithm == true) {//this lets us become the master blink
     makePuzzle();//RUN THE ALGORITHM
     gameMode = PACKETREADY;
     canBeginAlgorithm = false;
@@ -149,146 +136,6 @@ void setupAutoLoop() {
       }
     }
   }
-
-  //look for blinks telling us to turn manual
-  FOREACH_FACE(f) {
-    if (!isValueReceivedOnFaceExpired(f)) {
-      byte neighborData = getLastValueReceivedOnFace(f);
-      if (getGameMode(neighborData) == TOMANUAL) {
-        gameMode = TOMANUAL;
-      }
-    }
-  }
-
-  //look for presses that change us to manual
-  if (buttonLongPressed()) {
-    gameMode = TOMANUAL;
-  }
-}
-
-void setupManualLoop() {
-  //look for neighbors and make some connections!
-  FOREACH_FACE(f) {
-    if (!isValueReceivedOnFaceExpired(f)) {//there is someone here
-      byte neighborData = getLastValueReceivedOnFace(f);
-      if (getGameMode(neighborData) == SETUPMANUAL || getGameMode(neighborData) == LOCKING) { //this is a compatible neighbor
-        if (faceColors[f] == 0) {//oh, this is a new neighbor!
-          faceColors[f] = random(2) + 1;
-        }
-      }
-    } else {//no one here
-      faceColors[f] = 0;
-    }
-  }
-
-  //now we resolve color conflicts with our neighbors
-  FOREACH_FACE(f) {
-    byte neighborColor = getColorInfo(getLastValueReceivedOnFace(f));
-    if (neighborColor != faceColors[f]) {
-      switch (faceColors[f]) {
-        case 1:
-          if (neighborColor == 2) {
-            faceColors[f] = 2;
-          }
-          break;
-        case 2:
-          if (neighborColor == 3) {
-            faceColors[f] = 3;
-          }
-          break;
-        case 3:
-          if (neighborColor == 1) {
-            faceColors[f] = 1;
-          }
-          break;
-      }
-    }
-  }
-
-  //look for neighbors telling us to transition to game or auto
-  FOREACH_FACE(f) {
-    if (!isValueReceivedOnFaceExpired(f)) {
-      byte neighborData = getLastValueReceivedOnFace(f);
-      if (getGameMode(neighborData) == LOCKING) {
-        gameMode = LOCKING;
-      } else if (getGameMode(neighborData) == TOAUTO) {
-        gameMode = TOAUTO;
-      }
-    }
-  }
-
-  //look out for double clicks to start the game
-  if (buttonDoubleClicked() && !isAlone()) {//only works when connected
-    gameMode = LOCKING;
-  }
-
-  //look for presses that change us to auto
-  if (buttonLongPressed()) {
-    gameMode = TOAUTO;
-  }
-}
-
-void lockingLoop() {
-  //all we do here is make sure all of our neighbors are ready to move on to the game
-  bool stillWaiting = false;
-  FOREACH_FACE(f) {
-    if (!isValueReceivedOnFaceExpired(f)) {
-      byte neighborData = getLastValueReceivedOnFace(f);
-
-      //look for neighbors still in setup, then wait
-      if (getGameMode(neighborData) == SETUPMANUAL) {
-        stillWaiting = true;
-      }
-    }
-  }
-
-  if (stillWaiting == false) {//time to move on
-    gameMode = GAMEMANUAL;
-  }
-}
-
-void toManualLoop() {
-  //I can move to actual SETUPMANUAL if all neighbors know we're moving OR don't care (are in incompatible states)
-  bool stillWaiting = false;
-  FOREACH_FACE(f) {
-    if (!isValueReceivedOnFaceExpired(f)) {
-      byte neighborData = getLastValueReceivedOnFace(f);
-      if (getGameMode(neighborData) == SETUPAUTO) {//only stop if there are neighbors left to tell
-        stillWaiting = true;
-      }
-    }
-  }
-
-  if (stillWaiting == false) {
-    gameMode = SETUPMANUAL;
-  }
-
-  //also, if I come across a TOAUTO, I should change to that
-  FOREACH_FACE(f) {
-    if (!isValueReceivedOnFaceExpired(f)) {
-      byte neighborData = getLastValueReceivedOnFace(f);
-      if (getGameMode(neighborData) == TOAUTO) {
-        gameMode = TOAUTO;
-      }
-    }
-  }
-}
-
-void toAutoLoop() {
-  //I can move to actual SETUPAUTO if all neighbors are in SETUPAUTO or TOAUTO
-  bool stillWaiting = false;
-  FOREACH_FACE(f) {
-    if (!isValueReceivedOnFaceExpired(f)) {
-      byte neighborData = getLastValueReceivedOnFace(f);
-      if (getGameMode(neighborData) == SETUPMANUAL || getGameMode(neighborData) == TOMANUAL) {//these neighbors haven't gotten the message
-        stillWaiting = true;
-      }
-    }
-  }
-
-  if (stillWaiting == false) {
-    gameMode = SETUPAUTO;
-  }
 }
 
 /////////////
@@ -303,23 +150,22 @@ void gameLoop() {
       byte neighborColor = getColorInfo(neighborData);
       if (neighborColor == faceColors[f]) { //hey, a match!
         faceBrightness[f] = 255;
+        faceSolved[f] = true;
       } else {//no match :(
         faceBrightness[f] = colorDim;
+        faceSolved[f] = false;
       }
 
       //look for neighbors turning us back to setup
-      if (gameMode == GAMEAUTO) {
-        if (getGameMode(neighborData) == SETUPAUTO) {
-          gameMode = SETUPAUTO;
-        }
-      } else if (gameMode == GAMEMANUAL) {
-        if (getGameMode(neighborData) == SETUPMANUAL) {
-          gameMode = SETUPMANUAL;
-        }
+
+      if (getGameMode(neighborData) == SETUPAUTO) {
+        gameMode = SETUPAUTO;
       }
+
 
     } else {//no neighbor
       faceBrightness[f] = colorDim;
+      faceSolved[f] = false;
     }
   }
 
@@ -327,12 +173,8 @@ void gameLoop() {
   if (buttonDoubleClicked()) {
     if (gameMode == GAMEAUTO) {
       gameMode = SETUPAUTO;
-    } else if (gameMode == GAMEMANUAL) {
-      gameMode = SETUPMANUAL;
     }
   }
-
-
 }
 
 /////////////////
@@ -340,44 +182,32 @@ void gameLoop() {
 /////////////////
 
 void assembleDisplay() {
-  if (gameMode == SETUPAUTO) {
-    if (sparkleTimer.isExpired() && canBeginAlgorithm) {
-      FOREACH_FACE(f) {
-        setColorOnFace(autoColors[random(3) + 1], f);
-        sparkleTimer.set(50);
-      }
-    }
-
-    if (!canBeginAlgorithm) {
-      FOREACH_FACE(f) {
-        setColorOnFace(dim(WHITE, faceBrightness[f]), f);
-      }
-    }
-  } else if (gameMode == SETUPMANUAL) {
-    //display the connection color
+  if (sparkleTimer.isExpired() && canBeginAlgorithm) {
     FOREACH_FACE(f) {
-      Color displayColor = manualColors[faceColors[f]];
-      if (faceColors[f] == 0) {
-        displayColor = dim(WHITE, whiteDim);
-      }
-      setColorOnFace(displayColor, f);
+      setColorOnFace(autoColors[random(3) + 1], f);
+      sparkleTimer.set(50);
     }
-  } else if (gameMode == TOAUTO) {//dim white flash
-    setColor(dim(WHITE, whiteDim));
-  } else if (gameMode == TOMANUAL) {//dim white flash
-    setColor(dim(WHITE, whiteDim));
+  }
+
+  if (!canBeginAlgorithm) {
+    FOREACH_FACE(f) {
+      setColorOnFace(dim(WHITE, faceBrightness[f]), f);
+    }
   }
 }
 
 void gameDisplay() {
+
   Color displayColor;
   FOREACH_FACE(f) {
-    if (gameMode == GAMEAUTO) {
-      displayColor = autoColors[faceColors[f]];
-    } else if (gameMode == GAMEMANUAL) {
-      displayColor = manualColors[faceColors[f]];
+    displayColor = autoColors[faceColors[f]];
+    byte displayBrightness;
+    if (faceSolved[f]) {
+      displayBrightness = sin8_C(map(syncTimer.getRemaining(), 0, PERIOD_DURATION, 0, 255));
     }
-    byte displayBrightness = faceBrightness[f];
+    else {
+      displayBrightness = 255;
+    }
     setColorOnFace(dim(displayColor, displayBrightness), f);
   }
 }
@@ -494,8 +324,12 @@ void communicationReceiverLoop() {
   }
 }
 
+byte getSyncVal(byte data) {
+  return (data >> 5) & 1;
+}
+
 byte getGameMode(byte data) {
-  return (data >> 2);//1st, 2nd, 3rd, and 4th bits
+  return (data >> 2) & 7;//1st, 2nd, 3rd, and 4th bits
 }
 
 byte getColorInfo(byte data) {
@@ -665,4 +499,44 @@ byte getCurrentPiece () {
   // is less clear to read, but it saves us needed space. Check the enum up top to understand
   // that 0 should return PIECE_A and 1 should return PIECE_B (which are shifted by one)
   return piecesPlaced + 1;
+}
+
+/*
+ * Keep ourselves on the same time loop as our neighbors
+ * if a neighbor passed go, 
+ * we want to pass go as well 
+ * (if we didn't just pass go)
+ * ... or collect $200
+ */
+void syncLoop() {
+
+  bool didNeighborChange = false;
+
+  // look at our neighbors to determine if one of them passed go (changed value)
+  // note: absent neighbors changing to not absent don't count
+  FOREACH_FACE(f) {
+    if (isValueReceivedOnFaceExpired(f)) {
+      neighborState[f] = 2; // this is an absent neighbor
+    }
+    else {
+      byte data = getLastValueReceivedOnFace(f);
+      if (neighborState[f] != 2) {  // wasn't absent
+        if (getSyncVal(data) != neighborState[f]) { // passed go (changed value)
+          didNeighborChange = true;
+        }
+      }
+
+      neighborState[f] = getSyncVal(data);  // update our record of state now that we've check it
+    }
+  }
+
+  // if our neighbor passed go and we haven't done so within the buffer period, catch up and pass go as well
+  // if we are due to pass go, i.e. timer expired, do so
+  if ( (didNeighborChange && syncTimer.getRemaining() < PERIOD_DURATION - BUFFER_DURATION)
+       || syncTimer.isExpired()
+     ) {
+
+    syncTimer.set(PERIOD_DURATION); // aim to pass go in the defined duration
+    syncVal = !syncVal; // change our value everytime we pass go
+  }
 }

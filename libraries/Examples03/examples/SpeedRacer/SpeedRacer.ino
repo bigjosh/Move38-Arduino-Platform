@@ -24,9 +24,9 @@ Timer datagramTimeout;
 #define DATAGRAM_TIMEOUT_LIMIT 150
 
 byte turns[3][6] = { {5, 25, 50, 75, 95, 25}, // left hand turn
-                     {5, 33, 66, 95, 66, 33}, // straight away
-                     {5, 25, 95, 75, 50, 25}  // right hand turn
-                   };
+  {5, 33, 66, 95, 66, 33}, // straight away
+  {5, 25, 95, 75, 50, 25}  // right hand turn
+};
 
 bool isLoose = true;
 
@@ -35,13 +35,13 @@ byte entranceFace = 0;
 byte exitFace = 0;
 
 bool haveCar = false;
-word carProgress = 0;//from 0-100 is the regular progress
+byte carProgress = 0;//from 0-100 is the regular progress
 
 bool isCarPassed[6];
 uint32_t timeCarPassed[6];
 byte carBrightnessOnFace[6];
 
-#define FADE_DURATION       800
+#define FADE_DURATION       1500
 #define FADE_ROAD_DURATION  500
 #define CRASH_DURATION      2000
 
@@ -70,7 +70,7 @@ word currentTransitTime;
 
 Timer transitTimer;
 
-byte carHues[4] = {60, 90, 120, 150}; // TODO: Set these colors purposefully
+byte carHues[4] = {80, 111, 160, 215}; // TODO: Set these colors purposefully
 byte currentCarHue = 0; // index of the car color
 
 bool crashHere = false;
@@ -560,14 +560,22 @@ void graphics() {
     standbyGraphics();
   }
 
-  if (millis() - timeOfShockwave < 255) {
-    setColor(dim(ORANGE, 255 - ((millis() - timeOfShockwave))));  // should really be 3x as long, with a delay for the travel of the effect
+  if (millis() - timeOfShockwave < 500) {
+    Color shockwaveColor = makeColorHSB((millis() - timeOfShockwave) / 12, 255, 255);
+    setColorOnFace(shockwaveColor, entranceFace); // should really be 3x as long, with a delay for the travel of the effect
+    setColorOnFace(shockwaveColor, exitFace);
   }
 
   if ( millis() - timeOfCrash < CRASH_TIME ) {
+    setColor(RED);
     // show fiery wreckage
-    byte bri = 255 - map(millis() - timeOfCrash, 0, CRASH_TIME, 0, 255);
-    setColor(dim(RED, bri));
+    FOREACH_FACE(f) {
+      byte shakiness = map(millis() - timeOfCrash, 0, CRASH_TIME, 0, 30);
+      //byte bri = 200 - map(millis() - timeOfCrash, 0, CRASH_TIME, 0, 200) + random(55);
+      //setColorOnFace(makeColorHSB(0, random(55) + 200, bri), f);
+      setColorOnFace(makeColorHSB(30 - shakiness, 255, 255 - (shakiness * 6) - random(55)), f);
+    }
+
     //    crashGraphics();
   }
 }
@@ -630,7 +638,7 @@ void standbyGraphics() {
 
   // circle around with a trail
   // 2 with trails on opposite sides
-  long rotation = (millis() / 3) % 360;
+  word rotation = (millis() / 3) % 360;
   byte head = rotation / 60;
 
   FOREACH_FACE(f) {
@@ -655,25 +663,6 @@ bool didCarPassFace(byte face, byte pos, byte from, byte to) {
   byte center;
   byte faceRotated = (6 + face - from) % 6;
   byte dir = ((from + 6 - to) % 6) - 2;
-  
-  return pos > turns[dir][faceRotated];
-}
 
-void crashGraphics() {
-  if (crashHere) {
-    // Explosion site
-    //    setColor(RED);
-    FOREACH_FACE(f) {
-      setColorOnFace(makeColorHSB((millis() / 200) % 20, 255, sin8_C((f * 40 + millis() / 2) % 255)), f);
-    }
-  } else {
-    // flashback or shockwave
-    if (millis() - timeOfCrash > CRASH_DURATION) {
-      setColor(OFF);
-    }
-    else {
-      byte bri = 255 - map(millis() - timeOfCrash, 0, CRASH_DURATION, 0, 255);
-      setColor(dim(ORANGE, bri));
-    }
-  }
+  return pos > turns[dir][faceRotated];
 }

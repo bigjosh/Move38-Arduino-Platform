@@ -75,7 +75,7 @@ void loop() {
   // show locked sides
   if (isPositionLocked()) {
     // show the state of locked animation on all faces
-    byte bri = 155 + (50 * sin_d((millis() / 4) % 360));
+    byte bri = 153 + (sin8_C((millis() / 6) % 255)*2)/5;
     setColor(dim(colors[currentColorIndex], bri));
   }
 
@@ -148,13 +148,4 @@ bool isThisPatternPresent( bool pat[], bool source[]) {
   }
 
   return false;
-}
-
-/*
-   Sin in degrees ( standard sin() takes radians )
-*/
-
-float sin_d( uint16_t degrees ) {
-
-  return sin( ( degrees / 360.0F ) * 2.0F * PI   );
-}
+}  

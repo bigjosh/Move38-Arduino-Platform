@@ -1,20 +1,20 @@
 /*
- *  WHAM!
- *  by Move38, Inc. 2019
- *  Lead development by Dan King
- *  original game by Dan King, Jonathan Bobrow
- *  based on concept for Whack-A-Mole
- *
- *  Rules: https://github.com/Move38/WHAM/blob/master/README.md
- *
- *  --------------------
- *  Blinks by Move38
- *  Brought to life via Kickstarter 2018
- *
- *  @madewithblinks
- *  www.move38.com
- *  --------------------
- */
+    WHAM!
+    by Move38, Inc. 2019
+    Lead development by Dan King
+    original game by Dan King, Jonathan Bobrow
+    based on concept for Whack-A-Mole
+
+    Rules: https://github.com/Move38/WHAM/blob/master/README.md
+
+    --------------------
+    Blinks by Move38
+    Brought to life via Kickstarter 2018
+
+    @madewithblinks
+    www.move38.com
+    --------------------
+*/
 
 enum gameStates {SETUP, GAME, DEATH, VICTORY};//cycles through the game
 byte gameState = SETUP;
@@ -38,10 +38,12 @@ bool isRippling = false;
 #define RIPPLING_INTERVAL 500
 Timer ripplingTimer;
 
-byte playerCount = 1;//only communicated in setup state, ranges from 1-3
-byte currentPlayerMole = 1;
-byte playerMoleUsage[3] = {0, 0, 0};
-byte playerHues[3] = {0, 42, 212};
+#define SETUP_FADE_UP_INTERVAL 500
+#define SETUP_RED_INTERVAL 1000
+#define SETUP_FADE_DELAY 3000
+byte setupFadeFace;
+Timer setupFadeTimer;
+word redTime;
 
 #define EMERGE_INTERVAL_MAX 2000
 #define EMERGE_INTERVAL_MIN 500
@@ -66,11 +68,13 @@ Color strikeColors[3] = {YELLOW, ORANGE, RED};
 bool isSourceOfDeath;
 long timeOfDeath;
 #define DEATH_ANIMATION_INTERVAL 750
-byte losingPlayer = 0;
 
 void setup() {
   // put your setup code here, to run once:
   randomize();
+  setupFadeFace = random(5);
+  redTime = SETUP_RED_INTERVAL + random(SETUP_RED_INTERVAL / 2);
+  setupFadeTimer.set(redTime + SETUP_FADE_UP_INTERVAL + random(SETUP_FADE_DELAY));
 }
 
 void loop() {
@@ -102,16 +106,16 @@ void loop() {
   byte sendData;
   switch (gameState) {
     case SETUP:
-      sendData = (gameState << 4) + (playerCount);
+      sendData = (gameState << 4);
       break;
     case GAME:
       sendData = (gameState << 4) + (goStrikeSignal << 1) + (lifeSignal);
       break;
     case DEATH:
-      sendData = (gameState << 4) + (losingPlayer);
+      sendData = (gameState << 4);
       break;
     case VICTORY:
-      sendData = (gameState << 4) + (goVictorySignal << 2) + (losingPlayer);
+      sendData = (gameState << 4) + (goVictorySignal << 2);
   }
   setValueSentOnAllFaces(sendData);
 }
@@ -121,28 +125,11 @@ void loop() {
 //////////////
 
 void setupLoop() {
-  //listen for clicks to increment player count
-  if (buttonSingleClicked()) {
-    playerCount++;
-    if (playerCount > 3) {
-      playerCount = 1;
-    }
-  }
 
   //listen for neighbors with higher player counts and conform
   FOREACH_FACE(f) {
     if (!isValueReceivedOnFaceExpired(f)) {//a neighbor!
-      byte neighborPlayerCount = getPlayerCount(getLastValueReceivedOnFace(f));
       byte neighborGameState = getGameState(getLastValueReceivedOnFace(f));
-      if (neighborGameState == SETUP) { //this neighbor is in our mode, so we can trust his communication
-        if (playerCount == 1 && neighborPlayerCount == 2) {
-          playerCount = 2;
-        } else if (playerCount == 2 && neighborPlayerCount == 3) {
-          playerCount = 3;
-        } else if (playerCount == 3 && neighborPlayerCount == 1) {
-          playerCount = 1;
-        }
-      }
     }
   }
 
@@ -294,24 +281,6 @@ void gameLoop() {
       //      word fadeTime = map(difficultyLevel, DIFFICULTY_MIN, DIFFICULTY_MAX, ABOVE_INTERVAL_MAX, ABOVE_INTERVAL_MIN);
       word fadeTime = ABOVE_INTERVAL_MAX - (((difficultyLevel - DIFFICULTY_MIN) * (ABOVE_INTERVAL_MAX - ABOVE_INTERVAL_MIN)) / (DIFFICULTY_MAX - DIFFICULTY_MIN));
       aboveTimer.set(fadeTime);
-      //set which player is up
-      if (playerCount > 1) {//multiplayer
-        //choose a mole that has been used less than twice since the last reset
-        do {
-          currentPlayerMole = random(playerCount - 1) + 1;
-        } while (playerMoleUsage[currentPlayerMole - 1] == 2);
-        //we found one! increment that placement
-        playerMoleUsage[currentPlayerMole - 1] += 1;
-
-        //if all moles have been used twice, do a reset
-        if ((playerMoleUsage[0] + playerMoleUsage[1] + playerMoleUsage[2]) == playerCount * 2) {
-          playerMoleUsage[0] = 0;
-          playerMoleUsage[1] = 0;
-          playerMoleUsage[2] = 0;
-        }
-      } else {//singleplayer
-        currentPlayerMole = 1;
-      }
     }
 
   }
@@ -324,33 +293,28 @@ void gameLoop() {
       flashingTimer.set(FLASHING_INTERVAL);
       roundActive = false;
     } else {//there is no mole here
-      if (playerCount == 1) {//single player, get a strike
-        strikes++;
-        //we need to check if we are in an inert state and update that
-        if (isGoStrikeInert(goStrikeSignal)) { //update our INERT type
-          switch (strikes) {
-            case 0:
-              goStrikeSignal = INERT0;
-              break;
-            case 1:
-              goStrikeSignal = INERT1;
-              break;
-            case 2:
-              goStrikeSignal = INERT2;
-              break;
-          }
+      strikes++;
+      //we need to check if we are in an inert state and update that
+      if (isGoStrikeInert(goStrikeSignal)) { //update our INERT type
+        switch (strikes) {
+          case 0:
+            goStrikeSignal = INERT0;
+            break;
+          case 1:
+            goStrikeSignal = INERT1;
+            break;
+          case 2:
+            goStrikeSignal = INERT2;
+            break;
         }
-        strikingTimer.set(STRIKING_INTERVAL);
-        isStriking = true;
-        if (strikes == 3) {
-          gameState = DEATH;
-          isSourceOfDeath = true;
-          losingPlayer = 1;
-        }
-      } else {//just ripple it a bit to show we heard you
-        isRippling = true;
-        ripplingTimer.set(RIPPLING_INTERVAL);
       }
+      strikingTimer.set(STRIKING_INTERVAL);
+      isStriking = true;
+      if (strikes == 3) {
+        gameState = DEATH;
+        isSourceOfDeath = true;
+      }
+
 
     }
   }//end button press check
@@ -389,7 +353,6 @@ void gameLoop() {
   if (isAbove && aboveTimer.isExpired()) { //my fade timer expired and I haven't been clicked, so...
     gameState = DEATH;
     isSourceOfDeath = true;
-    losingPlayer = currentPlayerMole;
     timeOfDeath = millis();
   }
 
@@ -407,22 +370,6 @@ void gameLoop() {
 }
 
 void deathLoop() {
-
-  //listen for losing player
-  if (!isSourceOfDeath && losingPlayer == 0) {//I am not the source of death, and I don't yet know who lost
-    FOREACH_FACE(f) {
-      if (!isValueReceivedOnFaceExpired(f)) { //neighbor!
-        byte neighborLosingPlayer = getLosingPlayer(getLastValueReceivedOnFace(f));
-        byte neighborGameState = getGameState(getLastValueReceivedOnFace(f));
-        if (neighborGameState == DEATH) { //this neighbor is in death state, so we can trust their communication
-          if (neighborLosingPlayer != 0) {//this neighbor seems to know who lost
-            losingPlayer = neighborLosingPlayer;
-          }
-        }
-      }
-    }
-  }
-
   setupCheck();
 }
 
@@ -475,8 +422,6 @@ void resetAllVariables() {
   difficultyLevel = 0;
   roundActive = false;
   roundCounter = 0;
-  currentPlayerMole = 0;
-  losingPlayer = 0;
   strikes = 0;
   lifeSignal = 0;
   isSourceOfDeath = false;
@@ -484,9 +429,6 @@ void resetAllVariables() {
   isFlashing = false;
   isRippling = false;
   isStriking = false;
-  playerMoleUsage[0] = 0;
-  playerMoleUsage[1] = 0;
-  playerMoleUsage[2] = 0;
 }
 
 /////////////////
@@ -494,16 +436,27 @@ void resetAllVariables() {
 /////////////////
 
 void setupDisplayLoop() {
+
   setColor(makeColorHSB(grassHue, 255, 255));
 
-  setColorOnFace(makeColorHSB(playerHues[0], 255, 255), 0); //we always have player 1
-
-  if (playerCount >= 2) {//do we have player 2?
-    setColorOnFace(makeColorHSB(playerHues[1], 255, 255), 1);
+  if (setupFadeTimer.isExpired()) {
+    setupFadeFace = (setupFadeFace + random(4)) % 6;
+    redTime = SETUP_RED_INTERVAL + random(SETUP_RED_INTERVAL / 2);
+    setupFadeTimer.set(redTime + SETUP_FADE_UP_INTERVAL + random(SETUP_FADE_DELAY));
   }
 
-  if (playerCount == 3) {//do we have player 3?
-    setColorOnFace(makeColorHSB(playerHues[2], 255, 255), 2);
+  Color fadeColor;
+  byte saturation;
+
+  if (setupFadeTimer.getRemaining() < redTime + SETUP_FADE_UP_INTERVAL) {//we are inside the animation
+    if (setupFadeTimer.getRemaining() < SETUP_FADE_UP_INTERVAL) {//we are fading from white to green
+      saturation = 255 - map(setupFadeTimer.getRemaining(), 0, SETUP_FADE_UP_INTERVAL, 0, 255);
+      fadeColor = makeColorHSB(grassHue, saturation, 255);
+    } else {//we are red
+      fadeColor = RED;
+    }
+
+    setColorOnFace(fadeColor, setupFadeFace);
   }
 }
 
@@ -514,16 +467,28 @@ void gameDisplayLoop() {
     byte currentSaturation = 255 - ((255 * flashingTimer.getRemaining()) / FLASHING_INTERVAL);
     setColor(makeColorHSB(grassHue, currentSaturation, 255));
   } else if (isAbove) {//fade from [color] to off based on aboveTimer
-    //    long currentInterval = map(difficultyLevel, DIFFICULTY_MIN, DIFFICULTY_MAX, ABOVE_INTERVAL_MAX, ABOVE_INTERVAL_MIN);
     long currentInterval = ABOVE_INTERVAL_MAX - (((difficultyLevel - DIFFICULTY_MIN) * (ABOVE_INTERVAL_MAX - ABOVE_INTERVAL_MIN) ) / (DIFFICULTY_MAX - DIFFICULTY_MIN));
-    long currentTime = aboveTimer.getRemaining();
-    //    byte brightnessSubtraction = map(currentTime, currentInterval, 0, 0, 255);
-    byte brightnessSubtraction = 255 - ((255 * currentTime) / currentInterval);
-    brightnessSubtraction = (brightnessSubtraction * brightnessSubtraction) / 255;
-    brightnessSubtraction = (brightnessSubtraction * brightnessSubtraction) / 255;
-    byte currentBrightness = 255 - brightnessSubtraction;
-    Color currentColor = makeColorHSB(playerHues[currentPlayerMole - 1], 255, 255);
-    setColor(dim(currentColor, currentBrightness));
+    byte currentFullPips = (aboveTimer.getRemaining()) / (currentInterval / 6);//6 >>> 0
+    byte dimmingPipBrightness = map(aboveTimer.getRemaining() - ((currentInterval / 6) * currentFullPips), 0, currentInterval / 6, 0, 255);
+
+    FOREACH_FACE(f) {
+      if (f < currentFullPips) {
+        setColorOnFace(RED, f);
+      } else if (f == currentFullPips) {
+        setColorOnFace(dim(RED, dimmingPipBrightness), f);
+      } else {
+        setColorOnFace(OFF, f);
+      }
+      //should my face be all the way on?
+    }
+
+    //    long currentTime = aboveTimer.getRemaining();
+    //    byte brightnessSubtraction = 255 - ((255 * currentTime) / currentInterval);
+    //    brightnessSubtraction = (brightnessSubtraction * brightnessSubtraction) / 255;
+    //    brightnessSubtraction = (brightnessSubtraction * brightnessSubtraction) / 255;
+    //    byte currentBrightness = 255 - brightnessSubtraction;
+    //    setColor(dim(currentColor, currentBrightness));
+
   } else if (isStriking) {//flash [color] for a moment
     //which color? depends on number of strikes
     setColor(strikeColors[strikes - 1]);
@@ -560,9 +525,9 @@ void deathDisplayLoop() {
   }
 
   if (isSourceOfDeath) {
-    setColor(makeColorHSB(playerHues[losingPlayer - 1], animationValue, 255));
+    setColor(makeColorHSB(0, animationValue, 255));
   } else {
-    setColor(makeColorHSB(playerHues[losingPlayer - 1], 255, animationValue));
+    setColor(makeColorHSB(0, 255, animationValue));
   }
 }
 
@@ -584,10 +549,6 @@ void victoryDisplayLoop() {
 
 byte getGameState(byte data) {//1st and 2nd bit
   return (data >> 4);
-}
-
-byte getPlayerCount(byte data) {//5th and 6th bit
-  return (data & 3);
 }
 
 byte getGoStrikeSignal(byte data) {
@@ -626,8 +587,4 @@ byte getLifeSignal(byte data) {//6th bit
 
 byte getGoVictorySignal(byte data) {//3rd and 4th bit
   return ((data >> 2) & 3);
-}
-
-byte getLosingPlayer(byte data) {//5th and 6th bit
-  return (data & 3);
 }

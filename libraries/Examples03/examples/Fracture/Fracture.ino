@@ -117,7 +117,7 @@ void loop() {
 void displayHappy() {
 
   // have the color on the Blink raise and lower to feel more alive
-  byte bri = 220 + 35 * sin_d( (millis() / 10) % 360); // oscillate between values 185 and 255
+  byte bri = 185 + sin8_C( (millis() / 14) % 255) * 70 / 255; // oscillate between values 185and 255
   setColor(dim(getColorForTeam(teamIndex), bri));
 
   // lets do a celebration on each face in an order
@@ -138,8 +138,8 @@ void displayHappy() {
       word phaseShift = 60 * f;
       byte amplitude = 55;
       byte midline = 185;
-      byte rate = 4;
-      byte lowBri = midline + (amplitude * sin_d( (phaseShift + millis() / rate) % 360) / 100);
+      byte rate = 6;
+      byte lowBri = midline + (amplitude * sin8_C( (phaseShift + millis() / rate) % 255) / 100);
       byte brightness;
       byte saturation;
 
@@ -161,19 +161,11 @@ void displayHappy() {
 
 void displayNotHappy() {
   // have the color on the Blink raise and lower to feel more alive
-  byte bri = 220 + 35 * sin_d( (millis() / 10) % 360); // oscillate between values 185 and 255
+  byte bri = 185 + sin8_C( (millis() / 14) % 255) * 70 / 255; // oscillate between values 185and 255
   setColor(dim(getColorForTeam(teamIndex), bri));
 }
 
 
 Color getColorForTeam(byte t) {
   return makeColorHSB(teamHues[t], 255, 255);
-}
-
-
-// Sin in degrees ( standard sin() takes radians )
-
-float sin_d( uint16_t degrees ) {
-
-  return sin( ( degrees / 360.0F ) * 2.0F * PI   );
 }

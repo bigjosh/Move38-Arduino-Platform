@@ -1,19 +1,19 @@
 /*
- *  Honey
- *  by Move38, Inc. 2019
- *  Lead development by Dan King
- *  original game by Junege Hong, Dan King, Jonathan Bobrow
- *
- *  Rules: https://github.com/Move38/Honey/blob/master/README.md
- *
- *  --------------------
- *  Blinks by Move38
- *  Brought to life via Kickstarter 2018
- *
- *  @madewithblinks
- *  www.move38.com
- *  --------------------
- */
+    Honey
+    by Move38, Inc. 2019
+    Lead development by Dan King
+    original game by Junege Hong, Dan King, Jonathan Bobrow
+
+    Rules: https://github.com/Move38/Honey/blob/master/README.md
+
+    --------------------
+    Blinks by Move38
+    Brought to life via Kickstarter 2018
+
+    @madewithblinks
+    www.move38.com
+    --------------------
+*/
 
 enum blinkRoles {FLOWER,   WORKER,   BROOD,  QUEEN};
 byte blinkRole = FLOWER;
@@ -71,6 +71,8 @@ bool isCelebrating = false;
 Timer celebrationTimer;
 #define CELEBRATION_INTERVAL 4000
 
+bool bPress = false;
+
 /////////
 //LOOPS//
 /////////
@@ -81,25 +83,30 @@ void setup() {
 
 void loop() {
   //change role when ready?
+
+  if (hasWoken()) {
+    bPress = false;
+  }
+
   if (buttonLongPressed()) {
-    if (shouldEvolve) {
-      shouldEvolve = false;
-    } else {
-      shouldEvolve = true;
-    }
+    bPress = true;
+  }
+
+  if (buttonReleased() && bPress) {
+    toggleShouldEvolve();
+    bPress = false;
   }
 
   //check for flower reversion
   if (buttonDoubleClicked()) {
-    if (blinkRole != FLOWER) {
-      if (isAlone()) {
-        resourceCollected = 0;
-        isFull = false;
-        isLagging = false;
-        evolveTimer.set(1000);
-        shouldEvolve = false;
-        blinkRole = FLOWER;
-      }
+    if (isAlone()) {
+      buttonPressed();  // NOTE: This is sloppy, it allows the flower to dismiss the first pressed event caused at the same time as the double click.
+      resourceCollected = 0;
+      isFull = false;
+      isLagging = false;
+      evolveTimer.set(1000);
+      shouldEvolve = false;
+      blinkRole = FLOWER;
     }
   }
 
@@ -135,6 +142,9 @@ void loop() {
           isCelebrating = true;
           celebrationTimer.set(CELEBRATION_INTERVAL);
           celebrationState = HOORAY;
+          if (blinkRole != QUEEN) {
+            resourceCollected = 0;
+          }
         }
       }
     }
@@ -169,6 +179,17 @@ void loop() {
   }
 
   hiveDisplay();
+
+  // dump button presses
+  buttonPressed();
+}
+
+void toggleShouldEvolve() {
+  if (shouldEvolve) {
+    shouldEvolve = false;
+  } else {
+    shouldEvolve = true;
+  }
 }
 
 void flowerLoop() {
@@ -274,7 +295,7 @@ void fullLoop(byte primaryExportRole) {
             case TRADING://so now I look for my trading neighbor to go to TRADING, so I can complete the trade and go to INERT
               if (getNeighborTradingSignal(neighborData) == TRADING) {//alright, a trade is happening
                 tradingSignals[f] = INERT;
-                resourceCollected -= RESOURCE_STACK * 6;
+                resourceCollected = 0;
                 isFull = false;
                 isExporting = true;
                 exportTimer.set(EXPORT_INTERVAL);
@@ -400,9 +421,9 @@ void hiveDisplay() {
     long animationPosition = (millis() - fullStartTime) % FULL_PULSE_INTERVAL;//we are this far into the pulse animation
     //are we in the first half or the second half?
     if (animationPosition < FULL_PULSE_INTERVAL / 2) {//white >> color
-      displaySaturation = map_m(animationPosition, 0, FULL_PULSE_INTERVAL / 2, FULL_SATURATION, 255);
+      displaySaturation = map_m(animationPosition, 0, FULL_PULSE_INTERVAL / 2, 255, FULL_SATURATION);
     } else {//color >> white
-      displaySaturation = map_m(animationPosition - FULL_PULSE_INTERVAL / 2, 0, FULL_PULSE_INTERVAL / 2, 255, FULL_SATURATION);
+      displaySaturation = map_m(animationPosition - FULL_PULSE_INTERVAL / 2, 0, FULL_PULSE_INTERVAL / 2, FULL_SATURATION, 255);
     }
     setColor(makeColorHSB(displayHue, displaySaturation, 255));
   } else {
@@ -483,6 +504,7 @@ void hiveDisplay() {
       }
     }
 
+    //display the little bee
     Color beeColor;
     if (shouldEvolve) {
       beeColor = makeColorHSB(hueByRole[blinkRole + 1], 255, 255);
@@ -490,8 +512,12 @@ void hiveDisplay() {
       beeColor = makeColorHSB(hueByRole[blinkRole], BEE_SATURATION, 255);
     }
     setColorOnFace(beeColor, spinPosition);
+
   }
 
+  if (bPress) {
+    setColor(WHITE);
+  }
 }
 
 byte getFaceValueForSendAnimation(byte actionFace, byte f, long duration, long progress, byte low, byte high) {

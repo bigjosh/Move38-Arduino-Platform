@@ -46,14 +46,36 @@ int miningTime = 500;
 byte displayMissionCompleteColor;
 byte displayMissionCompleteIndex = 0;
 
+bool bChangeRole = false;
+bool bLongPress = false;
+
 void setup() {
   // put your setup code here, to run once:
   randomize(); // make sure our astroid is unique
   newAsteroid();
+  updateAsteroid();
   newMission();
 }
 
 void loop() {
+
+  // discard role change from force sleep
+  if(hasWoken()) {
+    bLongPress = false;
+  }
+
+  if (buttonLongPressed()) {
+    bLongPress = true;
+  }
+
+  if(buttonReleased()) {
+    if(bLongPress) {
+      // now change the role
+      bChangeRole = true;
+      bLongPress = false;
+    }
+  }
+  
   switch (blinkRole) {
     case ASTEROID:
       asteroidLoop();
@@ -64,14 +86,25 @@ void loop() {
       shipDisplay();
       break;
   }
+
+  // Long press display to confirm long press
+  if(bLongPress) {
+    setColorOnFace(CYAN,0);
+    setColorOnFace(CYAN,1);
+    setColorOnFace(ORANGE,2);
+    setColorOnFace(YELLOW,3);
+    setColorOnFace(GREEN,4);
+    setColorOnFace(GREEN,5);
+  }
 }
 
 void asteroidLoop() {
-  if (buttonLongPressed()) {
+  if (bChangeRole) {
     blinkRole = SHIP;
     missionCount = 6;
     newMission();
     gameComplete = false;
+    bChangeRole = false;
   }
 
   //ok, so let's look for ships that need ore
@@ -228,9 +261,10 @@ byte findFullSpot() {
 }
 
 void shipLoop() {
-  if (buttonLongPressed()) {
+  if (bChangeRole) {
     blinkRole = ASTEROID;
     newAsteroid();
+    bChangeRole = false;
   }
 
   //let's look for asteroids that want to trade
