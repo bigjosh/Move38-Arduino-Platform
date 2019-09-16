@@ -80,14 +80,18 @@ void setup() {
 
 
 void loop() {
-  // discard the change team from a force sleep
-  if(hasWoken()) {
+  // discard team change from force sleep
+  if (hasWoken()) {
     bChangeTeam = false;
   }
 
-  if (buttonSingleClicked()) {
+  if (buttonDoubleClicked()) {
     if (gameState == WAITING) {
       changeGameState( START );
+    } else {
+      // reset game and go into waiting mode
+      mode = DEAD;
+      changeGameState( WAITING );
     }
   }
 
