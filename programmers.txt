@@ -5,7 +5,7 @@ avrisp.program.protocol=stk500v1
 avrisp.program.tool=avrdude
 avrisp.program.extra_params=-P{serial.port}
 
-avrispmkii.name=Blinks  AVRISP mkII
+avrispmkii.name=Blinks AVRISP mkII
 avrispmkii.communication=usb
 avrispmkii.protocol=stk500v2
 avrispmkii.program.protocol=stk500v2
