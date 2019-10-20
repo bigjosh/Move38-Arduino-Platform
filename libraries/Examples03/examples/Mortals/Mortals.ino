@@ -1,19 +1,19 @@
- /*
- *  Mortals
- *  by Move38, Inc. 2019
- *  Lead development by Jonathan Bobrow
- *  original game by Nick Bentley, Jonathan Bobrow, Justin Ha
- *
- *  Rules: https://github.com/Move38/Mortals/blob/master/README.md
- *
- *  --------------------
- *  Blinks by Move38
- *  Brought to life via Kickstarter 2018
- *
- *  @madewithblinks
- *  www.move38.com
- *  --------------------
- */
+/*
+*  Mortals
+*  by Move38, Inc. 2019
+*  Lead development by Jonathan Bobrow
+*  original game by Nick Bentley, Jonathan Bobrow, Justin Ha
+*
+*  Rules: https://github.com/Move38/Mortals/blob/master/README.md
+*
+*  --------------------
+*  Blinks by Move38
+*  Brought to life via Kickstarter 2018
+*
+*  @madewithblinks
+*  www.move38.com
+*  --------------------
+*/
 
 #define ATTACK_VALUE                5   // Amount of health you loose when attacked.
 #define ATTACK_DURRATION_MS       500   // Time between when we see first new neighbor and when we stop attacking.
@@ -134,7 +134,19 @@ void loop() {
       }
 
       //Remove extra health for every dead neighbor attached
-      health = (health - 1) - numDeadNeighbors;
+      if((health - 1) - numDeadNeighbors < 0) {
+        health = 0;
+      }
+      else {
+        health = (health - 1) - numDeadNeighbors;
+      }
+
+      // a tax for remaining in ENGUARDE mode...
+      if (mode == ENGUARDE && health > 0) {
+        health--;
+      }
+
+      // ready for next health step
       healthTimer.set(HEALTH_STEP_TIME_MS);
 
     } else {

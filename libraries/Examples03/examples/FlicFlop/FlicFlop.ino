@@ -74,8 +74,8 @@ void loop() {
 
   celebrationLoop();
 
-  if(longPressCheck) {
-    if(isAlone()){
+  if (longPressCheck) {
+    if (isAlone()) {
       setColor(WHITE);
       setColorOnFace(OFF, spinFace);
     }
@@ -88,9 +88,48 @@ void loop() {
 
 void flopperLoop() {
 
+  //look for other floppers trying to move us along to the next color
+  bool hasFlopperNeighbor = false;
+  bool shouldChange = false;
+  byte changeTo = signalTeam;
+  byte lastFlopperFace = 0;
+  FOREACH_FACE(f) {
+    if (!isValueReceivedOnFaceExpired(f)) { //a neighbor!
+      byte neighborData = getLastValueReceivedOnFace(f);
+      if (getScoringTeam(neighborData) == 0) {//this could be a flopper
+        if (getSignalTeam(neighborData) != 0) {//it is a flopper
+          //set the last flopper face
+          lastFlopperFace = f;
+          hasFlopperNeighbor = true;
+
+          //check for signal change
+          if (getSignalTeam(neighborData) == signalTeam + 1) {//it wants me to move
+            shouldChange = true;
+            changeTo = getSignalTeam(neighborData);
+          } else if (signalTeam == 3 && getSignalTeam(neighborData) == 1) {//it wants me to move
+            shouldChange = true;
+            changeTo = 1;
+          }
+        }
+      }
+    }
+  }
+
+  if (shouldChange) {
+    signalTeam = changeTo;
+    flopTimer.set(FLOP_INTERVAL);
+    //change the spinface
+    //spinFace = lastFlopperFace;
+    //animTimer.set(0);
+  }
+
   if (flopTimer.isExpired()) {
     signalTeam = (signalTeam % TEAM_COUNT) + 1;
     flopTimer.set(FLOP_INTERVAL);
+    //if (hasFlopperNeighbor) {
+    //spinFace = lastFlopperFace;
+    //animTimer.set(0);
+    //}
   }
 
   //change to flicker?
@@ -98,6 +137,7 @@ void flopperLoop() {
     if (isAlone()) {
       //set the transition boolean to true
       longPressCheck = true;
+      beginCelebration();
     }
   }
 
@@ -141,6 +181,7 @@ void flickerLoop() {
       if (isAlone()) {
         //set the transition boolean to true
         longPressCheck = true;
+        beginCelebration();
       }
     }
 
@@ -261,7 +302,26 @@ void spinFaceAnimator() {
 
 void flopperDisplay() {
   setColor(makeColorHSB(teamHues[signalTeam], 255, 255));
-  setColorOnFace(OFF, spinFace);
+  bool multiFlopper = false;
+
+  FOREACH_FACE(f) {
+    if (!isValueReceivedOnFaceExpired(f)) { //a neighbor!
+      byte neighborData = getLastValueReceivedOnFace(f);
+      if (getScoringTeam(neighborData) == 0) { //it's another FLOPPER
+        //am I celebrating?
+        if (animationInterval < ANIMATION_INTERVAL) { //I am celebrating
+          setColorOnFace(makeColorHSB(teamHues[signalTeam], 255, 255), f);
+        } else {//not celebrating
+          setColorOnFace(OFF, f);
+        }
+        multiFlopper = true;
+      }
+    }
+  }
+
+  if (!multiFlopper) {
+    setColorOnFace(OFF, spinFace);
+  }
 }
 
 void flickerDisplay() {

@@ -302,8 +302,6 @@ void communicationReceiverLoop() {
         //let them know we heard them
         gameMode = PACKETRECEIVED;
 
-        // mark datagram as received
-        markDatagramReadOnFace(masterFace);
       }
     }
 
@@ -316,6 +314,11 @@ void communicationReceiverLoop() {
     //wait for the master blink to transition to game
     if (getGameMode(getLastValueReceivedOnFace(masterFace)) == GAMEAUTO) { //time to play!
       gameMode = GAMEAUTO;
+
+      // mark datagram as received
+      FOREACH_FACE(f) {
+        markDatagramReadOnFace(f);
+      }
     }
   }
 
@@ -502,12 +505,12 @@ byte getCurrentPiece () {
 }
 
 /*
- * Keep ourselves on the same time loop as our neighbors
- * if a neighbor passed go, 
- * we want to pass go as well 
- * (if we didn't just pass go)
- * ... or collect $200
- */
+   Keep ourselves on the same time loop as our neighbors
+   if a neighbor passed go,
+   we want to pass go as well
+   (if we didn't just pass go)
+   ... or collect $200
+*/
 void syncLoop() {
 
   bool didNeighborChange = false;

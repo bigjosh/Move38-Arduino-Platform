@@ -5,7 +5,7 @@
  *  original game by Diamond and Colby
  *
  *  Rules: https://github.com/Move38/Astro/blob/master/README.md
- *  
+ *
  *  --------------------
  *  Blinks by Move38
  *  Brought to life via Kickstarter 2018
@@ -75,7 +75,7 @@ void loop() {
       bLongPress = false;
     }
   }
-  
+
   switch (blinkRole) {
     case ASTEROID:
       asteroidLoop();
