@@ -1184,6 +1184,23 @@ uint8_t hasWoken(void) {
 
 }
 
+// Information on how the current game was loaded
+
+uint8_t startState(void) {
+    
+    switch ( blinkbios_pixel_block.start_state ) {
+        
+        case BLINKBIOS_START_STATE_DOWNLOAD_SUCCESS:
+            return START_STATE_DOWNLOAD_SUCCESS;
+            
+        case BLINKBIOS_START_STATE_WE_ARE_ROOT:
+            return START_STATE_WE_ARE_ROOT;            
+    }
+    
+    // Safe catch all to be safe in case new ones are ever added
+    return START_STATE_POWER_UP;    
+}
+
 // --- Pixel functions
 
 // Change the tile to the specified color
