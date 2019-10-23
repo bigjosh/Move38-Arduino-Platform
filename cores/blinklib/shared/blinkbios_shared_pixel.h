@@ -120,6 +120,13 @@ inline pixelColor_t::pixelColor_t() {
     
 }    
 
+// Oh how I hate these defines, but we are not allowed to have nice things like
+// scoped enums until C++11, so no better way to makes these fit into uint8_t
+
+#define BLINKBIOS_START_STATE_POWER_UP          0
+#define BLINKBIOS_START_STATE_WE_ARE_ROOT       1
+#define BLINKBIOS_START_STATE_DOWNLOAD_SUCCESS  2
+
 // We need these struct gymnastics because C fixed array typedefs do not work
 // as you (I?) think they would...
 // https://stackoverflow.com/questions/4523497/typedef-fixed-length-array
@@ -154,15 +161,11 @@ struct blinkbios_pixelblock_t {
     // when it gets set asynchronously by the bios WDT ISR. 
     
     volatile uint8_t capturedEntropy;
+
+    // This is 1 if we just successfully send a download out 
+    // (not volatile, never changes from client program perspective)
     
-    // Setting this to 1 will skip the low battery check and let the blink run down until the chip 
-    // dies. This will happen about 2.4V at the standard 8Mhz speed, but you can switch the prescaller to 4Mhz
-    // and run all the way down to 1.8V, but know that IR timing (inter alia) will be hosed. 
-    
-    // (We really only have this so that the low battery display can re-use the pixel code and not be 
-    // re-entrant since otherwise the pixel ISR code ends up calling the low battery check code)
-    
-    volatile uint8_t skip_low_voltage_check;
+    BIOS_VOLATILE uint8_t start_state;
 
     // For future use?    
     uint8_t slack[8];
