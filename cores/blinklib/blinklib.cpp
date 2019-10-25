@@ -56,10 +56,7 @@
 #define VIRAL_BUTTON_PRESS_LOCKOUT_MS   2000    // Any viral button presses received from IR within this time period are ignored 
                                                 // since insures that a single press can not circulate around indefinitely.                                                
 
-#warning testing only
-#define WARM_SLEEP_TIMEOUT_MS   (  1 * 60 * 1000UL )   // 1 mins
-
-//#define WARM_SLEEP_TIMEOUT_MS   (  10 * 60 * 1000UL )   // 10 mins
+#define WARM_SLEEP_TIMEOUT_MS   (  10 * 60 * 1000UL )   // 10 mins
                                                         // We will warm sleep if we do not see a button press or remote button press
                                                         // in this long
 
