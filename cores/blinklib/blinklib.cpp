@@ -56,7 +56,10 @@
 #define VIRAL_BUTTON_PRESS_LOCKOUT_MS   2000    // Any viral button presses received from IR within this time period are ignored 
                                                 // since insures that a single press can not circulate around indefinitely.                                                
 
-#define WARM_SLEEP_TIMEOUT_MS   (  10 * 60 * 1000UL )   // 10 mins
+#warning testing only
+#define WARM_SLEEP_TIMEOUT_MS   (  1 * 60 * 1000UL )   // 1 mins
+
+//#define WARM_SLEEP_TIMEOUT_MS   (  10 * 60 * 1000UL )   // 10 mins
                                                         // We will warm sleep if we do not see a button press or remote button press
                                                         // in this long
 
@@ -425,24 +428,10 @@ static void warm_sleep_cycle() {
 
     blinkbios_button_block.bitflags=0;
 
-    // Here we explicitly set the register rather than using functions to save a few bytes.
-    // We not only save the 2 bytes here, but also because we do not need an explict sleep_mode_enable() elsewhere.
-
-    //set_sleep_mode( SLEEP_MODE_IDE );      // Wake on pin change and Timer2. <1uA
-
-    /*
-        3caa:	83 b7       	in	r24, 0x33	; 51
-        3cac:	81 7f       	andi	r24, 0xF1	; 241
-        3cae:	84 60       	ori	r24, 0x04	; 4
-        3cb0:	83 bf       	out	0x33, r24	; 51
-    */
-
-    SMCR = _BV(SE);     // Enable sleep, idle mode
-    /*
-        3caa:	85 e0       	ldi	r24, 0x05	; 0
-        3cac:	83 bf       	out	0x33, r24	; 51
-        3cae:	88 95       	sleep
-    */
+    // Here is wuld be nice to idle the CPU for a bit of power savings, but there is a potential
+    // race where the BIOS could put us into deep sleep mode and then our idle would be deep sleep.
+    // you'd think we could turn of ints and set out mode right before entering idle, but
+    // we needs ints on to wake form idle on AVR.
 
     clear_packet_buffers();     // Clear out any left over packets that were there when we started this sleep cycle and might trigger us to wake unapropriately
 
@@ -461,7 +450,6 @@ static void warm_sleep_cycle() {
         //       2. Adding a new_pack_recieved_flag to ir_block so we only scan when there is a new packet
         // UPDATE: Tried all that and it only saved like 0.1-0.2mA and added dozens of bytes of code so not worth it.
 
-        sleep_cpu();
 
         ir_rx_state_t *ir_rx_state = blinkbios_irdata_block.ir_rx_states;
 
