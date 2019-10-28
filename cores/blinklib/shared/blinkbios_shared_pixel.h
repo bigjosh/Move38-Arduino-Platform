@@ -120,6 +120,13 @@ inline pixelColor_t::pixelColor_t() {
     
 }    
 
+// Oh how I hate these defines, but we are not allowed to have nice things like
+// scoped enums until C++11, so no better way to makes these fit into uint8_t
+
+#define BLINKBIOS_START_STATE_POWER_UP          0
+#define BLINKBIOS_START_STATE_WE_ARE_ROOT       1
+#define BLINKBIOS_START_STATE_DOWNLOAD_SUCCESS  2
+
 // We need these struct gymnastics because C fixed array typedefs do not work
 // as you (I?) think they would...
 // https://stackoverflow.com/questions/4523497/typedef-fixed-length-array
@@ -154,10 +161,11 @@ struct blinkbios_pixelblock_t {
     // when it gets set asynchronously by the bios WDT ISR. 
     
     volatile uint8_t capturedEntropy;
+
+    // This is 1 if we just successfully send a download out 
+    // (not volatile, never changes from client program perspective)
     
-    // Watch this space! (..for future we_are_root flag that tells if we just seeded a download)
-    
-    volatile uint8_t holding;
+    BIOS_VOLATILE uint8_t start_state;
 
     // For future use?    
     uint8_t slack[8];

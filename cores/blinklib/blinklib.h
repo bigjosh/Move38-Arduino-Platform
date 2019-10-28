@@ -345,6 +345,14 @@ byte sin8_C( byte theta);
 
 uint8_t hasWoken(void);
 
+// Information on how the current game was loaded
+
+#define START_STATE_POWER_UP            0   // Loaded the built-in game (for example, after battery insertion or failed download) 
+#define START_STATE_WE_ARE_ROOT         1   // Completed sending a download seed (running built-in game)
+#define START_STATE_DOWNLOAD_SUCCESS    2   // Completed receiving a downloaded game (running the downloaded game)
+
+uint8_t startState(void);
+
 /*
 
     These hook functions are filled in by the sketch
