@@ -51,19 +51,19 @@ bool attackSuccess[6];
 bool bChangeTeam = false;
 
 enum State {
-  DEAD,
-  ALIVE,
-  ENGUARDE,   // I am ready to attack!
-  ATTACKING,  // Short window when I have already come across my first victim and started attacking
-  INJURED
+ DEAD,
+ ALIVE,
+ ENGUARDE,   // I am ready to attack!
+ ATTACKING,  // Short window when I have already come across my first victim and started attacking
+ INJURED
 };
 
 byte mode = DEAD;
 
 enum GameState {
-  PLAY,
-  WAITING,
-  START
+ PLAY,
+ WAITING,
+ START
 };
 
 byte gameState = WAITING;
@@ -75,388 +75,384 @@ Timer modeTimeout;     // Started when we enter ATTACKING, when it expires we sw
 
 
 void setup() {
-  // perhaps we should initialize everything here to be safe
+ // perhaps we should initialize everything here to be safe
 }
 
 
 void loop() {
-  // discard team change from force sleep
-  if (hasWoken()) {
-    bChangeTeam = false;
-  }
+ // discard team change from force sleep
+ if (hasWoken()) {
+   bChangeTeam = false;
+ }
 
-  if (buttonDoubleClicked()) {
-    if (gameState == WAITING) {
-      changeGameState( START );
-    } else {
-      // reset game and go into waiting mode
-      mode = DEAD;
-      changeGameState( WAITING );
-    }
-  }
-
-
-  if (buttonLongPressed()) {
-    if (gameState == WAITING) {
-      // change team
-      bChangeTeam = true;
-    }
-  }
-
-  if (buttonReleased()) {
-    if (bChangeTeam) {
-      // now change the team
-      team = getNextTeam();
-      bChangeTeam = false;
-    }
-  }
-
-  // get our neighbor data
-  FOREACH_FACE(f) {
-    if (!isValueReceivedOnFaceExpired(f)) {
-      neighbors[f] = getLastValueReceivedOnFace(f);
-    }
-  }
-
-  if (healthTimer.isExpired()) {
-
-    if (health > 0) {
-
-      byte numDeadNeighbors = 0;
-
-      //Dead Blinks will also drain life
-      FOREACH_FACE(f) {
-        if (!isValueReceivedOnFaceExpired(f)) {
-          if (getGameMode(neighbors[f]) == DEAD) {
-            numDeadNeighbors++;
-          }
-        }
-      }
-
-      //Remove extra health for every dead neighbor attached
-      if((health - 1) - numDeadNeighbors < 0) {
-        health = 0;
-      }
-      else {
-        health = (health - 1) - numDeadNeighbors;
-      }
-
-      // a tax for remaining in ENGUARDE mode...
-      if (mode == ENGUARDE && health > 0) {
-        health--;
-      }
-
-      // ready for next health step
-      healthTimer.set(HEALTH_STEP_TIME_MS);
-
-    } else {
-
-      mode = DEAD;
-
-    }
-
-  }
-
-  if ( mode != DEAD ) {
-
-    if (isAlone()) {
-
-      mode = ENGUARDE;      // Being lonesome makes us ready to attack!
-
-    } else {  // !isAlone()
-
-      if (mode == ENGUARDE) {   // We were ornery, but saw someone so we begin our attack in earnest!
-
-        mode = ATTACKING;
-        modeTimeout.set( ATTACK_DURRATION_MS );
-      }
-
-    }
+ if (buttonDoubleClicked()) {
+   if (gameState == WAITING) {
+     changeGameState( START );
+   } else {
+     // reset game and go into waiting mode
+     mode = DEAD;
+     changeGameState( WAITING );
+   }
+ }
 
 
-    if (mode == ATTACKING || mode == INJURED ) {
+ if (buttonLongPressed()) {
+   if (gameState == WAITING) {
+     // change team
+     bChangeTeam = true;
+   }
+ }
 
-      if (modeTimeout.isExpired()) {
-        mode = ALIVE;
-        FOREACH_FACE(f) {
-          if (attackSuccess[f]) {
-            health = min( health + ATTACK_VALUE , MAX_HEALTH );
-          }
-        }
-      }
-    }
-  } // !DEAD
+ if (buttonReleased()) {
+   if (bChangeTeam) {
+     // now change the team
+     team = getNextTeam();
+     bChangeTeam = false;
+   }
+ }
 
-  // check our surroundings
-  FOREACH_FACE(f) {
+ // get our neighbor data
+ FOREACH_FACE(f) {
+   if (!isValueReceivedOnFaceExpired(f)) {
+     neighbors[f] = getLastValueReceivedOnFace(f);
+   }
+ }
 
+ if (healthTimer.isExpired()) {
 
-    if (!isValueReceivedOnFaceExpired(f)) {
+   if (health > 0) {
 
-      byte neighborMode = getGameMode(neighbors[f]);
+     byte numDeadNeighbors = 0;
 
-      if ( mode == ATTACKING ) {
+     //Dead Blinks will also drain life
+     FOREACH_FACE(f) {
+       if (!isValueReceivedOnFaceExpired(f)) {
+         if (getGameMode(neighbors[f]) == DEAD) {
+           numDeadNeighbors++;
+         }
+       }
+     }
 
-        // We take our flesh when we see that someone we attacked is actually injured
+     //Remove extra health for every dead neighbor attached
+     if((health - 1) - numDeadNeighbors < 0) {
+       health = 0;
+     }
+     else {
+       health = (health - 1) - numDeadNeighbors;
+     }
 
-        if ( neighborMode == INJURED ) {
+     // a tax for remaining in ENGUARDE mode...
+     if (mode == ENGUARDE && health > 0) {
+       health--;
+     }
 
-          // TODO: We should really keep a per-face attack timer to lock down the case where we attack the same tile twice in a since interaction.
+     // ready for next health step
+     healthTimer.set(HEALTH_STEP_TIME_MS);
 
-          attackSuccess[f] = true;
-        }
+   } else {
 
-      } else if ( mode == ALIVE ) {
+     mode = DEAD;
 
-        if ( neighborMode == ATTACKING ) {
+   }
 
-          health = max( health - ATTACK_VALUE , 0 ) ;
+ }
 
-          mode = INJURED;
+ if ( mode != DEAD ) {
 
-          injuredFace = f;  // set the face we are injured on
+   if (isAlone()) {
 
-          injuryBrightness = 255; // Start very injured
+     mode = ENGUARDE;      // Being lonesome makes us ready to attack!
 
-          modeTimeout.set( INJURED_DURRATION_MS );
+   } else {  // !isAlone()
 
-        }
+     if (mode == ENGUARDE) {   // We were ornery, but saw someone so we begin our attack in earnest!
 
-      } else if (mode == INJURED) {
+       mode = ATTACKING;
+       modeTimeout.set( ATTACK_DURRATION_MS );
+     }
 
-        if (modeTimeout.isExpired()) {
-
-          mode = ALIVE;
-
-        }
-      }
-    }
-  }
-
-  // Update our display based on new state
-
-  switch (mode) {
-
-    case DEAD:
-      displayGhost();
-      break;
-
-    case ALIVE:
-      resetAttackSuccess();
-      displayAlive();
-      break;
-
-    case ENGUARDE:
-      displayEnguarde();
-      break;
-
-    case ATTACKING:
-      displayAttack();
-      break;
-
-    case INJURED:
-      displayInjured( injuredFace );
-      break;
-  }
+   }
 
 
-  // let's start updating game state
-  switch (gameState) {
-    case PLAY:     playUpdate();      break;
-    case WAITING:  waitingUpdate();   break;
-    case START:    startUpdate();     break;
-  }
+   if (mode == ATTACKING || mode == INJURED ) {
 
-  if (bChangeTeam) {
-    // display a team change signal
-    FOREACH_FACE(f) {
-      if (f < 3) {
-        setColorOnFace(teamColor(team), f);
-      }
-      else {
-        setColorOnFace(teamColor(getNextTeam()), f);
-      }
-    }
-  }
+     if (modeTimeout.isExpired()) {
+       mode = ALIVE;
+       FOREACH_FACE(f) {
+         if (attackSuccess[f]) {
+           health = min( health + ATTACK_VALUE , MAX_HEALTH );
+         }
+       }
+     }
+   }
+ } // !DEAD
 
-  byte data = (gameState << 3) + mode;
-  setValueSentOnAllFaces( data );       // Tell everyone around how we are feeling
+ // check our surroundings
+ FOREACH_FACE(f) {
+
+
+   if (!isValueReceivedOnFaceExpired(f)) {
+
+     byte neighborMode = getGameMode(neighbors[f]);
+
+     if ( mode == ATTACKING ) {
+
+       // We take our flesh when we see that someone we attacked is actually injured
+
+       if ( neighborMode == INJURED ) {
+
+         // TODO: We should really keep a per-face attack timer to lock down the case where we attack the same tile twice in a since interaction.
+
+         attackSuccess[f] = true;
+       }
+
+     } else if ( mode == ALIVE ) {
+
+       if ( neighborMode == ATTACKING ) {
+
+         health = max( health - ATTACK_VALUE , 0 ) ;
+
+         mode = INJURED;
+
+         injuredFace = f;  // set the face we are injured on
+
+         injuryBrightness = 255; // Start very injured
+
+         modeTimeout.set( INJURED_DURRATION_MS );
+
+       }
+
+     } else if (mode == INJURED) {
+
+       if (modeTimeout.isExpired()) {
+
+         mode = ALIVE;
+
+       }
+     }
+   }
+ }
+
+ // Update our display based on new state
+
+ switch (mode) {
+
+   case DEAD:
+     displayGhost();
+     break;
+
+   case ALIVE:
+     resetAttackSuccess();
+     displayAlive();
+     break;
+
+   case ENGUARDE:
+     displayEnguarde();
+     break;
+
+   case ATTACKING:
+     displayAttack();
+     break;
+
+   case INJURED:
+     displayInjured( injuredFace );
+     break;
+ }
+
+
+ // let's start updating game state
+ switch (gameState) {
+   case PLAY:     playUpdate();      break;
+   case WAITING:  waitingUpdate();   break;
+   case START:    startUpdate();     break;
+ }
+
+ if (bChangeTeam) {
+   // display a team change signal
+   FOREACH_FACE(f) {
+     if (f < 3) {
+       setColorOnFace(teamColor(team), f);
+     }
+     else {
+       setColorOnFace(teamColor(getNextTeam()), f);
+     }
+   }
+ }
+
+ byte data = (gameState << 3) + mode;
+ setValueSentOnAllFaces( data );       // Tell everyone around how we are feeling
 
 }
 
 
 /*
-   -------------------------------------------------------------------------------------
-                                 START GAME LOGIC
-   -------------------------------------------------------------------------------------
+  -------------------------------------------------------------------------------------
+                                START GAME LOGIC
+  -------------------------------------------------------------------------------------
 */
 void changeGameState(byte state) {
 
-  switch (state) {
-    case PLAY:          break;
-    case WAITING:       break;
-    case START:   startTimer.set(START_DELAY);  break;
-  }
-  gameState = state;
+ switch (state) {
+   case PLAY:          break;
+   case WAITING:       break;
+   case START:   startTimer.set(START_DELAY);  break;
+ }
+ gameState = state;
 }
 
 void startGame() {
-  if (startTimer.isExpired()) {
-    mode = ALIVE;
-    changeGameState( PLAY );
-    health = INITIAL_HEALTH;
-    healthTimer.set(HEALTH_STEP_TIME_MS);
-  }
+ if (startTimer.isExpired()) {
+   mode = ALIVE;
+   changeGameState( PLAY );
+   health = INITIAL_HEALTH;
+   healthTimer.set(HEALTH_STEP_TIME_MS);
+ }
 }
 
 byte getNextTeam() {
-  return (team + 1) % MAX_TEAMS;
+ return (team + 1) % MAX_TEAMS;
 }
 
 void playUpdate() {
-  // if neighbor is in waiting mode, become waiting
-  FOREACH_FACE(f) {
-    if (!isValueReceivedOnFaceExpired(f)) {
-      if (getGameState(neighbors[f]) == WAITING) {
-        changeGameState( WAITING );
-        mode = DEAD;
-      }
-    }
-  }
+ // if neighbor is in waiting mode, become waiting
+ FOREACH_FACE(f) {
+   if (!isValueReceivedOnFaceExpired(f)) {
+     if (getGameState(neighbors[f]) == WAITING) {
+       changeGameState( WAITING );
+       mode = DEAD;
+     }
+   }
+ }
 }
 
 void waitingUpdate() {
-  // if neighbor is in start mode, transition to start mode
-  FOREACH_FACE(f) {
-    if (!isValueReceivedOnFaceExpired(f)) {
-      if (getGameState(neighbors[f]) == START) {
-        changeGameState( START );
-      }
-    }
-  }
+ // if neighbor is in start mode, transition to start mode
+ FOREACH_FACE(f) {
+   if (!isValueReceivedOnFaceExpired(f)) {
+     if (getGameState(neighbors[f]) == START) {
+       changeGameState( START );
+     }
+   }
+ }
 }
 
 void startUpdate() {
-  // if all neighbors are in start
-  bool allReady = true;
+ // if all neighbors are in start
+ bool allReady = true;
 
-  FOREACH_FACE(f) {
-    if (!isValueReceivedOnFaceExpired(f)) {
-      if (getGameState(neighbors[f]) != START && getGameState(neighbors[f]) != PLAY) {
-        allReady = false;
-      }
-    }
-  }
+ FOREACH_FACE(f) {
+   if (!isValueReceivedOnFaceExpired(f)) {
+     if (getGameState(neighbors[f]) != START && getGameState(neighbors[f]) != PLAY) {
+       allReady = false;
+     }
+   }
+ }
 
-  if (isAlone()) {
-    allReady = false;
-  }
-
-  if (allReady) {
-    startGame();
-  }
+ if (allReady) {
+   startGame();
+ }
 }
 
 void resetAttackSuccess() {
-  FOREACH_FACE(f) {
-    attackSuccess[f] = false;
-  }
+ FOREACH_FACE(f) {
+   attackSuccess[f] = false;
+ }
 }
 
 /*
-   -------------------------------------------------------------------------------------
-                                 END GAME LOGIC
-   -------------------------------------------------------------------------------------
+  -------------------------------------------------------------------------------------
+                                END GAME LOGIC
+  -------------------------------------------------------------------------------------
 */
 
 
 /*
-   -------------------------------------------------------------------------------------
-                                 START DISPLAY
-   -------------------------------------------------------------------------------------
+  -------------------------------------------------------------------------------------
+                                START DISPLAY
+  -------------------------------------------------------------------------------------
 */
 
 
 /*
-   Display state for living Mortals
+  Display state for living Mortals
 */
 void displayAlive() {
-  setColor(OFF);
-  FOREACH_FACE(f) {
+ setColor(OFF);
+ FOREACH_FACE(f) {
 
-    if ( f <=  (health / 10) ) {
-      // show health on the number of faces to represent 10 health for each light
-      setColorOnFace(teamColor( team ), f);
-      // TODO: FLASH the last 10 seconds of life
-    }
-    else {
-      // turn out the lights on faces to show a loss of health over time
-      setColorOnFace(OFF, f);
-    }
-  }
+   if ( f <=  (health / 10) ) {
+     // show health on the number of faces to represent 10 health for each light
+     setColorOnFace(teamColor( team ), f);
+     // TODO: FLASH the last 10 seconds of life
+   }
+   else {
+     // turn out the lights on faces to show a loss of health over time
+     setColorOnFace(OFF, f);
+   }
+ }
 
-  if (health <= 0 ) {
+ if (health <= 0 ) {
 
-    // glow bright white and fade out when we die
-    setColor( dim(WHITE, deathBrightness) );
+   // glow bright white and fade out when we die
+   setColor( dim(WHITE, deathBrightness) );
 
-    if (deathBrightness > 7) {
-      deathBrightness -= 8;
-    }
-  }
+   if (deathBrightness > 7) {
+     deathBrightness -= 8;
+   }
+ }
 
-  // don't show the sucking of energy when in the death phase
-  if (deathBrightness == 255) {
-    // show the dead sucking life
-    FOREACH_FACE(f) {
+ // don't show the sucking of energy when in the death phase
+ if (deathBrightness == 255) {
+   // show the dead sucking life
+   FOREACH_FACE(f) {
 
-      if (!isValueReceivedOnFaceExpired(f)) {
+     if (!isValueReceivedOnFaceExpired(f)) {
 
-        if (getGameMode(neighbors[f]) == DEAD) {
+       if (getGameMode(neighbors[f]) == DEAD) {
 
-          // pulse red on injured face
-          // TODO: Create a pulse algorithm that is less memory intensive
-          byte bri = 143 + (111 * sin_d(millis()));//breathe(600, 32, 255);
+         // pulse red on injured face
+         // TODO: Create a pulse algorithm that is less memory intensive
+         byte bri = 143 + (111 * sin_d(millis()));//breathe(600, 32, 255);
 
-          if ( f <= (health / 10) ) {
-            // if the tile is alive and showing life on this face, alternate red and team color
-            if ( (millis() / 600) % 2 == 0 ) {
-              setColorOnFace( dim(RED, bri), f);
-            }
-            else {
-              setColorOnFace( dim( teamColor( team ), bri), f);
-            }
-          }
-          else {
-            // else show red
-            setColorOnFace( dim(RED, bri), f);
-          }
-        }
-      }
-    }
-  }
+         if ( f <= (health / 10) ) {
+           // if the tile is alive and showing life on this face, alternate red and team color
+           if ( (millis() / 600) % 2 == 0 ) {
+             setColorOnFace( dim(RED, bri), f);
+           }
+           else {
+             setColorOnFace( dim( teamColor( team ), bri), f);
+           }
+         }
+         else {
+           // else show red
+           setColorOnFace( dim(RED, bri), f);
+         }
+       }
+     }
+   }
+ }
 }
 
 /*
-   Display state for injured Mortal
-   takes the face we were injured on
+  Display state for injured Mortal
+  takes the face we were injured on
 
 */
 void displayInjured(byte face) {
 
-  // first we display our health
-  displayAlive();
+ // first we display our health
+ displayAlive();
 
-  // then we update the side that was injured
-  if ( injuryDecayTimer.isExpired() ) {
-    injuryDecayTimer.set( INJURY_DECAY_INTERVAL_MS );
-    injuryBrightness -= INJURY_DECAY_VALUE;
-  }
+ // then we update the side that was injured
+ if ( injuryDecayTimer.isExpired() ) {
+   injuryDecayTimer.set( INJURY_DECAY_INTERVAL_MS );
+   injuryBrightness -= INJURY_DECAY_VALUE;
+ }
 
-  // brighten the sides with neighbors
-  if ( injuryBrightness > 32 ) {
-    setFaceColor( face, dim( RED, injuryBrightness) );
-  }
+ // brighten the sides with neighbors
+ if ( injuryBrightness > 32 ) {
+   setFaceColor( face, dim( RED, injuryBrightness) );
+ }
 
 }
 
@@ -465,26 +461,26 @@ void displayInjured(byte face) {
 */
 void displayGhost() {
 
-  setColor(OFF);
+ setColor(OFF);
 
-  // check game state
-  if ( gameState == PLAY ) {
-    FOREACH_FACE(f) {
+ // check game state
+ if ( gameState == PLAY ) {
+   FOREACH_FACE(f) {
 
-      setFaceColor(f, dim( RED, 64 + 32 * sin_d( (60 * f + millis() / 8) % 360)));  // slow dim rotation, just take my word for it :)
+     setFaceColor(f, dim( RED, 64 + 32 * sin_d( (60 * f + millis() / 8) % 360)));  // slow dim rotation, just take my word for it :)
 
-    }
-  }
-  else if (gameState == WAITING ) {
+   }
+ }
+ else if (gameState == WAITING ) {
 
-    setColor( dim(teamColor( team ), 92) );
-    setFaceColor( 1, dim( teamColor( team ), 159 + 96 * sin_d( ( millis() / 4) % 360) ) );
+   setColor( dim(teamColor( team ), 92) );
+   setFaceColor( 1, dim( teamColor( team ), 159 + 96 * sin_d( ( millis() / 4) % 360) ) );
 
-  }
-  else if (gameState == START ) {
-    setColor(WHITE);  // quick flash of white to start the game (only a single frame)
-    deathBrightness = 255;  // reset the death brightness
-  }
+ }
+ else if (gameState == START ) {
+   setColor(WHITE);  // quick flash of white to start the game (only a single frame)
+   deathBrightness = 255;  // reset the death brightness
+ }
 }
 
 /*
@@ -492,9 +488,9 @@ void displayGhost() {
 */
 void displayEnguarde() {
 
-  setColor( OFF );
+ setColor( OFF );
 
-  setFaceColor( (millis() / 100) % FACE_COUNT, teamColor( team ) );
+ setFaceColor( (millis() / 100) % FACE_COUNT, teamColor( team ) );
 
 }
 
@@ -503,47 +499,47 @@ void displayEnguarde() {
 */
 void displayAttack() {
 
-  setColor( OFF );
+ setColor( OFF );
 
-  setFaceColor( random(FACE_COUNT), teamColor( team ) );
+ setFaceColor( random(FACE_COUNT), teamColor( team ) );
 
 }
 /*
-   -------------------------------------------------------------------------------------
-                                 END DISPLAY
-   -------------------------------------------------------------------------------------
+  -------------------------------------------------------------------------------------
+                                END DISPLAY
+  -------------------------------------------------------------------------------------
 */
 
 
 /*
-   -------------------------------------------------------------------------------------
-                                 HELPER FUNCTIONS
-   -------------------------------------------------------------------------------------
+  -------------------------------------------------------------------------------------
+                                HELPER FUNCTIONS
+  -------------------------------------------------------------------------------------
 */
 
 /*
-   Sin in degrees ( standard sin() takes radians )
+  Sin in degrees ( standard sin() takes radians )
 */
 
 float sin_d( uint16_t degrees ) {
 
-  return sin( ( degrees / 360.0F ) * 2.0F * PI   );
+ return sin( ( degrees / 360.0F ) * 2.0F * PI   );
 }
 
 /*
-  get the team color for our team
+ get the team color for our team
 */
 Color teamColor( byte t ) {
-  switch (t) {
-    case 0: return makeColorRGB(190, 0, 255);
-    case 1: return makeColorRGB(100, 255, 0);
-  }
+ switch (t) {
+   case 0: return makeColorRGB(190, 0, 255);
+   case 1: return makeColorRGB(100, 255, 0);
+ }
 }
 
 byte getGameMode(byte data) {
-  return data & 7;  // 00000111 -> keeps the last 3 digits in binary
+ return data & 7;  // 00000111 -> keeps the last 3 digits in binary
 }
 
 byte getGameState(byte data) {
-  return data >> 3; // 00000XXX -> moves all digits to the right 3 times
+ return data >> 3; // 00000XXX -> moves all digits to the right 3 times
 }
