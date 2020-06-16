@@ -356,6 +356,24 @@ uint8_t hasWoken(void);
 
 uint8_t startState(void);
 
+// Make the current game sterile so that it can not be propagated to other blinks (niche) 
+// If sterileFlag==1 then holding the button down will never enter seed mode, it will just eventually sleep. 
+// This essentially means that once this built-in game is programmed into a blink it will not transfer to other blinks.
+
+// There are two ways you can use this. If you statically want a game to be sterile, you can add...
+// uint8_t sterileFlag=1;             // Make this game sterile. 
+// outside of any function block. This will completely disable all seeding and also give you some
+// extra flash memory since the seeding code does not even get linked into the executable (thanks gcc LTO!)
+// Alternately, you can use..
+// sterileFlag=1;
+// ...and...
+// sterileFlag=0;
+// inside your code to dynamically enable and disable seeding at any time.
+// NB: setting sterileFlag only suppress button-initiated seeds. 
+
+extern uint8_t sterileFlag;             // Set to 1 to make this game sterile. 
+
+
 /*
 
     These hook functions are filled in by the sketch
