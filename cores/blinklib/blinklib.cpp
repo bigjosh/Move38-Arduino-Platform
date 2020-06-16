@@ -1322,6 +1322,9 @@ byte sin8_C( byte theta)
 
 #endif
 
+uint8_t __attribute__((weak)) sterileFlag = 0;             // Set to 1 to make this game sterile. Hopefully LTO will compile this away for us?
+                                                                 // We make `weak` so that the user program can override it
+
 // This is the main event loop that calls into the arduino program
 // (Compiler is smart enough to jmp here from main rather than call!
 //     It even omits the trailing ret!
@@ -1353,7 +1356,7 @@ void __attribute__((noreturn)) run(void)  {
         // Note that we directly read the shared block rather than our snapshot. This lets the 6 second flag latch and
         // so to the user program if we do not enter seed mode because we have neighbors. See?
 
-        if (( blinkbios_button_block.bitflags & BUTTON_BITFLAG_3SECPRESSED) && isAlone() ) {
+        if (( blinkbios_button_block.bitflags & BUTTON_BITFLAG_3SECPRESSED) && isAlone() && !sterileFlag ) {
 
             // Button has been down for 6 seconds and we are alone...
             // Signal that we are about to go into seed mode with full blue...
