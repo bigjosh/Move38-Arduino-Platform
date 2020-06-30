@@ -1322,8 +1322,8 @@ byte sin8_C( byte theta)
 
 #endif
 
-uint8_t __attribute__((weak)) sterileFlag = 0;             // Set to 1 to make this game sterile. Hopefully LTO will compile this away for us?
-                                                                 // We make `weak` so that the user program can override it
+uint8_t __attribute__((weak)) sterileFlag = 0;             // Set to 1 to make this game sterile. Hopefully LTO will compile this away for us? (update: Whooha yes! )
+                                                           // We make `weak` so that the user program can override it
 
 // This is the main event loop that calls into the arduino program
 // (Compiler is smart enough to jmp here from main rather than call!
