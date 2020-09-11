@@ -117,6 +117,12 @@ SECTIONS
   {
     *(.vectors)
     KEEP(*(.vectors))
+	
+	/* Here we steal 2 bytes where we can store some data that traves with the game
+	   and will always be at this fixed address (0x0002) so BIOS or other game can look for it there*/
+	*(.proginfo)
+	KEEP (*(.proginfo))
+	
     /* For data that needs to reside in the lower 64k of progmem.  */
      *(.progmem.gcc*)
     /* PR 13812: Placing the trampolines here gives a better chance

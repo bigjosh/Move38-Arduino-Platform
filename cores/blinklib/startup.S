@@ -51,11 +51,10 @@
 
 	.section .vectors,"ax",@progbits
 	.global	__vectors
-	.func	__vectors
 __vectors:
-	jmp __init
-	.endfunc
+	rjmp __init
 
+    //.word 0x1234
 
 	 .section .init0,"ax",@progbits
      .func   __init
