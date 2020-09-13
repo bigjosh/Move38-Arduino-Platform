@@ -2,6 +2,8 @@
 
 menu.cpu=Processor
 
+menu.datagrams=Datagrams
+
 ##############################################################
 
 blink.name=Blink
@@ -44,6 +46,11 @@ blink.build.f_cpu=8000000L
 blink.build.board=AVR_BLINK
 blink.build.core=blinklib
 blink.build.variant=standard
+
+blink.menu.datagrams.enabled=Enabled
+blink.menu.datagrams.enabled.build.datagramflag=enabled
+blink.menu.datagrams.disabled=Disabled
+blink.menu.datagrams.disabled.build.datagramflag=disabled
 
 ##############################################################
 
