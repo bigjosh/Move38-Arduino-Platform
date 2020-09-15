@@ -48,8 +48,18 @@ Each blink also has a built in serial port so you can add `printf` statements to
 
 ## Making changes to the open source `blinklib` library
 
-You can make a fork of this repo and then clone it you the machine that you have the Arduino IDE installed on. Then add a symbolic link to the top directory of the clones repo (the directory with this readme in it) to the `Arduino/hardware` directory. So, for example, on my windows machine I called the symbolic link "Move38-manual" inside the "D:\Documents\Arduino" directory. Then quit out of the IDE and reload and you should see a new choice under the `boards` menu with the name of the link. 
+You can make a fork of this repo and then clone it you the machine that you have the Arduino IDE installed on. Then add a symbolic link called `avr` to the top directory of the cloned repo (the directory with this readme in it) to the `Arduino/hardware/move38` directory. So, for example, on my windows machine I made the symbolic link with the commands...
 
-Please do send a pull request with any bug fixes you come up with. For new features, best to discuss first [in the forums](https://forum.move38.com/c/softwareresources/9) to see what other think and if anyone is already working on something similar. 
+```
+d:
+cd D:\Documents\Arduino\hardware
+mkdir move38
+cd move38
+mklink /D avr D:\Github\Move38-Arduino-Platform
+```
+
+Quit out of the IDE and reload and you should see a new choice under the `boards` menu.
+
+We are always grateful for pull requests with bug fixes. For new features, best to discuss first [in the forums](https://forum.move38.com/c/softwareresources/9) to see what other think and if anyone is already working on something similar. 
 
 ###
