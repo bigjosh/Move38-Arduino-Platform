@@ -40,7 +40,7 @@ We write a program in the IDE using Arduino programming language (basically the 
 
 ## The `blinklib` library
 
-When you pick "blink" from the boards menu, you configure the Arduino IDE to automatically include a set of binks-specific functions whenever it compiles your code. You use these functions to set the colors on the blink's LEDs and check for button presses and send messages over the IR links and everything else a blink can do. You can see all the available `blinklib` functions [here](cores\blinklib\blinklib.h).     
+When you pick "blink" from the boards menu, you configure the Arduino IDE to automatically include a set of binks-specific functions whenever it compiles your code. You use these functions to set the colors on the blink's LEDs and check for button presses and send messages over the IR links and everything else a blink can do. You can see all the available `blinklib` functions [here](cores/blinklib/blinklib.h).     
 
 ## Serial support
 
