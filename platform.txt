@@ -134,7 +134,8 @@ tools.avrdude.program.verify=
 tools.avrdude.program.params.noverify=-V
 
 # Note that becuase `protocol` is not set in boards.txt, all uploads go here - even when the upload button is pressed. 
-# Note that we must proggram both the user code and the BIOS every time becuase all of flash memory is erased anytime you program any of it. 
+# Note that we must program both the user code and the BIOS every time becuase all of flash memory is erased anytime you program any of it. 
+# Note that we do not reproggram the fuses every time becuase the fuses are not erased on each cycle. You can use the "Program bootloader" function to program the fuses if they ever get messed up.
 # The -B 5 speeds up the clock to 200KHz which is the fastest we can go with the currently programmed 1MHz MCU clock at startup
 # Note that this used to be set to 250KHz but I found two different blinks that would not program at this speed
 
