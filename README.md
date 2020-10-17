@@ -13,7 +13,7 @@ Note that you do not need any of this if you just want to *play* blinks games, o
 
 1. Download and run the latest version of the[ Arduino IDE](https://www.arduino.cc/en/Main/Software#download)
 2. Go into File->Preferences->Settings and add...
-`https://github.com/bigjosh/Move38-Arduino-Platform/releases/latest/download/package_move38.com-blinks_index.json`
+`https://boardsmanager.com/package_move38.com-blinks_index.json`
 ...under Additional Boards Manager URLs. If you already have something there, you can use a comma to separate the multiple entries
 3. Go to Tools->Board->Boards Manager and search for "blinks"
 4. Press install on "Blinks by Move38"
