@@ -1,7 +1,7 @@
 /*
  * blkinklib.h
  *
- * Used for programming blinks by Move38 with the Arduino IDE. Move info at move38.com.
+ * Used for programming blinks by Move38 with the Arduino IDE. More info at move38.com.
  *
  * This file is automatically included by the Arduino IDE when the blinks board type is selected. 
  *

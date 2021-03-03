@@ -20,8 +20,8 @@
           },
           "url": "https://github.com/bigjosh/Move38-Arduino-Platform/releases/download/1.2/Move38-Arduino-Platform-main.zip",
           "archiveFileName": "Move38-Arduino-Platform-main.zip",
-          "checksum": "SHA-256:33C70BA08D838AA32E6FEBDB38086BAE57C8BA8D8F0320D663928B0C53284D34",
-          "size": "1334106",
+          "checksum": "SHA-256:EE61F574C3E3501D749A251D3004F0C78E2CCC9AEEB88C3A23EE173D69838201",
+          "size": "1332527",
           "boards": [
             {"name": "Blinks by Move38.com"}
 		   ],
