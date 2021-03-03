@@ -7,8 +7,8 @@
 // Note that you would use this technique _instead_ of the normal `Serial.h`. 
 
 // Note that these functions can only output bytes so you can not do something like `print(x)`. Instead, you can do something like `SERIAL_TX('L')` and
-// then if you see ` L come up in the serial monitor you knwo that line got hit. Using a few of these, you can trace the path your code is taking.
-// You can also do tricks like `SERIAL_TX(x+'0')` which will print the value of `x` as lng as it is between 0 and 9. If you need to check larger values,
+// then if you see `L` come up in the serial monitor you know that line got hit. Using a few of these, you can trace the path your code is taking.
+// You can also do tricks like `SERIAL_TX(x+'0')` which will print the value of `x` as long as it is between 0 and 9. If you need to check larger values,
 // you will need to use a different serial termial that lets you see raw data (Arduino serial monitor can not do this). Then you can do something like
 // `SERIAL_TX(b)` and see what value the byte `x` is beteween 0 and 255. You can also then do `SERIAL_TX(w>>8);SERIAL_TX(w&0xff);` to see the value of
 // the word in `w` (you do need to do a bit of math!). 
