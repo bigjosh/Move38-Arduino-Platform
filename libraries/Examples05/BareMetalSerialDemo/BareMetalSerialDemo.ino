@@ -7,19 +7,19 @@
 // Note that you would use this technique _instead_ of the normal `Serial.h`. 
 
 // To use: 
-// 1. Put the `SERIAL_ENABLE_500KBS()` function somewhere in your code (probably at the top of `setup()`. 
-// 2. Optionally call the `SERIAL_2X_SPEED()` function. This will increase the serial speed to 1Mbs at the cost of an additional word of flash memory. 
+// 1. Put the `SERIAL_ENABLE_500KBS()` function somewhere in your code (probably at the top of `setup()`. This enables the serial trasnmitter at the default baud rate of 500Kbs. 
+// 2. Optionally call the `SERIAL_2X_SPEED()` function. This will increase the serial speed to 1Mbs (as used by the normal blinks serial support) at the cost of an additional word of flash memory.
 // 3. Call the `SERIAL_TX_BLIND()` and/or `SERIAL_TX_BLIND()` functions in your code to write a byte to the serial port. 
 
 // The `SERIAL_TX_BLIND()` function writes blindly to the serial buffer so if you call it 3 times in a row faster than it can write the first two
-// bytes out the serial port, then the third byte will be lost. At 1Mbs, the serial port writes a byte every 9 cycles, so even if you do only
-// a tiny bit of work between calls then you are likely going to be safe. The actual write only takes a single cycle. 
+// bytes out the serial port, then the third byte will be lost. At 1Mbs, the serial port sends a byte every 9 cycles, so even if you do only
+// a tiny bit of work between calls then you are likely going to be safe. The actual write to the buffer only (and always) takes a single cycle.
 
 // The `SERIAL_TX()` function will check to make sure the previously writen byte is no longer in the buffer (it has started actually transmitting)
 // before writing this new byte, so this new byte will always be sent out the serial port. The cost of this extra check is up to 18 cycles and
 // 6 additional words of flash memory per use. 
 
-// Some defines for hardware register and bit locations. You can ignore these. 
+// Some defines for hardware register and bit locations. Humans can ignore these. 
 
 #define _MMIO_BYTE(mem_addr) (*(volatile uint8_t *)(mem_addr))
 
@@ -66,9 +66,9 @@ void loop() {
 
 
   if (buttonDoubleClicked()) {
-    SERIAL_TX_BLIND('A');   // This will always work becuase it is physically impossible to double click again before the last transmit completed. 
+    SERIAL_TX_BLIND('A');   // This will always work becuase your finger is not fast enough to double click again before the last transmit completed. 
     SERIAL_TX_BLIND('B');   // This will always work becase the 'A` above will start transmitting immedeately, so the single byte serial buffer will be free.
-    SERIAL_TX_BLIND('C');   // Note that this 'C' will never actually be transmitted becuase the buffer was filled by the previous line.                               
+    SERIAL_TX_BLIND('C');   // Note that this 'C' will likely not actually be transmitted becuase the buffer was filled by the previous line.                               
   }
 
 }
