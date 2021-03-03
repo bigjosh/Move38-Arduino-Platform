@@ -6,6 +6,13 @@
 // This can be handy when you are looking for a bug but are very short on flash memory.
 // Note that you would use this technique _instead_ of the normal `Serial.h`. 
 
+// Note that these functions can only output bytes so you can not do something like `print(x)`. Instead, you can do something like `SERIAL_TX('L')` and
+// then if you see ` L come up in the serial monitor you knwo that line got hit. Using a few of these, you can trace the path your code is taking.
+// You can also do tricks like `SERIAL_TX(x+'0')` which will print the value of `x` as lng as it is between 0 and 9. If you need to check larger values,
+// you will need to use a different serial termial that lets you see raw data (Arduino serial monitor can not do this). Then you can do something like
+// `SERIAL_TX(b)` and see what value the byte `x` is beteween 0 and 255. You can also then do `SERIAL_TX(w>>8);SERIAL_TX(w&0xff);` to see the value of
+// the word in `w` (you do need to do a bit of math!). 
+
 // To use: 
 // 1. Put the `SERIAL_ENABLE_500KBS()` function somewhere in your code (probably at the top of `setup()`. This enables the serial trasnmitter at the default baud rate of 500Kbs. 
 // 2. Optionally call the `SERIAL_2X_SPEED()` function. This will increase the serial speed to 1Mbs (as used by the normal blinks serial support) at the cost of an additional word of flash memory.
@@ -51,8 +58,8 @@
 #define SERIAL_TX(c)  do {while (!(UCSR0A&(1<<UDRE0))); SERIAL_TX_BLIND(c);} while (0)
 
 void setup() {
-  SERIAL_ENABLE_500KBS();
-  SERIAL_2X_SPEED();
+  SERIAL_ENABLE_500KBS();   // Enable the serial transmitter hardware. By default, this chip starts up at 500000 baud, which you can pick in the Arduino serial monitor pulldown if you want to use it.
+  SERIAL_2X_SPEED();        // Switch to 1000000 baud. This is optional, but it is twice as fast and matches the speed of the normal serial functions so usually worth the extra word of flash memory it costs
   SERIAL_TX_BLIND('S');     // Note we can always use blind version here because we *know* nothing is in the buffer yet. 
 }
 
