@@ -54,12 +54,10 @@ blink328.upload.maximum_size=12288
 blink328.upload.maximum_data_size=2048
 blink328.upload.speed=115200
 
-#blink328.bootloader.tool=avrdude
-#blink328.bootloader.low_fuses=0xFF
-#blink328.bootloader.high_fuses=0xDE
-#blink328.bootloader.extended_fuses=0xf8
-#blink328.bootloader.unlock_bits=0x3F
-#blink328.bootloader.lock_bits=0x0F
+blink328.bootloader.tool=avrdude
+blink328.bootloader.low_fuses=0xFF
+blink328.bootloader.high_fuses=0xDE
+blink328.bootloader.extended_fuses=0xf8
 
 # Note that the folder `bootloaders` seems to be hardcoded into the Arduino IDE
 
