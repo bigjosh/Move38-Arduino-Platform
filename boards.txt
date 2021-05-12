@@ -60,7 +60,7 @@ blink328.upload.speed=115200
 
 blink328.bootloader.tool=avrdude
 blink328.bootloader.low_fuses=0x62
-blink328.bootloader.high_fuses=0xD9
+blink328.bootloader.high_fuses=0xD8
 blink328.bootloader.extended_fuses=0xff
 
 # Note that the folder `bootloaders` seems to be hardcoded into the Arduino IDE
