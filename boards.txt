@@ -20,7 +20,7 @@ blink.upload.maximum_size=5888
 blink.upload.maximum_data_size=1024
 blink.upload.speed=115200
 
-# Only fuse that is different from factory default is extended_fuses. 
+# The only fuse that is different from factory default is extended_fuses. 
 # BOOTRST=0 (programmed)  enables jumping to the bootloader on reset and sets the bootloader 
 # BOOTSZ1=0, BOOTSZ0=0 (both programmed) sets bootloader size to 1Kb and is the default. 
 
@@ -57,6 +57,12 @@ blink328.upload.tool=avrdude
 blink328.upload.maximum_size=12288
 blink328.upload.maximum_data_size=2048
 blink328.upload.speed=115200
+
+
+# The only fuse that is different from factory default is high_fuses. 
+# BOOTRST=0 (programmed)  enables jumping to the bootloader on reset and sets the bootloader 
+# BOOTSZ1=0, BOOTSZ0=0 (both programmed) sets bootloader size to 2Kb and is the default. 
+# WARNING: The datasheet is wrong about where these fuse bit are (at least as of 5/13/21)!
 
 blink328.bootloader.tool=avrdude
 blink328.bootloader.low_fuses=0x62
