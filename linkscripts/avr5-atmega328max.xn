@@ -42,8 +42,8 @@ __USER_SIGNATURE_REGION_LENGTH__ = DEFINED(__USER_SIGNATURE_REGION_LENGTH__) ? _
 
 MEMORY
 {
-  text   (rx)   : ORIGIN = 0, LENGTH = 0x1700
-  data   (rw!x) : ORIGIN = 0x800100, LENGTH = 0x400
+  text   (rx)   : ORIGIN = 0, LENGTH = 0x3800
+  data   (rw!x) : ORIGIN = 0x800100, LENGTH = 0x800
   eeprom (rw!x) : ORIGIN = 0x810000, LENGTH = __EEPROM_REGION_LENGTH__
   fuse      (rw!x) : ORIGIN = 0x820000, LENGTH = __FUSE_REGION_LENGTH__
   lock      (rw!x) : ORIGIN = 0x830000, LENGTH = __LOCK_REGION_LENGTH__

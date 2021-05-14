@@ -38,6 +38,7 @@ blink.build.f_cpu=8000000L
 blink.build.board=AVR_BLINK_168
 blink.build.core=blinklib
 blink.build.variant=standard
+blink.build.linkscript=avr5-atmega168pb.xn
 
 ##############################################################
 
@@ -54,8 +55,8 @@ blink328.upload.tool=avrdude
 # Used for printing the "Sketch uses... of program storage space..." message and for moving the program image from base 0x000 "active" game area up to the "built-in" game area. 
 # Must match the `FLASH_GAME_IMAGE_SIZE` in the linker file. 
 # Obnoxiously, the `obj-size` command seems to only be able to take decimal, so 12288=0x3000
-blink328.upload.maximum_size=12288
-blink328.upload.maximum_data_size=2048
+blink328.upload.maximum_size=5888
+blink328.upload.maximum_data_size=1024
 blink328.upload.speed=115200
 
 
@@ -78,6 +79,7 @@ blink328.build.f_cpu=8000000L
 blink328.build.board=AVR_BLINK_328
 blink328.build.core=blinklib
 blink328.build.variant=standard
+blink328.build.linkscript=avr5-atmega328.xn
 
 ##############################################################
 
