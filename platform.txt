@@ -44,7 +44,7 @@ compiler.objcopy.eep.flags=-O ihex -j .eeprom --set-section-flags=.eeprom=alloc,
 # area in the MEMORY section of linkscripts/avr5.xn to match.
 # Finally you must also update `blink.upload.maximum_size` in boards.txt
 # so that the Arduino IDE reports the correct values for program size after a compile. 
-compiler.elf2hex.flags=--change-addresses {upload.maximum_size} -O ihex -R .eepromm 
+compiler.elf2hex.flags=--change-addresses {build.builtinbase} -O ihex -R .eepromm 
 compiler.elf2hex.cmd=avr-objcopy
 compiler.ldflags=
 compiler.size.cmd=avr-size

@@ -1328,9 +1328,8 @@ byte sin8_C( byte theta)
 //     Thanks for the extra 4 bytes of flash gcc!)
 
 void __attribute__((noreturn)) run(void)  {
-    
+	    	
     // TODO: Is this right? Should hasWoke() return true or false on the first check after start up?
-
     blinkbios_button_block.wokeFlag = 1;        // Clear any old wakes (wokeFlag is cleared to 0 on wake)
 
     updateNow();                    // Initialize out internal millis so that when we reset the warm sleep counter it is right, and so setup sees the right millis time
@@ -1340,7 +1339,6 @@ void __attribute__((noreturn)) run(void)  {
 
     setup();
     
-
     while (1) {
         
         // Did we blow the stack?

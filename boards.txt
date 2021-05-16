@@ -39,6 +39,7 @@ blink.build.board=AVR_BLINK_168
 blink.build.core=blinklib
 blink.build.variant=standard
 blink.build.linkscript=avr5-atmega168pb.xn
+blink.build.builtinbase=0x1700
 
 ##############################################################
 
@@ -80,6 +81,7 @@ blink328.build.board=AVR_BLINK_328
 blink328.build.core=blinklib
 blink328.build.variant=standard
 blink328.build.linkscript=avr5-atmega328.xn
+blink328.build.builtinbase=0x3000
 
 ##############################################################
 
