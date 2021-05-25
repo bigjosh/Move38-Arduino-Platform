@@ -604,7 +604,7 @@ static void RX_IRFaces() {
                         if ( decodedByte == DATAGRAM_SPECIAL_VALUE) {
                         
                             uint8_t datagramPayloadLen = packetDataLen-2;           // We deduct 2 from he length to account for the header byte and the trailing checksum byte                        
-                            const uint8_t *datagramPayloadData =   packetData+1;    // Skip the packet header byte
+                            volatile const uint8_t *datagramPayloadData =   packetData+1;    // Skip the packet header byte
                         
                             // Long packets are kind of a special case since we do not mark them read immediately
                             if ( computePacketChecksum( datagramPayloadData , datagramPayloadLen )  ==  datagramPayloadData[ datagramPayloadLen ] ) {        // Run checksum on payload bytes after the header, compare that to the checksum at the end
@@ -615,7 +615,7 @@ static void RX_IRFaces() {
 
                                     face->inDatagramLen = datagramPayloadLen;
                                 
-                                    memcpy( face->inDatagramData  , datagramPayloadData , datagramPayloadLen);       // Skip the header bytes
+                                    memcpy( face->inDatagramData  , const_cast< const uint8_t *>(datagramPayloadData) , datagramPayloadLen);       // Skip the header bytes
                                     
                                 }
                                                                                     
