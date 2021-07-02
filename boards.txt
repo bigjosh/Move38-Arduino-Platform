@@ -31,7 +31,7 @@ blink.bootloader.extended_fuses=0xf8
 
 # Note that the folder `bootloaders` seems to be hardcoded into the Arduino IDE
 
-blink.bootloader.file=BlinkBIOS-ATmega168PB.hex
+blink.bootloader.file=BlinkBIOS-168PB.hex
 
 blink.build.mcu=atmega168pb
 blink.build.f_cpu=8000000L
@@ -76,7 +76,7 @@ blink328.bootloader.extended_fuses=0xff
 
 # Note that the folder `bootloaders` seems to be hardcoded into the Arduino IDE
 
-blink328.bootloader.file=BlinkBIOS-ATmega328PB.hex
+blink328.bootloader.file=BlinkBIOS-328PB.hex
 
 blink328.build.mcu=atmega328pb
 blink328.build.f_cpu=8000000L
@@ -88,7 +88,7 @@ blink328.build.builtinbase=0x3900
 
 ##############################################################
 
-blink328.name=BlinkMAX
+blink328max.name=BlinkMAX
 
 # This board lets you make bigger games that will only work on 328-based blinks.
 # Any game made with this board will not work on or transfer to a 168 blink. 
@@ -104,9 +104,9 @@ blink328.upload.tool=avrdude
 # Used for printing the "Sketch uses... of program storage space..." message and for moving the program image from base 0x000 "active" game area up to the "built-in" game area. 
 # Must match the `FLASH_GAME_IMAGE_SIZE` in the linker file. 
 # Obnoxiously, the `obj-size` command seems to only be able to take decimal
-blink328.upload.maximum_size=9984
-blink328.upload.maximum_data_size=2048
-blink328.upload.speed=115200
+blink328max.upload.maximum_size=9984
+blink328max.upload.maximum_data_size=2048
+blink328max.upload.speed=115200
 
 
 # The only fuse that is different from factory default is high_fuses. 
@@ -114,19 +114,19 @@ blink328.upload.speed=115200
 # BOOTSZ1=0, BOOTSZ0=0 (both programmed) sets bootloader size to 2Kb and is the default. 
 # WARNING: The datasheet is wrong about where these fuse bit are (at least as of 5/13/21)!
 
-blink328.bootloader.tool=avrdude
-blink328.bootloader.low_fuses=0x62
-blink328.bootloader.high_fuses=0xD8
-blink328.bootloader.extended_fuses=0xff
+blink328max.bootloader.tool=avrdude
+blink328max.bootloader.low_fuses=0x62
+blink328max.bootloader.high_fuses=0xD8
+blink328max.bootloader.extended_fuses=0xff
 
 # Note that the folder `bootloaders` seems to be hardcoded into the Arduino IDE
 
-blink328.bootloader.file=BlinkBIOS-ATmega328PB.hex
+blink328.bootloader.file=BlinkBIOS-328PB-MAX.hex
 
-blink328.build.mcu=atmega328pb
-blink328.build.f_cpu=8000000L
-blink328.build.board=AVR_BLINK_328
-blink328.build.core=blinklib
-blink328.build.variant=standard
-blink328.build.linkscript=avr5-atmega328.xn
-blink328.build.builtinbase=0x3900
+blink328max.build.mcu=atmega328pb
+blink328max.build.f_cpu=8000000L
+blink328max.build.board=AVR_BLINK_328
+blink328max.build.core=blinklib
+blink328max.build.variant=standard
+blink328max.build.linkscript=avr5-atmega328.xn
+blink328max.build.builtinbase=0x3900
