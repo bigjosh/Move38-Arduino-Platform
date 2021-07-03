@@ -93,7 +93,7 @@ blink328max.name=BlinkMAX
 # This board lets you make bigger games that will only work on 328-based blinks.
 # Any game made with this board will not work on or transfer to a 168 blink. 
 
-blink328.upload.tool=avrdude
+blink328max.upload.tool=avrdude
 
 # IMPORTANT: Do not put a protocol here. 
 # If the protocol is `null` then Arduino will fall back and use 
@@ -121,7 +121,7 @@ blink328max.bootloader.extended_fuses=0xff
 
 # Note that the folder `bootloaders` seems to be hardcoded into the Arduino IDE
 
-blink328.bootloader.file=BlinkBIOS-328PB-MAX.hex
+blink328max.bootloader.file=BlinkBIOS-328PB-MAX.hex
 
 blink328max.build.mcu=atmega328pb
 blink328max.build.f_cpu=8000000L
