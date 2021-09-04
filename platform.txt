@@ -34,6 +34,7 @@ compiler.ar.flags=rcs
 
 compiler.objcopy.cmd=avr-objcopy
 compiler.objcopy.eep.flags=-O ihex -j .eeprom --set-section-flags=.eeprom=alloc,load --no-change-warnings --change-section-lma .eeprom=0
+compiler.objcopy.bin.flags=-O binary -j .text 
 
 # We need to explicitly remove .BSS from the hex file since the linker inexplicably includes .bss in .text
 # when we include .ipcram in .bss. 
@@ -60,6 +61,7 @@ compiler.cpp.extra_flags=
 compiler.ar.extra_flags=
 compiler.objcopy.eep.extra_flags=
 compiler.elf2hex.extra_flags=
+compiler.objcopy.bin.extra_flags=
 
 # AVR compile patterns
 # --------------------
@@ -88,6 +90,7 @@ recipe.objcopy.hex.pattern="{compiler.path}{compiler.elf2hex.cmd}" {compiler.elf
 ## Save hex
 recipe.output.tmp_file={build.project_name}.hex
 recipe.output.save_file={build.project_name}.{build.variant}.hex
+recipe.hooks.savehex.postsavehex.1.pattern="{compiler.path}{compiler.objcopy.cmd}" {compiler.objcopy.bin.flags} {compiler.objcopy.bin.extra_flags} "{build.path}/{build.project_name}.elf" "{sketch_path}/{build.project_name}.bin"
 
 ## Compute size
 recipe.size.pattern="{compiler.path}{compiler.size.cmd}" -A "{build.path}/{build.project_name}.elf"

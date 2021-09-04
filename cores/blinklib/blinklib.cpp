@@ -599,8 +599,7 @@ static void RX_IRFaces() {
 
 
                     } else {        // (packetDataLen>1)  
-                    
-                
+                                    
                         if ( decodedByte == DATAGRAM_SPECIAL_VALUE) {
                         
                             uint8_t datagramPayloadLen = packetDataLen-2;           // We deduct 2 from he length to account for the header byte and the trailing checksum byte                        
