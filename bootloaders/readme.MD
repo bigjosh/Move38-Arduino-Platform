@@ -1,4 +1,4 @@
-This folder contains the BlinkBIOS bootloader HEX file. The BlinkBIOS is a hardware abstraction layer that is loaded into the bootloader area of flash.
+This folder contains the BlinkBIOS bootloader HEX files. The BlinkBIOS is a hardware abstraction layer that is loaded into the bootloader area of flash.
 
 The blinkBIOS is an abstraction layer that provides access to the blinks hardware and is defined by the `blinkbios_*.h` files in the `cores/blinklib/shared` directory. 
 

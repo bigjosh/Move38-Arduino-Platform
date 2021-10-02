@@ -130,3 +130,46 @@ blink328max.build.core=blinklib
 blink328max.build.variant=standard
 blink328max.build.linkscript=avr5-atmega328.xn
 blink328max.build.builtinbase=0x3900
+
+blink328nfc.name=BlinkNFC
+
+# This board is a MAX that also includes the NFC bootleader.
+# Any game made with this board will not work on or transfer to a 168 blink. 
+
+blink328nfc.upload.tool=avrdude
+
+# IMPORTANT: Do not put a protocol here. 
+# If the protocol is `null` then Arduino will fall back and use 
+# whatever programmer is selected in Tools->Programmer
+
+
+# This is the maximum size of a program image. It comes from 
+# Used for printing the "Sketch uses... of program storage space..." message and for moving the program image from base 0x000 "active" game area up to the "built-in" game area. 
+# Must match the `FLASH_GAME_IMAGE_SIZE` in the linker file. 
+# Obnoxiously, the `obj-size` command seems to only be able to take decimal
+blink328nfc.upload.maximum_size=8128
+blink328nfc.upload.maximum_data_size=2048
+blink328nfc.upload.speed=115200
+
+
+# The only fuse that is different from factory default is high_fuses. 
+# BOOTRST=0 (programmed)  enables jumping to the bootloader on reset and sets the bootloader 
+# BOOTSZ1=0, BOOTSZ0=0 (both programmed) sets bootloader size to 2Kb and is the default. 
+# WARNING: The datasheet is wrong about where these fuse bit are (at least as of 5/13/21)!
+
+blink328nfc.bootloader.tool=avrdude
+blink328nfc.bootloader.low_fuses=0x62
+blink328nfc.bootloader.high_fuses=0xD8
+blink328nfc.bootloader.extended_fuses=0xff
+
+# Note that the folder `bootloaders` seems to be hardcoded into the Arduino IDE
+
+blink328nfc.bootloader.file=BlinkBIOS-328PB-MAX.hex
+
+blink328nfc.build.mcu=atmega328pb
+blink328nfc.build.f_cpu=8000000L
+blink328nfc.build.board=AVR_BLINK_328
+blink328nfc.build.core=blinklib
+blink328nfc.build.variant=standard
+blink328nfc.build.linkscript=avr5-atmega328.xn
+blink328nfc.build.builtinbase=0x3900
