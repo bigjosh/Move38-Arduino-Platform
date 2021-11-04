@@ -164,7 +164,7 @@ blink328nfc.bootloader.extended_fuses=0xff
 
 # Note that the folder `bootloaders` seems to be hardcoded into the Arduino IDE
 
-blink328nfc.bootloader.file=BlinkBIOS-328PB-MAX.hex
+blink328nfc.bootloader.file=BlinkBIOS-328PB-MAX-NFC.hex
 
 blink328nfc.build.mcu=atmega328pb
 blink328nfc.build.f_cpu=8000000L
