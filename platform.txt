@@ -34,7 +34,7 @@ compiler.ar.flags=rcs
 
 compiler.objcopy.cmd=avr-objcopy
 compiler.objcopy.eep.flags=-O ihex -j .eeprom --set-section-flags=.eeprom=alloc,load --no-change-warnings --change-section-lma .eeprom=0
-compiler.objcopy.bin.flags=-O binary -j .text 
+compiler.objcopy.bin.flags=-O binary --remove-section=bss
 
 # We need to explicitly remove .BSS from the hex file since the linker inexplicably includes .bss in .text
 # when we include .ipcram in .bss. 
