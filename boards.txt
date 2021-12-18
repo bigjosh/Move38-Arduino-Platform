@@ -104,7 +104,7 @@ blink328max.upload.tool=avrdude
 # Used for printing the "Sketch uses... of program storage space..." message and for moving the program image from base 0x000 "active" game area up to the "built-in" game area. 
 # Must match the `FLASH_GAME_IMAGE_SIZE` in the linker file. 
 # Obnoxiously, the `obj-size` command seems to only be able to take decimal
-blink328max.upload.maximum_size=8128
+blink328max.upload.maximum_size=7936
 blink328max.upload.maximum_data_size=2048
 blink328max.upload.speed=115200
 
@@ -147,7 +147,7 @@ blink328nfc.upload.tool=avrdude
 # Used for printing the "Sketch uses... of program storage space..." message and for moving the program image from base 0x000 "active" game area up to the "built-in" game area. 
 # Must match the `FLASH_GAME_IMAGE_SIZE` in the linker file. 
 # Obnoxiously, the `obj-size` command seems to only be able to take decimal
-blink328nfc.upload.maximum_size=8128
+blink328nfc.upload.maximum_size=7936
 blink328nfc.upload.maximum_data_size=2048
 blink328nfc.upload.speed=115200
 

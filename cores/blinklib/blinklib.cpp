@@ -1150,8 +1150,21 @@ byte getSerialNumberByte( byte n ) {
 // Useful to check is a newer feature is available on this blink.
 
 byte getBlinkbiosVersion() {
-    return BLINKBIOS_VERSION_VECTOR();    
+    return BLINKBIOS_VERSION_VECTOR() & 3;    
 }
+
+// Returns 1 if this is a "MAX" blink. MAX blinks have more memory for programs and code.
+
+uint8_t isMAXblink() {
+	return BLINKBIOS_VERSION_VECTOR() & VERSION_CAPABILITY_BIT_MAX;
+}
+
+// Returns 1 if this is a "NFC" blink. NFC blinks can store game statistics. See saveGameStat() below.
+
+uint8_t isNFCblink() {
+	return BLINKBIOS_VERSION_VECTOR() & VERSION_CAPABILITY_BIT_NFC;
+}
+
 
 // Returns 1 if we have slept and woken since last time we checked
 // Best to check as last test at the end of loop() so you can
