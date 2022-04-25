@@ -181,6 +181,14 @@
       <SubType>compile</SubType>
       <Link>DummySerial.h</Link>
     </Compile>
+    <Compile Include="..\..\..\cores\blinklib\gamestat.cpp">
+      <SubType>compile</SubType>
+      <Link>gamestat.cpp</Link>
+    </Compile>
+    <Compile Include="..\..\..\cores\blinklib\gamestat.h">
+      <SubType>compile</SubType>
+      <Link>gamestat.h</Link>
+    </Compile>
     <Compile Include="..\..\..\cores\blinklib\main.cpp">
       <SubType>compile</SubType>
       <Link>main.cpp</Link>

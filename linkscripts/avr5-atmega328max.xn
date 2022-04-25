@@ -42,8 +42,8 @@ __USER_SIGNATURE_REGION_LENGTH__ = DEFINED(__USER_SIGNATURE_REGION_LENGTH__) ? _
 
 MEMORY
 {
-  text   (rx)   : ORIGIN = 0, LENGTH = 0x1700
-  data   (rw!x) : ORIGIN = 0x800100, LENGTH = 0x400
+  text   (rx)   : ORIGIN = 0, LENGTH = 0x3800
+  data   (rw!x) : ORIGIN = 0x800100, LENGTH = 0x800
   eeprom (rw!x) : ORIGIN = 0x810000, LENGTH = __EEPROM_REGION_LENGTH__
   fuse      (rw!x) : ORIGIN = 0x820000, LENGTH = __FUSE_REGION_LENGTH__
   lock      (rw!x) : ORIGIN = 0x830000, LENGTH = __LOCK_REGION_LENGTH__
@@ -201,22 +201,22 @@ SECTIONS
 	/* These are our link to the boot loader */
 	/* We can jump to these to call the appropriate function */
 	 
-	boot_reset   	= 0x3800;
-	boot_vector1 	= 0x3804;
-	boot_vector2 	= 0x3808;
-	boot_vector3 	= 0x380c;
-	boot_vector4 	= 0x3810;
-	boot_vector5 	= 0x3814;
-	boot_vector6 	= 0x3818;
-	boot_vector7 	= 0x381c;
-	boot_vector8 	= 0x3820;
-	boot_vector9 	= 0x3824;
-	boot_vector10 	= 0x3828;
-	boot_vector11 	= 0x382c;
-	boot_vector12 	= 0x3830;
-	boot_vector13 	= 0x3834;
-	boot_vector14 	= 0x3838;
-	boot_vector15 	= 0x383c;
+	boot_reset   	= 0x7000;
+	boot_vector1 	= 0x7004;
+	boot_vector2 	= 0x7008;
+	boot_vector3 	= 0x700c;
+	boot_vector4 	= 0x7010;
+	boot_vector5 	= 0x7014;
+	boot_vector6 	= 0x7018;
+	boot_vector7 	= 0x701c;
+	boot_vector8 	= 0x7020;
+	boot_vector9 	= 0x7024;
+	boot_vector10 	= 0x7028;
+	boot_vector11 	= 0x702c;
+	boot_vector12 	= 0x7030;
+	boot_vector13 	= 0x7034;
+	boot_vector14 	= 0x7038;
+	boot_vector15 	= 0x703c;
 
  
   /* The NOLOAD makes it not show in in the HEX file */
