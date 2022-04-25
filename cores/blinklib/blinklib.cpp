@@ -599,12 +599,11 @@ static void RX_IRFaces() {
 
 
                     } else {        // (packetDataLen>1)  
-                    
-                
+                                    
                         if ( decodedByte == DATAGRAM_SPECIAL_VALUE) {
                         
                             uint8_t datagramPayloadLen = packetDataLen-2;           // We deduct 2 from he length to account for the header byte and the trailing checksum byte                        
-                            const uint8_t *datagramPayloadData =   packetData+1;    // Skip the packet header byte
+                            volatile const uint8_t *datagramPayloadData =   packetData+1;    // Skip the packet header byte
                         
                             // Long packets are kind of a special case since we do not mark them read immediately
                             if ( computePacketChecksum( datagramPayloadData , datagramPayloadLen )  ==  datagramPayloadData[ datagramPayloadLen ] ) {        // Run checksum on payload bytes after the header, compare that to the checksum at the end
@@ -615,7 +614,7 @@ static void RX_IRFaces() {
 
                                     face->inDatagramLen = datagramPayloadLen;
                                 
-                                    memcpy( face->inDatagramData  , datagramPayloadData , datagramPayloadLen);       // Skip the header bytes
+                                    memcpy( face->inDatagramData  , const_cast< const uint8_t *>(datagramPayloadData) , datagramPayloadLen);       // Skip the header bytes
                                     
                                 }
                                                                                     
@@ -1151,8 +1150,21 @@ byte getSerialNumberByte( byte n ) {
 // Useful to check is a newer feature is available on this blink.
 
 byte getBlinkbiosVersion() {
-    return BLINKBIOS_VERSION_VECTOR();    
+    return BLINKBIOS_VERSION_VECTOR() & 3;    
 }
+
+// Returns 1 if this is a "MAX" blink. MAX blinks have more memory for programs and code.
+
+uint8_t isMAXblink() {
+	return BLINKBIOS_VERSION_VECTOR() & VERSION_CAPABILITY_BIT_MAX;
+}
+
+// Returns 1 if this is a "NFC" blink. NFC blinks can store game statistics. See saveGameStat() below.
+
+uint8_t isNFCblink() {
+	return BLINKBIOS_VERSION_VECTOR() & VERSION_CAPABILITY_BIT_NFC;
+}
+
 
 // Returns 1 if we have slept and woken since last time we checked
 // Best to check as last test at the end of loop() so you can
@@ -1328,9 +1340,8 @@ byte sin8_C( byte theta)
 //     Thanks for the extra 4 bytes of flash gcc!)
 
 void __attribute__((noreturn)) run(void)  {
-    
+	    	
     // TODO: Is this right? Should hasWoke() return true or false on the first check after start up?
-
     blinkbios_button_block.wokeFlag = 1;        // Clear any old wakes (wokeFlag is cleared to 0 on wake)
 
     updateNow();                    // Initialize out internal millis so that when we reset the warm sleep counter it is right, and so setup sees the right millis time
@@ -1340,7 +1351,6 @@ void __attribute__((noreturn)) run(void)  {
 
     setup();
     
-
     while (1) {
         
         // Did we blow the stack?

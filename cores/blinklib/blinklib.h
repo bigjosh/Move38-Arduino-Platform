@@ -1,7 +1,7 @@
 /*
  * blkinklib.h
  *
- * Used for programming blinks by Move38 with the Arduino IDE. Move info at move38.com.
+ * Used for programming blinks by Move38 with the Arduino IDE. More info at move38.com.
  *
  * This file is automatically included by the Arduino IDE when the blinks board type is selected. 
  *
@@ -361,13 +361,19 @@ void setup(void);
 
 void loop();
 
-
 /*
 
-	Some syntactic sugar to make our programs look not so ugly.
+	Use these to find out what your blink is capable of
 
 */
 
+// Returns 1 if this is a "MAX" blink. MAX blinks have more memory for programs and code. 
+
+uint8_t isMAXblink();
+
+// Returns 1 if this is a "NFC" blink. NFC blinks can store game statistics. See saveGameStat() below. 
+
+uint8_t isNFCblink();
 
 
 // 'Cause C ain't got no iterators and all those FOR loops are too ugly.
