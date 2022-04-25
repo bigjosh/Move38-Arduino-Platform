@@ -7,7 +7,7 @@
 
 // Note: Aesthetically it might seem better to put these function declarations with their functional groups, but ultimately I decided to
 //       keep them all here in one place to avoid vector collisions. It is not a decision without downside though since a client who, say,
-//       only wants the IR send funtion gets polluted with the others as well. :/
+//       only wants the IR send function gets polluted with the others as well. :/
 
 // The VECTOR definitions are used on the BIOS side to hook the correct incoming vector.
 // The function definitions are used on the caller side to make the actual call to the vector.
@@ -21,21 +21,34 @@
 // then the target will return back to the original caller. Cool right? The optimizer will even put the target function at
 // the vector jump address if it has no other callers, saving a jmp.
 
+// We use unused interrupt vectors to link between the user and BIOS code since they are at a known place.
+// The links are defined as symbols like `boot_vectorX` where X is the number of the unused vector we are taking.
+// In the BIOS project, these appear in the vector table in `startup.S`.
+// IN the user mode projects, these appear in the linkscript and are hard coded to the correct address (based at the bootloader vtable).
+
+// These are just prototypes so gcc knows what args to pass. The linker will resolve it to a jump to the address.
+
 #ifndef BLINKBIOS_SHARED_FUCNTIONS_H_
 #define BLINKBIOS_SHARED_FUCNTIONS_H_
+
+
+// Implements up to 256 BIOS functions. Make sure to check capabilities for `MAX` before calling (not implemented in non-MAX blinks, no room). 
+// Returns 0xff if function is not implemented. 
+
+// Save gamestat data to EEPROM. BLINKBIOS_MULITPLEX_VECTOR(  BLINKBIOS_MULITPLEX_FUNCTION_SAVE_GAMESTAT , const uint8_t *buffer , uint16_t buffer_len ) 
+// Returns 0 on success, 1=if len>BLINKBOIS_GAMESTAT_MAXLEN
+#define BLINKBIOS_MULITPLEX_FUNCTION_SAVE_GAMESTAT 0x01
+#define BLINKBOIS_GAMESTAT_DATA_MAXLEN 128							// Max length of gamestat data that can be written
+
+#define BLINKBIOS_MULITPLEX_VECTOR boot_vector1       
+
+extern "C" uint8_t BLINKBIOS_MULITPLEX_VECTOR(  uint8_t function, ...  ) __attribute__((used)) __attribute__((noinline));
+
 
 // Send a user data packet
 // See what we did here - we do a naked jump into vector_4, which is a jump to the `uint8_t ir_send_userdata( uint8_t face, const uint8_t *data , uint8_t len )` function
 // it all works out because the params happened to be in the same registers because of the AVR C calling convention.
 //  When compiling the BIOS with LTO, it even puts the send packet function right at the target of the vector.
-
-// We use unused interrupt vectors to link between the user and BIOS code since they are at a known place.
-// The links are defined as symbols like `boot_vectorX` where X is the number of the unused vector we are taking.
-// In the BIOS project, these appear in the vector table in `startup.S`.
-// IN the user mode projects, these appear in the linkscript and are hard coded to the correct addressed (based at the bootloader vtable at 0x3800).
-
-// boot_vector4 is defined in the linkerscript and points to the boot loader's interrupt vector 4 at address 0x3810
-// This is just a prototype so gcc knows what args to pass. The linker will resolve it to a jump to the address.
 
 #define BLINKBIOS_IRDATA_SEND_PACKET_VECTOR boot_vector4      // This lands at base + 4 bytes per vector * 4th vector (init is at 0) = 0x10
 
@@ -82,6 +95,10 @@ extern "C" void BLINKBIOS_WRITE_FLASH_PAGE_VECTOR(uint8_t page) __attribute__((u
 
 
 // Returns the version of the blinksbios present
+// Upper bits indicate capabilities
+
+#define VERSION_CAPABILITY_BIT_MAX			(_BV(2))
+#define VERSION_CAPABILITY_BIT_NFC			(_BV(3))
 
 #define BLINKBIOS_VERSION_VECTOR boot_vector14
 
