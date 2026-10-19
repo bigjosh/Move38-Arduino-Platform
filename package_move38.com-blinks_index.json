@@ -13,15 +13,15 @@
         {
           "name": "Blinks by Move38.com",
           "architecture": "avr",
-          "version": "1.3.1",
+          "version": "1.3.3",
           "category": "Contributed",
           "help": {
             "online": "https://github.com/bigjosh/Move38-Arduino-Platform"
           },
-          "url": "https://github.com/bigjosh/Move38-Arduino-Platform/releases/download/1.3.1/Move38-Arduino-Platform-main.zip",		 
-          "archiveFileName": "Move38-Arduino-Platform-main.zip",
-          "checksum": "SHA-256:8a54e56a099c92ab7afd4d1aacd14bc14db2660de4460fd1c61f9144a86ee9e0",
-          "size": "5544617",
+          "url": "https://github.com/bigjosh/Move38-Arduino-Platform/releases/download/1.3.3/Move38-Arduino-Platform.zip",		 
+          "archiveFileName": "Move38-Arduino-Platform.zip",
+          "checksum": "SHA-256:d5389951b113bfafd78d97dc0f40340e613e2030ae1be3df0dec8c87a7cf9009",
+          "size": "5568334",
           "boards": [
             {"name": "Blinks by Move38.com"}
 		   ],

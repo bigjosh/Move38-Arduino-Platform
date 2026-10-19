@@ -15,3 +15,11 @@
 *.PDF	 diff=astextplain
 *.rtf	 diff=astextplain
 *.RTF	 diff=astextplain
+
+# Not needed in the Boards Manager zip built by make_release.py (git archive)
+AS7/               export-ignore
+.gitattributes     export-ignore
+.gitignore         export-ignore
+_config.yml        export-ignore
+make_release.py    export-ignore
+howto-release.md   export-ignore

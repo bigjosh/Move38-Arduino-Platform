@@ -18,6 +18,7 @@ Note that you do not need any of this if you just want to *play* blinks games, o
 3. Go to Tools->Board->Boards Manager and search for "blinks"
 4. Press install on "Blinks by Move38"
 5. Pick "Tools->Board->Move38->blink" from the menus 
+5. Pick your programmer under "Tools->Upload Using" (this is what the Upload button uses) and also under "Tools->Programmer" (used by "Sketch->Upload Using Programmer" and "Burn Bootloader")
 5. Go to "File->Example->Getting Started->Button Press" to load an example program
 6. Program the `Button Press` example code into a blink (see below)
 
@@ -28,7 +29,7 @@ Each blink can hold a game in its on-board flash memory. Once a blink has a game
 
 You will need a programmer, a cable, and a connector to get your code from the Arduino IDE into a blink's flash. 
  
-The [Blinks Developer Kit](https://move38.com/products/bare-bones-dev-kit) that includes everything you need to start programming your own games, including a a special blink that connects to an included USB programmer to make downloading your code as easy as pushing the "upload" button in the Ardunio IDE. If you have the dev kit, follow the enclosed instructions to select the correct programmer in the IDE and everything should just work.    
+The [Blinks Developer Kit](https://move38.com/products/bare-bones-dev-kit) that includes everything you need to start programming your own games, including a a special blink that connects to an included USB programmer to make downloading your code as easy as pushing the "upload" button in the Ardunio IDE. If you have the dev kit, follow the enclosed instructions to select the correct programmer in the IDE (under both "Tools->Upload Using" and "Tools->Programmer") and everything should just work.    
  
 But you do not need the dev kit to write your own games. Blinks can be programmed with any Arduino-compatible "AVR ISP" programmer and there are hundreds of these available everywhere. You can even use an[ Arduino UNO board plus a few wires](https://www.arduino.cc/en/Tutorial/ArduinoISP#toc2) to program any blink though the 6-pin In System Programming (ISP) connector inside the battery compartment (the arrow marks pin #1). 
 

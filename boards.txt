@@ -1,6 +1,7 @@
 # See: http://code.google.com/p/arduino/wiki/Platforms
 
 menu.cpu=Processor
+menu.uploadvia=Upload Using
 
 ##############################################################
 
@@ -8,9 +9,29 @@ blink.name=Blink
 
 blink.upload.tool=avrdude
 
-# IMPORTANT: Do not put a protocol here. 
-# If the protocol is `null` then Arduino will fall back and use 
-# whatever programmer is selected in Tools->Programmer
+# Arduino IDE 2.x (and arduino-cli) only pass the Tools->Programmer selection for
+# Sketch->Upload Using Programmer. The plain Upload button needs a protocol of its own,
+# otherwise it fails with "A programmer is required to upload" (issue #109).
+# This menu supplies it. Upload Using Programmer still uses Tools->Programmer as before.
+blink.upload.tool.default=avrdude
+blink.menu.uploadvia.usbtinyisp=USBtinyISP
+blink.menu.uploadvia.usbtinyisp.upload.protocol=usbtiny
+blink.menu.uploadvia.usbtinyisp.upload.extra_params=
+blink.menu.uploadvia.avrispmkii=AVRISP mkII
+blink.menu.uploadvia.avrispmkii.upload.protocol=stk500v2
+blink.menu.uploadvia.avrispmkii.upload.extra_params=-Pusb
+blink.menu.uploadvia.usbasp=USBasp
+blink.menu.uploadvia.usbasp.upload.protocol=usbasp
+blink.menu.uploadvia.usbasp.upload.extra_params=-Pusb
+blink.menu.uploadvia.avrisp=AVR ISP (serial port)
+blink.menu.uploadvia.avrisp.upload.protocol=stk500v1
+blink.menu.uploadvia.avrisp.upload.extra_params=-P{serial.port}
+blink.menu.uploadvia.arduinoasisp=Arduino as ISP (serial port)
+blink.menu.uploadvia.arduinoasisp.upload.protocol=arduino
+blink.menu.uploadvia.arduinoasisp.upload.extra_params=-P{serial.port} -b19200
+blink.menu.uploadvia.arduinoisp=ArduinoISP
+blink.menu.uploadvia.arduinoisp.upload.protocol=arduinoisp
+blink.menu.uploadvia.arduinoisp.upload.extra_params=
 
 # This is the maximum size of a program image. It comes from 
 # Used for printing the "Sketch uses... of program storage space..." message and for moving the program image from base 0x000 "active" game area up to the "built-in" game area. 
@@ -50,9 +71,29 @@ blink328.name=Blink328
 
 blink328.upload.tool=avrdude
 
-# IMPORTANT: Do not put a protocol here. 
-# If the protocol is `null` then Arduino will fall back and use 
-# whatever programmer is selected in Tools->Programmer
+# Arduino IDE 2.x (and arduino-cli) only pass the Tools->Programmer selection for
+# Sketch->Upload Using Programmer. The plain Upload button needs a protocol of its own,
+# otherwise it fails with "A programmer is required to upload" (issue #109).
+# This menu supplies it. Upload Using Programmer still uses Tools->Programmer as before.
+blink328.upload.tool.default=avrdude
+blink328.menu.uploadvia.usbtinyisp=USBtinyISP
+blink328.menu.uploadvia.usbtinyisp.upload.protocol=usbtiny
+blink328.menu.uploadvia.usbtinyisp.upload.extra_params=
+blink328.menu.uploadvia.avrispmkii=AVRISP mkII
+blink328.menu.uploadvia.avrispmkii.upload.protocol=stk500v2
+blink328.menu.uploadvia.avrispmkii.upload.extra_params=-Pusb
+blink328.menu.uploadvia.usbasp=USBasp
+blink328.menu.uploadvia.usbasp.upload.protocol=usbasp
+blink328.menu.uploadvia.usbasp.upload.extra_params=-Pusb
+blink328.menu.uploadvia.avrisp=AVR ISP (serial port)
+blink328.menu.uploadvia.avrisp.upload.protocol=stk500v1
+blink328.menu.uploadvia.avrisp.upload.extra_params=-P{serial.port}
+blink328.menu.uploadvia.arduinoasisp=Arduino as ISP (serial port)
+blink328.menu.uploadvia.arduinoasisp.upload.protocol=arduino
+blink328.menu.uploadvia.arduinoasisp.upload.extra_params=-P{serial.port} -b19200
+blink328.menu.uploadvia.arduinoisp=ArduinoISP
+blink328.menu.uploadvia.arduinoisp.upload.protocol=arduinoisp
+blink328.menu.uploadvia.arduinoisp.upload.extra_params=
 
 
 # This is the maximum size of a program image. It comes from 
@@ -95,9 +136,29 @@ blink328max.name=BlinkMAX
 
 blink328max.upload.tool=avrdude
 
-# IMPORTANT: Do not put a protocol here. 
-# If the protocol is `null` then Arduino will fall back and use 
-# whatever programmer is selected in Tools->Programmer
+# Arduino IDE 2.x (and arduino-cli) only pass the Tools->Programmer selection for
+# Sketch->Upload Using Programmer. The plain Upload button needs a protocol of its own,
+# otherwise it fails with "A programmer is required to upload" (issue #109).
+# This menu supplies it. Upload Using Programmer still uses Tools->Programmer as before.
+blink328max.upload.tool.default=avrdude
+blink328max.menu.uploadvia.usbtinyisp=USBtinyISP
+blink328max.menu.uploadvia.usbtinyisp.upload.protocol=usbtiny
+blink328max.menu.uploadvia.usbtinyisp.upload.extra_params=
+blink328max.menu.uploadvia.avrispmkii=AVRISP mkII
+blink328max.menu.uploadvia.avrispmkii.upload.protocol=stk500v2
+blink328max.menu.uploadvia.avrispmkii.upload.extra_params=-Pusb
+blink328max.menu.uploadvia.usbasp=USBasp
+blink328max.menu.uploadvia.usbasp.upload.protocol=usbasp
+blink328max.menu.uploadvia.usbasp.upload.extra_params=-Pusb
+blink328max.menu.uploadvia.avrisp=AVR ISP (serial port)
+blink328max.menu.uploadvia.avrisp.upload.protocol=stk500v1
+blink328max.menu.uploadvia.avrisp.upload.extra_params=-P{serial.port}
+blink328max.menu.uploadvia.arduinoasisp=Arduino as ISP (serial port)
+blink328max.menu.uploadvia.arduinoasisp.upload.protocol=arduino
+blink328max.menu.uploadvia.arduinoasisp.upload.extra_params=-P{serial.port} -b19200
+blink328max.menu.uploadvia.arduinoisp=ArduinoISP
+blink328max.menu.uploadvia.arduinoisp.upload.protocol=arduinoisp
+blink328max.menu.uploadvia.arduinoisp.upload.extra_params=
 
 
 # This is the maximum size of a program image. It comes from 
@@ -138,9 +199,29 @@ blink328nfc.name=BlinkNFC
 
 blink328nfc.upload.tool=avrdude
 
-# IMPORTANT: Do not put a protocol here. 
-# If the protocol is `null` then Arduino will fall back and use 
-# whatever programmer is selected in Tools->Programmer
+# Arduino IDE 2.x (and arduino-cli) only pass the Tools->Programmer selection for
+# Sketch->Upload Using Programmer. The plain Upload button needs a protocol of its own,
+# otherwise it fails with "A programmer is required to upload" (issue #109).
+# This menu supplies it. Upload Using Programmer still uses Tools->Programmer as before.
+blink328nfc.upload.tool.default=avrdude
+blink328nfc.menu.uploadvia.usbtinyisp=USBtinyISP
+blink328nfc.menu.uploadvia.usbtinyisp.upload.protocol=usbtiny
+blink328nfc.menu.uploadvia.usbtinyisp.upload.extra_params=
+blink328nfc.menu.uploadvia.avrispmkii=AVRISP mkII
+blink328nfc.menu.uploadvia.avrispmkii.upload.protocol=stk500v2
+blink328nfc.menu.uploadvia.avrispmkii.upload.extra_params=-Pusb
+blink328nfc.menu.uploadvia.usbasp=USBasp
+blink328nfc.menu.uploadvia.usbasp.upload.protocol=usbasp
+blink328nfc.menu.uploadvia.usbasp.upload.extra_params=-Pusb
+blink328nfc.menu.uploadvia.avrisp=AVR ISP (serial port)
+blink328nfc.menu.uploadvia.avrisp.upload.protocol=stk500v1
+blink328nfc.menu.uploadvia.avrisp.upload.extra_params=-P{serial.port}
+blink328nfc.menu.uploadvia.arduinoasisp=Arduino as ISP (serial port)
+blink328nfc.menu.uploadvia.arduinoasisp.upload.protocol=arduino
+blink328nfc.menu.uploadvia.arduinoasisp.upload.extra_params=-P{serial.port} -b19200
+blink328nfc.menu.uploadvia.arduinoisp=ArduinoISP
+blink328nfc.menu.uploadvia.arduinoisp.upload.protocol=arduinoisp
+blink328nfc.menu.uploadvia.arduinoisp.upload.extra_params=
 
 
 # This is the maximum size of a program image. It comes from 

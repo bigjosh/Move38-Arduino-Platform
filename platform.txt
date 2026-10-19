@@ -6,7 +6,7 @@
 # https://github.com/arduino/Arduino/wiki/Arduino-IDE-1.5-3rd-party-Hardware-specification
 
 name=Move38
-version=1.1.5
+version=1.4.0
 
 # AVR compile variables
 # ---------------------
@@ -114,8 +114,9 @@ tools.avrdude.config.path={path}/etc/avrdude.conf
 
 tools.avrdude.network_cmd={runtime.tools.arduinoOTA.path}/bin/arduinoOTA
 
-# Note that because `protocol` is not set in boards.txt, all uploads go to the `program` recipe- even when the upload button is pressed. 
-# So you can ignore this section, it is never used. 
+# The Upload button uses this `upload` recipe. The protocol comes from the Tools->Upload Using menu (see boards.txt),
+# because Arduino IDE 2.x does not pass the Tools->Programmer selection to a normal upload.
+# Sketch->Upload Using Programmer still uses the `program` recipe below with Tools->Programmer.
 
 tools.avrdude.upload.params.verbose=-v
 tools.avrdude.upload.params.quiet=-q -q
@@ -123,9 +124,8 @@ tools.avrdude.upload.params.quiet=-q -q
 tools.avrdude.upload.verify=
 tools.avrdude.upload.params.noverify=-V
 
-# blink does not use a serial bootloader, so we never want to use this recipe. Luckily by setting `protocol` to nothing, the IDE will always use the `program` recipe
-# We put the little error bug text in here just incase this ever changes at least we will know what happened. 
-tools.avrdude.upload.pattern="echo ERROR_TELL_JOSH_UPLOAD_WAS_CALLED"
+# Same command as the `program` recipe below: blink has no serial bootloader, so "upload" means ISP programming.
+tools.avrdude.upload.pattern="{cmd.path}" "-C{config.path}" -B 5 {upload.verbose} {upload.verify} -p{build.mcu} -c{upload.protocol} {upload.extra_params} "-Uflash:w:{build.path}/{build.project_name}.hex:i" "-Uflash:w:{runtime.platform.path}/bootloaders/{bootloader.file}:i" -u
 
 tools.avrdude.program.params.verbose=-v
 tools.avrdude.program.params.quiet=-q -q
@@ -133,7 +133,7 @@ tools.avrdude.program.params.quiet=-q -q
 tools.avrdude.program.verify=
 tools.avrdude.program.params.noverify=-V
 
-# Note that because `protocol` is not set in boards.txt, all uploads go here - even when the upload button is pressed. 
+# Used by Sketch->Upload Using Programmer, with the protocol from Tools->Programmer.
 # Note that we must program both the user code and the BIOS every time because all of flash memory is erased by AVRDUDE anytime you program any of it.
 # Note that we do not reprogram the fuses every time because the fuses are not erased on each cycle. You can use the "Program bootloader" function to program the fuses if they ever get messed up.
 # The -B 5 speeds up the clock to 200KHz which is the fastest we can go with the currently programmed 1MHz MCU clock at startup
